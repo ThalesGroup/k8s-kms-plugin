@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package thalescpl.io.ekms.common.v1;
+
+option go_package = "github.com/thalescpl-io/k8s-kms-plugin/apis/common/v1;common";
+
+import "google/protobuf/timestamp.proto";
+import "protoc-gen-swagger/options/annotations.proto";
+
+message VersionRequest {
+  // Version of the KMS plugin API.
+  string version = 1;
+}
+
+message VersionResponse {
+  // Version of the KMS plugin API.
+  string version = 1;
+  // Name of the KMS provider.
+  string runtime_name = 2;
+  // Version of the KMS provider. The string must be semver-compatible.
+  string runtime_version = 3;
+}

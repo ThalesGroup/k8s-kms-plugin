@@ -16,9 +16,9 @@
 
 syntax = "proto3";
 
-package thalescpl.io.ekms.istio.v0;
+package thalescpl.io.ekms.istio.v1;
 
-option go_package = "github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v0;istio";
+option go_package = "github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1;istio";
 
 import "google/protobuf/timestamp.proto";
 import "protoc-gen-swagger/options/annotations.proto";
@@ -28,20 +28,6 @@ enum KeyKind {
   AES = 1;
   RSA = 2;
   ECC = 3;
-}
-
-message VersionRequest {
-  // Version of the KMS plugin API.
-  string version = 1;
-}
-
-message VersionResponse {
-  // Version of the KMS plugin API.
-  string version = 1;
-  // Name of the KMS provider.
-  string runtime_name = 2;
-  // Version of the KMS provider. The string must be semver-compatible.
-  string runtime_version = 3;
 }
 
 message GenerateDEKRequest {

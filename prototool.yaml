@@ -22,8 +22,4 @@ generate:
     - name: go
       flags: plugins=grpc
       output: ./generated
-    - name: swagger
-      output: ./generated
-    - name: grpc-gateway
-      output: ./generated
 

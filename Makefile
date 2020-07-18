@@ -4,7 +4,6 @@
 
 gen:
 		@prototool all
-		@cp -r generated/apis/* apis/
 		@cp -r generated/github.com/thalescpl-io/k8s-kms-plugin/apis/* apis/
 		@rm -rf generated/
 build:

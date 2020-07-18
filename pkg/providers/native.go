@@ -6,8 +6,8 @@ import (
 	"errors"
 	"github.com/ThalesIgnite/gose"
 	"github.com/ThalesIgnite/gose/jose"
+	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
 	"io/ioutil"
-	"k8s.io/apiserver/pkg/storage/value/encrypt/envelope/v1beta1"
 	"os"
 	"path"
 )
@@ -40,16 +40,16 @@ func NewNative(path string) (n *Native, err error) {
 	return
 }
 
-func (n *Native) Decrypt(ctx context.Context, req *v1beta1.DecryptRequest) (resp *v1beta1.DecryptResponse, err error) {
-	resp = &v1beta1.DecryptResponse{}
+func (n *Native) Decrypt(ctx context.Context, req *k8s.DecryptRequest) (resp *k8s.DecryptResponse, err error) {
+	resp = &k8s.DecryptResponse{}
 	if resp.Plain, _, err = n.decryptor.Decrypt(string(req.Cipher)); err != nil {
 		return
 	}
 	return
 }
 
-func (n *Native) Encrypt(ctx context.Context, req *v1beta1.EncryptRequest) (resp *v1beta1.EncryptResponse, err error) {
-	resp = &v1beta1.EncryptResponse{}
+func (n *Native) Encrypt(ctx context.Context, req *k8s.EncryptRequest) (resp *k8s.EncryptResponse, err error) {
+	resp = &k8s.EncryptResponse{}
 	var payload string
 	if payload, err = n.encryptor.Encrypt(req.Plain, nil); err != nil {
 		return

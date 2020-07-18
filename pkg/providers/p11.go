@@ -8,8 +8,8 @@ import (
 	"github.com/ThalesIgnite/crypto11"
 	"github.com/ThalesIgnite/gose"
 	"github.com/ThalesIgnite/gose/jose"
+	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
 	"io"
-	"k8s.io/apiserver/pkg/storage/value/encrypt/envelope/v1beta1"
 )
 
 const (
@@ -101,7 +101,7 @@ func (p *P11) loadDevice() (err error) {
 	return
 }
 
-func (p *P11) Decrypt(ctx context.Context, req *v1beta1.DecryptRequest) (resp *v1beta1.DecryptResponse, err error) {
+func (p *P11) Decrypt(ctx context.Context, req *k8s.DecryptRequest) (resp *k8s.DecryptResponse, err error) {
 	if p.decryptor == nil {
 		if err = p.loadDevice(); err != nil {
 			return
@@ -111,13 +111,13 @@ func (p *P11) Decrypt(ctx context.Context, req *v1beta1.DecryptRequest) (resp *v
 	if out, _, err = p.decryptor.Decrypt(string(req.Cipher)); err != nil {
 		return
 	}
-	resp = &v1beta1.DecryptResponse{
+	resp = &k8s.DecryptResponse{
 		Plain: out,
 	}
 	return
 }
 
-func (p *P11) Encrypt(ctx context.Context, req *v1beta1.EncryptRequest) (resp *v1beta1.EncryptResponse, err error) {
+func (p *P11) Encrypt(ctx context.Context, req *k8s.EncryptRequest) (resp *k8s.EncryptResponse, err error) {
 	if p.encryptor == nil {
 		if err = p.loadDevice(); err != nil {
 			return
@@ -127,7 +127,7 @@ func (p *P11) Encrypt(ctx context.Context, req *v1beta1.EncryptRequest) (resp *v
 	if out, err = p.encryptor.Encrypt(req.Plain, nil); err != nil {
 		return
 	}
-	resp = &v1beta1.EncryptResponse{
+	resp = &k8s.EncryptResponse{
 		Cipher: []byte(out),
 	}
 	return

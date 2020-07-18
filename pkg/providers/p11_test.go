@@ -5,7 +5,7 @@ import (
 	"github.com/ThalesIgnite/crypto11"
 	"github.com/ThalesIgnite/gose"
 	"github.com/ThalesIgnite/gose/jose"
-	"k8s.io/apiserver/pkg/storage/value/encrypt/envelope/v1beta1"
+	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
 	"os"
 	"testing"
 )
@@ -70,13 +70,13 @@ func TestP11_Encrypt(t *testing.T) {
 	}
 	type args struct {
 		ctx context.Context
-		req *v1beta1.EncryptRequest
+		req *k8s.EncryptRequest
 	}
 	tests := []struct {
 		name     string
 		fields   fields
 		args     args
-		wantResp *v1beta1.EncryptResponse
+		wantResp *k8s.EncryptResponse
 		wantErr  bool
 	}{
 		{
@@ -90,12 +90,12 @@ func TestP11_Encrypt(t *testing.T) {
 			},
 			args: args{
 				ctx: context.Background(),
-				req: &v1beta1.EncryptRequest{
+				req: &k8s.EncryptRequest{
 					Version: "1",
 					Plain:   testPlainMessage,
 				},
 			},
-			wantResp: &v1beta1.EncryptResponse{
+			wantResp: &k8s.EncryptResponse{
 				Cipher: []byte(testEncryptedBlob),
 			},
 			wantErr: false,
@@ -118,8 +118,8 @@ func TestP11_Encrypt(t *testing.T) {
 				return
 			}
 
-			var gotClearResp *v1beta1.DecryptResponse
-			if gotClearResp, err = p.Decrypt(context.Background(), &v1beta1.DecryptRequest{
+			var gotClearResp *k8s.DecryptResponse
+			if gotClearResp, err = p.Decrypt(context.Background(), &k8s.DecryptRequest{
 				Cipher: gotResp.Cipher,
 			}); err != nil {
 				t.Errorf("Unable to decrypt the payload... danger!!!")
