@@ -37,34 +37,14 @@ message VersionResponse {
   string runtime_version = 3;
 }
 
-message DecryptRequest {
-  // Version of the KMS plugin API.
-  string version = 1;
-  // The data to be decrypted.
-  bytes cipher = 2;
-  // Required. The Keyring that is holding the key to use
-  string keyring_id = 3;
-  // Required. The Key to use
-  string key_id = 4;
+message GenerateDEKRequest {
+  // key size in bits
+  int64 size = 1;
 }
 
-message DecryptResponse {
-  // The decrypted data.
-  bytes plain = 1;
+message GenerateDEKResponse {
+  // Encrypted key blob
+  bytes encrypted_key_blob = 1;
+
 }
 
-message EncryptRequest {
-  // Version of the KMS plugin API.
-  string version = 1;
-  // The data to be encrypted.
-  bytes plain = 2;
-  // Required. The Keyring that is holding the key to use
-  string keyring_id = 3;
-  // Required. The Key to use
-  string key_id = 4;
-}
-
-message EncryptResponse {
-  // The encrypted data.
-  bytes cipher = 1;
-}
