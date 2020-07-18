@@ -6,6 +6,7 @@ ADD tools.go /app/pkg/tools.go
 ADD main.go /app/main.go
 ADD vendor /app/vendor
 ADD pkg /app/pkg
+ADD apis /app/apis
 ADD cmd /app/cmd
 
 ENV GOOS linux

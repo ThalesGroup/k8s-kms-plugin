@@ -7,7 +7,7 @@ import (
 	"github.com/ThalesIgnite/gose"
 	"github.com/ThalesIgnite/gose/jose"
 	"github.com/sirupsen/logrus"
-	v1 "github.com/thalescpl-io/k8s-kms-plugin/apis/common/v1"
+	"github.com/thalescpl-io/k8s-kms-plugin/apis/common/v1"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
 	"google.golang.org/grpc"
@@ -24,7 +24,7 @@ type Native struct {
 	decryptor *gose.JweDirectDecryptorImpl
 }
 
-func (n *Native) Version(ctx context.Context, request *v1.VersionRequest) (*v1.VersionResponse, error) {
+func (n *Native) Version(ctx context.Context, request *common.VersionRequest) (*common.VersionResponse, error) {
 	panic("implement me")
 }
 
