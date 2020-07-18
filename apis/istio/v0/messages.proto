@@ -23,6 +23,13 @@ option go_package = "github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v0;istio"
 import "google/protobuf/timestamp.proto";
 import "protoc-gen-swagger/options/annotations.proto";
 
+enum KeyKind {
+  UNKNOWN = 0;
+  AES = 1;
+  RSA = 2;
+  ECC = 3;
+}
+
 message VersionRequest {
   // Version of the KMS plugin API.
   string version = 1;
@@ -40,11 +47,37 @@ message VersionResponse {
 message GenerateDEKRequest {
   // key size in bits
   int64 size = 1;
+  // What kind of key is it... only Assymmetric kinds will be supported
+  KeyKind kind = 2;
 }
 
 message GenerateDEKResponse {
   // Encrypted key blob
   bytes encrypted_key_blob = 1;
-
 }
 
+message GenerateSEKRequest {
+  // key size in bits
+  int64 size = 1;
+  // What kind of key is it... only Assymmetric kinds will be supported
+  KeyKind kind = 2;
+  // Encrypted blob of DEK
+  bytes encrypted_key_blob = 3;
+}
+
+message GenerateSEKResponse {
+  // Encrypted blob of SEK encrypted by DEK
+  bytes encrypted_key_blob = 1;
+}
+
+message LoadDEKRequest {
+  // Encrypted blob of DEK
+  bytes encrypted_key_blob = 1;
+  // What kind of key is it... only Assymmetric kinds will be supported
+  KeyKind kind = 2;
+}
+
+message LoadDEKResponse {
+  // Clear DEK
+  bytes clear_key = 1;
+}

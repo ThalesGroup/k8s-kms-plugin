@@ -48,23 +48,52 @@
         }
       }
     },
-    "v0DecryptResponse": {
+    "v0GenerateDEKResponse": {
       "type": "object",
       "properties": {
-        "plain": {
+        "encrypted_key_blob": {
           "type": "string",
           "format": "byte",
-          "description": "The decrypted data."
+          "title": "Encrypted key blob"
         }
       }
     },
-    "v0EncryptResponse": {
+    "v0GenerateSEKRequest": {
       "type": "object",
       "properties": {
-        "cipher": {
+        "size": {
+          "type": "string",
+          "format": "int64",
+          "title": "key size in bits"
+        },
+        "kind": {
+          "$ref": "#/definitions/v0KeyKind",
+          "title": "What kind of key is it... only Assymmetric kinds will be supported"
+        },
+        "encrypted_key_blob": {
           "type": "string",
           "format": "byte",
-          "description": "The encrypted data."
+          "title": "Encrypted blob of DEK"
+        }
+      }
+    },
+    "v0KeyKind": {
+      "type": "string",
+      "enum": [
+        "UNKNOWN",
+        "AES",
+        "RSA",
+        "ECC"
+      ],
+      "default": "UNKNOWN"
+    },
+    "v0LoadDEKResponse": {
+      "type": "object",
+      "properties": {
+        "clear_key": {
+          "type": "string",
+          "format": "byte",
+          "title": "Clear DEK"
         }
       }
     },

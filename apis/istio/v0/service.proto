@@ -13,4 +13,8 @@ service KeyManagementService {
   rpc Version(VersionRequest) returns (VersionResponse);
   // GenerateDEK returns a wrapped (by KMS handled key)
   rpc GenerateDEK(GenerateDEKRequest) returns (GenerateDEKResponse);
+  // GenerateSEK returns a wrapped (by provided encrypted DEK ), for leader Loading
+  rpc GenerateSEK(GenerateSEKRequest) returns (GenerateSEKRequest);
+  // LoadDEK returns the DEK unwrapped for the controller to unwrap the SEK in place and use for CA work...
+  rpc LoadDEK(LoadDEKRequest) returns (LoadDEKResponse);
 }
