@@ -5,4 +5,4 @@ build:
     useDockerCLI: true
     push: true
   artifacts:
-    - image: gcr.io/peterparker/k8s-kms-plugin
+    - image: gcr.io/thalescpl-io/k8s-kms-plugin

@@ -1,6 +1,8 @@
 .PHONY: all lint build coverage dev  gen
 
 all: build
+
+SECRETNAME=gcr-json-key
 ## Pipeline
 lint:
 		@golangci-lint run

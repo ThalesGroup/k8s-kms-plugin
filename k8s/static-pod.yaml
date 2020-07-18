@@ -22,7 +22,7 @@ spec:
           name: native-keystore
   containers:
     - name: k8s-kms-plugin
-      image: "gcr.io//k8s-kms-plugin"
+      image: "gcr.io/thalescpl-io/k8s-kms-plugin"
       imagePullPolicy: IfNotPresent
       volumeMounts:
         - mountPath: /run/kms/kms-socket
