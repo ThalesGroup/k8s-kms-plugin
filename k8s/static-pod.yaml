@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: k8s-kms-plugin
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: k8s-kms-plugin
+spec:
+  volumes:
+    - name: kms-socket
+      hostPath:
+        path: /run/kms/kms-socket
+    - name: native-keystore
+      hostPath:
+        path: /etc/kubernetes/keystore
+  initContainers:
+    - name: config
+      image: busybox
+
+      volumeMounts:
+        - mountPath: /keys/
+          name: native-keystore
+  containers:
+    - name: k8s-kms-plugin
+      image: "gcr.io//k8s-kms-plugin"
+      imagePullPolicy: IfNotPresent
+      volumeMounts:
+        - mountPath: /run/kms/kms-socket
+          name: kms-socket
+      ports:
+        - containerPort: 31400
+          protocol: TCP
+          name: grpc
+      livenessProbe:
+        tcpSocket:
+          port: 31400
+      args:
+        - serve
+        - --socket
+        - /run/kms/kms-socket/k8s-kms-plugin.sock

@@ -1,0 +1,117 @@
+package providers
+
+import (
+	"context"
+	"encoding/base64"
+	"errors"
+	"github.com/ThalesIgnite/gose"
+	"github.com/ThalesIgnite/gose/jose"
+	"io/ioutil"
+	"k8s.io/apiserver/pkg/storage/value/encrypt/envelope/v1beta1"
+	"os"
+	"path"
+)
+
+const defaultKey = "_master_key"
+
+type Native struct {
+	path      string
+	encryptor *gose.JweDirectEncryptionEncryptorImpl
+	decryptor *gose.JweDirectDecryptorImpl
+}
+
+func NewNative(path string) (n *Native, err error) {
+	n = &Native{
+		path: path,
+	}
+	var key gose.AuthenticatedEncryptionKey
+	if key, err = n.Load(defaultKey); err != nil {
+		if err == ErrNoSuchKey {
+			// If not exist, generate...
+			if key, err = n.Generate(defaultKey, jose.AlgA256GCM); err != nil {
+				return
+			}
+		} else {
+			return
+		}
+	}
+	n.encryptor = gose.NewJweDirectEncryptorImpl(key)
+	n.decryptor = gose.NewJweDirectDecryptorImpl([]gose.AuthenticatedEncryptionKey{key})
+	return
+}
+
+func (n *Native) Decrypt(ctx context.Context, req *v1beta1.DecryptRequest) (resp *v1beta1.DecryptResponse, err error) {
+	resp = &v1beta1.DecryptResponse{}
+	if resp.Plain, _, err = n.decryptor.Decrypt(string(req.Cipher)); err != nil {
+		return
+	}
+	return
+}
+
+func (n *Native) Encrypt(ctx context.Context, req *v1beta1.EncryptRequest) (resp *v1beta1.EncryptResponse, err error) {
+	resp = &v1beta1.EncryptResponse{}
+	var payload string
+	if payload, err = n.encryptor.Encrypt(req.Plain, nil); err != nil {
+		return
+	}
+	resp.Cipher = []byte(payload)
+	return
+}
+
+//Close the key manager
+func (km *Native) Close() (err error) {
+	return
+}
+
+//Identity returns the ID of thise KeyManager
+func (km *Native) Identity() string {
+	return base64.RawURLEncoding.EncodeToString([]byte(km.path))
+}
+
+//Load an AEK
+func (km *Native) Load(identity string) (key gose.AuthenticatedEncryptionKey, err error) {
+	filePath := path.Join(km.path, identity)
+	var jwk jose.Jwk
+	if jwk, err = gose.LoadJwkFromFile(filePath, keyOps); err != nil {
+		if err == gose.ErrInvalidSigningKeyURL {
+			err = ErrNoSuchKey
+		}
+		return
+	}
+
+	key, err = gose.NewAesGcmCryptorFromJwk(jwk, keyOps)
+	return
+}
+
+//Generate an AEK
+func (km *Native) Generate(identity string, alg jose.Alg) (key gose.AuthenticatedEncryptionKey, err error) {
+	if err = os.MkdirAll(km.path, 0600); err != nil {
+		return
+	}
+	generator := gose.AuthenticatedEncryptionKeyGenerator{}
+	var jwk jose.Jwk
+	if key, jwk, err = generator.Generate(alg, keyOps); err != nil {
+		return
+	}
+	var jwkStr string
+	if jwkStr, err = gose.JwkToString(jwk); err != nil {
+		return
+	}
+
+	// See if file/dir exists in amazon
+	if !pathExists(km.path) {
+		err = errors.New("key manager directory is corrupt or missing")
+	}
+	err = ioutil.WriteFile(path.Join(km.path, identity), []byte(jwkStr), 0600)
+	return
+}
+
+func pathExists(filePath string) (exists bool) {
+	exists = true
+
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		exists = false
+	}
+
+	return
+}

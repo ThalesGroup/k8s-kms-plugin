@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package thalescpl.io.ekms.istio.v0;
+
+option go_package = "github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v0;istio";
+
+import "apis/istio/v0/messages.proto";
+import "google/protobuf/timestamp.proto";
+import "protoc-gen-swagger/options/annotations.proto";
+
+service KeyManagementService {
+  // Version returns the runtime name and runtime version of the KMS provider.
+  rpc Version(VersionRequest) returns (VersionResponse);
+  // Execute decryption operation in KMS provider.
+  rpc Decrypt(DecryptRequest) returns (DecryptResponse);
+  // Execute encryption operation in KMS provider.
+  rpc Encrypt(EncryptRequest) returns (EncryptResponse);
+}

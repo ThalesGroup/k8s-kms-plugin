@@ -1,0 +1,29 @@
+protoc:
+  version: 3.10.0
+  includes:
+    - apis
+    - vendor
+    - vendor/github.com/grpc-ecosystem/grpc-gateway
+    - .
+  allow_unused_imports: true
+
+lint:
+  group: google
+excludes:
+  - vendor
+  - cmd
+generate:
+  # The list of plugins.
+  go_options:
+    # The base import path. This should be the go path of the prototool.yaml file.
+    # This is required if you have any go plugins.
+    import_path: github.com/thalescpl-io/k8s-kms-plugin
+  plugins:
+    - name: go
+      flags: plugins=grpc
+      output: ./generated
+    - name: swagger
+      output: ./generated
+    - name: grpc-gateway
+      output: ./generated
+

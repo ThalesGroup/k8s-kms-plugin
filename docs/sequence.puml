@@ -1,0 +1,38 @@
+@startuml
+
+entity "K8S APIServer" as api
+entity "K8S-KMS-Plugin" as pp
+entity "EKMS/P11" as ekms
+entity "Root Of Trust" as ks
+
+group Encrypt
+    api -> pp : Encrypt
+    activate pp
+    pp -> ekms : Encrypt
+    activate ekms
+    ekms -> ks : Wrap
+    activate ks
+    ekms <- ks : Payload
+    deactivate ks
+    ekms -> pp : Payload
+    deactivate ekms
+    api <- pp : Payload
+    deactivate pp
+end
+
+group Decrypt
+    api -> pp : Decrypt
+    activate pp
+    pp -> ekms : Decrypt
+    activate ekms
+    ekms -> ks : UnWrap
+    activate ks
+    ekms <- ks : Clear
+    deactivate ks
+    pp <- ekms : Clear
+    deactivate ekms
+    api <- pp : Clear
+    deactivate pp
+end
+
+@enduml
