@@ -8,7 +8,11 @@ import (
 	"github.com/ThalesIgnite/crypto11"
 	"github.com/ThalesIgnite/gose"
 	"github.com/ThalesIgnite/gose/jose"
+	"github.com/sirupsen/logrus"
+	v1 "github.com/thalescpl-io/k8s-kms-plugin/apis/common/v1"
+	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
+	"google.golang.org/grpc"
 	"io"
 )
 
@@ -47,6 +51,22 @@ type P11 struct {
 	encryptor gose.JweEncryptor
 	decryptor gose.JweDecryptor
 	createKey bool
+}
+
+func (p *P11) Version(ctx context.Context, request *v1.VersionRequest) (*v1.VersionResponse, error) {
+	panic("implement me")
+}
+
+func (p *P11) GenerateDEK(ctx context.Context, request *istio.GenerateDEKRequest) (*istio.GenerateDEKResponse, error) {
+	panic("implement me")
+}
+
+func (p *P11) GenerateSEK(ctx context.Context, request *istio.GenerateSEKRequest) (*istio.GenerateSEKResponse, error) {
+	panic("implement me")
+}
+
+func (p *P11) LoadDEK(ctx context.Context, request *istio.LoadDEKRequest) (*istio.LoadDEKResponse, error) {
+	panic("implement me")
 }
 
 func NewP11(keyId string, keyLabel string, config *crypto11.Config, createKey bool) (p *P11, err error) {
@@ -131,6 +151,12 @@ func (p *P11) Encrypt(ctx context.Context, req *k8s.EncryptRequest) (resp *k8s.E
 		Cipher: []byte(out),
 	}
 	return
+}
+func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	var h interface{}
+	var err error
+	logrus.Infof("Path: %s", info.FullMethod)
+	return h, err
 }
 
 //Close the key manager

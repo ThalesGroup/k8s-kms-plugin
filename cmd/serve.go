@@ -1,18 +1,19 @@
 package cmd
 
 import (
-	"context"
+	"errors"
 	"fmt"
 	"github.com/ThalesIgnite/crypto11"
 	"github.com/sirupsen/logrus"
-	"github.com/thalescpl-io/k8s-kms-plugin/pkg/kms"
+	"github.com/spf13/cobra"
+	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
 	"github.com/thalescpl-io/k8s-kms-plugin/pkg/providers"
+	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 	"net"
 	"os"
 	"path/filepath"
-	"strings"
-
-	"github.com/spf13/cobra"
 )
 
 var (
@@ -34,21 +35,21 @@ var serveCmd = &cobra.Command{
 
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		logrus.SetLevel(logrus.DebugLevel)
+		g := new(errgroup.Group)
 
-		shutdown := make(chan error)
-		var p providers.Provider
-
-		if p, err = getProvider(); err != nil {
-			return err
+		addr := fmt.Sprintf("%v:%d", host, port)
+		var network, socket net.Listener
+		if network, err = net.Listen("tcp", addr); err != nil {
+			return
 		}
-		go serveSocket(p, shutdown)
-		if !disableServer {
-			go serveTCP(p, shutdown)
+		if socket, err = net.Listen("unix", socketPath); err != nil {
+			return
 		}
 
-		select {
-		case e := <-shutdown:
-			logrus.Error(e)
+		g.Go(func() error { return grpcServe(network) })
+		g.Go(func() error { return grpcServe(socket) })
+		if err = g.Wait(); err != nil {
+			logrus.Panic(err)
 		}
 
 		return
@@ -75,62 +76,48 @@ func init() {
 	serveCmd.Flags().BoolVar(&createKey, "auto-create", false, "Auto create the key")
 }
 
-func getProvider() (p providers.Provider, err error) {
-	switch strings.ToLower(provider) {
-	case "native":
-		p, err = providers.NewNative(nativePath)
+
+func grpcServe(gl net.Listener) (err error) {
+	var p providers.Provider
+
+	switch provider {
 	case "p11":
 		config := &crypto11.Config{
-			Path:        p11lib,
-			TokenSerial: "",
-			TokenLabel:  p11lib,
-			SlotNumber:  &p11slot,
-			Pin:         p11pin,
+			Path:       p11lib,
+			TokenLabel: p11label,
+			SlotNumber: &p11slot,
+			Pin:        p11pin,
+
+			UseGCMIVFromHSM: true,
 		}
-		p, err = providers.NewP11(keyId, keyName, config, createKey)
-	}
-	return
-}
+		if p, err = providers.NewP11(keyId, keyName, config, createKey); err != nil {
+			return
+		}
+	case "native":
+		config := &crypto11.Config{
+			Path:       p11lib,
+			TokenLabel: p11label,
+			SlotNumber: &p11slot,
+			Pin:        p11pin,
 
-func serveSocket(p providers.Provider, shutdown chan error) {
-
-	_ = os.Remove(socketPath)
-	k, err := kms.New(p, socketPath)
-	if err != nil {
-		shutdown <- err
+			UseGCMIVFromHSM: true,
+		}
+		if p, err = providers.NewP11(keyId, keyName, config, createKey); err != nil {
+			return
+		}
+	case "ekms":
+		panic("unimplemented")
+	default:
+		err = errors.New("unknown provider")
 		return
 	}
-	var lis net.Listener
-	lis, err = net.Listen("unix", socketPath)
-	if err != nil {
-		shutdown <- err
-		return
+	// Create a gRPC server to host the services
+	serverOptions := []grpc.ServerOption{
+		grpc.UnaryInterceptor(p.UnaryInterceptor),
 	}
 
-	if err = k.Start(context.TODO(), shutdown, lis); err != nil {
-		shutdown <- err
-		return
-	}
-	return
-}
-
-func serveTCP(p providers.Provider, shutdown chan error) {
-	k, err := kms.New(p, socketPath)
-	if err != nil {
-		shutdown <- err
-		return
-	}
-
-	var lis net.Listener
-	lis, err = net.Listen("tcp", fmt.Sprintf(":%d", port))
-	if err != nil {
-		shutdown <- err
-		return
-	}
-
-	if err = k.Start(context.TODO(), shutdown, lis); err != nil {
-		shutdown <- err
-		return
-	}
-	return
+	gs := grpc.NewServer(serverOptions...)
+	reflection.Register(gs)
+	istio.RegisterKeyManagementServiceServer(gs, p)
+	return gs.Serve(gl)
 }

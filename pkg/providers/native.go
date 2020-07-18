@@ -6,7 +6,11 @@ import (
 	"errors"
 	"github.com/ThalesIgnite/gose"
 	"github.com/ThalesIgnite/gose/jose"
+	"github.com/sirupsen/logrus"
+	v1 "github.com/thalescpl-io/k8s-kms-plugin/apis/common/v1"
+	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
+	"google.golang.org/grpc"
 	"io/ioutil"
 	"os"
 	"path"
@@ -18,6 +22,22 @@ type Native struct {
 	path      string
 	encryptor *gose.JweDirectEncryptionEncryptorImpl
 	decryptor *gose.JweDirectDecryptorImpl
+}
+
+func (n *Native) Version(ctx context.Context, request *v1.VersionRequest) (*v1.VersionResponse, error) {
+	panic("implement me")
+}
+
+func (n *Native) GenerateDEK(ctx context.Context, request *istio.GenerateDEKRequest) (*istio.GenerateDEKResponse, error) {
+	panic("implement me")
+}
+
+func (n *Native) GenerateSEK(ctx context.Context, request *istio.GenerateSEKRequest) (*istio.GenerateSEKResponse, error) {
+	panic("implement me")
+}
+
+func (n *Native) LoadDEK(ctx context.Context, request *istio.LoadDEKRequest) (*istio.LoadDEKResponse, error) {
+	panic("implement me")
 }
 
 func NewNative(path string) (n *Native, err error) {
@@ -39,7 +59,12 @@ func NewNative(path string) (n *Native, err error) {
 	n.decryptor = gose.NewJweDirectDecryptorImpl([]gose.AuthenticatedEncryptionKey{key})
 	return
 }
-
+func (n *Native) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	var h interface{}
+	var err error
+	logrus.Infof("Path: %s", info.FullMethod)
+	return h, err
+}
 func (n *Native) Decrypt(ctx context.Context, req *k8s.DecryptRequest) (resp *k8s.DecryptResponse, err error) {
 	resp = &k8s.DecryptResponse{}
 	if resp.Plain, _, err = n.decryptor.Decrypt(string(req.Cipher)); err != nil {
@@ -101,6 +126,7 @@ func (km *Native) Generate(identity string, alg jose.Alg) (key gose.Authenticate
 	// See if file/dir exists in amazon
 	if !pathExists(km.path) {
 		err = errors.New("key manager directory is corrupt or missing")
+		return
 	}
 	err = ioutil.WriteFile(path.Join(km.path, identity), []byte(jwkStr), 0600)
 	return

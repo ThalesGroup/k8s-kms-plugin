@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"github.com/ThalesIgnite/gose/jose"
+	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
+	"google.golang.org/grpc"
 )
 
 var (
@@ -13,8 +15,9 @@ var (
 )
 
 type Provider interface {
-	// Execute decryption operation in KMS provider.
-	Decrypt(context.Context, *k8s.DecryptRequest) (*k8s.DecryptResponse, error)
-	// Execute encryption operation in KMS provider.
-	Encrypt(context.Context, *k8s.EncryptRequest) (*k8s.EncryptResponse, error)
+	k8s.KeyManagementServiceServer
+	istio.KeyManagementServiceServer
+	// Ad
+	UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error)
+
 }
