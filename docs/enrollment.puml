@@ -1,0 +1,59 @@
+@startuml
+    actor "k8s admin" as k8sa
+    box "k8s" #LightBlue
+        participant "APIServer" as apis
+        participant "k8s-kms-plugin-client" as client
+
+    end box
+    actor "kms admin" as kmsa
+    box "kms" #fff
+        participant "k8s-kms-plugin-server" as server
+        participant "pkcs11-device" as p11
+    end box
+
+    group Deploy Plugin
+        kmsa -> server : Configure Plugin(device details)
+        server -> p11 : Generate/Load Root CA
+        server <- p11 : Root CA Bundle
+        server -> p11 : Initialize EST Intermediate CA
+        server <- p11 : Loaded EST Intermediate CA
+    end
+
+    group Enroll Plugin
+        k8sa ->  client : Configure Plugin(server details)
+        client -> server : RFC 7030 - EST SimpleEnroll w/ BasicAuth (unique to cluster)
+        client <- server : RFC 7030 - pkcs7 w/ Client Cert+Key+CACerts
+    end
+
+    group Register KMS to K8S
+        k8sa -> apis : Register Plugin
+        apis -> client : gRPC - Version
+        client -> server : gRPC - Version
+        server -> p11 : Generate/Load Cluster KEK
+        server <- p11 : KEK Loaded
+        client <- server : gRPC - Version
+        apis <- client : gRPC - Version
+    end
+
+    group Startup Sequences
+        server -> p11 : Load Cluster KEK
+        p11 -> server : KEK Loaded
+    end
+
+    group Operations
+        apis -> client : Encrypt(EncryptRequest)
+        client -> server : Encrypt(EncryptRequest)
+        server -> p11 : Encrypt(Clear)
+        server <- p11 : Encrypt(CipherText)
+        client <- server : Encrypt(EncryptResponse)
+        apis <- client : Encrypt(EncryptResponse)
+
+        apis -> client : Decrypt(DecryptRequest)
+        client -> server : Decrypt(DecryptRequest)
+        server -> p11 : Decrypt(CipherText)
+        server <- p11 : Decrypt(Clear)
+        client <- server : Decrypt(DecryptResponse)
+        apis <- client : Decrypt(DecryptResponse)
+
+    end
+@enduml

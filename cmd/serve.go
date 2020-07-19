@@ -5,10 +5,12 @@ import (
 	goflag "flag"
 	"fmt"
 	"github.com/ThalesIgnite/crypto11"
+	"github.com/go-openapi/loads"
 	"github.com/golang/glog"
-	"github.com/soheilhy/cmux"
 	"github.com/spf13/cobra"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
+	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/restapi"
+	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/restapi/operations"
 	"github.com/thalescpl-io/k8s-kms-plugin/pkg/providers"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -38,7 +40,7 @@ var serveCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		goflag.Parse()
 
-		cmux.New()
+
 		g := new(errgroup.Group)
 		addr := fmt.Sprintf("%v:%d", host, port)
 		var network, socket net.Listener
@@ -79,6 +81,12 @@ func init() {
 	serveCmd.Flags().BoolVar(&createKey, "auto-create", false, "Auto create the key")
 }
 
+func estServe() (err error){
+	doc, err  := loads.Spec()
+	api := operations.NewEstServerAPI(doc)
+	s := restapi.NewServer(api)
+	return
+}
 
 func grpcServe(gl net.Listener) (err error) {
 	var p providers.Provider
