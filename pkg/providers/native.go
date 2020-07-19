@@ -7,7 +7,7 @@ import (
 	"github.com/ThalesIgnite/gose"
 	"github.com/ThalesIgnite/gose/jose"
 	"github.com/sirupsen/logrus"
-	"github.com/thalescpl-io/k8s-kms-plugin/apis/common/v1"
+	"github.com/thalescpl-io/k8s-kms-plugin/apis/kms/v1"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
 	"google.golang.org/grpc"

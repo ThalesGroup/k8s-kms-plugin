@@ -25,8 +25,8 @@ package cmd
 
 import (
 	"errors"
+	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
 	"io/ioutil"
-	"k8s.io/apiserver/pkg/storage/value/encrypt/envelope/v1beta1"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -55,10 +55,10 @@ var encryptCmd = &cobra.Command{
 			return errors.New("no file or string provided to encrypt")
 		}
 
-		ctx, _, c := getClient()
+		ctx, _, c, err := k8s.GetClient(host, port)
 
-		var resp *v1beta1.EncryptResponse
-		resp, err = c.Encrypt(ctx, &v1beta1.EncryptRequest{
+		var resp *k8s.EncryptResponse
+		resp, err = c.Encrypt(ctx, &k8s.EncryptRequest{
 			Version: "version",
 			Plain:   data,
 		})

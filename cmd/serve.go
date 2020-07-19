@@ -2,9 +2,11 @@ package cmd
 
 import (
 	"errors"
+	goflag "flag"
 	"fmt"
 	"github.com/ThalesIgnite/crypto11"
-	"github.com/sirupsen/logrus"
+	"github.com/golang/glog"
+	"github.com/soheilhy/cmux"
 	"github.com/spf13/cobra"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
 	"github.com/thalescpl-io/k8s-kms-plugin/pkg/providers"
@@ -34,22 +36,25 @@ var serveCmd = &cobra.Command{
 	Short: "Serve KMS",
 
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
-		logrus.SetLevel(logrus.DebugLevel)
-		g := new(errgroup.Group)
+		goflag.Parse()
 
+		cmux.New()
+		g := new(errgroup.Group)
 		addr := fmt.Sprintf("%v:%d", host, port)
 		var network, socket net.Listener
 		if network, err = net.Listen("tcp", addr); err != nil {
 			return
 		}
+		_ = os.Remove(socketPath)
 		if socket, err = net.Listen("unix", socketPath); err != nil {
 			return
 		}
 
 		g.Go(func() error { return grpcServe(network) })
 		g.Go(func() error { return grpcServe(socket) })
+		glog.Infof("Listening on : %d", port)
 		if err = g.Wait(); err != nil {
-			logrus.Panic(err)
+			glog.Exit(err)
 		}
 
 		return
@@ -59,9 +64,7 @@ var serveCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(serveCmd)
 	serveCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), ".sock"), "Unix Socket")
-	serveCmd.Flags().BoolVar(&disableServer, "disable-tcp", false, "Disable TCP Server ")
-	serveCmd.Flags().StringVar(&host, "host", "0.0.0.0", "TCP Host")
-	serveCmd.Flags().Int64Var(&port, "port", 31400, "TCP Port")
+
 	// Here you will define your flags and configuration settings.
 	serveCmd.Flags().StringVar(&provider, "provider", "p11", "Provider to use for backend")
 

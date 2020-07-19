@@ -34,7 +34,8 @@ spec:
       livenessProbe:
         tcpSocket:
           port: 31400
+      readinessProbe:
+        tcpSocket:
+          port: 31400
       args:
         - serve
-        - --socket
-        - /run/kms/kms-socket/k8s-kms-plugin.sock

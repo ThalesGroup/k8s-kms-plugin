@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/spf13/cobra"
-	"k8s.io/apiserver/pkg/storage/value/encrypt/envelope/v1beta1"
+	"github.com/thalescpl-io/k8s-kms-plugin/apis/kms/v1"
 )
 
 // versionCmd represents the version command
@@ -11,18 +11,21 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the Version of the KMS",
 
-	RunE: func(cmd *cobra.Command, args []string) (err error) {
-		ctx, _, c := getClient()
-		var resp *v1beta1.VersionResponse
-		resp, err = c.Version(ctx, &v1beta1.VersionRequest{})
+	RunE: func(cmd *cobra.Command, args []string) error {
+		ctx, _, c, err := common.GetClient(host, port)
 		if err != nil {
-			return
+			return err
+		}
+		var resp *common.VersionResponse
+		resp, err = c.Version(ctx, &common.VersionRequest{})
+		if err != nil {
+			return err
 		}
 
 		fmt.Println(resp.Version)
 		fmt.Println(resp.RuntimeName)
 		fmt.Println(resp.RuntimeVersion)
-		return
+		return err
 	},
 }
 

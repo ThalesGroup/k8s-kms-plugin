@@ -27,8 +27,8 @@ import (
 	"fmt"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
 	"io/ioutil"
-	"k8s.io/apiserver/pkg/storage/value/encrypt/envelope/v1beta1"
 )
 
 // decryptCmd represents the decrypt command
@@ -45,9 +45,9 @@ var decryptCmd = &cobra.Command{
 			data = []byte(inputString)
 		}
 
-		ctx, _, c := getClient()
-		var resp *v1beta1.DecryptResponse
-		if resp, err = c.Decrypt(ctx, &v1beta1.DecryptRequest{
+		ctx, _, c, err := k8s.GetClient(host, port)
+		var resp *k8s.DecryptResponse
+		if resp, err = c.Decrypt(ctx, &k8s.DecryptRequest{
 			Version: "version",
 			Cipher:  data,
 		}); err != nil {

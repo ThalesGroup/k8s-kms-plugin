@@ -4,14 +4,11 @@ package thalescpl.io.ekms.istio.v1;
 
 option go_package = "github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1;istio";
 
-import "apis/common/v1/common.proto";
 import "apis/istio/v1/messages.proto";
 import "google/protobuf/timestamp.proto";
 import "protoc-gen-swagger/options/annotations.proto";
 
 service KeyManagementService {
-  // Version returns the runtime name and runtime version of the KMS provider.
-  rpc Version(thalescpl.io.ekms.common.v1.VersionRequest) returns (thalescpl.io.ekms.common.v1.VersionResponse);
   // GenerateDEK returns a wrapped (by KMS handled key)
   rpc GenerateDEK(GenerateDEKRequest) returns (GenerateDEKResponse);
   // GenerateSEK returns a wrapped (by provided encrypted DEK ), for later use during loading and signing key generation
