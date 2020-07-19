@@ -15,47 +15,6 @@ var testCtx *crypto11.Context
 var testEncryptedBlob string
 var testPlainMessage []byte
 
-func setupSoftHSMTestCase(t testing.TB) func(t testing.TB) {
-
-	// logrus.SetLevel(logrus.DebugLevel)
-	var err error
-	if os.Getenv("P11_LIBRARY") == "" {
-		t.Skip("No P11_LIBRARY provided, skipping")
-	}
-	// Allow the MasterKey to be created if missing to be created
-	testConfig = &crypto11.Config{
-		Path:       os.Getenv("P11_LIBRARY"),
-		TokenLabel: os.Getenv("P11_TOKEN"),
-		Pin:        os.Getenv("P11_PIN"),
-	}
-	if testCtx, err = crypto11.Configure(testConfig); err != nil {
-		t.Fatal(err)
-	}
-
-	// Create the default key just so we can do some practical encrypt decrypting without having to mock..
-
-	var handle *crypto11.SecretKey
-	if handle, err = testCtx.GenerateSecretKeyWithLabel([]byte(t.Name()), []byte(defaultkeyLabel), 256, crypto11.CipherAES); err != nil {
-		t.Fatal(err)
-	}
-	rng, _ := testCtx.NewRandomReader()
-	aead, _ := handle.NewGCM()
-	taead, _ := gose.NewAesGcmCryptor(aead, rng, t.Name(), jose.AlgA256GCM, keyOps)
-	testPlainMessage = []byte("Hello World, I'm a DEK, Secret, or something sensitive")
-	testEncryptedBlob, err = gose.NewJweDirectEncryptorImpl(taead).Encrypt(testPlainMessage, nil)
-
-	return func(t testing.TB) {
-		// teardown goes here as needed
-		var keys []*crypto11.SecretKey
-		if keys, err = testCtx.FindAllKeys(); err != nil {
-			return
-		}
-		for _, key := range keys {
-			_ = key.Delete()
-		}
-	}
-}
-
 func TestP11_Encrypt(t *testing.T) {
 	td := setupSoftHSMTestCase(t)
 	defer td(t)
@@ -131,5 +90,46 @@ func TestP11_Encrypt(t *testing.T) {
 			}
 
 		})
+	}
+}
+
+func setupSoftHSMTestCase(t testing.TB) func(t testing.TB) {
+
+	// logrus.SetLevel(logrus.DebugLevel)
+	var err error
+	if os.Getenv("P11_LIBRARY") == "" {
+		t.Skip("No P11_LIBRARY provided, skipping")
+	}
+	// Allow the MasterKey to be created if missing to be created
+	testConfig = &crypto11.Config{
+		Path:       os.Getenv("P11_LIBRARY"),
+		TokenLabel: os.Getenv("P11_TOKEN"),
+		Pin:        os.Getenv("P11_PIN"),
+	}
+	if testCtx, err = crypto11.Configure(testConfig); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create the default key just so we can do some practical encrypt decrypting without having to mock..
+
+	var handle *crypto11.SecretKey
+	if handle, err = testCtx.GenerateSecretKeyWithLabel([]byte(t.Name()), []byte(defaultkeyLabel), 256, crypto11.CipherAES); err != nil {
+		t.Fatal(err)
+	}
+	rng, _ := testCtx.NewRandomReader()
+	aead, _ := handle.NewGCM()
+	taead, _ := gose.NewAesGcmCryptor(aead, rng, t.Name(), jose.AlgA256GCM, keyOps)
+	testPlainMessage = []byte("Hello World, I'm a DEK, Secret, or something sensitive")
+	testEncryptedBlob, err = gose.NewJweDirectEncryptorImpl(taead).Encrypt(testPlainMessage, nil)
+
+	return func(t testing.TB) {
+		// teardown goes here as needed
+		var keys []*crypto11.SecretKey
+		if keys, err = testCtx.FindAllKeys(); err != nil {
+			return
+		}
+		for _, key := range keys {
+			_ = key.Delete()
+		}
 	}
 }

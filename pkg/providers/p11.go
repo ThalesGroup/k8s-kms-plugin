@@ -38,11 +38,6 @@ var (
 	}
 )
 
-type keyGenerationParameters struct {
-	size   int
-	cipher *crypto11.SymmetricCipher
-}
-
 type P11 struct {
 	keyId     []byte
 	keyLabel  []byte
@@ -51,22 +46,6 @@ type P11 struct {
 	encryptor gose.JweEncryptor
 	decryptor gose.JweDecryptor
 	createKey bool
-}
-
-func (p *P11) Version(ctx context.Context, request *v1.VersionRequest) (*v1.VersionResponse, error) {
-	panic("implement me")
-}
-
-func (p *P11) GenerateDEK(ctx context.Context, request *istio.GenerateDEKRequest) (*istio.GenerateDEKResponse, error) {
-	panic("implement me")
-}
-
-func (p *P11) GenerateSEK(ctx context.Context, request *istio.GenerateSEKRequest) (*istio.GenerateSEKResponse, error) {
-	panic("implement me")
-}
-
-func (p *P11) LoadDEK(ctx context.Context, request *istio.LoadDEKRequest) (*istio.LoadDEKResponse, error) {
-	panic("implement me")
 }
 
 func NewP11(keyId string, keyLabel string, config *crypto11.Config, createKey bool) (p *P11, err error) {
@@ -81,6 +60,115 @@ func NewP11(keyId string, keyLabel string, config *crypto11.Config, createKey bo
 	}
 	return
 }
+
+//Close the key manager
+func (p *P11) Close() (err error) {
+	p.encryptor = nil
+	p.decryptor = nil
+	err = p.ctx.Close()
+
+	return
+}
+
+func (p *P11) Decrypt(ctx context.Context, req *k8s.DecryptRequest) (resp *k8s.DecryptResponse, err error) {
+	if p.decryptor == nil {
+		if err = p.loadDevice(); err != nil {
+			return
+		}
+	}
+	var out []byte
+	if out, _, err = p.decryptor.Decrypt(string(req.Cipher)); err != nil {
+		return
+	}
+	resp = &k8s.DecryptResponse{
+		Plain: out,
+	}
+	return
+}
+
+func (p *P11) Encrypt(ctx context.Context, req *k8s.EncryptRequest) (resp *k8s.EncryptResponse, err error) {
+	if p.encryptor == nil {
+		if err = p.loadDevice(); err != nil {
+			return
+		}
+	}
+	var out string
+	if out, err = p.encryptor.Encrypt(req.Plain, nil); err != nil {
+		return
+	}
+	resp = &k8s.EncryptResponse{
+		Cipher: []byte(out),
+	}
+	return
+}
+
+//Generate an AEK
+func (p *P11) Generate(identity []byte, alg jose.Alg) (key gose.AuthenticatedEncryptionKey, err error) {
+	params, supported := algToKeyGenParams[alg]
+	if !supported {
+		err = fmt.Errorf("algorithm %v is not supported", alg)
+		return
+	}
+
+	if _, err = p.ctx.GenerateSecretKeyWithLabel(identity, p.keyLabel, params.size, params.cipher); err != nil {
+		return
+	}
+
+	key, err = p.Load(identity)
+	return
+}
+
+func (p *P11) GenerateDEK(ctx context.Context, request *istio.GenerateDEKRequest) (*istio.GenerateDEKResponse, error) {
+	panic("implement me")
+}
+func (p *P11) GenerateSEK(ctx context.Context, request *istio.GenerateSEKRequest) (*istio.GenerateSEKResponse, error) {
+	panic("implement me")
+}
+
+//Identity of the Key manager
+func (p *P11) Identity() string {
+	return string(p.keyId)
+}
+
+//Load an AEK
+func (p *P11) Load(identity []byte) (key gose.AuthenticatedEncryptionKey, err error) {
+	var rng io.Reader
+
+	if rng, err = p.ctx.NewRandomReader(); err != nil {
+		return
+	}
+	var handle *crypto11.SecretKey
+	if handle, err = p.ctx.FindKey(identity, p.keyLabel); err != nil {
+		return
+	}
+	if handle == nil {
+		err = ErrNoSuchKey
+		return
+	}
+	var aead cipher.AEAD
+	if aead, err = handle.NewGCM(); err != nil {
+		return
+	}
+	if key, err = gose.NewAesGcmCryptor(aead, rng, string(p.keyId), jose.AlgA256GCM, keyOps); err != nil {
+		return
+	}
+	return
+}
+func (p *P11) LoadDEK(ctx context.Context, request *istio.LoadDEKRequest) (*istio.LoadDEKResponse, error) {
+	panic("implement me")
+}
+
+func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	var h interface{}
+	var err error
+	logrus.Infof("Path: %s", info.FullMethod)
+	return h, err
+}
+
+func (p *P11) Version(ctx context.Context, request *v1.VersionRequest) (*v1.VersionResponse, error) {
+	panic("implement me")
+}
+
 func (p *P11) loadDevice() (err error) {
 	if p.ctx, err = crypto11.Configure(p.config); err != nil {
 		return
@@ -121,95 +209,7 @@ func (p *P11) loadDevice() (err error) {
 	return
 }
 
-func (p *P11) Decrypt(ctx context.Context, req *k8s.DecryptRequest) (resp *k8s.DecryptResponse, err error) {
-	if p.decryptor == nil {
-		if err = p.loadDevice(); err != nil {
-			return
-		}
-	}
-	var out []byte
-	if out, _, err = p.decryptor.Decrypt(string(req.Cipher)); err != nil {
-		return
-	}
-	resp = &k8s.DecryptResponse{
-		Plain: out,
-	}
-	return
-}
-
-func (p *P11) Encrypt(ctx context.Context, req *k8s.EncryptRequest) (resp *k8s.EncryptResponse, err error) {
-	if p.encryptor == nil {
-		if err = p.loadDevice(); err != nil {
-			return
-		}
-	}
-	var out string
-	if out, err = p.encryptor.Encrypt(req.Plain, nil); err != nil {
-		return
-	}
-	resp = &k8s.EncryptResponse{
-		Cipher: []byte(out),
-	}
-	return
-}
-func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-	var h interface{}
-	var err error
-	logrus.Infof("Path: %s", info.FullMethod)
-	return h, err
-}
-
-//Close the key manager
-func (p *P11) Close() (err error) {
-	p.encryptor = nil
-	p.decryptor = nil
-	err = p.ctx.Close()
-
-	return
-}
-
-//Identity of the Key manager
-func (p *P11) Identity() string {
-	return string(p.keyId)
-}
-
-//Load an AEK
-func (p *P11) Load(identity []byte) (key gose.AuthenticatedEncryptionKey, err error) {
-	var rng io.Reader
-
-	if rng, err = p.ctx.NewRandomReader(); err != nil {
-		return
-	}
-	var handle *crypto11.SecretKey
-	if handle, err = p.ctx.FindKey(identity, p.keyLabel); err != nil {
-		return
-	}
-	if handle == nil {
-		err = ErrNoSuchKey
-		return
-	}
-	var aead cipher.AEAD
-	if aead, err = handle.NewGCM(); err != nil {
-		return
-	}
-	if key, err = gose.NewAesGcmCryptor(aead, rng, string(p.keyId), jose.AlgA256GCM, keyOps); err != nil {
-		return
-	}
-	return
-}
-
-//Generate an AEK
-func (p *P11) Generate(identity []byte, alg jose.Alg) (key gose.AuthenticatedEncryptionKey, err error) {
-	params, supported := algToKeyGenParams[alg]
-	if !supported {
-		err = fmt.Errorf("algorithm %v is not supported", alg)
-		return
-	}
-
-	if _, err = p.ctx.GenerateSecretKeyWithLabel(identity, p.keyLabel, params.size, params.cipher); err != nil {
-		return
-	}
-
-	key, err = p.Load(identity)
-	return
+type keyGenerationParameters struct {
+	size   int
+	cipher *crypto11.SymmetricCipher
 }
