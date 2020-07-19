@@ -31,11 +31,17 @@ spec:
         - containerPort: 31400
           protocol: TCP
           name: grpc
+        - containerPort: 443
+          protocol: TCP
+          name: est
       livenessProbe:
         tcpSocket:
           port: 31400
       readinessProbe:
         tcpSocket:
-          port: 31400
+          port: 443
+      env:
+        - name: P11_LIB
+          value: /
       args:
         - serve

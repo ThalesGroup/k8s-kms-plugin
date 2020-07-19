@@ -55,7 +55,7 @@ var encryptCmd = &cobra.Command{
 			return errors.New("no file or string provided to encrypt")
 		}
 
-		ctx, _, c, err := k8s.GetClient(host, port)
+		ctx, _, c, err := k8s.GetClient(host, grpcPort)
 
 		var resp *k8s.EncryptResponse
 		resp, err = c.Encrypt(ctx, &k8s.EncryptRequest{

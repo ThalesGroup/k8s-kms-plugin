@@ -5,9 +5,13 @@ import (
 	goflag "flag"
 	"fmt"
 	"github.com/ThalesIgnite/crypto11"
+	"github.com/go-openapi/loads"
 	"github.com/golang/glog"
+	"github.com/jessevdk/go-flags"
 	"github.com/spf13/cobra"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
+	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/restapi"
+	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/restapi/operations"
 	"github.com/thalescpl-io/k8s-kms-plugin/pkg/providers"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -19,6 +23,8 @@ import (
 
 var (
 	provider   string
+	serverTLSCert   string
+	serverTLSKey  string
 	nativePath string
 	keyId      string
 	keyName    string
@@ -37,21 +43,26 @@ var serveCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		goflag.Parse()
 
-
 		g := new(errgroup.Group)
-		addr := fmt.Sprintf("%v:%d", host, port)
-		var network, socket net.Listener
-		if network, err = net.Listen("tcp", addr); err != nil {
+		grpcAddr := fmt.Sprintf("%v:%d", host, grpcPort)
+		estAddr := fmt.Sprintf("%v:%d", host, estPort)
+		var grpcTCP, estTCP, grpcUNIX  net.Listener
+		if grpcTCP, err = net.Listen("tcp", grpcAddr); err != nil {
+			return
+		}
+		if grpcTCP, err = net.Listen("tcp", estAddr); err != nil {
 			return
 		}
 		_ = os.Remove(socketPath)
-		if socket, err = net.Listen("unix", socketPath); err != nil {
+		if grpcUNIX, err = net.Listen("unix", socketPath); err != nil {
 			return
 		}
 
-		g.Go(func() error { return grpcServe(network) })
-		g.Go(func() error { return grpcServe(socket) })
-		glog.Infof("Listening on : %d", port)
+		g.Go(func() error { return estServe(estTCP) })
+		g.Go(func() error { return grpcServe(grpcTCP) })
+		g.Go(func() error { return grpcServe(grpcUNIX) })
+		glog.Infof("KMS Plugin Listening on : %d", grpcPort)
+		glog.Infof("EST Service Listening on : %d", estTCP)
 		if err = g.Wait(); err != nil {
 			glog.Exit(err)
 		}
@@ -63,10 +74,10 @@ var serveCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(serveCmd)
 	serveCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), ".sock"), "Unix Socket")
-
+	serveCmd.Flags().StringVar(&serverTLSKey, "tls-key", "tls.key", "Key for Server TLS")
+	serveCmd.Flags().StringVar(&serverTLSCert, "tls-certificate", "tls.crt", "Cert for Server TLS")
 	// Here you will define your flags and configuration settings.
 	serveCmd.Flags().StringVar(&provider, "provider", "p11", "Provider to use for backend")
-
 	serveCmd.Flags().StringVar(&nativePath, "native-path", filepath.Join(os.TempDir(), "native_keys"), "Path to store native keys")
 
 	// P11 specific
@@ -78,7 +89,40 @@ func init() {
 	serveCmd.Flags().BoolVar(&createKey, "auto-create", false, "Auto create the key")
 }
 
+func estServe(gl net.Listener) (err error) {
+	swaggerSpec, err := loads.Embedded(restapi.SwaggerJSON, restapi.FlatSwaggerJSON)
+	if err != nil {
+		glog.Fatalln(err)
+	}
+	api := operations.NewEstServerAPI(swaggerSpec)
+	server := restapi.NewServer(api)
+	defer server.Shutdown()
 
+	parser := flags.NewParser(server, flags.Default)
+	parser.ShortDescription = "est server"
+	parser.LongDescription = "RFC 7030 (EST) server implementation"
+
+	server.ConfigureFlags()
+	for _, optsGroup := range api.CommandLineOptionsGroups {
+		_, err := parser.AddGroup(optsGroup.ShortDescription, optsGroup.LongDescription, optsGroup.Options)
+		if err != nil {
+			glog.Fatalln(err)
+		}
+	}
+	if _, err := parser.Parse(); err != nil {
+		code := 1
+		if fe, ok := err.(*flags.Error); ok {
+			if fe.Type == flags.ErrHelp {
+				code = 0
+			}
+		}
+		os.Exit(code)
+	}
+
+	server.ConfigureAPI()
+
+	return server.Serve()
+}
 
 func grpcServe(gl net.Listener) (err error) {
 	var p providers.Provider

@@ -45,7 +45,7 @@ var decryptCmd = &cobra.Command{
 			data = []byte(inputString)
 		}
 
-		ctx, _, c, err := k8s.GetClient(host, port)
+		ctx, _, c, err := k8s.GetClient(host, grpcPort)
 		var resp *k8s.DecryptResponse
 		if resp, err = c.Decrypt(ctx, &k8s.DecryptRequest{
 			Version: "version",

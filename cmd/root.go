@@ -34,7 +34,8 @@ import (
 
 var (
 	socketPath    string
-	port          int64
+	grpcPort      int64
+	estPort      int64
 	host          string
 	cfgFile       string
 	disableServer bool
@@ -67,7 +68,8 @@ func init() {
 
 	rootCmd.Flags().BoolVar(&debug, "debug", true, "Debug")
 	serveCmd.PersistentFlags().StringVar(&host, "host", "0.0.0.0", "TCP Host")
-	serveCmd.PersistentFlags().Int64Var(&port, "port", 31400, "TCP Port")
+	serveCmd.PersistentFlags().Int64Var(&grpcPort, "grpcPort", 31400, "TCP Port for gRPC service")
+	serveCmd.PersistentFlags().Int64Var(&estPort, "estPort", 443, "TCP Port for EST service")
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")

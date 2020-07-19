@@ -12,7 +12,7 @@ var versionCmd = &cobra.Command{
 	Short: "Print the Version of the KMS",
 
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx, _, c, err := kms.GetClient(host, port)
+		ctx, _, c, err := kms.GetClient(host, grpcPort)
 		if err != nil {
 			return err
 		}

@@ -4,6 +4,9 @@ package restapi
 
 import (
 	"crypto/tls"
+	"github.com/ThalesIgnite/crypto11"
+	"github.com/go-openapi/swag"
+	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/ca"
 	"io"
 	"net/http"
 
@@ -17,8 +20,26 @@ import (
 
 //go:generate swagger generate server --target ../../../../k8s-kms-plugin --name EstServer --spec ../../../apis/kms/v1/est.yaml --model-package pkg/est/models --server-package pkg/est/restapi --exclude-main
 
+var extraFlags struct {
+	AuthFile       string `long:"auth-file" description:"CSV file containing device ids and credentials" required:"false"`
+	EstCaCertFile  string `long:"est-cert" description:"EST CA certificate file (PEM format)" required:"false"`
+	AllowAnyDevice bool   `long:"allow-any" description:"Allow any device (accepts all ids/secrets)"`
+	ServerTLSKey   string `long:"tls-key" description:"Key for Server TLS" default:"tls.key"`
+	ServerTLSCert  string `long:"tls-certificate" description:"Certificate for Server TLS" default:"tls.crt"`
+	P11Library     string `long:"p11-lib" description:"Path to P11Library" default:"/usr/lib64/libsofthsm2.so"`
+	P11Pin         string `long:"p11-pin" description:"Secret for TokenAuth" default:"changeme"`
+	P11Label       string `long:"p11-label" description:"Path to P11Library" default:"default"`
+	P11Slot        int    `long:"p11-slot" description:"Path to P11Library"`
+}
+
+// configureFlags adds custom flags to the server.
 func configureFlags(api *operations.EstServerAPI) {
-	// api.CommandLineOptionsGroups = []swag.CommandLineOptionsGroup{ ... }
+	api.CommandLineOptionsGroups = []swag.CommandLineOptionsGroup{
+		swag.CommandLineOptionsGroup{
+			ShortDescription: "EST + HSM location",
+			Options:          &extraFlags,
+		},
+	}
 }
 
 func configureAPI(api *operations.EstServerAPI) http.Handler {
@@ -26,11 +47,21 @@ func configureAPI(api *operations.EstServerAPI) http.Handler {
 	api.ServeError = errors.ServeError
 
 	// Set your custom logger if needed. Default one is log.Printf
-	// Expected interface func(string, ...interface{})
+	// Expected interface func(string, ...interface{})s
 	//
 	// Example:
 	// api.Logger = log.Printf
 
+	config := &crypto11.Config{
+		Path:       extraFlags.P11Library,
+		TokenLabel: extraFlags.P11Label,
+		Pin:        extraFlags.P11Pin,
+	}
+	estCA, err := ca.NewEST(extraFlags.ServerTLSKey, extraFlags.ServerTLSCert, config)
+	if err != nil {
+		// TODO: come back and exit nicely if we can't get to the Provider
+		panic(err)
+	}
 	api.ApplicationPkcs10Consumer = runtime.ConsumerFunc(func(r io.Reader, target interface{}) error {
 		return errors.NotImplemented("applicationPkcs10 consumer has not yet been implemented")
 	})
@@ -54,17 +85,19 @@ func configureAPI(api *operations.EstServerAPI) http.Handler {
 	// api.APIAuthorizer = security.Authorized()
 	if api.OperationGetCACertsHandler == nil {
 		api.OperationGetCACertsHandler = operation.GetCACertsHandlerFunc(func(params operation.GetCACertsParams) middleware.Responder {
-			return middleware.NotImplemented("operation operation.GetCACerts has not yet been implemented")
+			//return middleware.NotImplemented("operation operation.GetCACerts has not yet been implemented")
+
+			return estCA.GetCACerts(params)
 		})
 	}
 	if api.OperationSimpleenrollHandler == nil {
 		api.OperationSimpleenrollHandler = operation.SimpleenrollHandlerFunc(func(params operation.SimpleenrollParams, principal interface{}) middleware.Responder {
-			return middleware.NotImplemented("operation operation.Simpleenroll has not yet been implemented")
+			return estCA.SimpleEnroll(params, principal)
 		})
 	}
 	if api.OperationSimplereenrollHandler == nil {
 		api.OperationSimplereenrollHandler = operation.SimplereenrollHandlerFunc(func(params operation.SimplereenrollParams) middleware.Responder {
-			return middleware.NotImplemented("operation operation.Simplereenroll has not yet been implemented")
+			return estCA.SimpleReenroll(params)
 		})
 	}
 
