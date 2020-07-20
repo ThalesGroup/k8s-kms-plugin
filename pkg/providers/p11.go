@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	defaultkeyId    = "a37807cd-6d1a-4d75-813a-e120f30176f7" // TODO: replace with some kind of better binding.
+	//defaultkeyId    = "a37807cd-6d1a-4d75-813a-e120f30176f7" // TODO: replace with some kind of better binding.
 	defaultkeyLabel = "k8s-kms-plugin-root-key"
 )
 
@@ -49,9 +49,7 @@ type P11 struct {
 }
 
 func NewP11(keyId string, keyLabel string, config *crypto11.Config, createKey bool) (p *P11, err error) {
-	if keyId == "" {
-		keyId = defaultkeyId
-	}
+
 	p = &P11{
 		keyId:     []byte(keyId),
 		keyLabel:  []byte(keyLabel),

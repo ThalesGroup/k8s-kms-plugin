@@ -9,22 +9,35 @@ spec:
   volumes:
     - name: certstore
       emptyDir: {}
-
     - name: ca
       hostPath:
         path: /etc/
   initContainers:
-    - name: config
+    - name: bootstrap
       image: "gcr.io/thalescpl-io/k8s-kms-plugin"
       volumeMounts:
         - mountPath: /certs/
           name: certstore
+      env:
+        - name: P11_LIB
+          value: /usr/lib64/libsofthsm2.so
+        - name: P11_LABEL
+          value: default
+        - name: P11_PIN
+          value: changeme
       args:
         - bootstrap
   containers:
     - name: k8s-kms-plugin
       image: "gcr.io/thalescpl-io/k8s-kms-plugin"
       imagePullPolicy: IfNotPresent
+      env:
+        - name: P11_LIB
+          value: /usr/lib64/libsofthsm2.so
+        - name: P11_LABEL
+          value: default
+        - name: P11_PIN
+          value: changeme
       ports:
         - containerPort: 31400
           protocol: TCP
@@ -38,8 +51,6 @@ spec:
       readinessProbe:
         tcpSocket:
           port: 443
-      env:
-        - name: P11_LIB
-          value: /
+
       args:
         - serve

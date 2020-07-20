@@ -14,9 +14,6 @@ spec:
     - name: k8s-kms-plugin
       image: "gcr.io/thalescpl-io/k8s-kms-plugin"
       imagePullPolicy: IfNotPresent
-      env:
-        - name: P11_LIB
-          value: /
       args:
         - enroll
       volumeMounts:

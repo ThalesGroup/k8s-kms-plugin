@@ -31,6 +31,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"fmt"
 	"github.com/ThalesIgnite/crypto11"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/golang/glog"
@@ -40,6 +41,7 @@ import (
 	"math/big"
 	"net"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -56,6 +58,8 @@ type P11 struct {
 
 func NewP11EST(ca, key, cert string, config *crypto11.Config) (e *P11, err error) {
 
+	glog.Info("getting p11est")
+
 	e = &P11{
 		ca:     ca,
 		key:    key,
@@ -65,32 +69,12 @@ func NewP11EST(ca, key, cert string, config *crypto11.Config) (e *P11, err error
 	if e.ctxt11, err = crypto11.Configure(e.config); err != nil {
 		return
 	}
-	// verify we have our root ca key in the p11 device
-	// se if our local TLS key is here so we can load or bootstrap the TLS
-	var i os.FileInfo
-	if i, err = os.Stat(e.key); err != nil {
-		glog.Error("missing tls.key being generated...")
-		if err = e.bootstrapCA(); err != nil {
-			return
-		}
-	}
-	glog.Info(i)
+	glog.Info("got p11est")
+
 	return
 }
 
-func (p *P11) GetCACerts(params operation.GetCACertsParams) middleware.Responder {
-	panic("implement me")
-}
-
-func (p *P11) SimpleEnroll(params operation.SimpleenrollParams, principal interface{}) middleware.Responder {
-	panic("implement me")
-}
-
-func (p *P11) SimpleReenroll(params operation.SimplereenrollParams) middleware.Responder {
-	panic("implement me")
-}
-
-func (p *P11) bootstrapCA() (err error) {
+func (p *P11) BootstrapCA() (err error) {
 	ca := &x509.Certificate{
 		SerialNumber: big.NewInt(2020),
 		Subject: pkix.Name{
@@ -106,7 +90,7 @@ func (p *P11) bootstrapCA() (err error) {
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
 		BasicConstraintsValid: true,
 	}
-
+	fmt.Println("Bootstrapping CA")
 	// Use the P11 Device for our randomness/entropy
 	var rng io.Reader
 	if rng, err = p.ctxt11.NewRandomReader(); err != nil {
@@ -131,13 +115,18 @@ func (p *P11) bootstrapCA() (err error) {
 	}); err != nil {
 		return
 	}
+	fmt.Printf("making dir: %s", filepath.Dir(p.ca))
 
 	// Save CA Cert
-	if err = ioutil.WriteFile(p.ca, caPEM.Bytes(), 600); err != nil {
+	if err = os.MkdirAll(filepath.Dir(p.ca), 0600); err != nil {
 		return
 	}
-
+	if err = ioutil.WriteFile(p.ca, caPEM.Bytes(), 0600); err != nil {
+		return
+	}
+	fmt.Println("saved ca cert")
 	// Generate EST Server Certificate
+	fqdn, err := os.Hostname()
 	cert := &x509.Certificate{
 		SerialNumber: big.NewInt(2019),
 		Subject: pkix.Name{
@@ -145,11 +134,13 @@ func (p *P11) bootstrapCA() (err error) {
 			Country:      []string{"US"},
 			Province:     []string{"OR"},
 			Locality:     []string{"Portland"},
+			CommonName:   fqdn,
 		},
 		IPAddresses:  []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
 		NotBefore:    time.Now(),
 		NotAfter:     time.Now().AddDate(10, 0, 0),
 		SubjectKeyId: []byte{1, 2, 3, 4, 6},
+		DNSNames:     []string{fqdn, "localhost"},
 		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
 		KeyUsage:     x509.KeyUsageDigitalSignature,
 	}
@@ -205,4 +196,21 @@ func (p *P11) bootstrapCA() (err error) {
 	}
 
 	return
+}
+
+func (p *P11) GetCACerts(params operation.GetCACertsParams) middleware.Responder {
+	panic("implement me")
+}
+
+func (p *P11) LoadCA(err error) {
+
+	return
+}
+
+func (p *P11) SimpleEnroll(params operation.SimpleenrollParams, principal interface{}) middleware.Responder {
+	panic("implement me")
+}
+
+func (p *P11) SimpleReenroll(params operation.SimplereenrollParams) middleware.Responder {
+	panic("implement me")
 }

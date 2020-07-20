@@ -19,20 +19,23 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 )
 
 var (
-	provider   string
-	serverTLSCert   string
+	provider      string
+	caTLSCert     string
+	serverTLSCert string
 	serverTLSKey  string
-	nativePath string
-	keyId      string
-	keyName    string
-	p11lib     string
-	p11slot    int
-	p11label   string
-	p11pin     string
-	createKey  bool
+	nativePath    string
+	estKeyId      string
+	kekKeyId      string
+	keyName       string
+	p11lib        string
+	p11slot       int
+	p11label      string
+	p11pin        string
+	createKey     bool
 )
 
 // serveCmd represents the serve command
@@ -43,10 +46,24 @@ var serveCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		goflag.Parse()
 
+		if a := os.Getenv("P11_LIB"); a != "" {
+			p11lib = a
+		}
+		if a := os.Getenv("P11_LABEL"); a != "" {
+			p11label = a
+		}
+		if a := os.Getenv("P11_SLOT"); a != "" {
+			if p11slot, err = strconv.Atoi(a); err != nil {
+				return
+			}
+		}
+		if a := os.Getenv("P11_PIN"); a != "" {
+			p11pin = a
+		}
 		g := new(errgroup.Group)
 		grpcAddr := fmt.Sprintf("%v:%d", host, grpcPort)
 		estAddr := fmt.Sprintf("%v:%d", host, estPort)
-		var grpcTCP, estTCP, grpcUNIX  net.Listener
+		var grpcTCP, estTCP, grpcUNIX net.Listener
 		if grpcTCP, err = net.Listen("tcp", grpcAddr); err != nil {
 			return
 		}
@@ -70,30 +87,43 @@ var serveCmd = &cobra.Command{
 		return
 	},
 }
-
+var estServer *restapi.Server
+var api *operations.EstServerAPI
 func init() {
 	rootCmd.AddCommand(serveCmd)
 	serveCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), ".sock"), "Unix Socket")
-	serveCmd.Flags().StringVar(&serverTLSKey, "tls-key", "tls.key", "Key for Server TLS")
-	serveCmd.Flags().StringVar(&serverTLSCert, "tls-certificate", "tls.crt", "Cert for Server TLS")
+	serveCmd.Flags().StringVar(&caTLSCert, "tls-ca", "certs/ca.crt", "EST TLS")
+	serveCmd.Flags().StringVar(&serverTLSKey, "tls-key", "certs/tls.key", "Key for Server TLS")
+	serveCmd.Flags().StringVar(&serverTLSCert, "tls-certificate", "certs/tls.crt", "Cert for Server TLS")
 	// Here you will define your flags and configuration settings.
-
-}
-
-func estServe(gl net.Listener) (err error) {
+	serveCmd.Flags().StringVar(&kekKeyId, "est-key-id", "4f9f0b80-63af-4a83-b6c0-b2f06b93c272", "Key ID for EST CA")
+	serveCmd.Flags().StringVar(&kekKeyId, "kek-key-id", "a37807cd-6d1a-4d75-813a-e120f30176f7", "Key ID for KEK")
+	serveCmd.Flags().StringVar(&p11lib, "p11-lib", "", "Path to p11 library/client")
+	serveCmd.Flags().StringVar(&p11label, "p11-label", "", "P11 token label")
+	serveCmd.Flags().IntVar(&p11slot, "p11-slot", 0, "P11 token slot")
+	serveCmd.Flags().StringVar(&p11pin, "p11-pin", "", "P11 Pin")
+	serveCmd.Flags().StringVar(&keyName, "p11-key-label", "k8s-kek", "Key Label to use for encrypt/decrypt")
+	serveCmd.Flags().BoolVar(&createKey, "auto-create", true, "Auto create the keys if neededsd")
 	swaggerSpec, err := loads.Embedded(restapi.SwaggerJSON, restapi.FlatSwaggerJSON)
 	if err != nil {
 		glog.Fatalln(err)
 	}
-	api := operations.NewEstServerAPI(swaggerSpec)
-	server := restapi.NewServer(api)
-	defer server.Shutdown()
+	api = operations.NewEstServerAPI(swaggerSpec)
 
-	parser := flags.NewParser(server, flags.Default)
+	estServer = restapi.NewServer(api)
+
+}
+
+func estServe(gl net.Listener) (err error) {
+
+	defer estServer.Shutdown()
+
+	parser := flags.NewParser(estServer, flags.Default)
 	parser.ShortDescription = "est server"
 	parser.LongDescription = "RFC 7030 (EST) server implementation"
 
-	server.ConfigureFlags()
+
+	estServer.ConfigureFlags()
 	for _, optsGroup := range api.CommandLineOptionsGroups {
 		_, err := parser.AddGroup(optsGroup.ShortDescription, optsGroup.LongDescription, optsGroup.Options)
 		if err != nil {
@@ -110,9 +140,9 @@ func estServe(gl net.Listener) (err error) {
 		os.Exit(code)
 	}
 
-	server.ConfigureAPI()
+	estServer.ConfigureAPI()
 
-	return server.Serve()
+	return estServer.Serve()
 }
 
 func grpcServe(gl net.Listener) (err error) {
@@ -128,7 +158,7 @@ func grpcServe(gl net.Listener) (err error) {
 
 			UseGCMIVFromHSM: true,
 		}
-		if p, err = providers.NewP11(keyId, keyName, config, createKey); err != nil {
+		if p, err = providers.NewP11(kekKeyId, keyName, config, createKey); err != nil {
 			return
 		}
 	case "native":
@@ -140,7 +170,7 @@ func grpcServe(gl net.Listener) (err error) {
 
 			UseGCMIVFromHSM: true,
 		}
-		if p, err = providers.NewP11(keyId, keyName, config, createKey); err != nil {
+		if p, err = providers.NewP11(kekKeyId, keyName, config, createKey); err != nil {
 			return
 		}
 	case "ekms":

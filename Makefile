@@ -21,7 +21,7 @@ gen-grpc:
 		@cp -r generated/github.com/thalescpl-io/k8s-kms-plugin/apis/* apis/
 		@rm -rf generated/
 gen-openapi:
-		@swagger generate server --quiet --exclude-main -m pkg/est/models -s pkg/est/restapi -f apis/kms/v1/est.yaml
+		@swagger generate server --quiet --flag-strategy=pflag --exclude-main -m pkg/est/models -s pkg/est/restapi -f apis/kms/v1/est.yaml
 build:
 		@go build -o k8s-kms-plugin main.go
 
