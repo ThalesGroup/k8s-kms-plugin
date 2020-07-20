@@ -74,8 +74,12 @@ var serveCmd = &cobra.Command{
 		}
 		g := new(errgroup.Group)
 		grpcAddr := fmt.Sprintf("%v:%d", host, grpcPort)
-		var grpcTCP, grpcUNIX net.Listener
+		estAddr := fmt.Sprintf("%v:%d", host, estPort)
+		var grpcTCP, grpcUNIX , estTCP net.Listener
 		if grpcTCP, err = net.Listen("tcp", grpcAddr); err != nil {
+			return
+		}
+		if estTCP, err = net.Listen("tcp", estAddr); err != nil {
 			return
 		}
 		_ = os.Remove(socketPath)
@@ -83,7 +87,7 @@ var serveCmd = &cobra.Command{
 			return
 		}
 
-		g.Go(func() error { return estServe() })
+		g.Go(func() error { return estServe(estTCP) })
 		g.Go(func() error { return grpcServe(grpcTCP) })
 		g.Go(func() error { return grpcServe(grpcUNIX) })
 		fmt.Printf("KMS Plugin Listening on : %d\n", grpcPort)
@@ -121,7 +125,7 @@ func init() {
 
 }
 
-func estServe() (err error) {
+func estServe(l net.Listener) (err error) {
 
 	defer estServer.Shutdown()
 
@@ -145,10 +149,18 @@ func estServe() (err error) {
 		}
 		os.Exit(code)
 	}
-	estServer.Port = int(estPort)
+	estServer.Port = estPort
+	estServer.Host = "0.0.0.0"
 	estServer.ConfigureAPI()
+	fmt.Println("Server started")
+	if err = estServer.Serve(); err != nil {
+		err = fmt.Errorf("Server Errored: %v", err)
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("Server Stopped")
 
-	return estServer.Serve()
+	return
 }
 
 func grpcServe(gl net.Listener) (err error) {
@@ -193,5 +205,6 @@ func grpcServe(gl net.Listener) (err error) {
 	gs := grpc.NewServer(serverOptions...)
 	reflection.Register(gs)
 	istio.RegisterKeyManagementServiceServer(gs, p)
+
 	return gs.Serve(gl)
 }

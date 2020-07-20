@@ -68,7 +68,7 @@ func init() {
 	rootCmd.Flags().BoolVar(&debug, "debug", true, "Debug")
 	rootCmd.PersistentFlags().StringVar(&host, "host", "0.0.0.0", "TCP Host")
 	rootCmd.PersistentFlags().Int64Var(&grpcPort, "grpcPort", 31400, "TCP Port for gRPC service")
-	rootCmd.PersistentFlags().IntVar(&estPort, "estPort", 443, "TCP Port for ")
+	rootCmd.PersistentFlags().IntVar(&estPort, "estPort", 443, "TCP Port for EST CA")
 
 	// Provider
 	rootCmd.PersistentFlags().StringVar(&provider, "provider", "p11", "Provider")

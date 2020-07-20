@@ -132,7 +132,6 @@ github.com/mitchellh/protoc-gen-go-json/gen
 # github.com/pelletier/go-toml v1.4.0
 github.com/pelletier/go-toml
 # github.com/pkg/errors v0.9.1
-## explicit
 github.com/pkg/errors
 # github.com/sirupsen/logrus v1.6.0
 ## explicit

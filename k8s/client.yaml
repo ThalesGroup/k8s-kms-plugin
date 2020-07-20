@@ -16,6 +16,7 @@ spec:
       imagePullPolicy: IfNotPresent
       args:
         - enroll
+        - --host=k8s-kms-plugin-server
       volumeMounts:
         - mountPath: /run/kms/kms-socket
           name: kms-socket

@@ -1,56 +1,88 @@
+apiVersion: apps/v1
+kind: StatefulSet
+
+metadata:
+  name: k8s-kms-plugin-server
+  #  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: k8s-kms-plugin-server
+spec:
+  serviceName: k8s-kms-plugin-server
+  selector:
+    matchLabels:
+
+      app.kubernetes.io/name: k8s-kms-plugin-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: k8s-kms-plugin-server
+    spec:
+      volumes:
+        - name: certstore
+          emptyDir: {}
+        - name: ca
+          hostPath:
+            path: /etc/
+      initContainers:
+        - name: bootstrap
+          image: "gcr.io/thalescpl-io/k8s-kms-plugin"
+          volumeMounts:
+            - mountPath: /certs/
+              name: certstore
+          env:
+            - name: P11_LIB
+              value: /usr/lib64/libsofthsm2.so
+            - name: P11_LABEL
+              value: default
+            - name: P11_PIN
+              value: changeme
+          args:
+            - bootstrap
+      containers:
+        - name: k8s-kms-plugin
+          image: "gcr.io/thalescpl-io/k8s-kms-plugin"
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - mountPath: /certs/
+              name: certstore
+          env:
+            - name: P11_LIB
+              value: /usr/lib64/libsofthsm2.so
+            - name: P11_LABEL
+              value: default
+            - name: P11_PIN
+              value: changeme
+          args:
+            - serve
+          ports:
+            - containerPort: 31400
+              protocol: TCP
+              name: grpc
+            - containerPort: 443
+              protocol: TCP
+              name: est
+          #      livenessProbe:
+          #        tcpSocket:
+          #          port: 443
+          #      readinessProbe:
+          #        tcpSocket:
+          #          port: 443
+
+---
+kind: Service
 apiVersion: v1
-kind: Pod
 metadata:
   name: k8s-kms-plugin-server
   #  namespace: kube-system
   labels:
     app.kubernetes.io/name: k8s-kms-plugin
 spec:
-  volumes:
-    - name: certstore
-      emptyDir: {}
-    - name: ca
-      hostPath:
-        path: /etc/
-  initContainers:
-    - name: bootstrap
-      image: "gcr.io/thalescpl-io/k8s-kms-plugin"
-      volumeMounts:
-        - mountPath: /certs/
-          name: certstore
-      env:
-        - name: P11_LIB
-          value: /usr/lib64/libsofthsm2.so
-        - name: P11_LABEL
-          value: default
-        - name: P11_PIN
-          value: changeme
-      args:
-        - bootstrap
-  containers:
-    - name: k8s-kms-plugin
-      image: "gcr.io/thalescpl-io/k8s-kms-plugin"
-      imagePullPolicy: IfNotPresent
-      env:
-        - name: P11_LIB
-          value: /usr/lib64/libsofthsm2.so
-        - name: P11_LABEL
-          value: default
-        - name: P11_PIN
-          value: changeme
-      ports:
-        - containerPort: 31400
-          protocol: TCP
-          name: grpc
-        - containerPort: 443
-          protocol: TCP
-          name: est
-      livenessProbe:
-        tcpSocket:
-          port: 31400
-      readinessProbe:
-        tcpSocket:
-          port: 31400
-
-      args:
-        - serve
+  ports:
+    - port: 443
+      name: est
+      targetPort: 443
+    - port: 31400
+      name: grpc
+      targetPort: 31400
+  selector:
+    app.kubernetes.io/name:  k8s-kms-plugin-server

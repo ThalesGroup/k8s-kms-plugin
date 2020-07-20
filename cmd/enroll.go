@@ -16,6 +16,8 @@ limitations under the License.
 package cmd
 
 import (
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/thales-e-security/estclient"
@@ -28,7 +30,34 @@ var initCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		fmt.Println("enrolling")
 
+		c := estclient.NewEstClient(host)
 
+		ad := estclient.AuthData{
+			ID:         nil,
+			Secret:     nil,
+			Key:        nil,
+			ClientCert: nil,
+		}
+
+		req := &x509.CertificateRequest{
+
+			PublicKey: nil,
+			Subject: pkix.Name{
+
+			},
+			Attributes:      nil,
+			Extensions:      nil,
+			ExtraExtensions: nil,
+			DNSNames:        nil,
+			EmailAddresses:  nil,
+			IPAddresses:     nil,
+			URIs:            nil,
+		}
+		var clientCert *x509.Certificate
+		if clientCert, err = c.SimpleEnroll(ad, req); err != nil {
+			return
+		}
+		fmt.Printf("Issuer: %v\n", clientCert.Issuer)
 		return
 	},
 }
