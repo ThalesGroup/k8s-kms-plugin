@@ -28,4 +28,8 @@ build:
 dev:
 		@skaffold dev --port-forward=true
 
+## Testing
+
+ports:
+		@kubectl exec -ti  k8s-kms-plugin-server-0 -- bash -c "netstat -an | grep LISTEN"
 

@@ -1,22 +1,33 @@
-apiVersion: v1
-kind: Pod
-metadata:
-  name: k8s-kms-plugin-client
-#  namespace: kube-system
-  labels:
-    app.kubernetes.io/name: k8s-kms-plugin
-spec:
-  volumes:
-    - name: kms-socket
-      hostPath:
-        path: /run/kms/kms-socket
-  containers:
-    - name: k8s-kms-plugin
-      image: "gcr.io/thalescpl-io/k8s-kms-plugin"
-      imagePullPolicy: IfNotPresent
-      args:
-        - enroll
-        - --host=k8s-kms-plugin-server
-      volumeMounts:
-        - mountPath: /run/kms/kms-socket
-          name: kms-socket
+#apiVersion: v1
+#kind: Pod
+#metadata:
+#  name: k8s-kms-plugin-client
+##  namespace: kube-system
+#  labels:
+#    app.kubernetes.io/name: k8s-kms-plugin
+#spec:
+#  volumes:
+#    - name: kms-socket
+#      hostPath:
+#        path: /run/kms/kms-socket
+#  initContainers:
+#    - name: waitforest
+#      image: busybox
+#      args:
+#        - /bin/sh
+#        - -c
+#        - >
+#          set -x;
+#          while [ $(curl -sw '%{http_code}' "k8s-kms-plugin-server" -o /dev/null) -ne 200 ]; do
+#            sleep 5;
+#          done
+#  containers:
+#    - name: k8s-kms-plugin
+#      image: "gcr.io/thalescpl-io/k8s-kms-plugin"
+#      imagePullPolicy: IfNotPresent
+#      args:
+#        - enroll
+#        - --host=k8s-kms-plugin-server
+#      volumeMounts:
+#        - mountPath: /run/kms/kms-socket
+#          name: kms-socket

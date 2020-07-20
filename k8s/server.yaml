@@ -61,12 +61,14 @@ spec:
             - containerPort: 443
               protocol: TCP
               name: est
-          #      livenessProbe:
-          #        tcpSocket:
-          #          port: 443
-          #      readinessProbe:
-          #        tcpSocket:
-          #          port: 443
+          livenessProbe:
+            httpGet:
+              port: 443
+              path: /health
+          readinessProbe:
+            httpGet:
+              port: 443
+              path: /health
 
 ---
 kind: Service

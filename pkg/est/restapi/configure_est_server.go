@@ -4,7 +4,6 @@ package restapi
 
 import (
 	"crypto/tls"
-	"fmt"
 	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/ca"
 	"github.com/thalescpl-io/k8s-kms-plugin/pkg/utils"
 	"io"
@@ -62,7 +61,6 @@ func configureAPI(api *operations.EstServerAPI) http.Handler {
 	if api.OperationGetCACertsHandler == nil {
 		api.OperationGetCACertsHandler = operation.GetCACertsHandlerFunc(func(params operation.GetCACertsParams) middleware.Responder {
 			//return middleware.NotImplemented("operation operation.GetCACerts has not yet been implemented")
-
 			return estCA.GetCACerts(params)
 		})
 	}
@@ -86,7 +84,6 @@ func configureAPI(api *operations.EstServerAPI) http.Handler {
 
 // The TLS configuration before HTTPS server starts.
 func configureTLS(tlsConfig *tls.Config) {
-	fmt.Println(fmt.Sprintf("Configuring TLS: %v", tlsConfig.Certificates))
 
 }
 
@@ -101,7 +98,16 @@ func configureServer(s *http.Server, scheme, addr string) {
 // The middleware configuration is for the handler executors. These do not apply to the swagger.json document.
 // The middleware executes after routing but before authentication, binding and validation
 func setupMiddlewares(handler http.Handler) http.Handler {
-	return handler
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// do some middleware logic here
+
+		switch r.URL.Path {
+		case "/health":
+			w.WriteHeader(200)
+
+		}
+		handler.ServeHTTP(w, r)
+	})
 }
 
 // The middleware configuration happens before anything, this middleware also applies to serving the swagger.json document.

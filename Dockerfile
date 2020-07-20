@@ -16,7 +16,7 @@ ENV GOFLAGS -mod=vendor
 RUN go build -o k8s-kms-plugin main.go
 
 FROM centos:7
-RUN yum install -y git softhsm glibc.i686 wget && \
+RUN yum install -y git softhsm glibc.i686 wget net-tools && \
     softhsm2-util --init-token --slot 0 --label default --so-pin changeme --pin changeme && \
     yum clean all
 WORKDIR /

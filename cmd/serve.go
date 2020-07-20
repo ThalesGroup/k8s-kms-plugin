@@ -74,12 +74,8 @@ var serveCmd = &cobra.Command{
 		}
 		g := new(errgroup.Group)
 		grpcAddr := fmt.Sprintf("%v:%d", host, grpcPort)
-		estAddr := fmt.Sprintf("%v:%d", host, estPort)
-		var grpcTCP, grpcUNIX , estTCP net.Listener
+		var grpcTCP, grpcUNIX  net.Listener
 		if grpcTCP, err = net.Listen("tcp", grpcAddr); err != nil {
-			return
-		}
-		if estTCP, err = net.Listen("tcp", estAddr); err != nil {
 			return
 		}
 		_ = os.Remove(socketPath)
@@ -87,7 +83,7 @@ var serveCmd = &cobra.Command{
 			return
 		}
 
-		g.Go(func() error { return estServe(estTCP) })
+		g.Go(func() error { return estServe() })
 		g.Go(func() error { return grpcServe(grpcTCP) })
 		g.Go(func() error { return grpcServe(grpcUNIX) })
 		fmt.Printf("KMS Plugin Listening on : %d\n", grpcPort)
@@ -125,14 +121,13 @@ func init() {
 
 }
 
-func estServe(l net.Listener) (err error) {
+func estServe() (err error) {
 
 	defer estServer.Shutdown()
 
 	parser := flags.NewParser(estServer, flags.Default)
-	parser.ShortDescription = "est server"
+	parser.ShortDescription = "EST CA µService"
 	parser.LongDescription = "RFC 7030 (EST) server implementation"
-
 	estServer.ConfigureFlags()
 	for _, optsGroup := range api.CommandLineOptionsGroups {
 		_, err := parser.AddGroup(optsGroup.ShortDescription, optsGroup.LongDescription, optsGroup.Options)
@@ -149,8 +144,8 @@ func estServe(l net.Listener) (err error) {
 		}
 		os.Exit(code)
 	}
-	estServer.Port = estPort
-	estServer.Host = "0.0.0.0"
+	estServer.TLSPort = estPort
+	estServer.TLSHost = "0.0.0.0"
 	estServer.ConfigureAPI()
 	fmt.Println("Server started")
 	if err = estServer.Serve(); err != nil {
