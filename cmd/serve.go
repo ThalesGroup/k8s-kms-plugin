@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/ThalesIgnite/crypto11"
 	"github.com/go-openapi/loads"
-	"github.com/golang/glog"
 	"github.com/jessevdk/go-flags"
 	"github.com/spf13/cobra"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
@@ -27,8 +26,6 @@ var (
 	caTLSCert     string
 	serverTLSCert string
 	serverTLSKey  string
-	nativePath    string
-	estKeyId      string
 	kekKeyId      string
 	keyName       string
 	p11lib        string
@@ -48,7 +45,7 @@ var serveCmd = &cobra.Command{
 		var swaggerSpec *loads.Document
 		swaggerSpec, err = loads.Embedded(restapi.SwaggerJSON, restapi.FlatSwaggerJSON)
 		if err != nil {
-			glog.Fatalln(err)
+			panic(err)
 		}
 		estServer = restapi.NewServer(api)
 		estServer.TLSCACertificate = caTLSCert
@@ -74,7 +71,7 @@ var serveCmd = &cobra.Command{
 		}
 		g := new(errgroup.Group)
 		grpcAddr := fmt.Sprintf("%v:%d", host, grpcPort)
-		var grpcTCP, grpcUNIX  net.Listener
+		var grpcTCP, grpcUNIX net.Listener
 		if grpcTCP, err = net.Listen("tcp", grpcAddr); err != nil {
 			return
 		}
@@ -89,7 +86,7 @@ var serveCmd = &cobra.Command{
 		fmt.Printf("KMS Plugin Listening on : %d\n", grpcPort)
 		fmt.Printf("EST Service Listening on : %d\n", estPort)
 		if err = g.Wait(); err != nil {
-			glog.Exit(err)
+			panic(err)
 		}
 
 		return
@@ -115,7 +112,7 @@ func init() {
 	serveCmd.Flags().BoolVar(&createKey, "auto-create", true, "Auto create the keys if neededsd")
 	swaggerSpec, err := loads.Embedded(restapi.SwaggerJSON, restapi.FlatSwaggerJSON)
 	if err != nil {
-		glog.Fatalln(err)
+		panic(err)
 	}
 	api = operations.NewEstServerAPI(swaggerSpec)
 
@@ -123,19 +120,18 @@ func init() {
 
 func estServe() (err error) {
 
-	defer estServer.Shutdown()
 
 	parser := flags.NewParser(estServer, flags.Default)
 	parser.ShortDescription = "EST CA µService"
 	parser.LongDescription = "RFC 7030 (EST) server implementation"
 	estServer.ConfigureFlags()
 	for _, optsGroup := range api.CommandLineOptionsGroups {
-		_, err := parser.AddGroup(optsGroup.ShortDescription, optsGroup.LongDescription, optsGroup.Options)
+		_, err = parser.AddGroup(optsGroup.ShortDescription, optsGroup.LongDescription, optsGroup.Options)
 		if err != nil {
-			glog.Fatalln(err)
+			return
 		}
 	}
-	if _, err := parser.Parse(); err != nil {
+	if _, err = parser.Parse(); err != nil {
 		code := 1
 		if fe, ok := err.(*flags.Error); ok {
 			if fe.Type == flags.ErrHelp {
@@ -148,14 +144,9 @@ func estServe() (err error) {
 	estServer.TLSHost = "0.0.0.0"
 	estServer.ConfigureAPI()
 	fmt.Println("Server started")
-	if err = estServer.Serve(); err != nil {
-		err = fmt.Errorf("Server Errored: %v", err)
-		fmt.Println(err)
-		return
-	}
-	fmt.Println("Server Stopped")
 
-	return
+
+	return estServer.Serve();
 }
 
 func grpcServe(gl net.Listener) (err error) {
@@ -164,10 +155,10 @@ func grpcServe(gl net.Listener) (err error) {
 	switch provider {
 	case "p11":
 		config := &crypto11.Config{
-			Path:       p11lib,
-			TokenLabel: p11label,
-			SlotNumber: &p11slot,
-			Pin:        p11pin,
+			Path:            p11lib,
+			TokenLabel:      p11label,
+			SlotNumber:      &p11slot,
+			Pin:             p11pin,
 			UseGCMIVFromHSM: true,
 		}
 		if p, err = providers.NewP11(kekKeyId, keyName, config, createKey); err != nil {
@@ -175,10 +166,10 @@ func grpcServe(gl net.Listener) (err error) {
 		}
 	case "native":
 		config := &crypto11.Config{
-			Path:       p11lib,
-			TokenLabel: p11label,
-			SlotNumber: &p11slot,
-			Pin:        p11pin,
+			Path:            p11lib,
+			TokenLabel:      p11label,
+			SlotNumber:      &p11slot,
+			Pin:             p11pin,
 			UseGCMIVFromHSM: true,
 		}
 		if p, err = providers.NewP11(kekKeyId, keyName, config, createKey); err != nil {

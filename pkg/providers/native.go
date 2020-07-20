@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"github.com/ThalesIgnite/gose"
 	"github.com/ThalesIgnite/gose/jose"
-	"github.com/golang/glog"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/kms/v1"
@@ -136,7 +136,7 @@ func (n *Native) LoadDEK(ctx context.Context, request *istio.LoadDEKRequest) (*i
 func (n *Native) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	var h interface{}
 	var err error
-	glog.Infof("Path: %s", info.FullMethod)
+	fmt.Printf("Path: %s\n", info.FullMethod)
 	return h, err
 }
 

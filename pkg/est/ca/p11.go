@@ -34,7 +34,6 @@ import (
 	"fmt"
 	"github.com/ThalesIgnite/crypto11"
 	"github.com/go-openapi/runtime/middleware"
-	"github.com/golang/glog"
 	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/restapi/operations/operation"
 	"io"
 	"io/ioutil"
@@ -58,8 +57,6 @@ type P11 struct {
 
 func NewP11EST(ca, key, cert string, config *crypto11.Config) (e *P11, err error) {
 
-	glog.Info("getting p11est")
-
 	e = &P11{
 		ca:     ca,
 		key:    key,
@@ -69,7 +66,6 @@ func NewP11EST(ca, key, cert string, config *crypto11.Config) (e *P11, err error
 	if e.ctxt11, err = crypto11.Configure(e.config); err != nil {
 		return
 	}
-	glog.Info("got p11est")
 
 	return
 }
@@ -125,7 +121,10 @@ func (p *P11) BootstrapCA() (err error) {
 		return
 	}
 	// Generate EST Server Certificate
-	fqdn, err := os.Hostname()
+	var fqdn string
+	if fqdn, err = os.Hostname(); err != nil {
+		return
+	}
 	cert := &x509.Certificate{
 		SerialNumber: big.NewInt(2019),
 		Subject: pkix.Name{
@@ -163,7 +162,7 @@ func (p *P11) BootstrapCA() (err error) {
 	}); err != nil {
 		return
 	}
-	if err = ioutil.WriteFile(p.cert, serverCertPEM.Bytes(), 600); err != nil {
+	if err = ioutil.WriteFile(p.cert, serverCertPEM.Bytes(), 0600); err != nil {
 		return
 	}
 
@@ -174,7 +173,7 @@ func (p *P11) BootstrapCA() (err error) {
 	}); err != nil {
 		return
 	}
-	if err = ioutil.WriteFile(p.key, serverPrivPEM.Bytes(), 600); err != nil {
+	if err = ioutil.WriteFile(p.key, serverPrivPEM.Bytes(), 0600); err != nil {
 		return
 	}
 
@@ -201,7 +200,7 @@ func (p *P11) GetCACerts(params operation.GetCACertsParams) middleware.Responder
 	panic("implement me")
 }
 
-func (p *P11) LoadCA(err error) {
+func (p *P11) LoadCA() (err error) {
 
 	return
 }

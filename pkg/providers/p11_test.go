@@ -43,7 +43,7 @@ func TestP11_Encrypt(t *testing.T) {
 			fields: fields{
 				config:    testConfig,
 				ctx:       testCtx,
-				keyId:     []byte(defaultkeyId),
+				keyId:     []byte("afdjaklfjdaskl"),
 				keyLabel:  []byte(defaultkeyLabel),
 				createKey: true,
 			},

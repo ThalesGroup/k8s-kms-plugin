@@ -37,7 +37,6 @@ var (
 	estPort       int
 	host          string
 	cfgFile       string
-	disableServer bool
 	debug         bool
 )
 

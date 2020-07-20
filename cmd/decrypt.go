@@ -24,6 +24,7 @@
 package cmd
 
 import (
+	"context"
 	"flag"
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
@@ -46,8 +47,11 @@ var decryptCmd = &cobra.Command{
 		} else if inputString != "" {
 			data = []byte(inputString)
 		}
-
-		ctx, _, c, err := k8s.GetClient(host, grpcPort)
+		var ctx context.Context
+		var c k8s.KeyManagementServiceClient
+		if ctx, _, c, err = k8s.GetClient(host, grpcPort); err != nil {
+			return
+		}
 		var resp *k8s.DecryptResponse
 		if resp, err = c.Decrypt(ctx, &k8s.DecryptRequest{
 			Version: "version",

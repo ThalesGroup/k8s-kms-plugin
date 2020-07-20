@@ -48,7 +48,10 @@ var enrollCmd = &cobra.Command{
 		if clientSecret := os.Getenv("CLIENT_SECRET"); clientSecret != "" {
 			ad.ID = &clientSecret
 		}
-		fqdn, err := os.Hostname()
+		var fqdn string
+		if fqdn, err = os.Hostname(); err != nil {
+			return
+		}
 		req := &x509.CertificateRequest{
 			Subject: pkix.Name{
 				CommonName: fqdn,

@@ -8,7 +8,6 @@ import (
 	"github.com/ThalesIgnite/crypto11"
 	"github.com/ThalesIgnite/gose"
 	"github.com/ThalesIgnite/gose/jose"
-	"github.com/golang/glog"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
 	v1 "github.com/thalescpl-io/k8s-kms-plugin/apis/kms/v1"
@@ -159,7 +158,7 @@ func (p *P11) LoadDEK(ctx context.Context, request *istio.LoadDEKRequest) (*isti
 func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	var h interface{}
 	var err error
-	glog.Infof("Path: %s", info.FullMethod)
+	 fmt.Printf("Path: %s\n", info.FullMethod)
 	return h, err
 }
 
