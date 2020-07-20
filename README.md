@@ -2,7 +2,7 @@
 
 This microservice implements the Kubernetes KMS protocol as a gRPC service that leverages a remote or local HSM via P11.
 
-This plugin will also run in proxy mode which can connect to a remove plugin service running in a secure network device (Key Managers)
+This plugin will also run in proxy mode which can connect to a remote plugin service running in a secure network device (Key Managers)
 
 ## requirements
 
