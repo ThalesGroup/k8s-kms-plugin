@@ -45,7 +45,19 @@ var serveCmd = &cobra.Command{
 
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		goflag.Parse()
-
+		var swaggerSpec *loads.Document
+		swaggerSpec, err = loads.Embedded(restapi.SwaggerJSON, restapi.FlatSwaggerJSON)
+		if err != nil {
+			glog.Fatalln(err)
+		}
+		estServer = restapi.NewServer(api)
+		estServer.TLSCACertificate = caTLSCert
+		estServer.TLSCertificateKey = serverTLSKey
+		estServer.TLSCertificate = serverTLSCert
+		if err = estServer.AddConfig(caTLSCert, serverTLSKey, serverTLSCert); err != nil {
+			return
+		}
+		api = operations.NewEstServerAPI(swaggerSpec)
 		if a := os.Getenv("P11_LIB"); a != "" {
 			p11lib = a
 		}
@@ -62,12 +74,8 @@ var serveCmd = &cobra.Command{
 		}
 		g := new(errgroup.Group)
 		grpcAddr := fmt.Sprintf("%v:%d", host, grpcPort)
-		estAddr := fmt.Sprintf("%v:%d", host, estPort)
-		var grpcTCP, estTCP, grpcUNIX net.Listener
+		var grpcTCP, grpcUNIX net.Listener
 		if grpcTCP, err = net.Listen("tcp", grpcAddr); err != nil {
-			return
-		}
-		if grpcTCP, err = net.Listen("tcp", estAddr); err != nil {
 			return
 		}
 		_ = os.Remove(socketPath)
@@ -75,11 +83,11 @@ var serveCmd = &cobra.Command{
 			return
 		}
 
-		g.Go(func() error { return estServe(estTCP) })
+		g.Go(func() error { return estServe() })
 		g.Go(func() error { return grpcServe(grpcTCP) })
 		g.Go(func() error { return grpcServe(grpcUNIX) })
-		glog.Infof("KMS Plugin Listening on : %d", grpcPort)
-		glog.Infof("EST Service Listening on : %d", estTCP)
+		fmt.Printf("KMS Plugin Listening on : %d\n", grpcPort)
+		fmt.Printf("EST Service Listening on : %d\n", estPort)
 		if err = g.Wait(); err != nil {
 			glog.Exit(err)
 		}
@@ -111,22 +119,16 @@ func init() {
 	}
 	api = operations.NewEstServerAPI(swaggerSpec)
 
-	estServer = restapi.NewServer(api)
-	estServer.TLSCACertificate = caTLSCert
-	estServer.TLSCertificateKey = serverTLSKey
-	estServer.TLSCertificate = serverTLSCert
 }
 
-func estServe(gl net.Listener) (err error) {
+func estServe() (err error) {
 
 	defer estServer.Shutdown()
 
 	parser := flags.NewParser(estServer, flags.Default)
 	parser.ShortDescription = "est server"
 	parser.LongDescription = "RFC 7030 (EST) server implementation"
-	if err = estServer.AddConfig(caTLSCert, serverTLSKey, serverTLSCert); err != nil {
-		return
-	}
+
 	estServer.ConfigureFlags()
 	for _, optsGroup := range api.CommandLineOptionsGroups {
 		_, err := parser.AddGroup(optsGroup.ShortDescription, optsGroup.LongDescription, optsGroup.Options)
@@ -143,7 +145,7 @@ func estServe(gl net.Listener) (err error) {
 		}
 		os.Exit(code)
 	}
-
+	estServer.Port = int(estPort)
 	estServer.ConfigureAPI()
 
 	return estServer.Serve()

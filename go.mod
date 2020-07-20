@@ -18,10 +18,11 @@ require (
 	github.com/jessevdk/go-flags v1.4.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/protoc-gen-go-json v0.0.0-20200717004536-8fbb6f3d7291
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/sirupsen/logrus v1.6.0 // indirect
 	github.com/spf13/cobra v1.0.0
+	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0
+	github.com/thales-e-security/estclient v1.0.2
 	golang.org/x/net v0.0.0-20200602114024-627f9648deb9
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 	golang.org/x/tools v0.0.0-20200626171337-aa94e735be7f

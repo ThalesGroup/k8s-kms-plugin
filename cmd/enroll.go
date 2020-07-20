@@ -16,26 +16,19 @@ limitations under the License.
 package cmd
 
 import (
-	"flag"
-	"github.com/golang/glog"
+	"fmt"
 	"github.com/spf13/cobra"
-	"time"
+	"github.com/thales-e-security/estclient"
 )
-
-var keykind string
 
 // initCmd represents the init command
 var initCmd = &cobra.Command{
 	Use:   "enroll",
 	Short: "Enroll to a k8s-kms-plugin endpoint",
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
-		flag.Parse()
+		fmt.Println("enrolling")
 
-		glog.Info("Enrolling")
-		for {
-			glog.Info("- Sleeping")
-			time.Sleep(10 * time.Second)
-		}
+
 		return
 	},
 }

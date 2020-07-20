@@ -15,6 +15,8 @@ github.com/asaskevich/govalidator
 github.com/docker/go-units
 # github.com/fsnotify/fsnotify v1.4.7
 github.com/fsnotify/fsnotify
+# github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
+github.com/fullsailor/pkcs7
 # github.com/ghodss/yaml v1.0.0
 github.com/ghodss/yaml
 # github.com/go-openapi/analysis v0.19.10
@@ -33,6 +35,7 @@ github.com/go-openapi/loads
 # github.com/go-openapi/runtime v0.19.20
 ## explicit
 github.com/go-openapi/runtime
+github.com/go-openapi/runtime/client
 github.com/go-openapi/runtime/flagext
 github.com/go-openapi/runtime/logger
 github.com/go-openapi/runtime/middleware
@@ -145,12 +148,18 @@ github.com/spf13/cobra
 # github.com/spf13/jwalterweatherman v1.0.0
 github.com/spf13/jwalterweatherman
 # github.com/spf13/pflag v1.0.5
+## explicit
 github.com/spf13/pflag
 # github.com/spf13/viper v1.7.0
 ## explicit
 github.com/spf13/viper
 # github.com/subosito/gotenv v1.2.0
 github.com/subosito/gotenv
+# github.com/thales-e-security/estclient v1.0.2
+## explicit
+github.com/thales-e-security/estclient
+github.com/thales-e-security/estclient/apiclient
+github.com/thales-e-security/estclient/apiclient/operation
 # github.com/thales-e-security/pool v0.0.1
 github.com/thales-e-security/pool
 # go.mongodb.org/mongo-driver v1.3.4

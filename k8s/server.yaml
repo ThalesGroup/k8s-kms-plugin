@@ -50,7 +50,7 @@ spec:
           port: 31400
       readinessProbe:
         tcpSocket:
-          port: 443
+          port: 31400
 
       args:
         - serve
