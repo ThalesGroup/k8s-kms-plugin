@@ -11,8 +11,6 @@ github.com/ThalesIgnite/gose
 github.com/ThalesIgnite/gose/jose
 # github.com/asaskevich/govalidator v0.0.0-20200428143746-21a406dcc535
 github.com/asaskevich/govalidator
-# github.com/davecgh/go-spew v1.1.1
-## explicit
 # github.com/docker/go-units v0.4.0
 github.com/docker/go-units
 # github.com/fsnotify/fsnotify v1.4.7
@@ -131,13 +129,11 @@ github.com/mitchellh/protoc-gen-go-json/gen
 # github.com/pelletier/go-toml v1.4.0
 github.com/pelletier/go-toml
 # github.com/pkg/errors v0.9.1
+## explicit
 github.com/pkg/errors
 # github.com/sirupsen/logrus v1.6.0
 ## explicit
 github.com/sirupsen/logrus
-# github.com/soheilhy/cmux v0.1.4
-## explicit
-github.com/soheilhy/cmux
 # github.com/spf13/afero v1.2.2
 github.com/spf13/afero
 github.com/spf13/afero/mem
@@ -155,8 +151,6 @@ github.com/spf13/pflag
 github.com/spf13/viper
 # github.com/subosito/gotenv v1.2.0
 github.com/subosito/gotenv
-# github.com/thales-e-security/estclient v1.0.2
-## explicit
 # github.com/thales-e-security/pool v0.0.1
 github.com/thales-e-security/pool
 # go.mongodb.org/mongo-driver v1.3.4

@@ -24,8 +24,8 @@
 package cmd
 
 import (
-	"fmt"
-	"github.com/sirupsen/logrus"
+	"flag"
+	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
 	"io/ioutil"
@@ -36,6 +36,8 @@ var decryptCmd = &cobra.Command{
 	Use:   "decrypt",
 	Short: "Decrypt a Secret",
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
+		flag.Parse()
+
 		// determine the kind of data to send
 		if inputFile != "" {
 			if data, err = ioutil.ReadFile(inputFile); err != nil {
@@ -55,10 +57,10 @@ var decryptCmd = &cobra.Command{
 		}
 		if outputFile != "" {
 			if err = ioutil.WriteFile(outputFile, data, 0700); err != nil {
-				logrus.Fatal(err)
+				glog.Fatal(err)
 			}
 		} else {
-			fmt.Println(string(resp.Plain))
+			glog.Info(string(resp.Plain))
 		}
 		return
 	},

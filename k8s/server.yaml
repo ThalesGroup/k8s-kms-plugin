@@ -1,32 +1,30 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: k8s-kms-plugin
-  namespace: kube-system
+  name: k8s-kms-plugin-server
+  #  namespace: kube-system
   labels:
     app.kubernetes.io/name: k8s-kms-plugin
 spec:
   volumes:
-    - name: kms-socket
+    - name: certstore
+      emptyDir: {}
+
+    - name: ca
       hostPath:
-        path: /run/kms/kms-socket
-    - name: native-keystore
-      hostPath:
-        path: /etc/kubernetes/keystore
+        path: /etc/
   initContainers:
     - name: config
-      image: busybox
-
+      image: "gcr.io/thalescpl-io/k8s-kms-plugin"
       volumeMounts:
-        - mountPath: /keys/
-          name: native-keystore
+        - mountPath: /certs/
+          name: certstore
+      args:
+        - bootstrap
   containers:
     - name: k8s-kms-plugin
       image: "gcr.io/thalescpl-io/k8s-kms-plugin"
       imagePullPolicy: IfNotPresent
-      volumeMounts:
-        - mountPath: /run/kms/kms-socket
-          name: kms-socket
       ports:
         - containerPort: 31400
           protocol: TCP

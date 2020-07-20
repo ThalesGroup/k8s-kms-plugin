@@ -26,7 +26,6 @@ package cmd
 import (
 	"fmt"
 	"github.com/mitchellh/go-homedir"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"os"
@@ -67,9 +66,9 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "ConfigFile)")
 
 	rootCmd.Flags().BoolVar(&debug, "debug", true, "Debug")
-	serveCmd.PersistentFlags().StringVar(&host, "host", "0.0.0.0", "TCP Host")
-	serveCmd.PersistentFlags().Int64Var(&grpcPort, "grpcPort", 31400, "TCP Port for gRPC service")
-	serveCmd.PersistentFlags().Int64Var(&estPort, "estPort", 443, "TCP Port for EST service")
+	rootCmd.PersistentFlags().StringVar(&host, "host", "0.0.0.0", "TCP Host")
+	rootCmd.PersistentFlags().Int64Var(&grpcPort, "grpcPort", 31400, "TCP Port for gRPC service")
+	rootCmd.PersistentFlags().Int64Var(&estPort, "estPort", 443, "TCP Port for ")
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
@@ -78,9 +77,7 @@ func init() {
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
 
-	if debug {
-		logrus.SetLevel(logrus.DebugLevel)
-	}
+	
 
 	if cfgFile != "" {
 		// Use config file from the flag.

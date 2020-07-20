@@ -16,40 +16,55 @@ limitations under the License.
 package cmd
 
 import (
-	"flag"
-	"github.com/golang/glog"
+	"fmt"
+	"github.com/ThalesIgnite/crypto11"
+	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/ca"
+
 	"github.com/spf13/cobra"
-	"time"
 )
 
-var keykind string
+type bootstrapConfig struct {
+	Ca   string
+	Key  string
+	Cert string
+}
 
-// initCmd represents the init command
-var initCmd = &cobra.Command{
-	Use:   "enroll",
-	Short: "Enroll to a k8s-kms-plugin endpoint",
+var bsConfig = &bootstrapConfig{
+
+}
+var estca *ca.P11
+
+// bootstrapCmd represents the bootstrap command
+var bootstrapCmd = &cobra.Command{
+	Use:   "bootstrap",
+	Short: "Bootstrap/regenerate EST PKI",
+
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
-		flag.Parse()
-
-		glog.Info("Enrolling")
-		for {
-			glog.Info("- Sleeping")
-			time.Sleep(10 * time.Second)
+		fmt.Println("bootstrap called")
+		config := &crypto11.Config{
+			Path:            p11lib,
+			TokenLabel:      p11label,
+			Pin:             p11pin,
+			UseGCMIVFromHSM: true,
 		}
+		if estca, err = ca.NewP11EST(bsConfig.Ca, bsConfig.Key, bsConfig.Cert, config); err != nil {
+			return
+		}
+
 		return
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(initCmd)
+	rootCmd.AddCommand(bootstrapCmd)
 
 	// Here you will define your flags and configuration settings.
-
+	bootstrapCmd.Flags().StringVar(&bsConfig.Ca, "est-ca", "/certs/ca.crt", "CA Cert in PEM format")
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// initCmd.PersistentFlags().String("foo", "", "A help for foo")
+	// bootstrapCmd.PersistentFlags().String("foo", "", "A help for foo")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// initCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// bootstrapCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

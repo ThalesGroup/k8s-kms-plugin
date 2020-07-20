@@ -24,6 +24,7 @@
 package cmd
 
 import (
+	"flag"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -40,6 +41,8 @@ var proxyCmd = &cobra.Command{
 	Use:   "proxy",
 	Short: "Run plugin in Proxy mode to remotely connect to network based plugin",
 	Run: func(cmd *cobra.Command, args []string) {
+		flag.Parse()
+
 		fmt.Println("proxy called")
 		panic("implement me")
 	},

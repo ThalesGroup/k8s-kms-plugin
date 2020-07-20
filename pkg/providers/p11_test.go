@@ -95,7 +95,6 @@ func TestP11_Encrypt(t *testing.T) {
 
 func setupSoftHSMTestCase(t testing.TB) func(t testing.TB) {
 
-	// logrus.SetLevel(logrus.DebugLevel)
 	var err error
 	if os.Getenv("P11_LIBRARY") == "" {
 		t.Skip("No P11_LIBRARY provided, skipping")

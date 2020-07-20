@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"github.com/ThalesIgnite/crypto11"
 	"github.com/go-openapi/swag"
+	"github.com/golang/glog"
 	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/ca"
 	"io"
 	"net/http"
@@ -20,12 +21,13 @@ import (
 
 //go:generate swagger generate server --target ../../../../k8s-kms-plugin --name EstServer --spec ../../../apis/kms/v1/est.yaml --model-package pkg/est/models --server-package pkg/est/restapi --exclude-main
 
+var estCA *ca.P11
 var extraFlags struct {
 	AuthFile       string `long:"auth-file" description:"CSV file containing device ids and credentials" required:"false"`
-	EstCaCertFile  string `long:"est-cert" description:"EST CA certificate file (PEM format)" required:"false"`
+	CACertFile     string `long:"est-ca" description:"EST CA certificate file (PEM format)" default:"certs/ca.crt"`
 	AllowAnyDevice bool   `long:"allow-any" description:"Allow any device (accepts all ids/secrets)"`
-	ServerTLSKey   string `long:"tls-key" description:"Key for Server TLS" default:"tls.key"`
-	ServerTLSCert  string `long:"tls-certificate" description:"Certificate for Server TLS" default:"tls.crt"`
+	ServerTLSKey   string `long:"est-key" description:"Key for Server TLS" default:"certs/tls.key"`
+	ServerTLSCert  string `long:"est-certificate" description:"Certificate for Server TLS" default:"certs/tls.crt"`
 	P11Library     string `long:"p11-lib" description:"Path to P11Library" default:"/usr/lib64/libsofthsm2.so"`
 	P11Pin         string `long:"p11-pin" description:"Secret for TokenAuth" default:"changeme"`
 	P11Label       string `long:"p11-label" description:"Path to P11Library" default:"default"`
@@ -57,7 +59,8 @@ func configureAPI(api *operations.EstServerAPI) http.Handler {
 		TokenLabel: extraFlags.P11Label,
 		Pin:        extraFlags.P11Pin,
 	}
-	estCA, err := ca.NewEST(extraFlags.ServerTLSKey, extraFlags.ServerTLSCert, config)
+	var err error
+	estCA, err = ca.NewP11EST(extraFlags.CACertFile, extraFlags.ServerTLSKey, extraFlags.ServerTLSCert, config)
 	if err != nil {
 		// TODO: come back and exit nicely if we can't get to the Provider
 		panic(err)
@@ -111,6 +114,8 @@ func configureAPI(api *operations.EstServerAPI) http.Handler {
 // The TLS configuration before HTTPS server starts.
 func configureTLS(tlsConfig *tls.Config) {
 	// Make all necessary changes to the TLS configuration here.
+	tlsConfig = estCA.ServerTLS
+	glog.Info("Configuring TLS")
 }
 
 // As soon as server is initialized but not run yet, this function will be called.

@@ -25,6 +25,7 @@ package cmd
 
 import (
 	"errors"
+	"flag"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
 	"io/ioutil"
 	"os"
@@ -43,7 +44,7 @@ var encryptCmd = &cobra.Command{
 	Short: "Encrypt a secret",
 
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
-
+		flag.Parse()
 		// determine the kind of data to send
 		if inputFile != "" {
 			if data, err = ioutil.ReadFile(inputFile); err != nil {

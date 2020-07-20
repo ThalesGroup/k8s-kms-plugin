@@ -6,3 +6,5 @@ build:
     push: true
   artifacts:
     - image: gcr.io/thalescpl-io/k8s-kms-plugin
+
+

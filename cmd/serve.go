@@ -77,16 +77,7 @@ func init() {
 	serveCmd.Flags().StringVar(&serverTLSKey, "tls-key", "tls.key", "Key for Server TLS")
 	serveCmd.Flags().StringVar(&serverTLSCert, "tls-certificate", "tls.crt", "Cert for Server TLS")
 	// Here you will define your flags and configuration settings.
-	serveCmd.Flags().StringVar(&provider, "provider", "p11", "Provider to use for backend")
-	serveCmd.Flags().StringVar(&nativePath, "native-path", filepath.Join(os.TempDir(), "native_keys"), "Path to store native keys")
 
-	// P11 specific
-	serveCmd.Flags().StringVar(&p11lib, "p11-lib", "", "Path to p11 library/client")
-	serveCmd.Flags().StringVar(&p11label, "p11-label", "", "P11 token label")
-	serveCmd.Flags().IntVar(&p11slot, "p11-slot", 0, "P11 token slot")
-	serveCmd.Flags().StringVar(&p11pin, "p11-pin", "", "P11 Pin")
-	serveCmd.Flags().StringVar(&keyName, "p11-key-label", "k8s-kek", "Key Label to use for encrypt/decrypt")
-	serveCmd.Flags().BoolVar(&createKey, "auto-create", false, "Auto create the key")
 }
 
 func estServe(gl net.Listener) (err error) {
