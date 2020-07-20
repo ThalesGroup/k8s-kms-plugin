@@ -89,6 +89,7 @@ var serveCmd = &cobra.Command{
 }
 var estServer *restapi.Server
 var api *operations.EstServerAPI
+
 func init() {
 	rootCmd.AddCommand(serveCmd)
 	serveCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), ".sock"), "Unix Socket")
@@ -111,7 +112,9 @@ func init() {
 	api = operations.NewEstServerAPI(swaggerSpec)
 
 	estServer = restapi.NewServer(api)
-
+	estServer.TLSCACertificate = caTLSCert
+	estServer.TLSCertificateKey = serverTLSKey
+	estServer.TLSCertificate = serverTLSCert
 }
 
 func estServe(gl net.Listener) (err error) {
@@ -121,8 +124,9 @@ func estServe(gl net.Listener) (err error) {
 	parser := flags.NewParser(estServer, flags.Default)
 	parser.ShortDescription = "est server"
 	parser.LongDescription = "RFC 7030 (EST) server implementation"
-
-
+	if err = estServer.AddConfig(caTLSCert, serverTLSKey, serverTLSCert); err != nil {
+		return
+	}
 	estServer.ConfigureFlags()
 	for _, optsGroup := range api.CommandLineOptionsGroups {
 		_, err := parser.AddGroup(optsGroup.ShortDescription, optsGroup.LongDescription, optsGroup.Options)

@@ -4,8 +4,9 @@ package restapi
 
 import (
 	"crypto/tls"
-	"github.com/golang/glog"
+	"fmt"
 	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/ca"
+	"github.com/thalescpl-io/k8s-kms-plugin/pkg/utils"
 	"io"
 	"net/http"
 
@@ -25,8 +26,8 @@ func configureFlags(api *operations.EstServerAPI) {
 
 }
 
-
 var estCA *ca.P11
+
 func configureAPI(api *operations.EstServerAPI) http.Handler {
 	// configure the api here
 	api.ServeError = errors.ServeError
@@ -85,7 +86,8 @@ func configureAPI(api *operations.EstServerAPI) http.Handler {
 
 // The TLS configuration before HTTPS server starts.
 func configureTLS(tlsConfig *tls.Config) {
-	glog.Info("configing TLS")
+	fmt.Println(fmt.Sprintf("Configuring TLS: %v", tlsConfig.Certificates))
+
 }
 
 // As soon as server is initialized but not run yet, this function will be called.
@@ -93,6 +95,7 @@ func configureTLS(tlsConfig *tls.Config) {
 // This function can be called multiple times, depending on the number of serving schemes.
 // scheme value will be set accordingly: "http", "https" or "unix"
 func configureServer(s *http.Server, scheme, addr string) {
+
 }
 
 // The middleware configuration is for the handler executors. These do not apply to the swagger.json document.
@@ -105,4 +108,13 @@ func setupMiddlewares(handler http.Handler) http.Handler {
 // So this is a good place to plug in a panic handling middleware, logging and metrics
 func setupGlobalMiddleware(handler http.Handler) http.Handler {
 	return handler
+}
+
+func (s *Server) AddConfig(caa, key, cert string) (err error) {
+	config := utils.GetCrypto11Config()
+	if estCA, err = ca.NewP11EST(caa, key, cert, config); err != nil {
+		return
+	}
+
+	return
 }
