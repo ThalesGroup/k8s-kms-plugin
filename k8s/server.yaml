@@ -10,7 +10,6 @@ spec:
   serviceName: k8s-kms-plugin-server
   selector:
     matchLabels:
-
       app.kubernetes.io/name: k8s-kms-plugin-server
   template:
     metadata:
@@ -25,7 +24,7 @@ spec:
             path: /etc/
       initContainers:
         - name: bootstrap
-          image: "gcr.io/thalescpl-io/k8s-kms-plugin"
+          image: "gcr.io/thalescpl-io/k8s-kms-plugin/server"
           volumeMounts:
             - mountPath: /certs/
               name: certstore
@@ -40,7 +39,7 @@ spec:
             - bootstrap
       containers:
         - name: k8s-kms-plugin
-          image: "gcr.io/thalescpl-io/k8s-kms-plugin"
+          image: "gcr.io/thalescpl-io/k8s-kms-plugin/server"
           imagePullPolicy: IfNotPresent
           volumeMounts:
             - mountPath: /certs/
@@ -62,13 +61,13 @@ spec:
               protocol: TCP
               name: est
           livenessProbe:
-            httpGet:
-              port: 443
-              path: /health
+            tcpSocket:
+              port: 31400
+
           readinessProbe:
-            httpGet:
-              port: 443
-              path: /health
+            tcpSocket:
+              port: 31400
+
 
 ---
 kind: Service

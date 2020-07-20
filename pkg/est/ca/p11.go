@@ -124,7 +124,6 @@ func (p *P11) BootstrapCA() (err error) {
 	if err = ioutil.WriteFile(p.ca, caPEM.Bytes(), 0600); err != nil {
 		return
 	}
-	fmt.Println("saved ca cert")
 	// Generate EST Server Certificate
 	fqdn, err := os.Hostname()
 	cert := &x509.Certificate{
@@ -140,7 +139,7 @@ func (p *P11) BootstrapCA() (err error) {
 		NotBefore:    time.Now(),
 		NotAfter:     time.Now().AddDate(10, 0, 0),
 		SubjectKeyId: []byte{1, 2, 3, 4, 6},
-		DNSNames:     []string{fqdn, "localhost"},
+		DNSNames:     []string{fqdn, "localhost", "k8s-kms-plugin-server"},
 		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
 		KeyUsage:     x509.KeyUsageDigitalSignature,
 	}

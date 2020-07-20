@@ -168,7 +168,6 @@ func grpcServe(gl net.Listener) (err error) {
 			TokenLabel: p11label,
 			SlotNumber: &p11slot,
 			Pin:        p11pin,
-
 			UseGCMIVFromHSM: true,
 		}
 		if p, err = providers.NewP11(kekKeyId, keyName, config, createKey); err != nil {
@@ -180,7 +179,6 @@ func grpcServe(gl net.Listener) (err error) {
 			TokenLabel: p11label,
 			SlotNumber: &p11slot,
 			Pin:        p11pin,
-
 			UseGCMIVFromHSM: true,
 		}
 		if p, err = providers.NewP11(kekKeyId, keyName, config, createKey); err != nil {

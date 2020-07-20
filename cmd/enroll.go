@@ -21,37 +21,43 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/thales-e-security/estclient"
+	"os"
 )
 
-// initCmd represents the init command
-var initCmd = &cobra.Command{
+var trustUnknownCA bool
+
+// enrollCmd represents the init command
+var enrollCmd = &cobra.Command{
 	Use:   "enroll",
 	Short: "Enroll to a k8s-kms-plugin endpoint",
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		fmt.Println("enrolling")
-
-		c := estclient.NewEstClient(host)
-
-		ad := estclient.AuthData{
-			ID:         nil,
-			Secret:     nil,
-			Key:        nil,
-			ClientCert: nil,
+		opts := estclient.ClientOptions{
+			InsecureSkipVerify: trustUnknownCA,
+			TLSTrustAnchor:     nil,
 		}
 
+		c := estclient.NewEstClientWithOptions(host, opts)
+
+		ad := estclient.AuthData{
+
+		}
+		if clientID := os.Getenv("CLIENT_ID"); clientID != "" {
+			ad.ID = &clientID
+		}
+		if clientSecret := os.Getenv("CLIENT_SECRET"); clientSecret != "" {
+			ad.ID = &clientSecret
+		}
+		fqdn, err := os.Hostname()
 		req := &x509.CertificateRequest{
-
-			PublicKey: nil,
 			Subject: pkix.Name{
-
+				CommonName: fqdn,
 			},
 			Attributes:      nil,
 			Extensions:      nil,
 			ExtraExtensions: nil,
-			DNSNames:        nil,
-			EmailAddresses:  nil,
+			DNSNames:        []string{fqdn, "localhost"},
 			IPAddresses:     nil,
-			URIs:            nil,
 		}
 		var clientCert *x509.Certificate
 		if clientCert, err = c.SimpleEnroll(ad, req); err != nil {
@@ -63,15 +69,16 @@ var initCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(initCmd)
+	rootCmd.AddCommand(enrollCmd)
 
 	// Here you will define your flags and configuration settings.
+	enrollCmd.Flags().BoolVarP(&trustUnknownCA, "trust-unknown-ca", "k", false, "Trust the EST CA's root CA... needed unless you have added this to your OS TrustStore")
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// initCmd.PersistentFlags().String("foo", "", "A help for foo")
+	// enrollCmd.PersistentFlags().String("foo", "", "A help for foo")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// initCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// enrollCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

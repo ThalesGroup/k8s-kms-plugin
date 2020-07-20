@@ -4,6 +4,7 @@ package restapi
 
 import (
 	"crypto/tls"
+	"fmt"
 	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/ca"
 	"github.com/thalescpl-io/k8s-kms-plugin/pkg/utils"
 	"io"
@@ -98,22 +99,21 @@ func configureServer(s *http.Server, scheme, addr string) {
 // The middleware configuration is for the handler executors. These do not apply to the swagger.json document.
 // The middleware executes after routing but before authentication, binding and validation
 func setupMiddlewares(handler http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// do some middleware logic here
-
-		switch r.URL.Path {
-		case "/health":
-			w.WriteHeader(200)
-
-		}
-		handler.ServeHTTP(w, r)
-	})
+	return handler
 }
 
 // The middleware configuration happens before anything, this middleware also applies to serving the swagger.json document.
 // So this is a good place to plug in a panic handling middleware, logging and metrics
 func setupGlobalMiddleware(handler http.Handler) http.Handler {
-	return handler
+	return health(handler)
+}
+func health(handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// do some middleware logic here
+		fmt.Println("GOT A HANDLER")
+		w.WriteHeader(200)
+		handler.ServeHTTP(w, r)
+	})
 }
 
 func (s *Server) AddConfig(caa, key, cert string) (err error) {

@@ -15,7 +15,21 @@ ENV CGO_ENABLED 1
 ENV GOFLAGS -mod=vendor
 RUN go build -o k8s-kms-plugin main.go
 
-FROM centos:7
+
+### Client
+
+FROM ubuntu:18.04 as client
+WORKDIR /
+COPY --from=build /app/k8s-kms-plugin /k8s-kms-plugin
+ENTRYPOINT ["/k8s-kms-plugin"]
+
+
+### Server
+
+#FROM ubuntu:18.04 as server
+#RUN apt-get update ; apt-get install softhsm wget net-tools -y && \
+#    softhsm2-util --init-token --slot 0 --label default --so-pin changeme --pin changeme
+FROM centos:7 as server
 RUN yum install -y git softhsm glibc.i686 wget net-tools && \
     softhsm2-util --init-token --slot 0 --label default --so-pin changeme --pin changeme && \
     yum clean all
