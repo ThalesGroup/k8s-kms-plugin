@@ -21,47 +21,50 @@
  * // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package cmd
+package consumers
 
 import (
-	"fmt"
-	"github.com/spf13/cobra"
-	"github.com/thalescpl-io/k8s-kms-plugin/apis/kms/v1"
+	b64 "encoding/base64"
+	"github.com/fullsailor/pkcs7"
+	"github.com/go-openapi/runtime"
+	"io"
+	"io/ioutil"
 )
 
-// versionCmd represents the version command
-var versionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "Print the Version of the KMS",
+//PKCS10Consumer reads the response into a DER formatted output
+func PKCS10Consumer() runtime.ConsumerFunc {
 
-	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx, _, c, err := kms.GetClient(host, grpcPort)
-		if err != nil {
-			return err
-		}
-		var resp *kms.VersionResponse
-		resp, err = c.Version(ctx, &kms.VersionRequest{})
-		if err != nil {
-			return err
-		}
+	return func(reader io.Reader, i interface{}) (err error) {
 
-		fmt.Println(resp.Version)
-		fmt.Println(resp.RuntimeName)
-		fmt.Println(resp.RuntimeVersion)
-		return err
-	},
+		var src, data []byte
+		if src, err = ioutil.ReadAll(reader); err != nil {
+			return
+		}
+		_, err = b64.StdEncoding.Decode(data, src)
+		i = data
+		return
+	}
 }
 
-func init() {
-	rootCmd.AddCommand(versionCmd)
+//PKCS7Consumer puts the product into a PKCS7 Object decode
+func PKCS7Consumer() runtime.ConsumerFunc {
+	return func(reader io.Reader, i interface{}) (err error) {
 
-	// Here you will define your flags and configuration settings.
+		//Convert "i" from base64 to pkcs7 object to then
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// versionCmd.PersistentFlags().String("foo", "", "A help for foo")
+		var src,dst []byte
+		if src, err = ioutil.ReadAll(reader); err != nil {
+			return
+		}
+		_, err = b64.StdEncoding.Decode(dst,src)
+		if err != nil {
+			panic(err)
+		}
 
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// versionCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+		i, err = pkcs7.Parse(dst)
+		if err != nil {
+			panic(err)
+		}
+		return
+	}
 }

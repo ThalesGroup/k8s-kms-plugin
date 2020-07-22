@@ -1,72 +1,69 @@
 /*
-Copyright © 2020 NAME HERE <EMAIL ADDRESS>
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
+ * // Copyright 2020 Thales DIS CPL Inc
+ * //
+ * // Permission is hereby granted, free of charge, to any person obtaining
+ * // a copy of this software and associated documentation files (the
+ * // "Software"), to deal in the Software without restriction, including
+ * // without limitation the rights to use, copy, modify, merge, publish,
+ * // distribute, sublicense, and/or sell copies of the Software, and to
+ * // permit persons to whom the Software is furnished to do so, subject to
+ * // the following conditions:
+ * //
+ * // The above copyright notice and this permission notice shall be
+ * // included in all copies or substantial portions of the Software.
+ * //
+ * // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * // EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * // MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * // NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ * // LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 package cmd
 
 import (
-	"crypto/x509"
-	"crypto/x509/pkix"
+	"flag"
+	"github.com/go-openapi/runtime"
+	client2 "github.com/go-openapi/runtime/client"
+	//"crypto/x509/pkix"
 	"fmt"
+	"github.com/go-openapi/strfmt"
+	"github.com/golang/glog"
 	"github.com/spf13/cobra"
-	"github.com/thales-e-security/estclient"
-	"os"
+	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/client"
+	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/client/operation"
 )
 
-var trustUnknownCA bool
+var trustUnknownCA, retry bool
 
 // enrollCmd represents the init command
 var enrollCmd = &cobra.Command{
 	Use:   "enroll",
 	Short: "Enroll to a k8s-kms-plugin endpoint",
-	RunE: func(cmd *cobra.Command, args []string) (err error) {
+	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("enrolling")
-		opts := estclient.ClientOptions{
+		flag.Parse()
+
+		tc, err := client2.TLSClient(client2.TLSClientOptions{
 			InsecureSkipVerify: trustUnknownCA,
-			TLSTrustAnchor:     nil,
-		}
+		})
+		ts := client2.NewWithClient(host, "/.well-known/est", []string{"https"}, tc)
+		ts.Consumers["application/pkcs7-mime"] = runtime.TextConsumer()
+		ts.Producers["application/pkcs10"] = runtime.TextProducer()
+		c := client.New(ts, strfmt.Default)
 
-		c := estclient.NewEstClientWithOptions(host, opts)
+		p := operation.NewGetCACertsParams()
 
-		ad := estclient.AuthData{
-
-		}
-		if clientID := os.Getenv("CLIENT_ID"); clientID != "" {
-			ad.ID = &clientID
-		}
-		if clientSecret := os.Getenv("CLIENT_SECRET"); clientSecret != "" {
-			ad.ID = &clientSecret
-		}
-		var fqdn string
-		if fqdn, err = os.Hostname(); err != nil {
+		var resp *operation.GetCACertsOK
+		if resp, err = c.Operation.GetCACerts(p); err != nil {
+			glog.Error(err)
 			return
 		}
-		req := &x509.CertificateRequest{
-			Subject: pkix.Name{
-				CommonName: fqdn,
-			},
-			Attributes:      nil,
-			Extensions:      nil,
-			ExtraExtensions: nil,
-			DNSNames:        []string{fqdn, "localhost"},
-			IPAddresses:     nil,
-		}
-		var clientCert *x509.Certificate
-		if clientCert, err = c.SimpleEnroll(ad, req); err != nil {
-			return
-		}
-		fmt.Printf("Issuer: %v\n", clientCert.Issuer)
+
+		fmt.Println(resp.Payload)
+		fmt.Println(resp.ContentTransferEncoding)
+		fmt.Println(resp.ContentType)
 		return
 	},
 }
@@ -76,6 +73,8 @@ func init() {
 
 	// Here you will define your flags and configuration settings.
 	enrollCmd.Flags().BoolVarP(&trustUnknownCA, "trust-unknown-ca", "k", false, "Trust the EST CA's root CA... needed unless you have added this to your OS TrustStore")
+
+	enrollCmd.Flags().BoolVarP(&retry, "retry", "r", false, "Keep retrying till we succeed or timeout")
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:

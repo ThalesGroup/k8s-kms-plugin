@@ -22,6 +22,7 @@ gen-grpc:
 		@rm -rf generated/
 gen-openapi:
 		@swagger generate server --quiet --flag-strategy=pflag --exclude-main -m pkg/est/models -s pkg/est/restapi -f apis/kms/v1/est.yaml
+		@swagger generate client --quiet --existing-models=pkg/est/models -c pkg/est/client -f apis/kms/v1/est.yaml
 build:
 		@go build -o k8s-kms-plugin main.go
 

@@ -4,9 +4,11 @@ package restapi
 
 import (
 	"crypto/tls"
+	"fmt"
 	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/ca"
+	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/restapi/consumers"
+	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/restapi/producers"
 	"github.com/thalescpl-io/k8s-kms-plugin/pkg/utils"
-	"io"
 	"net/http"
 
 	"github.com/go-openapi/errors"
@@ -37,13 +39,10 @@ func configureAPI(api *operations.EstServerAPI) http.Handler {
 	// Example:
 	// api.Logger = log.Printf
 
-	api.ApplicationPkcs10Consumer = runtime.ConsumerFunc(func(r io.Reader, target interface{}) error {
-		return errors.NotImplemented("applicationPkcs10 consumer has not yet been implemented")
-	})
+	api.ApplicationPkcs10Consumer = consumers.PKCS10Consumer()
 
-	api.ApplicationPkcs7MimeProducer = runtime.ProducerFunc(func(w io.Writer, data interface{}) error {
-		return errors.NotImplemented("applicationPkcs7Mime producer has not yet been implemented")
-	})
+	api.ApplicationPkcs7MimeProducer = producers.PKCS7Producer()
+
 	api.TxtProducer = runtime.TextProducer()
 
 	// Applies when the Authorization header is set with the Basic scheme
@@ -61,6 +60,7 @@ func configureAPI(api *operations.EstServerAPI) http.Handler {
 	if api.OperationGetCACertsHandler == nil {
 		api.OperationGetCACertsHandler = operation.GetCACertsHandlerFunc(func(params operation.GetCACertsParams) middleware.Responder {
 			//return middleware.NotImplemented("operation operation.GetCACerts has not yet been implemented")
+			fmt.Println("got op")
 			return estCA.GetCACerts(params)
 		})
 	}
@@ -84,7 +84,7 @@ func configureAPI(api *operations.EstServerAPI) http.Handler {
 
 // The TLS configuration before HTTPS server starts.
 func configureTLS(tlsConfig *tls.Config) {
-
+	tlsConfig.ClientAuth = tls.VerifyClientCertIfGiven
 }
 
 // As soon as server is initialized but not run yet, this function will be called.

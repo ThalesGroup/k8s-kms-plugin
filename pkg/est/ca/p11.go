@@ -55,6 +55,13 @@ type P11 struct {
 	ClientTLS *tls.Config
 }
 
+const (
+	errorBase64       = "Invalid base64 in request."
+	errorBadCertReq   = "Failed to read certificate request. Expected DER-encoded PKCS#10 data."
+	errorCertIssuance = "An error occured when requesting the certificate."
+	errorEncodingCert = "An error occured when encoding the certificate."
+)
+
 func NewP11EST(ca, key, cert string, config *crypto11.Config) (e *P11, err error) {
 
 	e = &P11{
@@ -197,7 +204,10 @@ func (p *P11) BootstrapCA() (err error) {
 }
 
 func (p *P11) GetCACerts(params operation.GetCACertsParams) middleware.Responder {
-	panic("implement me")
+
+	resp := operation.NewGetCACertsOK()
+	resp.Payload = ""
+	return resp
 }
 
 func (p *P11) LoadCA() (err error) {

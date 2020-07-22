@@ -1,5 +1,5 @@
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 
 metadata:
   name: k8s-kms-plugin-server
@@ -7,7 +7,7 @@ metadata:
   labels:
     app.kubernetes.io/name: k8s-kms-plugin-server
 spec:
-  serviceName: k8s-kms-plugin-server
+#  serviceName: k8s-kms-plugin-server
   selector:
     matchLabels:
       app.kubernetes.io/name: k8s-kms-plugin-server
@@ -67,8 +67,6 @@ spec:
           readinessProbe:
             tcpSocket:
               port: 31400
-
-
 ---
 kind: Service
 apiVersion: v1
