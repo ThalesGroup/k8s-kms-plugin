@@ -53,6 +53,7 @@ spec:
               value: changeme
           args:
             - serve
+            - -a
           ports:
             - containerPort: 31400
               protocol: TCP

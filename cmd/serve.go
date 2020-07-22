@@ -56,6 +56,7 @@ var (
 	p11label      string
 	p11pin        string
 	createKey     bool
+	allowAny      bool
 )
 
 // serveCmd represents the serve command
@@ -74,7 +75,7 @@ var serveCmd = &cobra.Command{
 		estServer.TLSCACertificate = caTLSCert
 		estServer.TLSCertificateKey = serverTLSKey
 		estServer.TLSCertificate = serverTLSCert
-		if err = estServer.AddConfig(caTLSCert, serverTLSKey, serverTLSCert); err != nil {
+		if err = estServer.AddConfig(caTLSCert, serverTLSKey, serverTLSCert, allowAny); err != nil {
 			return
 		}
 		api = operations.NewEstServerAPI(swaggerSpec)
@@ -133,6 +134,8 @@ func init() {
 	serveCmd.Flags().StringVar(&p11pin, "p11-pin", "", "P11 Pin")
 	serveCmd.Flags().StringVar(&keyName, "p11-key-label", "k8s-kek", "Key Label to use for encrypt/decrypt")
 	serveCmd.Flags().BoolVar(&createKey, "auto-create", true, "Auto create the keys if neededsd")
+
+	serveCmd.Flags().BoolVarP(&allowAny, "allow-any","a", false, "Allow all enrollment... no auth (dev only)")
 	swaggerSpec, err := loads.Embedded(restapi.SwaggerJSON, restapi.FlatSwaggerJSON)
 	if err != nil {
 		panic(err)
@@ -142,7 +145,6 @@ func init() {
 }
 
 func estServe() (err error) {
-
 
 	parser := flags.NewParser(estServer, flags.Default)
 	parser.ShortDescription = "EST CA µService"
@@ -168,8 +170,7 @@ func estServe() (err error) {
 	estServer.ConfigureAPI()
 	fmt.Println("Server started")
 
-
-	return estServer.Serve();
+	return estServer.Serve()
 }
 
 func grpcServe(gl net.Listener) (err error) {

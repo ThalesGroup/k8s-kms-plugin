@@ -28,6 +28,7 @@ func configureFlags(api *operations.EstServerAPI) {
 }
 
 var estCA *ca.P11
+var allow_any bool
 
 func configureAPI(api *operations.EstServerAPI) http.Handler {
 	// configure the api here
@@ -46,9 +47,18 @@ func configureAPI(api *operations.EstServerAPI) http.Handler {
 
 	// Applies when the Authorization header is set with the Basic scheme
 	if api.BasicAuthAuth == nil {
-		api.BasicAuthAuth = func(user string, pass string) (interface{}, error) {
-			return nil, errors.NotImplemented("basic auth  (basicAuth) has not yet been implemented")
+		if allow_any {
+			// Allow all in
+			api.BasicAuthAuth = func(s string, s2 string) (interface{}, error) {
+				return "K8S Client", nil
+			}
+
+		} else {
+			api.BasicAuthAuth = func(user string, pass string) (interface{}, error) {
+				return nil, errors.NotImplemented("basic auth  (basicAuth) has not yet been implemented")
+			}
 		}
+
 	}
 
 	// Set your custom authorizer if needed. Default one is security.Authorized()
@@ -106,8 +116,9 @@ func setupGlobalMiddleware(handler http.Handler) http.Handler {
 	return handler
 }
 
-func (s *Server) AddConfig(caa, key, cert string) (err error) {
+func (s *Server) AddConfig(caa, key, cert string, allow_any bool) (err error) {
 	config := utils.GetCrypto11Config()
+	allow_any = allow_any
 	if estCA, err = ca.NewP11EST(caa, key, cert, config); err != nil {
 		return
 	}
