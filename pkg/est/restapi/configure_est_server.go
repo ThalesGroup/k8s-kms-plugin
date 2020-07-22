@@ -5,8 +5,8 @@ package restapi
 import (
 	"crypto/tls"
 	"fmt"
+	"github.com/golang/glog"
 	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/ca"
-	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/restapi/consumers"
 	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/restapi/producers"
 	"github.com/thalescpl-io/k8s-kms-plugin/pkg/utils"
 	"net/http"
@@ -39,10 +39,9 @@ func configureAPI(api *operations.EstServerAPI) http.Handler {
 	// Example:
 	// api.Logger = log.Printf
 
-	api.ApplicationPkcs10Consumer = consumers.PKCS10Consumer()
-
 	api.ApplicationPkcs7MimeProducer = producers.PKCS7Producer()
-
+	api.Logger = glog.Infof
+	glog.Info("Loaded Logger")
 	api.TxtProducer = runtime.TextProducer()
 
 	// Applies when the Authorization header is set with the Basic scheme

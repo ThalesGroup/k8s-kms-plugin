@@ -26,6 +26,8 @@ import (
 	"flag"
 	"github.com/go-openapi/runtime"
 	client2 "github.com/go-openapi/runtime/client"
+	"time"
+
 	//"crypto/x509/pkix"
 	"fmt"
 	"github.com/go-openapi/strfmt"
@@ -56,9 +58,21 @@ var enrollCmd = &cobra.Command{
 		p := operation.NewGetCACertsParams()
 
 		var resp *operation.GetCACertsOK
-		if resp, err = c.Operation.GetCACerts(p); err != nil {
-			glog.Error(err)
-			return
+
+		if retry {
+			for {
+				if resp, err = c.Operation.GetCACerts(p); err != nil {
+					glog.Error(err)
+					time.Sleep(5 * time.Second)
+					continue
+				}
+				break
+			}
+		} else {
+			if resp, err = c.Operation.GetCACerts(p); err != nil {
+				glog.Error(err)
+				return
+			}
 		}
 
 		fmt.Println(resp.Payload)
