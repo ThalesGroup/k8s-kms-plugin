@@ -1,5 +1,5 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 
 metadata:
   name: k8s-kms-plugin-server
@@ -7,7 +7,7 @@ metadata:
   labels:
     app.kubernetes.io/name: k8s-kms-plugin-server
 spec:
-#  serviceName: k8s-kms-plugin-server
+  serviceName: k8s-kms-plugin-server
   selector:
     matchLabels:
       app.kubernetes.io/name: k8s-kms-plugin-server
@@ -52,10 +52,14 @@ spec:
             - containerPort: 443
               protocol: TCP
               name: est
+          volumeMounts:
+            - mountPath: /certs/
+              name: certstore
           args:
             - --tls-ca=/certs/ca.crt
             - --tls-certificate=/certs/tls.crt
             - --tls-key=/certs/tls.key
+            - --est-cert=/certs/ca.crt
             - --tls-port=443
             - --tls-host=0.0.0.0
           readinessProbe:

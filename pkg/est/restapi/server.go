@@ -22,7 +22,7 @@ import (
 
 	"github.com/go-openapi/runtime/flagext"
 	"github.com/go-openapi/swag"
-	flag "github.com/spf13/pflag"
+	flags "github.com/jessevdk/go-flags"
 	"golang.org/x/net/netutil"
 
 	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/restapi/operations"
@@ -42,114 +42,10 @@ func init() {
 	}
 }
 
-var (
-	enabledListeners []string
-	cleanupTimeout   time.Duration
-	gracefulTimeout  time.Duration
-	maxHeaderSize    flagext.ByteSize
-
-	socketPath string
-
-	host         string
-	port         int
-	listenLimit  int
-	keepAlive    time.Duration
-	readTimeout  time.Duration
-	writeTimeout time.Duration
-
-	tlsHost           string
-	tlsPort           int
-	tlsListenLimit    int
-	tlsKeepAlive      time.Duration
-	tlsReadTimeout    time.Duration
-	tlsWriteTimeout   time.Duration
-	tlsCertificate    string
-	tlsCertificateKey string
-	tlsCACertificate  string
-)
-
-func init() {
-	maxHeaderSize = flagext.ByteSize(1000000)
-
-	flag.StringSliceVar(&enabledListeners, "scheme", defaultSchemes, "the listeners to enable, this can be repeated and defaults to the schemes in the swagger spec")
-
-	flag.DurationVar(&cleanupTimeout, "cleanup-timeout", 10*time.Second, "grace period for which to wait before killing idle connections")
-	flag.DurationVar(&gracefulTimeout, "graceful-timeout", 15*time.Second, "grace period for which to wait before shutting down the server")
-	flag.Var(&maxHeaderSize, "max-header-size", "controls the maximum number of bytes the server will read parsing the request header's keys and values, including the request line. It does not limit the size of the request body")
-
-	flag.StringVar(&socketPath, "socket-path", "/var/run/todo-list.sock", "the unix socket to listen on")
-
-	flag.StringVar(&host, "host", "localhost", "the IP to listen on")
-	flag.IntVar(&port, "port", 0, "the port to listen on for insecure connections, defaults to a random value")
-	flag.IntVar(&listenLimit, "listen-limit", 0, "limit the number of outstanding requests")
-	flag.DurationVar(&keepAlive, "keep-alive", 3*time.Minute, "sets the TCP keep-alive timeouts on accepted connections. It prunes dead TCP connections ( e.g. closing laptop mid-download)")
-	flag.DurationVar(&readTimeout, "read-timeout", 30*time.Second, "maximum duration before timing out read of the request")
-	flag.DurationVar(&writeTimeout, "write-timeout", 30*time.Second, "maximum duration before timing out write of the response")
-
-	flag.StringVar(&tlsHost, "tls-host", "localhost", "the IP to listen on")
-	flag.IntVar(&tlsPort, "tls-port", 0, "the port to listen on for secure connections, defaults to a random value")
-	flag.StringVar(&tlsCertificate, "tls-certificate", "", "the certificate file to use for secure connections")
-	flag.StringVar(&tlsCertificateKey, "tls-key", "", "the private key file to use for secure connections (without passphrase)")
-	flag.StringVar(&tlsCACertificate, "tls-ca", "", "the certificate authority certificate file to be used with mutual tls auth")
-	flag.IntVar(&tlsListenLimit, "tls-listen-limit", 0, "limit the number of outstanding requests")
-	flag.DurationVar(&tlsKeepAlive, "tls-keep-alive", 3*time.Minute, "sets the TCP keep-alive timeouts on accepted connections. It prunes dead TCP connections ( e.g. closing laptop mid-download)")
-	flag.DurationVar(&tlsReadTimeout, "tls-read-timeout", 30*time.Second, "maximum duration before timing out read of the request")
-	flag.DurationVar(&tlsWriteTimeout, "tls-write-timeout", 30*time.Second, "maximum duration before timing out write of the response")
-}
-
-func stringEnvOverride(orig string, def string, keys ...string) string {
-	for _, k := range keys {
-		if os.Getenv(k) != "" {
-			return os.Getenv(k)
-		}
-	}
-	if def != "" && orig == "" {
-		return def
-	}
-	return orig
-}
-
-func intEnvOverride(orig int, def int, keys ...string) int {
-	for _, k := range keys {
-		if os.Getenv(k) != "" {
-			v, err := strconv.Atoi(os.Getenv(k))
-			if err != nil {
-				fmt.Fprintln(os.Stderr, k, "is not a valid number")
-				os.Exit(1)
-			}
-			return v
-		}
-	}
-	if def != 0 && orig == 0 {
-		return def
-	}
-	return orig
-}
-
 // NewServer creates a new api est server server but does not configure it
 func NewServer(api *operations.EstServerAPI) *Server {
 	s := new(Server)
 
-	s.EnabledListeners = enabledListeners
-	s.CleanupTimeout = cleanupTimeout
-	s.GracefulTimeout = gracefulTimeout
-	s.MaxHeaderSize = maxHeaderSize
-	s.SocketPath = socketPath
-	s.Host = stringEnvOverride(host, "", "HOST")
-	s.Port = intEnvOverride(port, 0, "PORT")
-	s.ListenLimit = listenLimit
-	s.KeepAlive = keepAlive
-	s.ReadTimeout = readTimeout
-	s.WriteTimeout = writeTimeout
-	s.TLSHost = stringEnvOverride(tlsHost, s.Host, "TLS_HOST", "HOST")
-	s.TLSPort = intEnvOverride(tlsPort, 0, "TLS_PORT")
-	s.TLSCertificate = stringEnvOverride(tlsCertificate, "", "TLS_CERTIFICATE")
-	s.TLSCertificateKey = stringEnvOverride(tlsCertificateKey, "", "TLS_PRIVATE_KEY")
-	s.TLSCACertificate = stringEnvOverride(tlsCACertificate, "", "TLS_CA_CERTIFICATE")
-	s.TLSListenLimit = tlsListenLimit
-	s.TLSKeepAlive = tlsKeepAlive
-	s.TLSReadTimeout = tlsReadTimeout
-	s.TLSWriteTimeout = tlsWriteTimeout
 	s.shutdown = make(chan struct{})
 	s.api = api
 	s.interrupt = make(chan os.Signal, 1)
@@ -172,31 +68,31 @@ func (s *Server) ConfigureFlags() {
 
 // Server for the est server API
 type Server struct {
-	EnabledListeners []string
-	CleanupTimeout   time.Duration
-	GracefulTimeout  time.Duration
-	MaxHeaderSize    flagext.ByteSize
+	EnabledListeners []string         `long:"scheme" description:"the listeners to enable, this can be repeated and defaults to the schemes in the swagger spec"`
+	CleanupTimeout   time.Duration    `long:"cleanup-timeout" description:"grace period for which to wait before killing idle connections" default:"10s"`
+	GracefulTimeout  time.Duration    `long:"graceful-timeout" description:"grace period for which to wait before shutting down the server" default:"15s"`
+	MaxHeaderSize    flagext.ByteSize `long:"max-header-size" description:"controls the maximum number of bytes the server will read parsing the request header's keys and values, including the request line. It does not limit the size of the request body." default:"1MiB"`
 
-	SocketPath    string
+	SocketPath    flags.Filename `long:"socket-path" description:"the unix socket to listen on" default:"/var/run/est-server.sock"`
 	domainSocketL net.Listener
 
-	Host         string
-	Port         int
-	ListenLimit  int
-	KeepAlive    time.Duration
-	ReadTimeout  time.Duration
-	WriteTimeout time.Duration
+	Host         string        `long:"host" description:"the IP to listen on" default:"localhost" env:"HOST"`
+	Port         int           `long:"port" description:"the port to listen on for insecure connections, defaults to a random value" env:"PORT"`
+	ListenLimit  int           `long:"listen-limit" description:"limit the number of outstanding requests"`
+	KeepAlive    time.Duration `long:"keep-alive" description:"sets the TCP keep-alive timeouts on accepted connections. It prunes dead TCP connections ( e.g. closing laptop mid-download)" default:"3m"`
+	ReadTimeout  time.Duration `long:"read-timeout" description:"maximum duration before timing out read of the request" default:"30s"`
+	WriteTimeout time.Duration `long:"write-timeout" description:"maximum duration before timing out write of the response" default:"60s"`
 	httpServerL  net.Listener
 
-	TLSHost           string
-	TLSPort           int
-	TLSCertificate    string
-	TLSCertificateKey string
-	TLSCACertificate  string
-	TLSListenLimit    int
-	TLSKeepAlive      time.Duration
-	TLSReadTimeout    time.Duration
-	TLSWriteTimeout   time.Duration
+	TLSHost           string         `long:"tls-host" description:"the IP to listen on for tls, when not specified it's the same as --host" env:"TLS_HOST"`
+	TLSPort           int            `long:"tls-port" description:"the port to listen on for secure connections, defaults to a random value" env:"TLS_PORT"`
+	TLSCertificate    flags.Filename `long:"tls-certificate" description:"the certificate to use for secure connections" env:"TLS_CERTIFICATE"`
+	TLSCertificateKey flags.Filename `long:"tls-key" description:"the private key to use for secure connections" env:"TLS_PRIVATE_KEY"`
+	TLSCACertificate  flags.Filename `long:"tls-ca" description:"the certificate authority file to be used with mutual tls auth" env:"TLS_CA_CERTIFICATE"`
+	TLSListenLimit    int            `long:"tls-listen-limit" description:"limit the number of outstanding requests"`
+	TLSKeepAlive      time.Duration  `long:"tls-keep-alive" description:"sets the TCP keep-alive timeouts on accepted connections. It prunes dead TCP connections ( e.g. closing laptop mid-download)"`
+	TLSReadTimeout    time.Duration  `long:"tls-read-timeout" description:"maximum duration before timing out read of the request"`
+	TLSWriteTimeout   time.Duration  `long:"tls-write-timeout" description:"maximum duration before timing out write of the response"`
 	httpsServerL      net.Listener
 
 	api          *operations.EstServerAPI
@@ -370,7 +266,7 @@ func (s *Server) Serve() (err error) {
 		// build standard config from server options
 		if s.TLSCertificate != "" && s.TLSCertificateKey != "" {
 			httpsServer.TLSConfig.Certificates = make([]tls.Certificate, 1)
-			httpsServer.TLSConfig.Certificates[0], err = tls.LoadX509KeyPair(s.TLSCertificate, s.TLSCertificateKey)
+			httpsServer.TLSConfig.Certificates[0], err = tls.LoadX509KeyPair(string(s.TLSCertificate), string(s.TLSCertificateKey))
 			if err != nil {
 				return err
 			}
@@ -378,7 +274,7 @@ func (s *Server) Serve() (err error) {
 
 		if s.TLSCACertificate != "" {
 			// include specified CA certificate
-			caCert, caCertErr := ioutil.ReadFile(s.TLSCACertificate)
+			caCert, caCertErr := ioutil.ReadFile(string(s.TLSCACertificate))
 			if caCertErr != nil {
 				return caCertErr
 			}

@@ -3,12 +3,11 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 
 	"github.com/go-openapi/loads"
-	flag "github.com/spf13/pflag"
+	flags "github.com/jessevdk/go-flags"
 	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/restapi"
 	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/restapi/operations"
 )
@@ -23,29 +22,33 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	var server *restapi.Server // make sure init is called
-
-	flag.Usage = func() {
-		fmt.Fprint(os.Stderr, "Usage:\n")
-		fmt.Fprint(os.Stderr, "  est-server-server [OPTIONS]\n\n")
-
-		title := "est server"
-		fmt.Fprint(os.Stderr, title+"\n\n")
-		desc := "RFC 7030 (EST) server implementation"
-		if desc != "" {
-			fmt.Fprintf(os.Stderr, desc+"\n\n")
-		}
-		fmt.Fprintln(os.Stderr, flag.CommandLine.FlagUsages())
-	}
-	// parse the CLI flags
-	flag.Parse()
-
 	api := operations.NewEstServerAPI(swaggerSpec)
-	// get server with flag values filled out
-	server = restapi.NewServer(api)
+	server := restapi.NewServer(api)
 	defer server.Shutdown()
 
+	parser := flags.NewParser(server, flags.Default)
+	parser.ShortDescription = "est server"
+	parser.LongDescription = "RFC 7030 (EST) server implementation"
+	server.ConfigureFlags()
+	for _, optsGroup := range api.CommandLineOptionsGroups {
+		_, err := parser.AddGroup(optsGroup.ShortDescription, optsGroup.LongDescription, optsGroup.Options)
+		if err != nil {
+			log.Fatalln(err)
+		}
+	}
+
+	if _, err := parser.Parse(); err != nil {
+		code := 1
+		if fe, ok := err.(*flags.Error); ok {
+			if fe.Type == flags.ErrHelp {
+				code = 0
+			}
+		}
+		os.Exit(code)
+	}
+
 	server.ConfigureAPI()
+
 	if err := server.Serve(); err != nil {
 		log.Fatalln(err)
 	}

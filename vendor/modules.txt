@@ -107,6 +107,9 @@ github.com/inconshreveable/mousetrap
 # github.com/infobloxopen/atlas-app-toolkit v0.22.0
 ## explicit
 github.com/infobloxopen/atlas-app-toolkit/rpc/resource
+# github.com/jessevdk/go-flags v1.4.0
+## explicit
+github.com/jessevdk/go-flags
 # github.com/konsorten/go-windows-terminal-sequences v1.0.3
 github.com/konsorten/go-windows-terminal-sequences
 # github.com/magiconair/properties v1.8.1

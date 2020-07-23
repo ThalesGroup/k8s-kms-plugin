@@ -22,8 +22,10 @@ import (
 //go:generate swagger generate server --target ../../../../k8s-kms-plugin --name EstServer --spec ../../../apis/kms/v1/est.yaml --model-package pkg/est/models --server-package pkg/est/restapi --exclude-main
 
 var extraFlags struct {
-	AllowAnyDevice bool `long:"allow-any" description:"Allow any device (accepts all ids/secrets)"`
-
+	AllowAnyDevice bool   `long:"allow-any" description:"Allow any device (accepts all ids/secrets)"`
+	AuthFile       string `long:"auth-file" description:"CSV file containing device ids and credentials" required:"false"`
+	EstCaCertFile  string `long:"est-cert" description:"EST CA certificate file (PEM format)" required:"false"`
+	//EstCaKeyFile     string `long:"est-key" description:"EST CA signing key (PEM format, RSA only)" required:"false"`
 }
 
 // configureFlags adds custom flags to the server.
@@ -34,6 +36,7 @@ func configureFlags(api *operations.EstServerAPI) {
 			Options:          &extraFlags,
 		},
 	}
+
 }
 
 var estCA *ca.P11
