@@ -6,14 +6,14 @@ ADD tools.go /app/pkg/tools.go
 ADD vendor /app/vendor
 ADD pkg /app/pkg
 ADD apis /app/apis
-ADD cmds/ /app/cmds/
+ADD cmd/ /app/cmd/
 
 ENV GOOS linux
 ENV GOARCH amd64
 ENV CGO_ENABLED 1
 ENV GOFLAGS -mod=vendor
-RUN go build -o k8s-kms-plugin ./cmds/k8s-kms-plugin
-RUN go build -o est-server ./cmds/est-server
+RUN go build -o k8s-kms-plugin ./cmd/k8s-kms-plugin
+RUN go build -o est-server ./cmd/est-server
 
 
 ### Client
