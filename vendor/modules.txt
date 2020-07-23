@@ -16,6 +16,7 @@ github.com/docker/go-units
 # github.com/fsnotify/fsnotify v1.4.7
 github.com/fsnotify/fsnotify
 # github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
+## explicit
 github.com/fullsailor/pkcs7
 # github.com/ghodss/yaml v1.0.0
 github.com/ghodss/yaml
@@ -59,7 +60,6 @@ github.com/go-stack/stack
 # github.com/gogo/protobuf v1.3.1
 github.com/gogo/protobuf/proto
 # github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
-## explicit
 github.com/golang/glog
 # github.com/golang/protobuf v1.4.1
 ## explicit
@@ -107,9 +107,6 @@ github.com/inconshreveable/mousetrap
 # github.com/infobloxopen/atlas-app-toolkit v0.22.0
 ## explicit
 github.com/infobloxopen/atlas-app-toolkit/rpc/resource
-# github.com/jessevdk/go-flags v1.4.0
-## explicit
-github.com/jessevdk/go-flags
 # github.com/konsorten/go-windows-terminal-sequences v1.0.3
 github.com/konsorten/go-windows-terminal-sequences
 # github.com/magiconair/properties v1.8.1
@@ -132,6 +129,7 @@ github.com/mitchellh/protoc-gen-go-json/gen
 # github.com/pelletier/go-toml v1.4.0
 github.com/pelletier/go-toml
 # github.com/pkg/errors v0.9.1
+## explicit
 github.com/pkg/errors
 # github.com/sirupsen/logrus v1.6.0
 ## explicit
@@ -154,11 +152,6 @@ github.com/spf13/pflag
 github.com/spf13/viper
 # github.com/subosito/gotenv v1.2.0
 github.com/subosito/gotenv
-# github.com/thales-e-security/estclient v1.0.2
-## explicit
-github.com/thales-e-security/estclient
-github.com/thales-e-security/estclient/apiclient
-github.com/thales-e-security/estclient/apiclient/operation
 # github.com/thales-e-security/pool v0.0.1
 github.com/thales-e-security/pool
 # go.mongodb.org/mongo-driver v1.3.4

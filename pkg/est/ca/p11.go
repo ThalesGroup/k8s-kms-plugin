@@ -34,7 +34,7 @@ import (
 	"fmt"
 	"github.com/ThalesIgnite/crypto11"
 	"github.com/go-openapi/runtime/middleware"
-	"github.com/golang/glog"
+	"github.com/sirupsen/logrus"
 	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/restapi/operations/operation"
 	"io"
 	"io/ioutil"
@@ -205,7 +205,7 @@ func (p *P11) BootstrapCA() (err error) {
 }
 
 func (p *P11) GetCACerts(params operation.GetCACertsParams) middleware.Responder {
-	glog.Infof("Request: %v", params.HTTPRequest.URL)
+	logrus.Infof("Request: %v", params.HTTPRequest.URL)
 	resp := operation.NewGetCACertsOK()
 	resp.Payload = ""
 

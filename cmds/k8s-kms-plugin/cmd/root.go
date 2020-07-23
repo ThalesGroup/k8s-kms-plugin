@@ -26,6 +26,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/mitchellh/go-homedir"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"os"
@@ -79,7 +80,7 @@ func init() {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-
+	logrus.SetFormatter(&logrus.JSONFormatter{})
 	if cfgFile != "" {
 		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)

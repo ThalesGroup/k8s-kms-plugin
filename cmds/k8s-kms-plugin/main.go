@@ -21,46 +21,11 @@
  * // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package cmd
+package main
 
-import (
-	"flag"
-	"fmt"
+import "github.com/thalescpl-io/k8s-kms-plugin/cmds/k8s-kms-plugin/cmd"
 
-	"github.com/spf13/cobra"
-)
-
-var (
-	address string
-	cert    string
-	key     string
-)
-
-// proxyCmd represents the proxy command
-var proxyCmd = &cobra.Command{
-	Use:   "proxy",
-	Short: "Run plugin in Proxy mode to remotely connect to network based plugin",
-	Run: func(cmd *cobra.Command, args []string) {
-		flag.Parse()
-
-		fmt.Println("proxy called")
-		panic("implement me")
-	},
-}
-
-func init() {
-	rootCmd.AddCommand(proxyCmd)
-
-	proxyCmd.Flags().StringVar(&address, "address", "grpc://localhost:31400", "URL of remote plugin in serve mode")
-	proxyCmd.Flags().StringVar(&cert, "cert", "client.crt", "Client Cert in PEM format for MTLS")
-	proxyCmd.Flags().StringVar(&key, "key", "client.crt", "Client Key in PEM format for MTLS")
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// proxyCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// proxyCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+func main() {
+	
+	cmd.Execute()
 }

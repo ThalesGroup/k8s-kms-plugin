@@ -290,8 +290,6 @@ github.com/inconshreveable/mousetrap v1.0.0 h1:Z8tu5sraLXCXIcARxBp/8cbvlwVa7Z1NH
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=
 github.com/infobloxopen/atlas-app-toolkit v0.22.0 h1:S6uRGvOiGoLdXNzVJYFHzDGm0+91yrftEEL9hn4wWRw=
 github.com/infobloxopen/atlas-app-toolkit v0.22.0/go.mod h1:DeDerruKrelNyHNhpOsjMzOJb0Qy97CzA5qsloKrZnk=
-github.com/jessevdk/go-flags v1.4.0 h1:4IU2WS7AumrZ/40jfhf4QVDMsQwqA7VEHozFRrGARJA=
-github.com/jessevdk/go-flags v1.4.0/go.mod h1:4FA24M0QyGHXBuZZK/XkWh8h0e1EYbRYJSGM75WSRxI=
 github.com/joho/godotenv v1.3.0/go.mod h1:7hK45KPybAkOC6peb+G5yklZfMxEjkZhHbwpqxOKXbg=
 github.com/jonboulle/clockwork v0.1.0/go.mod h1:Ii8DK3G1RaLaWxj9trq07+26W01tbo22gdxWY5EU2bo=
 github.com/json-iterator/go v1.1.6/go.mod h1:+SdeFBvtyEkXs7REEP0seUULqWtbJapLOCVDaaPEHmU=
@@ -452,8 +450,6 @@ github.com/stretchr/testify v1.6.1 h1:hDPOHmpOpP40lSULcqw7IrRb/u7w6RpDC9399XyoNd
 github.com/stretchr/testify v1.6.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/subosito/gotenv v1.2.0 h1:Slr1R9HxAlEKefgq5jn9U+DnETlIUa6HfgEzj0g5d7s=
 github.com/subosito/gotenv v1.2.0/go.mod h1:N0PQaV/YGNqwC0u51sEeR/aUtSLEXKX9iv69rRypqCw=
-github.com/thales-e-security/estclient v1.0.2 h1:1ARmax/rAjRcQxIAiS9fU1CNRllvAjoenUQtKq1umVY=
-github.com/thales-e-security/estclient v1.0.2/go.mod h1:6hTAV7/NAgXKbTLwtPG1g7PLbkGkbEpQj9c71RApHWo=
 github.com/thales-e-security/pool v0.0.1 h1:1eJJNN2K/mAzwfr546brAiQVa3UaRC0gGENsHM8veS8=
 github.com/thales-e-security/pool v0.0.1/go.mod h1:qtpMm2+thHtqhLzTwgDBj/OuNnMpupY8mv0Phz0gjhU=
 github.com/tidwall/pretty v1.0.0 h1:HsD+QiTn7sK6flMKIvNmpqz1qrpP3Ps6jOKIKMooyg4=

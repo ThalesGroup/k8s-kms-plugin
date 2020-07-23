@@ -13,3 +13,7 @@ build:
       docker:
         dockerfile: Dockerfile
         target: server
+    - image: gcr.io/thalescpl-io/k8s-kms-plugin/est
+      docker:
+        dockerfile: Dockerfile
+        target: est-server

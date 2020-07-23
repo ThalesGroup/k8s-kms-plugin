@@ -25,27 +25,18 @@ package cmd
 
 import (
 	"context"
-	"errors"
-	"flag"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
 	"io/ioutil"
-	"os"
-
-	"github.com/spf13/cobra"
 )
 
-var data []byte
-var inputString string
-var inputFile string
-var outputFile string
-
-// encryptCmd represents the encrypt command
-var encryptCmd = &cobra.Command{
-	Use:   "encrypt",
-	Short: "Encrypt a secret",
-
+// decryptCmd represents the decrypt command
+var decryptCmd = &cobra.Command{
+	Use:   "decrypt",
+	Short: "Decrypt a Secret",
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
-		flag.Parse()
+
 		// determine the kind of data to send
 		if inputFile != "" {
 			if data, err = ioutil.ReadFile(inputFile); err != nil {
@@ -53,48 +44,34 @@ var encryptCmd = &cobra.Command{
 			}
 		} else if inputString != "" {
 			data = []byte(inputString)
-		} else {
-			return errors.New("no file or string provided to encrypt")
 		}
 		var ctx context.Context
 		var c k8s.KeyManagementServiceClient
-		ctx, _, c, err = k8s.GetClient(host, grpcPort)
-		if err != nil {
+		if ctx, _, c, err = k8s.GetClient(host, grpcPort); err != nil {
 			return
 		}
-		var resp *k8s.EncryptResponse
-		resp, err = c.Encrypt(ctx, &k8s.EncryptRequest{
+		var resp *k8s.DecryptResponse
+		if resp, err = c.Decrypt(ctx, &k8s.DecryptRequest{
 			Version: "version",
-			Plain:   data,
-		})
-		if err != nil {
+			Cipher:  data,
+		}); err != nil {
 			return
 		}
 		if outputFile != "" {
 			if err = ioutil.WriteFile(outputFile, data, 0700); err != nil {
-				return
+				logrus.Fatal(err)
 			}
 		} else {
-			if _, err = os.Stdout.Write(resp.Cipher); err != nil {
-				return
-			}
+			logrus.Info(string(resp.Plain))
 		}
 		return
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(encryptCmd)
+	rootCmd.AddCommand(decryptCmd)
+	decryptCmd.Flags().StringVarP(&inputString, "string", "s", "", "String to decrypt")
+	decryptCmd.Flags().StringVarP(&inputFile, "file", "f", "", "File to decrypt")
+	decryptCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Output file for clear")
 
-	// Here you will define your flags and configuration settings.
-	encryptCmd.Flags().StringVarP(&inputString, "string", "s", "", "String to encrypt")
-	encryptCmd.Flags().StringVarP(&inputFile, "file", "f", "", "File to encrypt")
-	encryptCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Output file for payload")
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// encryptCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// encryptCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

@@ -23,15 +23,14 @@
 package cmd
 
 import (
-	"flag"
 	"github.com/go-openapi/runtime"
 	client2 "github.com/go-openapi/runtime/client"
+	"github.com/sirupsen/logrus"
 	"time"
 
 	//"crypto/x509/pkix"
 	"fmt"
 	"github.com/go-openapi/strfmt"
-	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/client"
 	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/client/operation"
@@ -44,8 +43,6 @@ var enrollCmd = &cobra.Command{
 	Use:   "enroll",
 	Short: "Enroll to a k8s-kms-plugin endpoint",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("enrolling")
-		flag.Parse()
 
 		tc, err := client2.TLSClient(client2.TLSClientOptions{
 			InsecureSkipVerify: trustUnknownCA,
@@ -62,7 +59,15 @@ var enrollCmd = &cobra.Command{
 		if retry {
 			for {
 				if resp, err = c.Operation.GetCACerts(p); err != nil {
-					glog.Error(err)
+					switch e := err.(type) {
+					case *operation.GetCACertsInternalServerError:
+						logrus.Errorf("GetCACertsInternalServerError: %s", e)
+					default:
+
+						logrus.Errorf("Unknown: %s", e)
+						logrus.Errorf("Type: %s", e)
+
+					}
 					time.Sleep(5 * time.Second)
 					continue
 				}
@@ -70,7 +75,10 @@ var enrollCmd = &cobra.Command{
 			}
 		} else {
 			if resp, err = c.Operation.GetCACerts(p); err != nil {
-				glog.Error(err)
+				if er, ok := err.(*operation.GetCACertsInternalServerError); ok {
+					logrus.Errorf("ErrorPayload: %s", er.Payload)
+					err = er
+				}
 				return
 			}
 		}

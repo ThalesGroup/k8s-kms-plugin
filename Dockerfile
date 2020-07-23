@@ -3,17 +3,17 @@ WORKDIR /app
 ADD go.mod /app/go.mod
 ADD go.sum /app/go.sum
 ADD tools.go /app/pkg/tools.go
-ADD main.go /app/main.go
 ADD vendor /app/vendor
 ADD pkg /app/pkg
 ADD apis /app/apis
-ADD cmd /app/cmd
+ADD cmds/ /app/cmds/
 
 ENV GOOS linux
 ENV GOARCH amd64
 ENV CGO_ENABLED 1
 ENV GOFLAGS -mod=vendor
-RUN go build -o k8s-kms-plugin main.go
+RUN go build -o k8s-kms-plugin ./cmds/k8s-kms-plugin
+RUN go build -o est-server ./cmds/est-server
 
 
 ### Client
@@ -23,12 +23,11 @@ WORKDIR /
 COPY --from=build /app/k8s-kms-plugin /k8s-kms-plugin
 ENTRYPOINT ["/k8s-kms-plugin"]
 
+FROM gcr.io/distroless/base-debian10 as est-server
+WORKDIR /
+COPY --from=build /app/est-server /est-server
+ENTRYPOINT ["/est-server"]
 
-### Server
-
-#FROM ubuntu:18.04 as server
-#RUN apt-get update ; apt-get install softhsm wget net-tools -y && \
-#    softhsm2-util --init-token --slot 0 --label default --so-pin changeme --pin changeme
 FROM centos:7 as server
 RUN yum install -y git softhsm glibc.i686 wget net-tools && \
     softhsm2-util --init-token --slot 0 --label default --so-pin changeme --pin changeme && \

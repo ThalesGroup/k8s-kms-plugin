@@ -25,11 +25,10 @@ package cmd
 
 import (
 	"errors"
-	goflag "flag"
 	"fmt"
 	"github.com/ThalesIgnite/crypto11"
 	"github.com/go-openapi/loads"
-	"github.com/jessevdk/go-flags"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
 	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/restapi"
@@ -65,20 +64,7 @@ var serveCmd = &cobra.Command{
 	Short: "Serve KMS",
 
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
-		goflag.Parse()
-		var swaggerSpec *loads.Document
-		swaggerSpec, err = loads.Embedded(restapi.SwaggerJSON, restapi.FlatSwaggerJSON)
-		if err != nil {
-			panic(err)
-		}
-		estServer = restapi.NewServer(api)
-		estServer.TLSCACertificate = caTLSCert
-		estServer.TLSCertificateKey = serverTLSKey
-		estServer.TLSCertificate = serverTLSCert
-		if err = estServer.AddConfig(caTLSCert, serverTLSKey, serverTLSCert, allowAny); err != nil {
-			return
-		}
-		api = operations.NewEstServerAPI(swaggerSpec)
+
 		if a := os.Getenv("P11_LIB"); a != "" {
 			p11lib = a
 		}
@@ -104,11 +90,10 @@ var serveCmd = &cobra.Command{
 			return
 		}
 
-		g.Go(func() error { return estServe() })
 		g.Go(func() error { return grpcServe(grpcTCP) })
 		g.Go(func() error { return grpcServe(grpcUNIX) })
-		fmt.Printf("KMS Plugin Listening on : %d\n", grpcPort)
-		fmt.Printf("EST Service Listening on : %d\n", estPort)
+		logrus.Infof("KMS Plugin Listening on : %d\n", grpcPort)
+		logrus.Infof("EST Service Listening on : %d\n", estPort)
 		if err = g.Wait(); err != nil {
 			panic(err)
 		}
@@ -133,44 +118,15 @@ func init() {
 	serveCmd.Flags().IntVar(&p11slot, "p11-slot", 0, "P11 token slot")
 	serveCmd.Flags().StringVar(&p11pin, "p11-pin", "", "P11 Pin")
 	serveCmd.Flags().StringVar(&keyName, "p11-key-label", "k8s-kek", "Key Label to use for encrypt/decrypt")
-	serveCmd.Flags().BoolVar(&createKey, "auto-create", true, "Auto create the keys if neededsd")
+	serveCmd.Flags().BoolVar(&createKey, "auto-create", true, "Auto create the keys if needed")
+	serveCmd.Flags().BoolVar(&allowAny, "allow-any", false, "Allow any device (accepts all ids/secrets)")
 
-	serveCmd.Flags().BoolVarP(&allowAny, "allow-any","a", false, "Allow all enrollment... no auth (dev only)")
 	swaggerSpec, err := loads.Embedded(restapi.SwaggerJSON, restapi.FlatSwaggerJSON)
 	if err != nil {
 		panic(err)
 	}
 	api = operations.NewEstServerAPI(swaggerSpec)
 
-}
-
-func estServe() (err error) {
-
-	parser := flags.NewParser(estServer, flags.Default)
-	parser.ShortDescription = "EST CA µService"
-	parser.LongDescription = "RFC 7030 (EST) server implementation"
-	estServer.ConfigureFlags()
-	for _, optsGroup := range api.CommandLineOptionsGroups {
-		_, err = parser.AddGroup(optsGroup.ShortDescription, optsGroup.LongDescription, optsGroup.Options)
-		if err != nil {
-			return
-		}
-	}
-	if _, err = parser.Parse(); err != nil {
-		code := 1
-		if fe, ok := err.(*flags.Error); ok {
-			if fe.Type == flags.ErrHelp {
-				code = 0
-			}
-		}
-		os.Exit(code)
-	}
-	estServer.TLSPort = estPort
-	estServer.TLSHost = "0.0.0.0"
-	estServer.ConfigureAPI()
-	fmt.Println("Server started")
-
-	return estServer.Serve()
 }
 
 func grpcServe(gl net.Listener) (err error) {

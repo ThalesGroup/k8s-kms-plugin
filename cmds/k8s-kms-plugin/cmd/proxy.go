@@ -24,44 +24,40 @@
 package cmd
 
 import (
-	"fmt"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/thalescpl-io/k8s-kms-plugin/apis/kms/v1"
 )
 
-// versionCmd represents the version command
-var versionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "Print the Version of the KMS",
+var (
+	address string
+	cert    string
+	key     string
+)
 
-	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx, _, c, err := kms.GetClient(host, grpcPort)
-		if err != nil {
-			return err
-		}
-		var resp *kms.VersionResponse
-		resp, err = c.Version(ctx, &kms.VersionRequest{})
-		if err != nil {
-			return err
-		}
+// proxyCmd represents the proxy command
+var proxyCmd = &cobra.Command{
+	Use:   "proxy",
+	Short: "Run plugin in Proxy mode to remotely connect to network based plugin",
+	Run: func(cmd *cobra.Command, args []string) {
 
-		fmt.Println(resp.Version)
-		fmt.Println(resp.RuntimeName)
-		fmt.Println(resp.RuntimeVersion)
-		return err
+		logrus.Info("proxy called")
+		panic("implement me")
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(proxyCmd)
 
+	proxyCmd.Flags().StringVar(&address, "address", "grpc://localhost:31400", "URL of remote plugin in serve mode")
+	proxyCmd.Flags().StringVar(&cert, "cert", "client.crt", "Client Cert in PEM format for MTLS")
+	proxyCmd.Flags().StringVar(&key, "key", "client.crt", "Client Key in PEM format for MTLS")
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// versionCmd.PersistentFlags().String("foo", "", "A help for foo")
+	// proxyCmd.PersistentFlags().String("foo", "", "A help for foo")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// versionCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// proxyCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

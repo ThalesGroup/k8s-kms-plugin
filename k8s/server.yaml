@@ -38,6 +38,29 @@ spec:
           args:
             - bootstrap
       containers:
+        - name: est-server
+          image: "gcr.io/thalescpl-io/k8s-kms-plugin/est"
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: P11_LIB
+              value: /usr/lib64/libsofthsm2.so
+            - name: P11_LABEL
+              value: default
+            - name: P11_PIN
+              value: changeme
+          ports:
+            - containerPort: 443
+              protocol: TCP
+              name: est
+          args:
+            - --tls-ca=/certs/ca.crt
+            - --tls-certificate=/certs/tls.crt
+            - --tls-key=/certs/tls.key
+            - --tls-port=443
+            - --tls-host=0.0.0.0
+          readinessProbe:
+            tcpSocket:
+              port: 443
         - name: k8s-kms-plugin
           image: "gcr.io/thalescpl-io/k8s-kms-plugin/server"
           imagePullPolicy: IfNotPresent
@@ -53,14 +76,12 @@ spec:
               value: changeme
           args:
             - serve
-            - -a
+            - --allow-any=true
           ports:
             - containerPort: 31400
               protocol: TCP
               name: grpc
-            - containerPort: 443
-              protocol: TCP
-              name: est
+
           livenessProbe:
             tcpSocket:
               port: 31400
