@@ -213,6 +213,30 @@ func (p *P11) GetCACerts(params operation.GetCACertsParams) middleware.Responder
 }
 
 func (p *P11) LoadCA() (err error) {
+	var cab, certb, keyb []byte
+	if cab, err = ioutil.ReadFile(p.ca); err != nil {
+		return
+	}
+	if certb, err = ioutil.ReadFile(p.cert); err != nil {
+		return
+	}
+	if keyb, err = ioutil.ReadFile(p.key); err != nil {
+		return
+	}
+	var serverCert tls.Certificate
+	serverCert, err = tls.X509KeyPair(certb, keyb)
+	if err != nil {
+		return
+	}
+	p.ServerTLS = &tls.Config{
+		Certificates: []tls.Certificate{serverCert},
+	}
+
+	certpool := x509.NewCertPool()
+	certpool.AppendCertsFromPEM(cab)
+	p.ClientTLS = &tls.Config{
+		RootCAs: certpool,
+	}
 
 	return
 }

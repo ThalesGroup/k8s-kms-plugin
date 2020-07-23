@@ -67,7 +67,6 @@ var bootstrapCmd = &cobra.Command{
 		if estca, err = ca.NewP11EST(caTLSCert, serverTLSKey, serverTLSCert, config); err != nil {
 			return
 		}
-
 		if err = estca.BootstrapCA(); err != nil {
 			return
 		}
