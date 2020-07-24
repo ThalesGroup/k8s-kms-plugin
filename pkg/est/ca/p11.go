@@ -56,7 +56,7 @@ type P11 struct {
 	config     *crypto11.Config
 	ServerTLS  *tls.Config
 	ClientTLS  *tls.Config
-	serverCert *tls.Certificate
+	ServerCert *tls.Certificate
 }
 
 const (
@@ -218,7 +218,7 @@ func (p *P11) BootstrapCA() (err error) {
 	if err != nil {
 		return
 	}
-	p.serverCert = &serverCert
+	p.ServerCert = &serverCert
 
 	p.ServerTLS = &tls.Config{
 		Certificates: []tls.Certificate{serverCert},
@@ -236,10 +236,10 @@ func (p *P11) BootstrapCA() (err error) {
 func (p *P11) GetCACerts(params operation.GetCACertsParams) middleware.Responder {
 	var sdBytes []byte
 	var err error
-	if p.serverCert == nil {
+	if p.ServerCert == nil {
 		return operation.NewGetCACertsInternalServerError().WithPayload(errorRootCert)
 	}
-	sdBytes, err = pkcs7.DegenerateCertificate(p.serverCert.Leaf.Raw)
+	sdBytes, err = pkcs7.DegenerateCertificate(p.ServerCert.Leaf.Raw)
 	if err != nil {
 		return operation.NewGetCACertsInternalServerError().WithPayload(errorEncodingCert)
 	}
@@ -266,7 +266,7 @@ func (p *P11) LoadCA() (err error) {
 	p.ServerTLS = &tls.Config{
 		Certificates: []tls.Certificate{serverCert},
 	}
-	p.serverCert = &serverCert
+	p.ServerCert = &serverCert
 
 	certpool := x509.NewCertPool()
 	certpool.AppendCertsFromPEM(cab)

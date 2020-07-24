@@ -24,7 +24,7 @@ var extraFlags struct {
 	AllowAnyDevice bool   `long:"allow-any" description:"Allow any device (accepts all ids/secrets)"`
 	AuthFile       string `long:"auth-file" description:"CSV file containing device ids and credentials" required:"false"`
 	EstCaCertFile  string `long:"est-cert" description:"EST CA certificate file (PEM format)" required:"false"`
-	EstCaKeyID  string `long:"est-kid" description:"EST CA KID in PKCS11 Device" required:"false"`
+	EstCaKeyID     string `long:"est-kid" description:"EST CA KID in PKCS11 Device" required:"false"`
 	//EstCaKeyFile     string `long:"est-key" description:"EST CA signing key (PEM format, RSA only)" required:"false"`
 }
 
@@ -107,6 +107,7 @@ func configureTLS(tlsConfig *tls.Config) {
 
 	tlsConfig.ClientAuth = tls.VerifyClientCertIfGiven
 
+	tlsConfig.Certificates = []tls.Certificate{*estCA.ServerCert}
 }
 
 // The middleware configuration happens before anything, this middleware also applies to serving the swagger.json document.
@@ -123,7 +124,7 @@ func setupMiddlewares(handler http.Handler) http.Handler {
 
 func (s *Server) LoadCA() (err error) {
 	config := utils.GetCrypto11Config()
-	if estCA, err = ca.NewP11EST(extraFlags.EstCaCertFile, string(s.TLSCertificateKey), string(s.TLSCertificate), extraFlags.EstCaKeyID,  config); err != nil {
+	if estCA, err = ca.NewP11EST(extraFlags.EstCaCertFile, string(s.TLSCertificateKey), string(s.TLSCertificate), extraFlags.EstCaKeyID, config); err != nil {
 		return
 	}
 	return estCA.LoadCA()

@@ -91,10 +91,12 @@ var serveCmd = &cobra.Command{
 			return
 		}
 
-		g.Go(func() error { return grpcServe(grpcTCP) })
+		if enableTCP {
+			g.Go(func() error { return grpcServe(grpcTCP) })
+			logrus.Infof("KMS Plugin Listening on : %d\n", grpcPort)
+		}
 		g.Go(func() error { return grpcServe(grpcUNIX) })
-		logrus.Infof("KMS Plugin Listening on : %d\n", grpcPort)
-		logrus.Infof("EST Service Listening on : %d\n", estPort)
+
 		if err = g.Wait(); err != nil {
 			panic(err)
 		}
@@ -104,13 +106,17 @@ var serveCmd = &cobra.Command{
 }
 var estServer *restapi.Server
 var api *operations.EstServerAPI
+var enableTCP bool
 
 func init() {
 	rootCmd.AddCommand(serveCmd)
 	serveCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), ".sock"), "Unix Socket")
-	serveCmd.Flags().StringVar(&caTLSCert, "tls-ca", "certs/ca.crt", "EST TLS")
-	serveCmd.Flags().StringVar(&serverTLSKey, "tls-key", "certs/tls.key", "Key for Server TLS")
-	serveCmd.Flags().StringVar(&serverTLSCert, "tls-certificate", "certs/tls.crt", "Cert for Server TLS")
+
+	//
+	serveCmd.Flags().BoolVar(&enableTCP, "enable-server", false, "Enable TLS based server")
+	serveCmd.Flags().StringVar(&caTLSCert, "tls-ca", "certs/ca.crt", "TLS CA cert")
+	serveCmd.Flags().StringVar(&serverTLSKey, "tls-key", "certs/tls.key", "TLS server key")
+	serveCmd.Flags().StringVar(&serverTLSCert, "tls-certificate", "certs/tls.crt", "TLS server cert")
 	// Here you will define your flags and configuration settings.
 	serveCmd.Flags().StringVar(&estKeyId, "est-kid", "4f9f0b80-63af-4a83-b6c0-b2f06b93c272", "Key ID for EST Root CA SEK")
 	serveCmd.Flags().StringVar(&kekKeyId, "kms-kid", "a37807cd-6d1a-4d75-813a-e120f30176f7", "Key ID for KMS KEK")
