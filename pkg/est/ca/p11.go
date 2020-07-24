@@ -51,6 +51,7 @@ type P11 struct {
 	ca         string
 	key        string
 	cert       string
+	estkid     string
 	ctxt11     *crypto11.Context
 	config     *crypto11.Config
 	ServerTLS  *tls.Config
@@ -59,7 +60,6 @@ type P11 struct {
 }
 
 const (
-	//defaultkeyId    = "a37807cd-6d1a-4d75-813a-e120f30176f7" // TODO: replace with some kind of better binding.
 	defaultkeyLabel = "k8s-kms-plugin-root-key"
 	defaultDEKSize  = 32 // 32 == 256 AES Key
 )
@@ -79,6 +79,7 @@ var (
 			cipher: crypto11.CipherAES,
 		},
 	}
+	keyOps = []jose.KeyOps{jose.KeyOpsDecrypt, jose.KeyOpsEncrypt}
 )
 
 const (
@@ -89,13 +90,14 @@ const (
 	errorRootCert     = "Failed to obtain root certificate from CA."
 )
 
-func NewP11EST(ca, key, cert string, config *crypto11.Config) (e *P11, err error) {
+func NewP11EST(ca, key, cert, estkid string, config *crypto11.Config) (e *P11, err error) {
 
 	e = &P11{
 		ca:     ca,
 		key:    key,
 		cert:   cert,
 		config: config,
+		estkid: estkid,
 	}
 	if e.ctxt11, err = crypto11.Configure(e.config); err != nil {
 		return

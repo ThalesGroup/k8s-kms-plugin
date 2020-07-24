@@ -32,7 +32,7 @@ until the 2 stacks come up
 
 Both EST and KMS-Plugin binaries are in the `/cmd` dir
  
-The `Makefile` contains many commands for easy execution:
+The `Makefile` contains commands for easy execution:
 - `make gen` - generates all apis into gRPC or OpenAPI Servers and Clients
 - `make dev` - loads project into your kubernetes cluster (minikube or GKE will work just fine), and continously builds and deploys as you develop.
 - `make build` - builds the standalone `k8s-kms-plugin` binary

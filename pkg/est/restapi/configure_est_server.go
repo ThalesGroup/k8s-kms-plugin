@@ -24,6 +24,7 @@ var extraFlags struct {
 	AllowAnyDevice bool   `long:"allow-any" description:"Allow any device (accepts all ids/secrets)"`
 	AuthFile       string `long:"auth-file" description:"CSV file containing device ids and credentials" required:"false"`
 	EstCaCertFile  string `long:"est-cert" description:"EST CA certificate file (PEM format)" required:"false"`
+	EstCaKeyID  string `long:"est-kid" description:"EST CA KID in PKCS11 Device" required:"false"`
 	//EstCaKeyFile     string `long:"est-key" description:"EST CA signing key (PEM format, RSA only)" required:"false"`
 }
 
@@ -122,7 +123,7 @@ func setupMiddlewares(handler http.Handler) http.Handler {
 
 func (s *Server) LoadCA() (err error) {
 	config := utils.GetCrypto11Config()
-	if estCA, err = ca.NewP11EST(extraFlags.EstCaCertFile, string(s.TLSCertificateKey), string(s.TLSCertificate), config); err != nil {
+	if estCA, err = ca.NewP11EST(extraFlags.EstCaCertFile, string(s.TLSCertificateKey), string(s.TLSCertificate), extraFlags.EstCaKeyID,  config); err != nil {
 		return
 	}
 	return estCA.LoadCA()

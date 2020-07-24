@@ -16,7 +16,6 @@ import (
 )
 
 const (
-	//defaultkeyId    = "a37807cd-6d1a-4d75-813a-e120f30176f7" // TODO: replace with some kind of better binding.
 	defaultkeyLabel = "k8s-kms-plugin-root-key"
 	defaultDEKSize  = 32 // 32 == 256 AES Key
 )
@@ -101,14 +100,14 @@ func (p *P11) Encrypt(ctx context.Context, req *k8s.EncryptRequest) (resp *k8s.E
 }
 
 //Generate an AEK
-func (p *P11) Generate(identity []byte, alg jose.Alg) (key gose.AuthenticatedEncryptionKey, err error) {
+func (p *P11) Generate(identity, label []byte, alg jose.Alg) (key gose.AuthenticatedEncryptionKey, err error) {
 	params, supported := algToKeyGenParams[alg]
 	if !supported {
 		err = fmt.Errorf("algorithm %v is not supported", alg)
 		return
 	}
 
-	if _, err = p.ctx.GenerateSecretKeyWithLabel(identity, p.keyLabel, params.size, params.cipher); err != nil {
+	if _, err = p.ctx.GenerateSecretKeyWithLabel(identity, label, params.size, params.cipher); err != nil {
 		return
 	}
 
@@ -143,6 +142,8 @@ func (p *P11) GenerateDEK(ctx context.Context, request *istio.GenerateDEKRequest
 	}
 	return
 }
+
+// Generate a 4096 RSA Key with the DEK that is protected by the KEK for later Unwrapping by the remote client in it's pod/container
 func (p *P11) GenerateSEK(ctx context.Context, request *istio.GenerateSEKRequest) (*istio.GenerateSEKResponse, error) {
 	panic("implement me")
 }
@@ -207,7 +208,7 @@ func (p *P11) loadDevice() (err error) {
 	}
 	if handle == nil {
 		if p.createKey {
-			if aek, err = p.Generate(p.keyId, jose.AlgA256GCM); err != nil {
+			if aek, err = p.Generate(p.keyId, p.keyLabel, jose.AlgA256GCM); err != nil {
 				return
 			}
 		} else {

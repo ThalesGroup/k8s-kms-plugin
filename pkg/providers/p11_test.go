@@ -5,10 +5,10 @@ import (
 	"github.com/ThalesIgnite/crypto11"
 	"github.com/ThalesIgnite/gose"
 	"github.com/ThalesIgnite/gose/jose"
+	"github.com/google/uuid"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
 	"os"
-	"reflect"
 	"testing"
 )
 
@@ -16,6 +16,7 @@ var testConfig *crypto11.Config
 var testCtx *crypto11.Context
 var testEncryptedBlob string
 var testPlainMessage []byte
+var testKid, testLabel []byte
 
 func TestP11_Encrypt(t *testing.T) {
 	td := setupSoftHSMTestCase(t)
@@ -115,21 +116,20 @@ func TestP11_GenerateDEK(t *testing.T) {
 		name     string
 		fields   fields
 		args     args
-		wantResp *istio.GenerateDEKResponse
 		wantErr  bool
 	}{
 		{
-			name:     "ok",
-			fields:   fields{
-				keyId:     nil,
-				keyLabel:  nil,
-				config:    nil,
-				ctx:       nil,
+			name: "ok",
+			fields: fields{
+				keyId:     testKid,
+				keyLabel:  testLabel,
+				config:    testConfig,
+				ctx:       testCtx,
 				decryptor: nil,
-				createKey: false,
+				encryptor: nil,
+				createKey: true,
 			},
 			args:     args{},
-			wantResp: nil,
 			wantErr:  false,
 		},
 	}
@@ -149,16 +149,25 @@ func TestP11_GenerateDEK(t *testing.T) {
 				t.Errorf("GenerateDEK() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(gotResp, tt.wantResp) {
-				t.Errorf("GenerateDEK() gotResp = %v, want %v", gotResp, tt.wantResp)
+			if len(gotResp.EncryptedKeyBlob) == 0 {
+				t.Errorf("encrypted blob is nil/empty")
+				return
 			}
 		})
 	}
 }
 
 func setupSoftHSMTestCase(t testing.TB) func(t testing.TB) {
+	testuuid, err := uuid.NewRandom()
+	if err != nil {
+		t.Fatal(err)
+	}
+	testKid, err = testuuid.MarshalText()
+	if err != nil {
+		t.Fatal(err)
+	}
+	testLabel = []byte(t.Name())
 
-	var err error
 	if os.Getenv("P11_LIBRARY") == "" {
 		t.Skip("No P11_LIBRARY provided, skipping")
 	}
@@ -193,5 +202,6 @@ func setupSoftHSMTestCase(t testing.TB) func(t testing.TB) {
 		for _, key := range keys {
 			_ = key.Delete()
 		}
+
 	}
 }
