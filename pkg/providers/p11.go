@@ -18,6 +18,7 @@ import (
 const (
 	//defaultkeyId    = "a37807cd-6d1a-4d75-813a-e120f30176f7" // TODO: replace with some kind of better binding.
 	defaultkeyLabel = "k8s-kms-plugin-root-key"
+	defaultDEKSize  = 32 // 32 == 256 AES Key
 )
 
 var (
@@ -115,8 +116,32 @@ func (p *P11) Generate(identity []byte, alg jose.Alg) (key gose.AuthenticatedEnc
 	return
 }
 
-func (p *P11) GenerateDEK(ctx context.Context, request *istio.GenerateDEKRequest) (*istio.GenerateDEKResponse, error) {
-	panic("implement me")
+// Generate a 256 bit AES DEK Key , Wrapped via JWE with the PKCS11 base KEK
+func (p *P11) GenerateDEK(ctx context.Context, request *istio.GenerateDEKRequest) (resp *istio.GenerateDEKResponse, err error) {
+
+	// Load the KEK encryptor first so we know we have a handle to do the crypto magic
+	if p.encryptor == nil {
+		if err = p.loadDevice(); err != nil {
+			return
+		}
+	}
+	var aesbits = make([]byte, 32)
+	var rng io.Reader
+	if rng, err = p.ctx.NewRandomReader(); err != nil {
+		return
+	}
+	if _, err = rng.Read(aesbits); err != nil {
+		return
+	}
+
+	var encryptedString string
+	if encryptedString, err = p.encryptor.Encrypt(aesbits, nil); err != nil {
+		return
+	}
+	resp = &istio.GenerateDEKResponse{
+		EncryptedKeyBlob: []byte(encryptedString),
+	}
+	return
 }
 func (p *P11) GenerateSEK(ctx context.Context, request *istio.GenerateSEKRequest) (*istio.GenerateSEKResponse, error) {
 	panic("implement me")
@@ -158,7 +183,7 @@ func (p *P11) LoadDEK(ctx context.Context, request *istio.LoadDEKRequest) (*isti
 func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	var h interface{}
 	var err error
-	 fmt.Printf("Path: %s\n", info.FullMethod)
+	fmt.Printf("Path: %s\n", info.FullMethod)
 	return h, err
 }
 

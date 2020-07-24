@@ -3,6 +3,7 @@
 package main
 
 import (
+	"github.com/sirupsen/logrus"
 	"log"
 	"os"
 
@@ -19,7 +20,7 @@ func main() {
 
 	swaggerSpec, err := loads.Embedded(restapi.SwaggerJSON, restapi.FlatSwaggerJSON)
 	if err != nil {
-		log.Fatalln(err)
+		logrus.Fatal(err)
 	}
 
 	api := operations.NewEstServerAPI(swaggerSpec)
@@ -45,6 +46,9 @@ func main() {
 			}
 		}
 		os.Exit(code)
+	}
+	if err = server.LoadCA(); err != nil {
+		logrus.Fatal(err)
 	}
 
 	server.ConfigureAPI()

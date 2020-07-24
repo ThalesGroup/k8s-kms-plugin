@@ -1,5 +1,6 @@
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
+#kind: StatefulSet
 
 metadata:
   name: k8s-kms-plugin-server
@@ -7,7 +8,7 @@ metadata:
   labels:
     app.kubernetes.io/name: k8s-kms-plugin-server
 spec:
-  serviceName: k8s-kms-plugin-server
+#  serviceName: k8s-kms-plugin-server
   selector:
     matchLabels:
       app.kubernetes.io/name: k8s-kms-plugin-server
@@ -62,6 +63,7 @@ spec:
             - --est-cert=/certs/ca.crt
             - --tls-port=443
             - --tls-host=0.0.0.0
+            - --allow-any
           readinessProbe:
             tcpSocket:
               port: 443

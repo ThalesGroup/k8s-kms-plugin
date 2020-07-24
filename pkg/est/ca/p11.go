@@ -33,8 +33,8 @@ import (
 	"encoding/pem"
 	"fmt"
 	"github.com/ThalesIgnite/crypto11"
+	"github.com/fullsailor/pkcs7"
 	"github.com/go-openapi/runtime/middleware"
-	"github.com/sirupsen/logrus"
 	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/restapi/operations/operation"
 	"io"
 	"io/ioutil"
@@ -47,13 +47,14 @@ import (
 
 // P11 CA for RFC7030 based enrollment/registration of services/machines/devices
 type P11 struct {
-	ca        string
-	key       string
-	cert      string
-	ctxt11    *crypto11.Context
-	config    *crypto11.Config
-	ServerTLS *tls.Config
-	ClientTLS *tls.Config
+	ca         string
+	key        string
+	cert       string
+	ctxt11     *crypto11.Context
+	config     *crypto11.Config
+	ServerTLS  *tls.Config
+	ClientTLS  *tls.Config
+	serverCert *tls.Certificate
 }
 
 const (
@@ -61,6 +62,7 @@ const (
 	errorBadCertReq   = "Failed to read certificate request. Expected DER-encoded PKCS#10 data."
 	errorCertIssuance = "An error occured when requesting the certificate."
 	errorEncodingCert = "An error occured when encoding the certificate."
+	errorRootCert     = "Failed to obtain root certificate from CA."
 )
 
 func NewP11EST(ca, key, cert string, config *crypto11.Config) (e *P11, err error) {
@@ -190,6 +192,7 @@ func (p *P11) BootstrapCA() (err error) {
 	if err != nil {
 		return
 	}
+	p.serverCert = &serverCert
 
 	p.ServerTLS = &tls.Config{
 		Certificates: []tls.Certificate{serverCert},
@@ -205,11 +208,17 @@ func (p *P11) BootstrapCA() (err error) {
 }
 
 func (p *P11) GetCACerts(params operation.GetCACertsParams) middleware.Responder {
-	logrus.Infof("Request: %v", params.HTTPRequest.URL)
-	resp := operation.NewGetCACertsOK()
-	resp.Payload = ""
+	var sdBytes []byte
+	var err error
+	if p.serverCert == nil {
+		return operation.NewGetCACertsInternalServerError().WithPayload(errorRootCert)
+	}
+	sdBytes, err = pkcs7.DegenerateCertificate(p.serverCert.Leaf.Raw)
+	if err != nil {
+		return operation.NewGetCACertsInternalServerError().WithPayload(errorEncodingCert)
+	}
 
-	return resp
+	return operation.NewGetCACertsOK().WithPayload(toBase64(sdBytes))
 }
 
 func (p *P11) LoadCA() (err error) {
@@ -231,6 +240,7 @@ func (p *P11) LoadCA() (err error) {
 	p.ServerTLS = &tls.Config{
 		Certificates: []tls.Certificate{serverCert},
 	}
+	p.serverCert = &serverCert
 
 	certpool := x509.NewCertPool()
 	certpool.AppendCertsFromPEM(cab)

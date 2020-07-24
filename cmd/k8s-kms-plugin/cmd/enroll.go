@@ -23,9 +23,10 @@
 package cmd
 
 import (
-	"github.com/go-openapi/runtime"
 	client2 "github.com/go-openapi/runtime/client"
 	"github.com/sirupsen/logrus"
+	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/restapi/consumers"
+	"net/http"
 	"time"
 
 	//"crypto/x509/pkix"
@@ -42,14 +43,14 @@ var trustUnknownCA, retry bool
 var enrollCmd = &cobra.Command{
 	Use:   "enroll",
 	Short: "Enroll to a k8s-kms-plugin endpoint",
-	Run: func(cmd *cobra.Command, args []string) {
-
-		tc, err := client2.TLSClient(client2.TLSClientOptions{
+	RunE: func(cmd *cobra.Command, args []string) (err error) {
+		var tc *http.Client
+		tc, err = client2.TLSClient(client2.TLSClientOptions{
 			InsecureSkipVerify: trustUnknownCA,
 		})
+
 		ts := client2.NewWithClient(host, "/.well-known/est", []string{"https"}, tc)
-		ts.Consumers["application/pkcs7-mime"] = runtime.TextConsumer()
-		ts.Producers["application/pkcs10"] = runtime.TextProducer()
+		ts.Consumers["application/pkcs7-mime"] = consumers.PKCS7Consumer()
 		c := client.New(ts, strfmt.Default)
 
 		p := operation.NewGetCACertsParams()
@@ -86,6 +87,7 @@ var enrollCmd = &cobra.Command{
 		fmt.Println(resp.Payload)
 		fmt.Println(resp.ContentTransferEncoding)
 		fmt.Println(resp.ContentType)
+
 		return
 	},
 }

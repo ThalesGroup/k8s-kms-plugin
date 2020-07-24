@@ -19,8 +19,7 @@ import (
 	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/restapi/operations/operation"
 )
 
-//go:generate swagger generate server --target ../../../../k8s-kms-plugin --name EstServer --spec ../../../apis/kms/v1/est.yaml --model-package pkg/est/models --server-package pkg/est/restapi --exclude-main
-
+var estCA *ca.P11
 var extraFlags struct {
 	AllowAnyDevice bool   `long:"allow-any" description:"Allow any device (accepts all ids/secrets)"`
 	AuthFile       string `long:"auth-file" description:"CSV file containing device ids and credentials" required:"false"`
@@ -28,18 +27,10 @@ var extraFlags struct {
 	//EstCaKeyFile     string `long:"est-key" description:"EST CA signing key (PEM format, RSA only)" required:"false"`
 }
 
-// configureFlags adds custom flags to the server.
-func configureFlags(api *operations.EstServerAPI) {
-	api.CommandLineOptionsGroups = []swag.CommandLineOptionsGroup{
-		swag.CommandLineOptionsGroup{
-			ShortDescription: "Service Configuration",
-			Options:          &extraFlags,
-		},
-	}
-
+//go:generate swagger generate server --target ../../../../k8s-kms-plugin --name EstServer --spec ../../../apis/kms/v1/est.yaml --model-package pkg/est/models --server-package pkg/est/restapi --exclude-main
+func init() {
+	logrus.SetFormatter(&logrus.JSONFormatter{})
 }
-
-var estCA *ca.P11
 
 func configureAPI(api *operations.EstServerAPI) http.Handler {
 	// configure the api here
@@ -55,21 +46,10 @@ func configureAPI(api *operations.EstServerAPI) http.Handler {
 
 	// Applies when the Authorization header is set with the Basic scheme
 	logrus.Infof("extraFlags: %v", extraFlags)
-	//if api.BasicAuthAuth == nil {
-	//	if extraFlags.AllowAnyDevice {
-	//		// Allow all in
-	//		api.BasicAuthAuth = func(s string, s2 string) (interface{}, error) {
-	//			return s, nil
-	//		}
-	//
-	//	} else {
-	//		api.BasicAuthAuth = func(user string, pass string) (interface{}, error) {
-	//			return nil, errors.NotImplemented("basic auth  (basicAuth) has not yet been implemented")
-	//		}
-	//	}
-	//
-	//}
+
 	api.BasicAuthAuth = func(s string, s2 string) (interface{}, error) {
+		logrus.Infof("What?")
+
 		return s, nil
 	}
 	// Set your custom authorizer if needed. Default one is security.Authorized()
@@ -79,7 +59,8 @@ func configureAPI(api *operations.EstServerAPI) http.Handler {
 	// api.APIAuthorizer = security.Authorized()
 	if api.OperationGetCACertsHandler == nil {
 		api.OperationGetCACertsHandler = operation.GetCACertsHandlerFunc(func(params operation.GetCACertsParams) middleware.Responder {
-			//return middleware.NotImplemented("operation operation.GetCACerts has not yet been implemented")
+			logrus.Infof("What?")
+
 			return estCA.GetCACerts(params)
 		})
 	}
@@ -101,10 +82,15 @@ func configureAPI(api *operations.EstServerAPI) http.Handler {
 	return setupGlobalMiddleware(api.Serve(setupMiddlewares))
 }
 
-// The TLS configuration before HTTPS server starts.
-func configureTLS(tlsConfig *tls.Config) {
+// configureFlags adds custom flags to the server.
+func configureFlags(api *operations.EstServerAPI) {
+	api.CommandLineOptionsGroups = []swag.CommandLineOptionsGroup{
+		swag.CommandLineOptionsGroup{
+			ShortDescription: "Service Configuration",
+			Options:          &extraFlags,
+		},
+	}
 
-	tlsConfig.ClientAuth = tls.VerifyClientCertIfGiven
 }
 
 // As soon as server is initialized but not run yet, this function will be called.
@@ -115,10 +101,14 @@ func configureServer(s *http.Server, scheme, addr string) {
 
 }
 
-// The middleware configuration is for the handler executors. These do not apply to the swagger.json document.
-// The middleware executes after routing but before authentication, binding and validation
-func setupMiddlewares(handler http.Handler) http.Handler {
-	return handler
+// The TLS configuration before HTTPS server starts.
+func configureTLS(tlsConfig *tls.Config) {
+
+
+	tlsConfig.ClientAuth = tls.VerifyClientCertIfGiven
+	if cert, _ := estCA.ServerTLS.GetCertificate(nil); cert != nil {
+		tlsConfig.Certificates = []tls.Certificate{*cert}
+	}
 }
 
 // The middleware configuration happens before anything, this middleware also applies to serving the swagger.json document.
@@ -127,12 +117,15 @@ func setupGlobalMiddleware(handler http.Handler) http.Handler {
 	return handler
 }
 
-func (s *Server) AddConfig(caa, key, cert string) (err error) {
-	logrus.Infof("Started Server")
-	config := utils.GetCrypto11Config()
-	if estCA, err = ca.NewP11EST(caa, key, cert, config); err != nil {
-		return
-	}
+// The middleware configuration is for the handler executors. These do not apply to the swagger.json document.
+// The middleware executes after routing but before authentication, binding and validation
+func setupMiddlewares(handler http.Handler) http.Handler {
+	return handler
+}
 
-	return
+func (s *Server) LoadCA() (err error) {
+	config := utils.GetCrypto11Config()
+	estCA, err = ca.NewP11EST(extraFlags.EstCaCertFile, string(s.TLSCertificateKey), string(s.TLSCertificate), config)
+	return estCA.LoadCA()
+
 }

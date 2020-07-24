@@ -5,8 +5,10 @@ import (
 	"github.com/ThalesIgnite/crypto11"
 	"github.com/ThalesIgnite/gose"
 	"github.com/ThalesIgnite/gose/jose"
+	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
 	"os"
+	"reflect"
 	"testing"
 )
 
@@ -89,6 +91,67 @@ func TestP11_Encrypt(t *testing.T) {
 				return
 			}
 
+		})
+	}
+}
+
+func TestP11_GenerateDEK(t *testing.T) {
+	td := setupSoftHSMTestCase(t)
+	defer td(t)
+	type fields struct {
+		keyId     []byte
+		keyLabel  []byte
+		config    *crypto11.Config
+		ctx       *crypto11.Context
+		encryptor gose.JweEncryptor
+		decryptor gose.JweDecryptor
+		createKey bool
+	}
+	type args struct {
+		ctx     context.Context
+		request *istio.GenerateDEKRequest
+	}
+	tests := []struct {
+		name     string
+		fields   fields
+		args     args
+		wantResp *istio.GenerateDEKResponse
+		wantErr  bool
+	}{
+		{
+			name:     "ok",
+			fields:   fields{
+				keyId:     nil,
+				keyLabel:  nil,
+				config:    nil,
+				ctx:       nil,
+				decryptor: nil,
+				createKey: false,
+			},
+			args:     args{},
+			wantResp: nil,
+			wantErr:  false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &P11{
+				keyId:     tt.fields.keyId,
+				keyLabel:  tt.fields.keyLabel,
+				config:    tt.fields.config,
+				ctx:       tt.fields.ctx,
+				encryptor: tt.fields.encryptor,
+				decryptor: tt.fields.decryptor,
+				createKey: tt.fields.createKey,
+			}
+			gotResp, err := p.GenerateDEK(tt.args.ctx, tt.args.request)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GenerateDEK() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(gotResp, tt.wantResp) {
+				t.Errorf("GenerateDEK() gotResp = %v, want %v", gotResp, tt.wantResp)
+			}
 		})
 	}
 }
