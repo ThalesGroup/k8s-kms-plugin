@@ -33,6 +33,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"github.com/ThalesIgnite/crypto11"
+	"github.com/ThalesIgnite/gose/jose"
 	"github.com/fullsailor/pkcs7"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/restapi/operations/operation"
@@ -56,6 +57,29 @@ type P11 struct {
 	ClientTLS  *tls.Config
 	serverCert *tls.Certificate
 }
+
+const (
+	//defaultkeyId    = "a37807cd-6d1a-4d75-813a-e120f30176f7" // TODO: replace with some kind of better binding.
+	defaultkeyLabel = "k8s-kms-plugin-root-key"
+	defaultDEKSize  = 32 // 32 == 256 AES Key
+)
+
+var (
+	algToKeyGenParams = map[jose.Alg]keyGenerationParameters{
+		jose.AlgA128GCM: {
+			size:   128,
+			cipher: crypto11.CipherAES,
+		},
+		jose.AlgA192GCM: {
+			size:   192,
+			cipher: crypto11.CipherAES,
+		},
+		jose.AlgA256GCM: {
+			size:   256,
+			cipher: crypto11.CipherAES,
+		},
+	}
+)
 
 const (
 	errorBase64       = "Invalid base64 in request."
@@ -257,4 +281,9 @@ func (p *P11) SimpleEnroll(params operation.SimpleenrollParams, principal interf
 
 func (p *P11) SimpleReenroll(params operation.SimplereenrollParams) middleware.Responder {
 	panic("implement me")
+}
+
+type keyGenerationParameters struct {
+	size   int
+	cipher *crypto11.SymmetricCipher
 }

@@ -104,11 +104,8 @@ func configureServer(s *http.Server, scheme, addr string) {
 // The TLS configuration before HTTPS server starts.
 func configureTLS(tlsConfig *tls.Config) {
 
-
 	tlsConfig.ClientAuth = tls.VerifyClientCertIfGiven
-	if cert, _ := estCA.ServerTLS.GetCertificate(nil); cert != nil {
-		tlsConfig.Certificates = []tls.Certificate{*cert}
-	}
+
 }
 
 // The middleware configuration happens before anything, this middleware also applies to serving the swagger.json document.
@@ -125,7 +122,9 @@ func setupMiddlewares(handler http.Handler) http.Handler {
 
 func (s *Server) LoadCA() (err error) {
 	config := utils.GetCrypto11Config()
-	estCA, err = ca.NewP11EST(extraFlags.EstCaCertFile, string(s.TLSCertificateKey), string(s.TLSCertificate), config)
+	if estCA, err = ca.NewP11EST(extraFlags.EstCaCertFile, string(s.TLSCertificateKey), string(s.TLSCertificate), config); err != nil {
+		return
+	}
 	return estCA.LoadCA()
 
 }

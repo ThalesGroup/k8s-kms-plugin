@@ -24,7 +24,7 @@ COPY --from=build /app/k8s-kms-plugin /k8s-kms-plugin
 ENTRYPOINT ["/k8s-kms-plugin"]
 
 FROM centos:7 as base-server
-RUN yum install -y git softhsm glibc.i686 wget net-tools && \
+RUN yum install -y git softhsm glibc.i686 wget net-tools curl && \
     softhsm2-util --init-token --slot 0 --label default --so-pin changeme --pin changeme && \
     yum clean all
 
