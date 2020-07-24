@@ -4,8 +4,6 @@ all: build
 
 SECRETNAME=gcr-json-key
 ## Pipeline
-tools:
-		GO111MODULE=off go get -u github.com/square/certstrap
 
 lint:
 		@golangci-lint run
@@ -28,9 +26,3 @@ build:
 
 dev:
 		@skaffold dev --port-forward=true
-
-## Testing
-
-ports:
-		@kubectl exec -ti  k8s-kms-plugin-server-0 -- bash -c "netstat -an | grep LISTEN"
-
