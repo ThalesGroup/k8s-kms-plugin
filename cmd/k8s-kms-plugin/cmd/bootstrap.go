@@ -33,7 +33,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-
 var estca *ca.P11
 
 // bootstrapCmd represents the bootstrap command
@@ -64,7 +63,7 @@ var bootstrapCmd = &cobra.Command{
 			Pin:             p11pin,
 			UseGCMIVFromHSM: true,
 		}
-		if estca, err = ca.NewP11EST(caTLSCert, serverTLSKey, serverTLSCert, config); err != nil {
+		if estca, err = ca.NewP11EST(caTLSCert, serverTLSKey, serverTLSCert, estKeyId, config); err != nil {
 			return
 		}
 		if err = estca.BootstrapCA(); err != nil {

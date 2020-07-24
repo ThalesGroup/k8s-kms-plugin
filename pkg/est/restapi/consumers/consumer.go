@@ -52,11 +52,11 @@ func PKCS7Consumer() runtime.ConsumerFunc {
 
 		//Convert "i" from base64 to pkcs7 object to then
 
-		var src,dst []byte
+		var src, dst []byte
 		if src, err = ioutil.ReadAll(reader); err != nil {
 			return
 		}
-		_, err = b64.StdEncoding.Decode(dst,src)
+		_, err = b64.StdEncoding.Decode(dst, src)
 		if err != nil {
 			panic(err)
 		}

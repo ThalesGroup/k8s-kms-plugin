@@ -1,8 +1,12 @@
 package providers
 
 import (
+	"bytes"
 	"context"
 	"crypto/cipher"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"github.com/ThalesIgnite/crypto11"
@@ -12,6 +16,8 @@ import (
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
 	v1 "github.com/thalescpl-io/k8s-kms-plugin/apis/kms/v1"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"io"
 )
 
@@ -117,42 +123,133 @@ func (p *P11) Generate(identity, label []byte, alg jose.Alg) (key gose.Authentic
 
 // Generate a 256 bit AES DEK Key , Wrapped via JWE with the PKCS11 base KEK
 func (p *P11) GenerateDEK(ctx context.Context, request *istio.GenerateDEKRequest) (resp *istio.GenerateDEKResponse, err error) {
-
-	// Load the KEK encryptor first so we know we have a handle to do the crypto magic
+	if request == nil {
+		return nil, status.Error(codes.InvalidArgument, "no request sent")
+	}
 	if p.encryptor == nil {
 		if err = p.loadDevice(); err != nil {
 			return
 		}
 	}
+	var encryptedKeyBlob []byte
 
+	if encryptedKeyBlob, err = generateDEK(p.ctx, p.encryptor, request.Kind, int(request.Size)); err != nil {
+		return
+	}
+	resp = &istio.GenerateDEKResponse{
+		EncryptedKeyBlob: encryptedKeyBlob,
+	}
+	return
+}
+
+func generateDEK(ctx *crypto11.Context, encryptor gose.JweEncryptor, kind istio.KeyKind, size int) (encryptedKeyBlob []byte, err error) {
+
+
+
+	switch kind {
+	case istio.KeyKind_AES:
+		var aesbits = make([]byte, size)
+		var rng io.Reader
+		if rng, err =ctx.NewRandomReader(); err != nil {
+			return
+		}
+		if _, err = rng.Read(aesbits); err != nil {
+			return
+		}
+
+		// using the AES key as it's payload
+		var encryptedString string
+		if encryptedString, err = encryptor.Encrypt(aesbits, nil); err != nil {
+			return
+		}
+		encryptedKeyBlob = []byte(encryptedString)
+	default:
+		err = status.Error(codes.InvalidArgument, "invalid DEK key kind")
+		return
+	}
 	// fill aesbits with 32bytes of random data from the RNG
-	var aesbits = make([]byte, 32)
+
+	return
+}
+
+// GenerateSEK gens a 4096 RSA Key with the DEK that is protected by the KEK for later Unwrapping by the remote client in it's pod/container
+func (p *P11) GenerateSEK(ctx context.Context, request *istio.GenerateSEKRequest) (resp *istio.GenerateSEKResponse, err error) {
+	if request == nil {
+		return nil, status.Error(codes.InvalidArgument, "no request sent")
+	}
+	if request.EncryptedKeyBlob == nil {
+		err = status.Error(codes.InvalidArgument, "EncryptedKeyBlob required ")
+	}
+	if p.decryptor == nil {
+		if err = p.loadDevice(); err != nil {
+			return
+		}
+	}
 	var rng io.Reader
 	if rng, err = p.ctx.NewRandomReader(); err != nil {
 		return
 	}
-	if _, err = rng.Read(aesbits); err != nil {
-		return
-	}
 
-	// using the AES key as it's payload
-	var encryptedString string
-	if encryptedString, err = p.encryptor.Encrypt(aesbits, nil); err != nil {
+	var dekClear []byte
+	if dekClear, _, err = p.decryptor.Decrypt(string(request.EncryptedKeyBlob)); err != nil {
 		return
 	}
-	resp = &istio.GenerateDEKResponse{
-		EncryptedKeyBlob: []byte(encryptedString),
+	var jwk jose.Jwk
+	jwk, err = gose.LoadJwk(bytes.NewReader(dekClear), keyOps)
+
+	var aead gose.AuthenticatedEncryptionKey
+	if aead, err = gose.NewAesGcmCryptorFromJwk(jwk, keyOps); err != nil {
+		return
 	}
+	dekEncryptor := gose.NewJweDirectEncryptorImpl(aead)
+
+	// Generate the actual SEK
+	var wrappedSEK string
+
+	switch request.Kind {
+	case istio.KeyKind_RSA:
+		var kp *rsa.PrivateKey
+		if kp, err = rsa.GenerateKey(rng, int(request.Size)); err != nil {
+			return
+		}
+		kpPEM := &pem.Block{
+			Type:  "PRIVATE KEY",
+			Bytes: x509.MarshalPKCS1PrivateKey(kp),
+		}
+		// Wrap and return the wrappedSEK
+
+		if wrappedSEK, err = dekEncryptor.Encrypt(kpPEM.Bytes, nil); err != nil {
+			return
+		}
+	case istio.KeyKind_ECC:
+		err = status.Error(codes.Unimplemented, "ECC not yet implemented")
+		return
+	default:
+		err = status.Error(codes.InvalidArgument, "unsupported key kind")
+		return
+	}
+	resp = &istio.GenerateSEKResponse{}
+	resp.EncryptedKeyBlob = []byte(wrappedSEK)
 	return
 }
-// LoadDEK unwraps the supplied wrappedDEK with the HSM's KEK for this cluster.
-func (p *P11) LoadDEK(ctx context.Context, request *istio.LoadDEKRequest) (*istio.LoadDEKResponse, error) {
-	panic("implement me")
-}
 
-// GenerateSEK gens a 4096 RSA Key with the DEK that is protected by the KEK for later Unwrapping by the remote client in it's pod/container
-func (p *P11) GenerateSEK(ctx context.Context, request *istio.GenerateSEKRequest) (*istio.GenerateSEKResponse, error) {
-	panic("implement me")
+// LoadDEK unwraps the supplied EncryptedKeyBlob with the HSM's KEK for this cluster.
+func (p *P11) LoadDEK(ctx context.Context, request *istio.LoadDEKRequest) (resp *istio.LoadDEKResponse, err error) {
+	if request == nil {
+		return nil, status.Error(codes.InvalidArgument, "no request sent")
+	}
+	if p.decryptor == nil {
+		if err = p.loadDevice(); err != nil {
+			return
+		}
+	}
+
+	resp = &istio.LoadDEKResponse{}
+	if resp.ClearKey, _, err = p.decryptor.Decrypt(string(request.EncryptedKeyBlob)); err != nil {
+		return
+	}
+
+	return
 }
 
 //Identity of the Key manager

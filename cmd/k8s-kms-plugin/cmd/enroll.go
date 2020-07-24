@@ -23,7 +23,7 @@
 package cmd
 
 import (
-	client2 "github.com/go-openapi/runtime/client"
+	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/sirupsen/logrus"
 	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/restapi/consumers"
 	"net/http"
@@ -45,16 +45,17 @@ var enrollCmd = &cobra.Command{
 	Short: "Enroll to a k8s-kms-plugin endpoint",
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		var tc *http.Client
-		tc, err = client2.TLSClient(client2.TLSClientOptions{
-			InsecureSkipVerify: trustUnknownCA,
-		})
+		tlsOptions := httptransport.TLSClientOptions{
+			InsecureSkipVerify: true,
+		}
+		tc, err = httptransport.TLSClient(tlsOptions)
 
-		ts := client2.NewWithClient(host, "/.well-known/est", []string{"https"}, tc)
+		ts := httptransport.NewWithClient(host, "/.well-known/est", []string{"https"}, tc)
 		ts.Consumers["application/pkcs7-mime"] = consumers.PKCS7Consumer()
 		c := client.New(ts, strfmt.Default)
 
 		p := operation.NewGetCACertsParams()
-
+		p.HTTPClient = tc
 		var resp *operation.GetCACertsOK
 
 		if retry {
