@@ -124,6 +124,8 @@ func (p *P11) GenerateDEK(ctx context.Context, request *istio.GenerateDEKRequest
 			return
 		}
 	}
+
+	// fill aesbits with 32bytes of random data from the RNG
 	var aesbits = make([]byte, 32)
 	var rng io.Reader
 	if rng, err = p.ctx.NewRandomReader(); err != nil {
@@ -133,6 +135,7 @@ func (p *P11) GenerateDEK(ctx context.Context, request *istio.GenerateDEKRequest
 		return
 	}
 
+	// using the AES key as it's payload
 	var encryptedString string
 	if encryptedString, err = p.encryptor.Encrypt(aesbits, nil); err != nil {
 		return
@@ -142,8 +145,12 @@ func (p *P11) GenerateDEK(ctx context.Context, request *istio.GenerateDEKRequest
 	}
 	return
 }
+// LoadDEK unwraps the supplied wrappedDEK with the HSM's KEK for this cluster.
+func (p *P11) LoadDEK(ctx context.Context, request *istio.LoadDEKRequest) (*istio.LoadDEKResponse, error) {
+	panic("implement me")
+}
 
-// Generate a 4096 RSA Key with the DEK that is protected by the KEK for later Unwrapping by the remote client in it's pod/container
+// GenerateSEK gens a 4096 RSA Key with the DEK that is protected by the KEK for later Unwrapping by the remote client in it's pod/container
 func (p *P11) GenerateSEK(ctx context.Context, request *istio.GenerateSEKRequest) (*istio.GenerateSEKResponse, error) {
 	panic("implement me")
 }
@@ -176,9 +183,6 @@ func (p *P11) Load(identity []byte) (key gose.AuthenticatedEncryptionKey, err er
 		return
 	}
 	return
-}
-func (p *P11) LoadDEK(ctx context.Context, request *istio.LoadDEKRequest) (*istio.LoadDEKResponse, error) {
-	panic("implement me")
 }
 
 func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
