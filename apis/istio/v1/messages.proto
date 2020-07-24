@@ -59,8 +59,6 @@ message GenerateSEKResponse {
 message LoadDEKRequest {
   // Encrypted blob of DEK
   bytes encrypted_key_blob = 1;
-  // What kind of key is it... only Asymmetric kinds will be supported
-  KeyKind kind = 2;
 }
 
 message LoadDEKResponse {
