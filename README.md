@@ -36,3 +36,6 @@ The `Makefile` contains commands for easy execution:
 - `make gen` - generates all apis into gRPC or OpenAPI Servers and Clients
 - `make dev` - loads project into your kubernetes cluster (minikube or GKE will work just fine), and continously builds and deploys as you develop.
 - `make build` - builds the standalone `k8s-kms-plugin` binary
+
+
+NOTE:  Currently the standalone plugin just waits for the 

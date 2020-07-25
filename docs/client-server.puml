@@ -27,12 +27,9 @@
 
     group Register KMS to K8S
         k8sa -> apis : Register Plugin
-        apis -> client : gRPC - Version
-        client -> server : gRPC - Version
-        server -> p11 : Generate/Load Cluster KEK
-        server <- p11 : KEK Loaded
-        client <- server : gRPC - Version
-        apis <- client : gRPC - Version
+        apis -> client : Init(InitRequest)
+        k8sa <- apis : Registered
+
     end
 
     group Startup Sequences
@@ -40,7 +37,7 @@
         p11 -> server : KEK Loaded
     end
 
-    group Operations
+    group Data Protection Operations
         apis -> client : Encrypt(EncryptRequest)
         client -> server : Encrypt(EncryptRequest)
         server -> p11 : Encrypt(Clear)

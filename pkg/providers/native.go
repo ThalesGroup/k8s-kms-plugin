@@ -129,7 +129,7 @@ func (km *Native) Load(identity string) (key gose.AuthenticatedEncryptionKey, er
 	return
 }
 
-func (n *Native) LoadDEK(ctx context.Context, request *istio.LoadDEKRequest) (*istio.LoadDEKResponse, error) {
+func (n *Native) LoadSEK(ctx context.Context, request *istio.LoadSEKRequest) (*istio.LoadSEKResponse, error) {
 	panic("implement me")
 }
 

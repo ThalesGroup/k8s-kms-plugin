@@ -13,6 +13,6 @@ service KeyManagementService {
   rpc GenerateDEK(GenerateDEKRequest) returns (GenerateDEKResponse);
   // GenerateSEK returns a wrapped (by provided encrypted DEK ), for later use during loading and signing key generation
   rpc GenerateSEK(GenerateSEKRequest) returns (GenerateSEKResponse);
-  // LoadDEK returns the DEK unwrapped for the controller to unwrap the SEK in place and use for CA work...
-  rpc LoadDEK(LoadDEKRequest) returns (LoadDEKResponse);
+  // LoadSEK returns the SEK unwrapped for the controller to use for CA work...
+  rpc LoadSEK(LoadSEKRequest) returns (LoadSEKResponse);
 }

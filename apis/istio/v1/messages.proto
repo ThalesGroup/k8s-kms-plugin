@@ -35,6 +35,8 @@ message GenerateDEKRequest {
   int64 size = 1;
   // What kind of key is it... only Symmetric kinds will be supported
   KeyKind kind = 2;
+  // Parent KID of the KEK
+  bytes parent_kid = 3;
 }
 
 message GenerateDEKResponse {
@@ -49,19 +51,25 @@ message GenerateSEKRequest {
   KeyKind kind = 2;
   // Encrypted blob of DEK
   bytes encrypted_key_blob = 3;
+  // Encrypted blob of SEK
+  bytes encrypted_sek_blob = 4;
+  // Parent KID of the KEK
+  bytes parent_kid = 5;
 }
 
 message GenerateSEKResponse {
   // Encrypted blob of SEK encrypted by DEK
-  bytes encrypted_key_blob = 1;
+  bytes encrypted_sek_blob = 1;
 }
 
-message LoadDEKRequest {
+message LoadSEKRequest {
   // Encrypted blob of DEK
-  bytes encrypted_key_blob = 1;
+  bytes encrypted_dek_blob = 1;
+  // Encrypted blob of SEK
+  bytes encrypted_sek_blob = 2;
 }
 
-message LoadDEKResponse {
-  // Clear DEK
-  bytes clear_key = 1;
+message LoadSEKResponse {
+  // Clear SEK
+  bytes clear_sek = 1;
 }

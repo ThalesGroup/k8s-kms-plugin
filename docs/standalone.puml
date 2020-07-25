@@ -1,0 +1,57 @@
+@startuml
+    actor "k8s admin" as k8sa
+
+    box "k8s" #LightBlue
+        participant "APIServer/IstioD" as apis
+    end box
+
+    box "kms" #fff
+        participant "k8s-kms-plugin-server" as server
+        participant "pkcs11-device" as p11
+    end box
+
+    group Register KMS to K8S
+        k8sa -> apis : Configure KMS Plugin Parameters
+
+    end
+
+    group Startup Sequences
+        server -> p11 : Load or AutoCreate KEK(Lib, Slot, PIN, KID)
+        p11 -> server : KEK Loaded
+    end
+
+    group PKI Operations
+        ==key gen==
+        apis -> server : GenerateDEK(GenerateDEKRequest)
+        server -> p11 : GenerateDEK(KeyKind+Params)
+        server <- p11 : GenerateDEK(WrappedDEK)
+        apis <- server : GenerateDEK(GenerateDEKResponse)
+        apis -> server : GenerateSEK(GenerateSEKRequest)
+        server -> p11 : GenerateSEK(KeyKind+Params+WrappedDEK)
+        server <- p11 : GenerateSEK(WrappedSEK)
+        apis <- server : GenerateSEK(GenerateSEKResponse)
+        ==key load==
+        apis -> server : LoadSEK(GenerateSEKRequest)
+        server -> p11 : LoadSEK(WrappedDEK+WrappedSEK)
+        server <- p11 : LoadSEK(SEK in PEM Format)
+        apis <- server : LoadSEK(GenerateSEKResponse)
+
+    end
+
+    group Data Protection Operations
+
+        apis -> server : Encrypt(EncryptRequest)
+        server -> p11 : Encrypt(Clear)
+        server <- p11 : Encrypt(CipherText)
+        apis <- server : Encrypt(EncryptResponse)
+
+        apis -> server : Decrypt(DecryptRequest)
+        server -> p11 : Decrypt(CipherText)
+        server <- p11 : Decrypt(Clear)
+        apis <- server : Decrypt(DecryptResponse)
+
+    end
+
+    actor "kms admin" as kmsa
+
+@enduml

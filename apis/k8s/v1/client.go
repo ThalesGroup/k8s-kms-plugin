@@ -30,7 +30,7 @@ import (
 	"time"
 )
 
-func GetClient(host string, port int64) (ctx context.Context, cancel context.CancelFunc, c KeyManagementServiceClient, err error) {
+func GetClientTCP(host string, port int64) (ctx context.Context, cancel context.CancelFunc, c KeyManagementServiceClient, err error) {
 	// Get Client
 	options := []grpc.DialOption{grpc.WithInsecure()}
 	var conn *grpc.ClientConn
@@ -39,7 +39,19 @@ func GetClient(host string, port int64) (ctx context.Context, cancel context.Can
 	}
 
 	ctx, cancel = context.WithTimeout(context.Background(), time.Second)
-	c =NewKeyManagementServiceClient(conn)
+	c = NewKeyManagementServiceClient(conn)
 	return
 }
 
+func GetClientSocket(socket string) (ctx context.Context, cancel context.CancelFunc, c KeyManagementServiceClient, err error) {
+	// Get Client
+	options := []grpc.DialOption{grpc.WithInsecure()}
+	var conn *grpc.ClientConn
+	if conn, err = grpc.Dial(fmt.Sprintf("unix:///%s", socket), options...); err != nil {
+		return
+	}
+
+	ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+	c = NewKeyManagementServiceClient(conn)
+	return
+}

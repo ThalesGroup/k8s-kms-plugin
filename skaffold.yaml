@@ -5,15 +5,16 @@ build:
     useDockerCLI: true
     push: true
   artifacts:
-    - image: gcr.io/thalescpl-io/k8s-kms-plugin/client
-      docker:
-        dockerfile: Dockerfile
-        target: client
+# TODO: going to get some stuff going
+#    - image: gcr.io/thalescpl-io/k8s-kms-plugin/client
+#      docker:
+#        dockerfile: Dockerfile
+#        target: client
     - image: gcr.io/thalescpl-io/k8s-kms-plugin/server
       docker:
         dockerfile: Dockerfile
         target: kms-server
-    - image: gcr.io/thalescpl-io/k8s-kms-plugin/est
-      docker:
-        dockerfile: Dockerfile
-        target: est-server
+#    - image: gcr.io/thalescpl-io/k8s-kms-plugin/est
+#      docker:
+#        dockerfile: Dockerfile
+#        target: est-server

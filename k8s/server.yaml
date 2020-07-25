@@ -23,12 +23,16 @@ spec:
         - name: ca
           hostPath:
             path: /etc/
+        - name: socket
+          hostPath:
+            path: /tmp/run
       initContainers:
         - name: bootstrap
           image: "gcr.io/thalescpl-io/k8s-kms-plugin/server"
           volumeMounts:
             - mountPath: /certs/
               name: certstore
+
           env:
             - name: P11_LIB
               value: /usr/lib64/libsofthsm2.so
@@ -73,6 +77,8 @@ spec:
           volumeMounts:
             - mountPath: /certs/
               name: certstore
+            - mountPath: /tmp/run
+              name: socket
           env:
             - name: P11_LIB
               value: /usr/lib64/libsofthsm2.so
@@ -82,6 +88,13 @@ spec:
               value: changeme
           args:
             - serve
+            - --socket=/tmp/run/socket
+        - name: test-client
+          image: "gcr.io/thalescpl-io/k8s-kms-plugin/server"
+          imagePullPolicy: IfNotPresent
+          args:
+            - test
+            - --socket=/tmp/run/socket
 ---
 kind: Service
 apiVersion: v1

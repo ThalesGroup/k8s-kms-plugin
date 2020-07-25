@@ -26,6 +26,7 @@ var (
 	testPlainMessage    []byte
 	testRSAKEY          crypto11.SignerDecrypter
 	testWrappedDEK      []byte
+	testWrappedSEK      []byte
 )
 
 func init() {
@@ -268,13 +269,13 @@ func TestP11_LoadDEK(t *testing.T) {
 	}
 	type args struct {
 		ctx     context.Context
-		request *istio.LoadDEKRequest
+		request *istio.LoadSEKRequest
 	}
 	tests := []struct {
 		name     string
 		fields   fields
 		args     args
-		wantResp *istio.LoadDEKResponse
+		wantResp *istio.LoadSEKResponse
 		wantErr  bool
 	}{
 		{
@@ -290,8 +291,9 @@ func TestP11_LoadDEK(t *testing.T) {
 			},
 			args: args{
 				ctx: context.Background(),
-				request: &istio.LoadDEKRequest{
-					EncryptedKeyBlob: testWrappedDEK,
+				request: &istio.LoadSEKRequest{
+					EncryptedDekBlob: testWrappedDEK,
+					EncryptedSekBlob: testWrappedSEK,
 				},
 			},
 			wantResp: nil,
@@ -351,6 +353,7 @@ func setupSoftHSMTestCase(t testing.TB) func(t testing.TB) {
 	if testWrappedDEK, err = generateDEK(testCtx, testEncryptor, istio.KeyKind_AES, defaultDEKSize); err != nil {
 		t.Fatal(err)
 	}
+
 
 	return func(t testing.TB) {
 		// teardown goes here as needed

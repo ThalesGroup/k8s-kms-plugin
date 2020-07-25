@@ -59,12 +59,12 @@ var file_apis_istio_v1_service_proto_rawDesc = []byte{
 	0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b,
 	0x6d, 0x73, 0x2e, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x6e, 0x65,
 	0x72, 0x61, 0x74, 0x65, 0x53, 0x45, 0x4b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12,
-	0x62, 0x0a, 0x07, 0x4c, 0x6f, 0x61, 0x64, 0x44, 0x45, 0x4b, 0x12, 0x2a, 0x2e, 0x74, 0x68, 0x61,
+	0x62, 0x0a, 0x07, 0x4c, 0x6f, 0x61, 0x64, 0x53, 0x45, 0x4b, 0x12, 0x2a, 0x2e, 0x74, 0x68, 0x61,
 	0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x69,
-	0x73, 0x74, 0x69, 0x6f, 0x2e, 0x76, 0x31, 0x2e, 0x4c, 0x6f, 0x61, 0x64, 0x44, 0x45, 0x4b, 0x52,
+	0x73, 0x74, 0x69, 0x6f, 0x2e, 0x76, 0x31, 0x2e, 0x4c, 0x6f, 0x61, 0x64, 0x53, 0x45, 0x4b, 0x52,
 	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x2b, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63,
 	0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x69, 0x73, 0x74, 0x69, 0x6f,
-	0x2e, 0x76, 0x31, 0x2e, 0x4c, 0x6f, 0x61, 0x64, 0x44, 0x45, 0x4b, 0x52, 0x65, 0x73, 0x70, 0x6f,
+	0x2e, 0x76, 0x31, 0x2e, 0x4c, 0x6f, 0x61, 0x64, 0x53, 0x45, 0x4b, 0x52, 0x65, 0x73, 0x70, 0x6f,
 	0x6e, 0x73, 0x65, 0x42, 0x3c, 0x5a, 0x3a, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f,
 	0x6d, 0x2f, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2d, 0x69, 0x6f, 0x2f, 0x6b,
 	0x38, 0x73, 0x2d, 0x6b, 0x6d, 0x73, 0x2d, 0x70, 0x6c, 0x75, 0x67, 0x69, 0x6e, 0x2f, 0x61, 0x70,
@@ -75,18 +75,18 @@ var file_apis_istio_v1_service_proto_rawDesc = []byte{
 var file_apis_istio_v1_service_proto_goTypes = []interface{}{
 	(*GenerateDEKRequest)(nil),  // 0: thalescpl.io.ekms.istio.v1.GenerateDEKRequest
 	(*GenerateSEKRequest)(nil),  // 1: thalescpl.io.ekms.istio.v1.GenerateSEKRequest
-	(*LoadDEKRequest)(nil),      // 2: thalescpl.io.ekms.istio.v1.LoadDEKRequest
+	(*LoadSEKRequest)(nil),      // 2: thalescpl.io.ekms.istio.v1.LoadSEKRequest
 	(*GenerateDEKResponse)(nil), // 3: thalescpl.io.ekms.istio.v1.GenerateDEKResponse
 	(*GenerateSEKResponse)(nil), // 4: thalescpl.io.ekms.istio.v1.GenerateSEKResponse
-	(*LoadDEKResponse)(nil),     // 5: thalescpl.io.ekms.istio.v1.LoadDEKResponse
+	(*LoadSEKResponse)(nil),     // 5: thalescpl.io.ekms.istio.v1.LoadSEKResponse
 }
 var file_apis_istio_v1_service_proto_depIdxs = []int32{
 	0, // 0: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateDEK:input_type -> thalescpl.io.ekms.istio.v1.GenerateDEKRequest
 	1, // 1: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateSEK:input_type -> thalescpl.io.ekms.istio.v1.GenerateSEKRequest
-	2, // 2: thalescpl.io.ekms.istio.v1.KeyManagementService.LoadDEK:input_type -> thalescpl.io.ekms.istio.v1.LoadDEKRequest
+	2, // 2: thalescpl.io.ekms.istio.v1.KeyManagementService.LoadSEK:input_type -> thalescpl.io.ekms.istio.v1.LoadSEKRequest
 	3, // 3: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateDEK:output_type -> thalescpl.io.ekms.istio.v1.GenerateDEKResponse
 	4, // 4: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateSEK:output_type -> thalescpl.io.ekms.istio.v1.GenerateSEKResponse
-	5, // 5: thalescpl.io.ekms.istio.v1.KeyManagementService.LoadDEK:output_type -> thalescpl.io.ekms.istio.v1.LoadDEKResponse
+	5, // 5: thalescpl.io.ekms.istio.v1.KeyManagementService.LoadSEK:output_type -> thalescpl.io.ekms.istio.v1.LoadSEKResponse
 	3, // [3:6] is the sub-list for method output_type
 	0, // [0:3] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
@@ -135,8 +135,8 @@ type KeyManagementServiceClient interface {
 	GenerateDEK(ctx context.Context, in *GenerateDEKRequest, opts ...grpc.CallOption) (*GenerateDEKResponse, error)
 	// GenerateSEK returns a wrapped (by provided encrypted DEK ), for later use during loading and signing key generation
 	GenerateSEK(ctx context.Context, in *GenerateSEKRequest, opts ...grpc.CallOption) (*GenerateSEKResponse, error)
-	// LoadDEK returns the DEK unwrapped for the controller to unwrap the SEK in place and use for CA work...
-	LoadDEK(ctx context.Context, in *LoadDEKRequest, opts ...grpc.CallOption) (*LoadDEKResponse, error)
+	// LoadSEK returns the SEK unwrapped for the controller to use for CA work...
+	LoadSEK(ctx context.Context, in *LoadSEKRequest, opts ...grpc.CallOption) (*LoadSEKResponse, error)
 }
 
 type keyManagementServiceClient struct {
@@ -165,9 +165,9 @@ func (c *keyManagementServiceClient) GenerateSEK(ctx context.Context, in *Genera
 	return out, nil
 }
 
-func (c *keyManagementServiceClient) LoadDEK(ctx context.Context, in *LoadDEKRequest, opts ...grpc.CallOption) (*LoadDEKResponse, error) {
-	out := new(LoadDEKResponse)
-	err := c.cc.Invoke(ctx, "/thalescpl.io.ekms.istio.v1.KeyManagementService/LoadDEK", in, out, opts...)
+func (c *keyManagementServiceClient) LoadSEK(ctx context.Context, in *LoadSEKRequest, opts ...grpc.CallOption) (*LoadSEKResponse, error) {
+	out := new(LoadSEKResponse)
+	err := c.cc.Invoke(ctx, "/thalescpl.io.ekms.istio.v1.KeyManagementService/LoadSEK", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -180,8 +180,8 @@ type KeyManagementServiceServer interface {
 	GenerateDEK(context.Context, *GenerateDEKRequest) (*GenerateDEKResponse, error)
 	// GenerateSEK returns a wrapped (by provided encrypted DEK ), for later use during loading and signing key generation
 	GenerateSEK(context.Context, *GenerateSEKRequest) (*GenerateSEKResponse, error)
-	// LoadDEK returns the DEK unwrapped for the controller to unwrap the SEK in place and use for CA work...
-	LoadDEK(context.Context, *LoadDEKRequest) (*LoadDEKResponse, error)
+	// LoadSEK returns the SEK unwrapped for the controller to use for CA work...
+	LoadSEK(context.Context, *LoadSEKRequest) (*LoadSEKResponse, error)
 }
 
 // UnimplementedKeyManagementServiceServer can be embedded to have forward compatible implementations.
@@ -194,8 +194,8 @@ func (*UnimplementedKeyManagementServiceServer) GenerateDEK(context.Context, *Ge
 func (*UnimplementedKeyManagementServiceServer) GenerateSEK(context.Context, *GenerateSEKRequest) (*GenerateSEKResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GenerateSEK not implemented")
 }
-func (*UnimplementedKeyManagementServiceServer) LoadDEK(context.Context, *LoadDEKRequest) (*LoadDEKResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method LoadDEK not implemented")
+func (*UnimplementedKeyManagementServiceServer) LoadSEK(context.Context, *LoadSEKRequest) (*LoadSEKResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method LoadSEK not implemented")
 }
 
 func RegisterKeyManagementServiceServer(s *grpc.Server, srv KeyManagementServiceServer) {
@@ -238,20 +238,20 @@ func _KeyManagementService_GenerateSEK_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
-func _KeyManagementService_LoadDEK_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(LoadDEKRequest)
+func _KeyManagementService_LoadSEK_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LoadSEKRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(KeyManagementServiceServer).LoadDEK(ctx, in)
+		return srv.(KeyManagementServiceServer).LoadSEK(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/thalescpl.io.ekms.istio.v1.KeyManagementService/LoadDEK",
+		FullMethod: "/thalescpl.io.ekms.istio.v1.KeyManagementService/LoadSEK",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyManagementServiceServer).LoadDEK(ctx, req.(*LoadDEKRequest))
+		return srv.(KeyManagementServiceServer).LoadSEK(ctx, req.(*LoadSEKRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -269,8 +269,8 @@ var _KeyManagementService_serviceDesc = grpc.ServiceDesc{
 			Handler:    _KeyManagementService_GenerateSEK_Handler,
 		},
 		{
-			MethodName: "LoadDEK",
-			Handler:    _KeyManagementService_LoadDEK_Handler,
+			MethodName: "LoadSEK",
+			Handler:    _KeyManagementService_LoadSEK_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

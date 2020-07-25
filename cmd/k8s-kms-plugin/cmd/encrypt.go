@@ -56,7 +56,7 @@ var encryptCmd = &cobra.Command{
 		}
 		var ctx context.Context
 		var c k8s.KeyManagementServiceClient
-		ctx, _, c, err = k8s.GetClient(host, grpcPort)
+		ctx, _, c, err = k8s.GetClientTCP(host, grpcPort)
 		if err != nil {
 			return
 		}

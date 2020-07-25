@@ -144,13 +144,11 @@ func (p *P11) GenerateDEK(ctx context.Context, request *istio.GenerateDEKRequest
 
 func generateDEK(ctx *crypto11.Context, encryptor gose.JweEncryptor, kind istio.KeyKind, size int) (encryptedKeyBlob []byte, err error) {
 
-
-
 	switch kind {
 	case istio.KeyKind_AES:
 		var aesbits = make([]byte, size)
 		var rng io.Reader
-		if rng, err =ctx.NewRandomReader(); err != nil {
+		if rng, err = ctx.NewRandomReader(); err != nil {
 			return
 		}
 		if _, err = rng.Read(aesbits); err != nil {
@@ -185,10 +183,6 @@ func (p *P11) GenerateSEK(ctx context.Context, request *istio.GenerateSEKRequest
 			return
 		}
 	}
-	var rng io.Reader
-	if rng, err = p.ctx.NewRandomReader(); err != nil {
-		return
-	}
 
 	var dekClear []byte
 	if dekClear, _, err = p.decryptor.Decrypt(string(request.EncryptedKeyBlob)); err != nil {
@@ -203,9 +197,21 @@ func (p *P11) GenerateSEK(ctx context.Context, request *istio.GenerateSEKRequest
 	}
 	dekEncryptor := gose.NewJweDirectEncryptorImpl(aead)
 
-	// Generate the actual SEK
-	var wrappedSEK string
+	var wrappedSEK []byte
+	if wrappedSEK, err = p.generateSEK(ctx, request, dekEncryptor); err != nil {
+		return
+	}
+	resp = &istio.GenerateSEKResponse{}
+	resp.EncryptedSekBlob = []byte(wrappedSEK)
+	return
+}
 
+func (p *P11) generateSEK(ctx context.Context, request *istio.GenerateSEKRequest, dekEncryptor gose.JweEncryptor) (wrappedSEK []byte, err error) {
+	// Generate the actual SEK
+	var rng io.Reader
+	if rng, err = p.ctx.NewRandomReader(); err != nil {
+		return
+	}
 	switch request.Kind {
 	case istio.KeyKind_RSA:
 		var kp *rsa.PrivateKey
@@ -217,10 +223,11 @@ func (p *P11) GenerateSEK(ctx context.Context, request *istio.GenerateSEKRequest
 			Bytes: x509.MarshalPKCS1PrivateKey(kp),
 		}
 		// Wrap and return the wrappedSEK
-
-		if wrappedSEK, err = dekEncryptor.Encrypt(kpPEM.Bytes, nil); err != nil {
+		var wrappedSEKString string
+		if wrappedSEKString, err = dekEncryptor.Encrypt(kpPEM.Bytes, nil); err != nil {
 			return
 		}
+		wrappedSEK = []byte(wrappedSEKString)
 	case istio.KeyKind_ECC:
 		err = status.Error(codes.Unimplemented, "ECC not yet implemented")
 		return
@@ -228,13 +235,12 @@ func (p *P11) GenerateSEK(ctx context.Context, request *istio.GenerateSEKRequest
 		err = status.Error(codes.InvalidArgument, "unsupported key kind")
 		return
 	}
-	resp = &istio.GenerateSEKResponse{}
-	resp.EncryptedKeyBlob = []byte(wrappedSEK)
+
 	return
 }
 
-// LoadDEK unwraps the supplied EncryptedKeyBlob with the HSM's KEK for this cluster.
-func (p *P11) LoadDEK(ctx context.Context, request *istio.LoadDEKRequest) (resp *istio.LoadDEKResponse, err error) {
+// LoadDEK unwraps the supplied SEK with the Wrapped SEK
+func (p *P11) LoadSEK(ctx context.Context, request *istio.LoadSEKRequest) (resp *istio.LoadSEKResponse, err error) {
 	if request == nil {
 		return nil, status.Error(codes.InvalidArgument, "no request sent")
 	}
@@ -243,9 +249,21 @@ func (p *P11) LoadDEK(ctx context.Context, request *istio.LoadDEKRequest) (resp 
 			return
 		}
 	}
+	var clearDEK []byte
+	if clearDEK, _, err = p.decryptor.Decrypt(string(request.EncryptedDekBlob)); err != nil {
+		return
+	}
+	var jwk jose.Jwk
+	jwk, err = gose.LoadJwk(bytes.NewReader(clearDEK), keyOps)
+	var aead gose.AuthenticatedEncryptionKey
+	if aead, err = gose.NewAesGcmCryptorFromJwk(jwk, keyOps); err != nil {
+		return
+	}
+	dekDecryptor := gose.NewJweDirectDecryptorImpl([]gose.AuthenticatedEncryptionKey{aead})
+	resp = &istio.LoadSEKResponse{
 
-	resp = &istio.LoadDEKResponse{}
-	if resp.ClearKey, _, err = p.decryptor.Decrypt(string(request.EncryptedKeyBlob)); err != nil {
+	}
+	if resp.ClearSek, _, err = dekDecryptor.Decrypt(string(request.EncryptedSekBlob)); err != nil {
 		return
 	}
 

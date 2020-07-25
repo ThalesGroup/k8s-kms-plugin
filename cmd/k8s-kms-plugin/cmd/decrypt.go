@@ -29,6 +29,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 )
 
 // decryptCmd represents the decrypt command
@@ -47,7 +49,7 @@ var decryptCmd = &cobra.Command{
 		}
 		var ctx context.Context
 		var c k8s.KeyManagementServiceClient
-		if ctx, _, c, err = k8s.GetClient(host, grpcPort); err != nil {
+		if ctx, _, c, err = k8s.GetClientTCP(host, grpcPort); err != nil {
 			return
 		}
 		var resp *k8s.DecryptResponse
@@ -73,5 +75,6 @@ func init() {
 	decryptCmd.Flags().StringVarP(&inputString, "string", "s", "", "String to decrypt")
 	decryptCmd.Flags().StringVarP(&inputFile, "file", "f", "", "File to decrypt")
 	decryptCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Output file for clear")
+	decryptCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), ".sock"), "Unix Socket")
 
 }
