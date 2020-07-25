@@ -125,8 +125,6 @@ func init() {
 	serveCmd.Flags().BoolVar(&createKey, "auto-create", true, "Auto create the keys if needed")
 	serveCmd.Flags().BoolVar(&allowAny, "allow-any", false, "Allow any device (accepts all ids/secrets)")
 
-
-
 }
 
 func grpcServe(gl net.Listener) (err error) {
@@ -135,11 +133,15 @@ func grpcServe(gl net.Listener) (err error) {
 	switch provider {
 	case "p11":
 		config := &crypto11.Config{
-			Path:            p11lib,
-			TokenLabel:      p11label,
-			SlotNumber:      &p11slot,
+			Path: p11lib,
+
 			Pin:             p11pin,
 			UseGCMIVFromHSM: true,
+		}
+		if p11label != "" {
+			config.TokenLabel = p11label
+		} else {
+			config.SlotNumber = &p11slot
 		}
 		if p, err = providers.NewP11(keyName, config, createKey); err != nil {
 			return

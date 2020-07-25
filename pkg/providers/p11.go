@@ -45,6 +45,34 @@ var (
 	}
 )
 
+func generateDEK(ctx *crypto11.Context, encryptor gose.JweEncryptor, kind istio.KeyKind, size int) (encryptedKeyBlob []byte, err error) {
+
+	switch kind {
+	case istio.KeyKind_AES:
+		var aesbits = make([]byte, size)
+		var rng io.Reader
+		if rng, err = ctx.NewRandomReader(); err != nil {
+			return
+		}
+		if _, err = rng.Read(aesbits); err != nil {
+			return
+		}
+
+		// using the AES key as it's payload
+		var encryptedString string
+		if encryptedString, err = encryptor.Encrypt(aesbits, nil); err != nil {
+			return
+		}
+		encryptedKeyBlob = []byte(encryptedString)
+	default:
+		err = status.Error(codes.InvalidArgument, "invalid DEK key kind")
+		return
+	}
+	// fill aesbits with 32bytes of random data from the RNG
+
+	return
+}
+
 type P11 struct {
 	//keyId     []byte
 	keyLabel   []byte
@@ -55,50 +83,16 @@ type P11 struct {
 	createKey  bool
 }
 
-func (p *P11) genKekKid() (kid []byte, err error) {
-	var u uuid.UUID
-	u, err = uuid.NewRandom()
-	if err != nil {
-		return
-	}
-	kid, err = u.MarshalText()
-	if err != nil {
-		return
-	}
-	return
-}
-func (p *P11) GenerateKEK(ctx context.Context, request *istio.GenerateKEKRequest) (resp *istio.GenerateKEKResponse, err error) {
-	logrus.Infof("Got GenerateKEK call")
-	if request.KekKid == nil {
-		request.KekKid, err = p.genKekKid()
-		if err != nil {
-			logrus.Error(err)
-			return
-		}
-	}
-	_, err = p.Generate(request.KekKid, []byte(defaultkeyLabel), jose.AlgA256GCM)
-	if err != nil {
-		logrus.Error(err)
-		return
-	}
-	resp = &istio.GenerateKEKResponse{
-		KekKid: request.KekKid,
-	}
-	return
-
-}
-
-func (p *P11) DestroyKEK(ctx context.Context, request *istio.DestroyKEKRequest) (*istio.DestroyKEKResponse, error) {
-	panic("implement me")
-}
-
 func NewP11(keyLabel string, config *crypto11.Config, createKey bool) (p *P11, err error) {
 
 	p = &P11{
-		//keyId:     []byte(keyId),
 		keyLabel:  []byte(keyLabel),
 		config:    config,
 		createKey: createKey,
+	}
+	// Bootstrap the Pkcs11 device or die
+	if p.ctx, err = crypto11.Configure(p.config); err != nil {
+		return
 	}
 	return
 }
@@ -131,6 +125,10 @@ func (p *P11) Decrypt(ctx context.Context, req *k8s.DecryptRequest) (resp *k8s.D
 	return
 }
 
+func (p *P11) DestroyKEK(ctx context.Context, request *istio.DestroyKEKRequest) (*istio.DestroyKEKResponse, error) {
+	panic("implement me")
+}
+
 func (p *P11) Encrypt(ctx context.Context, req *k8s.EncryptRequest) (resp *k8s.EncryptResponse, err error) {
 	var encryptor gose.JweEncryptor
 	if encryptor = p.encryptors[req.KeyId]; encryptor == nil {
@@ -146,6 +144,22 @@ func (p *P11) Encrypt(ctx context.Context, req *k8s.EncryptRequest) (resp *k8s.E
 	resp = &k8s.EncryptResponse{
 		Cipher: []byte(out),
 	}
+	return
+}
+
+//Generate an AEK
+func (p *P11) Generate(identity, label []byte, alg jose.Alg) (key gose.AuthenticatedEncryptionKey, err error) {
+	params, supported := algToKeyGenParams[alg]
+	if !supported {
+		err = fmt.Errorf("algorithm %v is not supported", alg)
+		return
+	}
+
+	if _, err = p.ctx.GenerateSecretKeyWithLabel(identity, label, params.size, params.cipher); err != nil {
+		return
+	}
+
+	key, err = p.Load(identity)
 	return
 }
 
@@ -171,32 +185,25 @@ func (p *P11) GenerateDEK(ctx context.Context, request *istio.GenerateDEKRequest
 	return
 }
 
-func generateDEK(ctx *crypto11.Context, encryptor gose.JweEncryptor, kind istio.KeyKind, size int) (encryptedKeyBlob []byte, err error) {
-
-	switch kind {
-	case istio.KeyKind_AES:
-		var aesbits = make([]byte, size)
-		var rng io.Reader
-		if rng, err = ctx.NewRandomReader(); err != nil {
+func (p *P11) GenerateKEK(ctx context.Context, request *istio.GenerateKEKRequest) (resp *istio.GenerateKEKResponse, err error) {
+	logrus.Infof("Got GenerateKEK call")
+	if request.KekKid == nil {
+		request.KekKid, err = p.genKekKid()
+		if err != nil {
+			logrus.Error(err)
 			return
 		}
-		if _, err = rng.Read(aesbits); err != nil {
-			return
-		}
-
-		// using the AES key as it's payload
-		var encryptedString string
-		if encryptedString, err = encryptor.Encrypt(aesbits, nil); err != nil {
-			return
-		}
-		encryptedKeyBlob = []byte(encryptedString)
-	default:
-		err = status.Error(codes.InvalidArgument, "invalid DEK key kind")
+	}
+	_, err = p.Generate(request.KekKid, []byte(defaultkeyLabel), jose.AlgA256GCM)
+	if err != nil {
+		logrus.Error(err)
 		return
 	}
-	// fill aesbits with 32bytes of random data from the RNG
-
+	resp = &istio.GenerateKEKResponse{
+		KekKid: request.KekKid,
+	}
 	return
+
 }
 
 // GenerateSEK gens a 4096 RSA Key with the DEK that is protected by the KEK for later Unwrapping by the remote client in it's pod/container
@@ -238,36 +245,28 @@ func (p *P11) GenerateSEK(ctx context.Context, request *istio.GenerateSEKRequest
 	return
 }
 
-func (p *P11) generateSEK(ctx context.Context, request *istio.GenerateSEKRequest, dekEncryptor gose.JweEncryptor) (wrappedSEK []byte, err error) {
-	// Generate the actual SEK
+//Load an AEK
+func (p *P11) Load(identity []byte) (key gose.AuthenticatedEncryptionKey, err error) {
 	var rng io.Reader
+
 	if rng, err = p.ctx.NewRandomReader(); err != nil {
 		return
 	}
-	switch request.Kind {
-	case istio.KeyKind_RSA:
-		var kp *rsa.PrivateKey
-		if kp, err = rsa.GenerateKey(rng, int(request.Size)); err != nil {
-			return
-		}
-		kpPEM := &pem.Block{
-			Type:  "PRIVATE KEY",
-			Bytes: x509.MarshalPKCS1PrivateKey(kp),
-		}
-		// Wrap and return the wrappedSEK
-		var wrappedSEKString string
-		if wrappedSEKString, err = dekEncryptor.Encrypt(kpPEM.Bytes, nil); err != nil {
-			return
-		}
-		wrappedSEK = []byte(wrappedSEKString)
-	case istio.KeyKind_ECC:
-		err = status.Error(codes.Unimplemented, "ECC not yet implemented")
-		return
-	default:
-		err = status.Error(codes.InvalidArgument, "unsupported key kind")
+	var handle *crypto11.SecretKey
+	if handle, err = p.ctx.FindKey(identity, p.keyLabel); err != nil {
 		return
 	}
-
+	if handle == nil {
+		err = ErrNoSuchKey
+		return
+	}
+	var aead cipher.AEAD
+	if aead, err = handle.NewGCM(); err != nil {
+		return
+	}
+	if key, err = gose.NewAesGcmCryptor(aead, rng, string(identity), jose.AlgA256GCM, keyOps); err != nil {
+		return
+	}
 	return
 }
 
@@ -305,51 +304,10 @@ func (p *P11) LoadSEK(ctx context.Context, request *istio.LoadSEKRequest) (resp 
 	return
 }
 
-//Generate an AEK
-func (p *P11) Generate(identity, label []byte, alg jose.Alg) (key gose.AuthenticatedEncryptionKey, err error) {
-	params, supported := algToKeyGenParams[alg]
-	if !supported {
-		err = fmt.Errorf("algorithm %v is not supported", alg)
-		return
-	}
-
-	if _, err = p.ctx.GenerateSecretKeyWithLabel(identity, label, params.size, params.cipher); err != nil {
-		return
-	}
-
-	key, err = p.Load(identity)
-	return
-}
-
-//Load an AEK
-func (p *P11) Load(identity []byte) (key gose.AuthenticatedEncryptionKey, err error) {
-	var rng io.Reader
-
-	if rng, err = p.ctx.NewRandomReader(); err != nil {
-		return
-	}
-	var handle *crypto11.SecretKey
-	if handle, err = p.ctx.FindKey(identity, p.keyLabel); err != nil {
-		return
-	}
-	if handle == nil {
-		err = ErrNoSuchKey
-		return
-	}
-	var aead cipher.AEAD
-	if aead, err = handle.NewGCM(); err != nil {
-		return
-	}
-	if key, err = gose.NewAesGcmCryptor(aead, rng, string(identity), jose.AlgA256GCM, keyOps); err != nil {
-		return
-	}
-	return
-}
-
 func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	var h interface{}
 	var err error
-	logrus.Debugf("Path: %s\n", info.FullMethod)
+	logrus.Infof("Path: %s\n", info.FullMethod)
 	h, err = handler(ctx, req)
 	return h, err
 }
@@ -358,10 +316,54 @@ func (p *P11) Version(ctx context.Context, request *v1.VersionRequest) (*v1.Vers
 	panic("implement me")
 }
 
-func (p *P11) loadKeyWithID(identity []byte) (encryptor gose.JweEncryptor, decryptor gose.JweDecryptor, err error) {
-	if p.ctx, err = crypto11.Configure(p.config); err != nil {
+func (p *P11) genKekKid() (kid []byte, err error) {
+	var u uuid.UUID
+	u, err = uuid.NewRandom()
+	if err != nil {
 		return
 	}
+	kid, err = u.MarshalText()
+	if err != nil {
+		return
+	}
+	return
+}
+
+func (p *P11) generateSEK(ctx context.Context, request *istio.GenerateSEKRequest, dekEncryptor gose.JweEncryptor) (wrappedSEK []byte, err error) {
+	// Generate the actual SEK
+	var rng io.Reader
+	if rng, err = p.ctx.NewRandomReader(); err != nil {
+		return
+	}
+	switch request.Kind {
+	case istio.KeyKind_RSA:
+		var kp *rsa.PrivateKey
+		if kp, err = rsa.GenerateKey(rng, int(request.Size)); err != nil {
+			return
+		}
+		kpPEM := &pem.Block{
+			Type:  "PRIVATE KEY",
+			Bytes: x509.MarshalPKCS1PrivateKey(kp),
+		}
+		// Wrap and return the wrappedSEK
+		var wrappedSEKString string
+		if wrappedSEKString, err = dekEncryptor.Encrypt(kpPEM.Bytes, nil); err != nil {
+			return
+		}
+		wrappedSEK = []byte(wrappedSEKString)
+	case istio.KeyKind_ECC:
+		err = status.Error(codes.Unimplemented, "ECC not yet implemented")
+		return
+	default:
+		err = status.Error(codes.InvalidArgument, "unsupported key kind")
+		return
+	}
+
+	return
+}
+
+func (p *P11) loadKeyWithID(identity []byte) (encryptor gose.JweEncryptor, decryptor gose.JweDecryptor, err error) {
+
 	var rng io.Reader
 	var aek gose.AuthenticatedEncryptionKey
 
