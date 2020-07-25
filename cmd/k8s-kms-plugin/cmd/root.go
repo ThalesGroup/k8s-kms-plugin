@@ -35,7 +35,6 @@ import (
 var (
 	socketPath    string
 	grpcPort      int64
-	estPort       int
 	host          string
 	cfgFile       string
 	debug         bool

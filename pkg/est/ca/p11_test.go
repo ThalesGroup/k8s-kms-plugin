@@ -28,6 +28,7 @@ import (
 	"github.com/ThalesIgnite/gose"
 	"github.com/ThalesIgnite/gose/jose"
 	"os"
+	"reflect"
 	"testing"
 )
 
@@ -74,5 +75,37 @@ func setupSoftHSMTestCase(t testing.TB) func(t testing.TB) {
 		for _, key := range keys {
 			_ = key.Delete()
 		}
+	}
+}
+
+func TestNewP11EST(t *testing.T) {
+	td := setupSoftHSMTestCase(t)
+	defer td(t)
+	type args struct {
+		ca     string
+		key    string
+		cert   string
+		estkid string
+		config *crypto11.Config
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantE   *P11
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotE, err := NewP11EST(tt.args.ca, tt.args.key, tt.args.cert, tt.args.estkid, tt.args.config)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewP11EST() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(gotE, tt.wantE) {
+				t.Errorf("NewP11EST() gotE = %v, want %v", gotE, tt.wantE)
+			}
+		})
 	}
 }

@@ -60,32 +60,14 @@ type P11 struct {
 }
 
 const (
-	defaultkeyLabel = "k8s-kms-plugin-root-key"
-	defaultDEKSize  = 32 // 32 == 256 AES Key
+	defaultkeyLabel = "k8s-kms-plugin-est-ca-key"
 )
 
 var (
-	algToKeyGenParams = map[jose.Alg]keyGenerationParameters{
-		jose.AlgA128GCM: {
-			size:   128,
-			cipher: crypto11.CipherAES,
-		},
-		jose.AlgA192GCM: {
-			size:   192,
-			cipher: crypto11.CipherAES,
-		},
-		jose.AlgA256GCM: {
-			size:   256,
-			cipher: crypto11.CipherAES,
-		},
-	}
 	keyOps = []jose.KeyOps{jose.KeyOpsDecrypt, jose.KeyOpsEncrypt}
 )
 
 const (
-	errorBase64       = "Invalid base64 in request."
-	errorBadCertReq   = "Failed to read certificate request. Expected DER-encoded PKCS#10 data."
-	errorCertIssuance = "An error occured when requesting the certificate."
 	errorEncodingCert = "An error occured when encoding the certificate."
 	errorRootCert     = "Failed to obtain root certificate from CA."
 )
@@ -283,9 +265,4 @@ func (p *P11) SimpleEnroll(params operation.SimpleenrollParams, principal interf
 
 func (p *P11) SimpleReenroll(params operation.SimplereenrollParams) middleware.Responder {
 	panic("implement me")
-}
-
-type keyGenerationParameters struct {
-	size   int
-	cipher *crypto11.SymmetricCipher
 }

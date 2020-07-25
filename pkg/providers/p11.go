@@ -12,6 +12,7 @@ import (
 	"github.com/ThalesIgnite/crypto11"
 	"github.com/ThalesIgnite/gose"
 	"github.com/ThalesIgnite/gose/jose"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
@@ -45,27 +46,56 @@ var (
 )
 
 type P11 struct {
-	keyId     []byte
-	keyLabel  []byte
-	config    *crypto11.Config
-	ctx       *crypto11.Context
-	encryptor gose.JweEncryptor
-	decryptor gose.JweDecryptor
-	createKey bool
+	//keyId     []byte
+	keyLabel   []byte
+	config     *crypto11.Config
+	ctx        *crypto11.Context
+	encryptors map[string]gose.JweEncryptor
+	decryptors map[string]gose.JweDecryptor
+	createKey  bool
 }
 
-func (p *P11) GenerateKEK(ctx context.Context, request *istio.GenerateKEKRequest) (*istio.GenerateKEKResponse, error) {
-	panic("implement me")
+func (p *P11) genKekKid() (kid []byte, err error) {
+	var u uuid.UUID
+	u, err = uuid.NewRandom()
+	if err != nil {
+		return
+	}
+	kid, err = u.MarshalText()
+	if err != nil {
+		return
+	}
+	return
+}
+func (p *P11) GenerateKEK(ctx context.Context, request *istio.GenerateKEKRequest) (resp *istio.GenerateKEKResponse, err error) {
+	logrus.Infof("Got GenerateKEK call")
+	if request.KekKid == nil {
+		request.KekKid, err = p.genKekKid()
+		if err != nil {
+			logrus.Error(err)
+			return
+		}
+	}
+	_, err = p.Generate(request.KekKid, []byte(defaultkeyLabel), jose.AlgA256GCM)
+	if err != nil {
+		logrus.Error(err)
+		return
+	}
+	resp = &istio.GenerateKEKResponse{
+		KekKid: request.KekKid,
+	}
+	return
+
 }
 
 func (p *P11) DestroyKEK(ctx context.Context, request *istio.DestroyKEKRequest) (*istio.DestroyKEKResponse, error) {
 	panic("implement me")
 }
 
-func NewP11(keyId string, keyLabel string, config *crypto11.Config, createKey bool) (p *P11, err error) {
+func NewP11(keyLabel string, config *crypto11.Config, createKey bool) (p *P11, err error) {
 
 	p = &P11{
-		keyId:     []byte(keyId),
+		//keyId:     []byte(keyId),
 		keyLabel:  []byte(keyLabel),
 		config:    config,
 		createKey: createKey,
@@ -75,21 +105,24 @@ func NewP11(keyId string, keyLabel string, config *crypto11.Config, createKey bo
 
 //Close the key manager
 func (p *P11) Close() (err error) {
-	p.encryptor = nil
-	p.decryptor = nil
+	p.encryptors = nil
+	p.decryptors = nil
 	err = p.ctx.Close()
 
 	return
 }
 
+// Symmetric Encryption....
 func (p *P11) Decrypt(ctx context.Context, req *k8s.DecryptRequest) (resp *k8s.DecryptResponse, err error) {
-	if p.decryptor == nil {
-		if err = p.loadDevice(); err != nil {
+	var decryptor gose.JweDecryptor
+	if decryptor = p.decryptors[req.KeyId]; decryptor == nil {
+		if _, decryptor, err = p.loadKeyWithID([]byte(req.KeyId)); err != nil {
 			return
 		}
 	}
+
 	var out []byte
-	if out, _, err = p.decryptor.Decrypt(string(req.Cipher)); err != nil {
+	if out, _, err = decryptor.Decrypt(string(req.Cipher)); err != nil {
 		return
 	}
 	resp = &k8s.DecryptResponse{
@@ -99,13 +132,15 @@ func (p *P11) Decrypt(ctx context.Context, req *k8s.DecryptRequest) (resp *k8s.D
 }
 
 func (p *P11) Encrypt(ctx context.Context, req *k8s.EncryptRequest) (resp *k8s.EncryptResponse, err error) {
-	if p.encryptor == nil {
-		if err = p.loadDevice(); err != nil {
+	var encryptor gose.JweEncryptor
+	if encryptor = p.encryptors[req.KeyId]; encryptor == nil {
+		if encryptor, _, err = p.loadKeyWithID([]byte(req.KeyId)); err != nil {
 			return
 		}
 	}
+
 	var out string
-	if out, err = p.encryptor.Encrypt(req.Plain, nil); err != nil {
+	if out, err = encryptor.Encrypt(req.Plain, nil); err != nil {
 		return
 	}
 	resp = &k8s.EncryptResponse{
@@ -114,35 +149,20 @@ func (p *P11) Encrypt(ctx context.Context, req *k8s.EncryptRequest) (resp *k8s.E
 	return
 }
 
-//Generate an AEK
-func (p *P11) Generate(identity, label []byte, alg jose.Alg) (key gose.AuthenticatedEncryptionKey, err error) {
-	params, supported := algToKeyGenParams[alg]
-	if !supported {
-		err = fmt.Errorf("algorithm %v is not supported", alg)
-		return
-	}
-
-	if _, err = p.ctx.GenerateSecretKeyWithLabel(identity, label, params.size, params.cipher); err != nil {
-		return
-	}
-
-	key, err = p.Load(identity)
-	return
-}
-
 // Generate a 256 bit AES DEK Key , Wrapped via JWE with the PKCS11 base KEK
 func (p *P11) GenerateDEK(ctx context.Context, request *istio.GenerateDEKRequest) (resp *istio.GenerateDEKResponse, err error) {
 	if request == nil {
 		return nil, status.Error(codes.InvalidArgument, "no request sent")
 	}
-	if p.encryptor == nil {
-		if err = p.loadDevice(); err != nil {
+	var encryptor gose.JweEncryptor
+	if encryptor = p.encryptors[string(request.KekKid)]; encryptor == nil {
+		if encryptor, _, err = p.loadKeyWithID(request.KekKid); err != nil {
 			return
 		}
 	}
 	var dekBlob []byte
 
-	if dekBlob, err = generateDEK(p.ctx, p.encryptor, request.Kind, int(request.Size)); err != nil {
+	if dekBlob, err = generateDEK(p.ctx, encryptor, request.Kind, int(request.Size)); err != nil {
 		return
 	}
 	resp = &istio.GenerateDEKResponse{
@@ -186,19 +206,22 @@ func (p *P11) GenerateSEK(ctx context.Context, request *istio.GenerateSEKRequest
 	}
 	if request.EncryptedDekBlob == nil {
 		err = status.Error(codes.InvalidArgument, "EncryptedDekBlob required ")
+		return
 	}
-	if p.decryptor == nil {
-		if err = p.loadDevice(); err != nil {
+	var decryptor gose.JweDecryptor
+	if decryptor = p.decryptors[string(request.KekKid)]; decryptor == nil {
+		if _, decryptor, err = p.loadKeyWithID(request.KekKid); err != nil {
 			return
 		}
 	}
-
 	var dekClear []byte
-	if dekClear, _, err = p.decryptor.Decrypt(string(request.EncryptedDekBlob)); err != nil {
+	if dekClear, _, err = decryptor.Decrypt(string(request.EncryptedDekBlob)); err != nil {
 		return
 	}
 	var jwk jose.Jwk
-	jwk, err = gose.LoadJwk(bytes.NewReader(dekClear), keyOps)
+	if jwk, err = gose.LoadJwk(bytes.NewReader(dekClear), keyOps); err != nil {
+		return
+	}
 
 	var aead gose.AuthenticatedEncryptionKey
 	if aead, err = gose.NewAesGcmCryptorFromJwk(jwk, keyOps); err != nil {
@@ -253,17 +276,20 @@ func (p *P11) LoadSEK(ctx context.Context, request *istio.LoadSEKRequest) (resp 
 	if request == nil {
 		return nil, status.Error(codes.InvalidArgument, "no request sent")
 	}
-	if p.decryptor == nil {
-		if err = p.loadDevice(); err != nil {
+	var decryptor gose.JweDecryptor
+	if decryptor = p.decryptors[string(request.KekKid)]; decryptor == nil {
+		if _, decryptor, err = p.loadKeyWithID(request.KekKid); err != nil {
 			return
 		}
 	}
 	var clearDEK []byte
-	if clearDEK, _, err = p.decryptor.Decrypt(string(request.EncryptedDekBlob)); err != nil {
+	if clearDEK, _, err = decryptor.Decrypt(string(request.EncryptedDekBlob)); err != nil {
 		return
 	}
 	var jwk jose.Jwk
-	jwk, err = gose.LoadJwk(bytes.NewReader(clearDEK), keyOps)
+	if jwk, err = gose.LoadJwk(bytes.NewReader(clearDEK), keyOps); err != nil {
+		return
+	}
 	var aead gose.AuthenticatedEncryptionKey
 	if aead, err = gose.NewAesGcmCryptorFromJwk(jwk, keyOps); err != nil {
 		return
@@ -279,9 +305,20 @@ func (p *P11) LoadSEK(ctx context.Context, request *istio.LoadSEKRequest) (resp 
 	return
 }
 
-//Identity of the Key manager
-func (p *P11) Identity() string {
-	return string(p.keyId)
+//Generate an AEK
+func (p *P11) Generate(identity, label []byte, alg jose.Alg) (key gose.AuthenticatedEncryptionKey, err error) {
+	params, supported := algToKeyGenParams[alg]
+	if !supported {
+		err = fmt.Errorf("algorithm %v is not supported", alg)
+		return
+	}
+
+	if _, err = p.ctx.GenerateSecretKeyWithLabel(identity, label, params.size, params.cipher); err != nil {
+		return
+	}
+
+	key, err = p.Load(identity)
+	return
 }
 
 //Load an AEK
@@ -303,7 +340,7 @@ func (p *P11) Load(identity []byte) (key gose.AuthenticatedEncryptionKey, err er
 	if aead, err = handle.NewGCM(); err != nil {
 		return
 	}
-	if key, err = gose.NewAesGcmCryptor(aead, rng, string(p.keyId), jose.AlgA256GCM, keyOps); err != nil {
+	if key, err = gose.NewAesGcmCryptor(aead, rng, string(identity), jose.AlgA256GCM, keyOps); err != nil {
 		return
 	}
 	return
@@ -313,6 +350,7 @@ func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.
 	var h interface{}
 	var err error
 	logrus.Debugf("Path: %s\n", info.FullMethod)
+	h, err = handler(ctx, req)
 	return h, err
 }
 
@@ -320,7 +358,7 @@ func (p *P11) Version(ctx context.Context, request *v1.VersionRequest) (*v1.Vers
 	panic("implement me")
 }
 
-func (p *P11) loadDevice() (err error) {
+func (p *P11) loadKeyWithID(identity []byte) (encryptor gose.JweEncryptor, decryptor gose.JweDecryptor, err error) {
 	if p.ctx, err = crypto11.Configure(p.config); err != nil {
 		return
 	}
@@ -331,12 +369,12 @@ func (p *P11) loadDevice() (err error) {
 		return
 	}
 	var handle *crypto11.SecretKey
-	if handle, err = p.ctx.FindKey(p.keyId, p.keyLabel); err != nil {
+	if handle, err = p.ctx.FindKey(identity, p.keyLabel); err != nil {
 		return
 	}
 	if handle == nil {
 		if p.createKey {
-			if aek, err = p.Generate(p.keyId, p.keyLabel, jose.AlgA256GCM); err != nil {
+			if aek, err = p.Generate(identity, p.keyLabel, jose.AlgA256GCM); err != nil {
 				return
 			}
 		} else {
@@ -349,13 +387,13 @@ func (p *P11) loadDevice() (err error) {
 		if aead, err = handle.NewGCM(); err != nil {
 			return
 		}
-		if aek, err = gose.NewAesGcmCryptor(aead, rng, string(p.keyId), jose.AlgA256GCM, keyOps); err != nil {
+		if aek, err = gose.NewAesGcmCryptor(aead, rng, string(identity), jose.AlgA256GCM, keyOps); err != nil {
 			return
 		}
 	}
 
-	p.decryptor = gose.NewJweDirectDecryptorImpl([]gose.AuthenticatedEncryptionKey{aek})
-	p.encryptor = gose.NewJweDirectEncryptorImpl(aek)
+	decryptor = gose.NewJweDirectDecryptorImpl([]gose.AuthenticatedEncryptionKey{aek})
+	encryptor = gose.NewJweDirectEncryptorImpl(aek)
 
 	return
 }

@@ -87,6 +87,8 @@ message LoadSEKRequest {
   bytes encrypted_dek_blob = 1;
   // Encrypted blob of SEK
   bytes encrypted_sek_blob = 2;
+  // KEK
+  bytes kek_kid = 3;
 }
 
 message LoadSEKResponse {

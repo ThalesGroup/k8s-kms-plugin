@@ -27,12 +27,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ThalesIgnite/crypto11"
-	"github.com/go-openapi/loads"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
-	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/restapi"
-	"github.com/thalescpl-io/k8s-kms-plugin/pkg/est/restapi/operations"
 	"github.com/thalescpl-io/k8s-kms-plugin/pkg/providers"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -104,8 +101,6 @@ var serveCmd = &cobra.Command{
 		return
 	},
 }
-var estServer *restapi.Server
-var api *operations.EstServerAPI
 var enableTCP bool
 var nativePath string
 
@@ -130,11 +125,7 @@ func init() {
 	serveCmd.Flags().BoolVar(&createKey, "auto-create", true, "Auto create the keys if needed")
 	serveCmd.Flags().BoolVar(&allowAny, "allow-any", false, "Allow any device (accepts all ids/secrets)")
 
-	swaggerSpec, err := loads.Embedded(restapi.SwaggerJSON, restapi.FlatSwaggerJSON)
-	if err != nil {
-		panic(err)
-	}
-	api = operations.NewEstServerAPI(swaggerSpec)
+
 
 }
 
@@ -150,7 +141,7 @@ func grpcServe(gl net.Listener) (err error) {
 			Pin:             p11pin,
 			UseGCMIVFromHSM: true,
 		}
-		if p, err = providers.NewP11(kekKeyId, keyName, config, createKey); err != nil {
+		if p, err = providers.NewP11(keyName, config, createKey); err != nil {
 			return
 		}
 

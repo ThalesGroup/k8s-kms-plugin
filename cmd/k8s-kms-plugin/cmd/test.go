@@ -16,6 +16,7 @@ limitations under the License.
 package cmd
 
 import (
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
@@ -26,14 +27,14 @@ import (
 )
 
 var loop bool
-var loopTime int
+var loopTime, maxLoops int
 
 // testCmd represents the test command
 var testCmd = &cobra.Command{
 	Use:   "test",
 	Short: "Test connectivety to the socket for some encrypt/decrypt",
 
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		time.Sleep(2 * time.Second)
 
 		g := &errgroup.Group{}
@@ -42,27 +43,23 @@ var testCmd = &cobra.Command{
 		} else {
 			g.Go(runTest)
 		}
-		g.Wait()
+		return g.Wait()
 	},
 }
 
 func loopTestRun() error {
+	count := 0
 	for {
-		runTest()
+		_ = runTest()
 		time.Sleep(time.Duration(loopTime) * time.Second)
+		count++
+		if count > maxLoops {
+			break
+		}
 	}
 	return nil
 }
-func shutdownsafely() (err error) {
-	logrus.Infof("While the test is complete, we'll just keep the process alive so the pod doesn't die... ")
-	// TODO	"this can become a Job later on, maybe if there is a way to share the socket? So the job can close successfully vs restart again.
 
-	for {
-		// Sleep forever
-		time.Sleep((time.Duration(loopTime)) * time.Second)
-	}
-	return
-}
 func runTest() error {
 	// Run Istio e2e tests against the socket
 
@@ -73,34 +70,52 @@ func runTest() error {
 		return err
 	}
 
-	logrus.Info("Test 1 - GenerateDEK ")
-	var genDEKResp *istio.GenerateDEKResponse
-	if genDEKResp, err = c.GenerateDEK(ctx, &istio.GenerateDEKRequest{
-		Size: 32,
-		Kind: istio.KeyKind_AES,
-	}); err != nil {
-		logrus.Fatal(err)
-
+	// Generate a random key id for usage
+	testuuid, err := uuid.NewRandom()
+	if err != nil {
 		return err
 	}
-
-	logrus.Infof("Returned WrappedDEK: %s", genDEKResp.EncryptedDekBlob)
-
-	logrus.Info("Test 2 - GenerateSEK RSA")
-	var resp *istio.GenerateSEKResponse
-	if resp, err = c.GenerateSEK(ctx, &istio.GenerateSEKRequest{
-		Size: 4096,
-		Kind: istio.KeyKind_RSA,
-	}); err != nil {
-		logrus.Fatal(err)
+	var testKid []byte
+	testKid, err = testuuid.MarshalText()
+	if err != nil {
 		return err
 	}
-
-	logrus.Infof("Returned WrappedSEK: %s", resp.EncryptedSekBlob)
-	if loop {
+	logrus.Info("Test 1 - GenerateKEK")
+	var genKEKResp *istio.GenerateKEKResponse
+	genKEKResp, err = c.GenerateKEK(ctx, &istio.GenerateKEKRequest{
+		KekKid: testKid,
+	})
+	if err != nil {
 		return err
 	}
-	return shutdownsafely()
+	logrus.Infof("Returned KEK ID: %s", string(genKEKResp.KekKid))
+	//logrus.Info("Test 2 - GenerateDEK ")
+	//var genDEKResp *istio.GenerateDEKResponse
+	//if genDEKResp, err = c.GenerateDEK(ctx, &istio.GenerateDEKRequest{
+	//	Size: 32,
+	//	Kind: istio.KeyKind_AES,
+	//}); err != nil {
+	//	logrus.Fatal(err)
+	//
+	//	return err
+	//}
+	//
+	//logrus.Infof("Returned WrappedDEK: %s", genDEKResp.EncryptedDekBlob)
+	//
+	//logrus.Info("Test 3 - GenerateSEK RSA")
+	//var resp *istio.GenerateSEKResponse
+	//if resp, err = c.GenerateSEK(ctx, &istio.GenerateSEKRequest{
+	//	Size: 4096,
+	//	Kind: istio.KeyKind_RSA,
+	//}); err != nil {
+	//	logrus.Fatal(err)
+	//	return err
+	//}
+	//logrus.Infof("Returned WrappedSEK: %s", resp.EncryptedSekBlob)
+	//
+	//
+
+	return err
 
 }
 
@@ -109,6 +124,7 @@ func init() {
 	testCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), ".sock"), "Unix Socket")
 	testCmd.Flags().BoolVar(&loop, "loop", false, "Should we run the test in a loop?")
 	testCmd.Flags().IntVar(&loopTime, "loop-sleep", 10, "How many seconds to sleep between test runs ")
+	testCmd.Flags().IntVar(&loopTime, "max-loops", 100, "How many seconds to sleep between test runs ")
 	// Here you will define your flags and configuration settings.
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
