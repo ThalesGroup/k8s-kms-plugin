@@ -107,6 +107,7 @@ var serveCmd = &cobra.Command{
 var estServer *restapi.Server
 var api *operations.EstServerAPI
 var enableTCP bool
+var nativePath string
 
 func init() {
 	rootCmd.AddCommand(serveCmd)
@@ -125,6 +126,7 @@ func init() {
 	serveCmd.Flags().IntVar(&p11slot, "p11-slot", 0, "P11 token slot")
 	serveCmd.Flags().StringVar(&p11pin, "p11-pin", "", "P11 Pin")
 	serveCmd.Flags().StringVar(&keyName, "p11-key-label", "k8s-kek", "Key Label to use for encrypt/decrypt")
+	serveCmd.Flags().StringVarP(&nativePath, "native-path", "p", ".keys", "Path to key store for native provider(Files only)")
 	serveCmd.Flags().BoolVar(&createKey, "auto-create", true, "Auto create the keys if needed")
 	serveCmd.Flags().BoolVar(&allowAny, "allow-any", false, "Allow any device (accepts all ids/secrets)")
 
@@ -152,14 +154,8 @@ func grpcServe(gl net.Listener) (err error) {
 			return
 		}
 	case "native":
-		config := &crypto11.Config{
-			Path:            p11lib,
-			TokenLabel:      p11label,
-			SlotNumber:      &p11slot,
-			Pin:             p11pin,
-			UseGCMIVFromHSM: true,
-		}
-		if p, err = providers.NewP11(kekKeyId, keyName, config, createKey); err != nil {
+
+		if p, err = providers.NewNative(nativePath); err != nil {
 			return
 		}
 	case "ekms":
@@ -176,6 +172,6 @@ func grpcServe(gl net.Listener) (err error) {
 	gs := grpc.NewServer(serverOptions...)
 	reflection.Register(gs)
 	istio.RegisterKeyManagementServiceServer(gs, p)
-
+	logrus.Infof("Serving on socket: %s", socketPath)
 	return gs.Serve(gl)
 }

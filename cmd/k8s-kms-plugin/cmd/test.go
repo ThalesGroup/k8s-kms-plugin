@@ -19,9 +19,14 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
+	"golang.org/x/sync/errgroup"
 	"os"
 	"path/filepath"
+	"time"
 )
+
+var loop bool
+var loopTime int
 
 // testCmd represents the test command
 var testCmd = &cobra.Command{
@@ -31,28 +36,74 @@ var testCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// Istio Tests against the socket
 
-		ctx, cancel, c, err := istio.GetClientSocket("test")
-		defer cancel()
-		if err != nil {
-			logrus.Fatal(err)
+		g := &errgroup.Group{}
+		if loop {
+			g.Go(loopTestRun)
+		} else {
+			g.Go(runTest)
 		}
-		var resp *istio.GenerateDEKResponse
-		if resp, err = c.GenerateDEK(ctx, &istio.GenerateDEKRequest{
-			Size: 32,
-			Kind: istio.KeyKind_AES,
-		}); err != nil {
-			logrus.Fatal(err)
-		}
-
-		logrus.Infof("Returned WrappedDEK: %s", resp.EncryptedKeyBlob)
-
+		g.Wait()
 	},
+}
+
+func loopTestRun() error {
+	for {
+		runTest()
+		time.Sleep(time.Duration(loopTime) * time.Second)
+	}
+	return nil
+}
+func shutdownsafely() (err error) {
+	logrus.Infof("While the test is complete, we'll just keep the process alive so the pod doesn't die... ")
+	// TODO	"this can become a Job later on, maybe if there is a way to share the socket? So the job can close successfully vs restart again.
+
+	for {
+		// Sleep forever
+		time.Sleep((time.Duration(loopTime)) * time.Second)
+	}
+	return
+}
+func runTest() error {
+	ctx, cancel, c, err := istio.GetClientSocket(socketPath)
+	defer cancel()
+	if err != nil {
+		logrus.Fatal(err)
+		return err
+	}
+
+	logrus.Info("Test 1 - GenerateDEK ")
+	var genDEKResp *istio.GenerateDEKResponse
+	if genDEKResp, err = c.GenerateDEK(ctx, &istio.GenerateDEKRequest{
+		Size: 32,
+		Kind: istio.KeyKind_AES,
+	}); err != nil {
+		logrus.Fatal(err)
+
+		return err
+	}
+
+	logrus.Infof("Returned WrappedDEK: %s", genDEKResp.EncryptedKeyBlob)
+
+	logrus.Info("Test 2 - GenerateSEK RSA")
+	var resp *istio.GenerateSEKResponse
+	if resp, err = c.GenerateSEK(ctx, &istio.GenerateSEKRequest{
+		Size: 4096,
+		Kind: istio.KeyKind_RSA,
+	}); err != nil {
+		logrus.Fatal(err)
+		return err
+	}
+
+	logrus.Infof("Returned WrappedSEK: %s", resp.EncryptedSekBlob)
+	return shutdownsafely()
+
 }
 
 func init() {
 	rootCmd.AddCommand(testCmd)
 	testCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), ".sock"), "Unix Socket")
-
+	testCmd.Flags().BoolVar(&loop, "loop", false, "Should we run the test in a loop?")
+	testCmd.Flags().IntVar(&loopTime, "loop-sleep", 10, "How many seconds to sleep between test runs ")
 	// Here you will define your flags and configuration settings.
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
