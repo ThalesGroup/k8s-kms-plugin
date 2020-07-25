@@ -153,11 +153,7 @@ func grpcServe(gl net.Listener) (err error) {
 		if p, err = providers.NewP11(kekKeyId, keyName, config, createKey); err != nil {
 			return
 		}
-	case "native":
 
-		if p, err = providers.NewNative(nativePath); err != nil {
-			return
-		}
 	case "ekms":
 		panic("unimplemented")
 	default:

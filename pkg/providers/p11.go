@@ -12,6 +12,7 @@ import (
 	"github.com/ThalesIgnite/crypto11"
 	"github.com/ThalesIgnite/gose"
 	"github.com/ThalesIgnite/gose/jose"
+	"github.com/sirupsen/logrus"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
 	v1 "github.com/thalescpl-io/k8s-kms-plugin/apis/kms/v1"
@@ -51,6 +52,14 @@ type P11 struct {
 	encryptor gose.JweEncryptor
 	decryptor gose.JweDecryptor
 	createKey bool
+}
+
+func (p *P11) GenerateKEK(ctx context.Context, request *istio.GenerateKEKRequest) (*istio.GenerateKEKResponse, error) {
+	panic("implement me")
+}
+
+func (p *P11) DestroyKEK(ctx context.Context, request *istio.DestroyKEKRequest) (*istio.DestroyKEKResponse, error) {
+	panic("implement me")
 }
 
 func NewP11(keyId string, keyLabel string, config *crypto11.Config, createKey bool) (p *P11, err error) {
@@ -131,13 +140,13 @@ func (p *P11) GenerateDEK(ctx context.Context, request *istio.GenerateDEKRequest
 			return
 		}
 	}
-	var encryptedKeyBlob []byte
+	var dekBlob []byte
 
-	if encryptedKeyBlob, err = generateDEK(p.ctx, p.encryptor, request.Kind, int(request.Size)); err != nil {
+	if dekBlob, err = generateDEK(p.ctx, p.encryptor, request.Kind, int(request.Size)); err != nil {
 		return
 	}
 	resp = &istio.GenerateDEKResponse{
-		EncryptedKeyBlob: encryptedKeyBlob,
+		EncryptedDekBlob: dekBlob,
 	}
 	return
 }
@@ -175,8 +184,8 @@ func (p *P11) GenerateSEK(ctx context.Context, request *istio.GenerateSEKRequest
 	if request == nil {
 		return nil, status.Error(codes.InvalidArgument, "no request sent")
 	}
-	if request.EncryptedKeyBlob == nil {
-		err = status.Error(codes.InvalidArgument, "EncryptedKeyBlob required ")
+	if request.EncryptedDekBlob == nil {
+		err = status.Error(codes.InvalidArgument, "EncryptedDekBlob required ")
 	}
 	if p.decryptor == nil {
 		if err = p.loadDevice(); err != nil {
@@ -185,7 +194,7 @@ func (p *P11) GenerateSEK(ctx context.Context, request *istio.GenerateSEKRequest
 	}
 
 	var dekClear []byte
-	if dekClear, _, err = p.decryptor.Decrypt(string(request.EncryptedKeyBlob)); err != nil {
+	if dekClear, _, err = p.decryptor.Decrypt(string(request.EncryptedDekBlob)); err != nil {
 		return
 	}
 	var jwk jose.Jwk
@@ -303,7 +312,7 @@ func (p *P11) Load(identity []byte) (key gose.AuthenticatedEncryptionKey, err er
 func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	var h interface{}
 	var err error
-	fmt.Printf("Path: %s\n", info.FullMethod)
+	logrus.Debugf("Path: %s\n", info.FullMethod)
 	return h, err
 }
 

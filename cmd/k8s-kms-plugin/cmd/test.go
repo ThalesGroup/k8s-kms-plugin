@@ -34,7 +34,7 @@ var testCmd = &cobra.Command{
 	Short: "Test connectivety to the socket for some encrypt/decrypt",
 
 	Run: func(cmd *cobra.Command, args []string) {
-		// Istio Tests against the socket
+		time.Sleep(2 * time.Second)
 
 		g := &errgroup.Group{}
 		if loop {
@@ -64,6 +64,8 @@ func shutdownsafely() (err error) {
 	return
 }
 func runTest() error {
+	// Run Istio e2e tests against the socket
+
 	ctx, cancel, c, err := istio.GetClientSocket(socketPath)
 	defer cancel()
 	if err != nil {
@@ -82,7 +84,7 @@ func runTest() error {
 		return err
 	}
 
-	logrus.Infof("Returned WrappedDEK: %s", genDEKResp.EncryptedKeyBlob)
+	logrus.Infof("Returned WrappedDEK: %s", genDEKResp.EncryptedDekBlob)
 
 	logrus.Info("Test 2 - GenerateSEK RSA")
 	var resp *istio.GenerateSEKResponse

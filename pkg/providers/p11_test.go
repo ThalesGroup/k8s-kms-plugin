@@ -178,7 +178,7 @@ func TestP11_GenerateDEK(t *testing.T) {
 				t.Errorf("GenerateDEK() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if len(gotResp.EncryptedKeyBlob) == 0 {
+			if len(gotResp.EncryptedDekBlob) == 0 {
 				t.Errorf("encrypted blob is nil/empty")
 				return
 			}
@@ -225,7 +225,7 @@ func TestP11_GenerateSEK(t *testing.T) {
 				request: &istio.GenerateSEKRequest{
 					Size:             4096,
 					Kind:             istio.KeyKind_RSA,
-					EncryptedKeyBlob: testWrappedDEK,
+					EncryptedDekBlob: testWrappedDEK,
 				},
 			},
 			wantResp: nil,
@@ -311,7 +311,7 @@ func TestP11_LoadDEK(t *testing.T) {
 				decryptor: tt.fields.decryptor,
 				createKey: tt.fields.createKey,
 			}
-			gotResp, err := p.LoadDEK(tt.args.ctx, tt.args.request)
+			gotResp, err := p.LoadSEK(tt.args.ctx, tt.args.request)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("LoadDEK() error = %v, wantErr %v", err, tt.wantErr)
 				return

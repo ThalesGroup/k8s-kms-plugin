@@ -9,6 +9,10 @@ import "google/protobuf/timestamp.proto";
 import "protoc-gen-swagger/options/annotations.proto";
 
 service KeyManagementService {
+  // GenerateKEK returns the KID of the GeneratedKEK if allowed/successful
+  rpc GenerateKEK(GenerateKEKRequest) returns (GenerateKEKResponse);
+  // DestroyKEK returns a success/failure to destroy the KEK... this is NON-REVERSIBLE...
+  rpc DestroyKEK(DestroyKEKRequest) returns (DestroyKEKResponse);
   // GenerateDEK returns a wrapped (by KMS handled key)
   rpc GenerateDEK(GenerateDEKRequest) returns (GenerateDEKResponse);
   // GenerateSEK returns a wrapped (by provided encrypted DEK ), for later use during loading and signing key generation
