@@ -95,6 +95,9 @@ func runTest() error {
 	}
 
 	logrus.Infof("Returned WrappedSEK: %s", resp.EncryptedSekBlob)
+	if loop {
+		return err
+	}
 	return shutdownsafely()
 
 }
