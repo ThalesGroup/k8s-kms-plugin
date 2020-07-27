@@ -131,10 +131,10 @@
     "v1SignCSRResponse": {
       "type": "object",
       "properties": {
-        "clear_sek": {
+        "cert": {
           "type": "string",
           "format": "byte",
-          "title": "Clear SEK"
+          "title": "Certificate in PEM Form"
         }
       }
     }

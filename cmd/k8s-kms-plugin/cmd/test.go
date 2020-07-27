@@ -16,6 +16,11 @@ limitations under the License.
 package cmd
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -157,9 +162,13 @@ func runTest() error {
 	if debug {
 		out = string(loadSEKResp.ClearSek)
 	} else {
-
 		out = "Success"
 	}
+	// Load the PEM and use it...
+	var sek *rsa.PrivateKey
+	var b *pem.Block
+	b, _ = pem.Decode(loadSEKResp.ClearSek)
+	sek, err = x509.ParsePKCS1PrivateKey(b.Bytes)
 	logrus.Infof("Test 4 Returned LoadedSEK in PEM Format: %v", out)
 	/*
 		GenerateRootCAK
@@ -175,7 +184,41 @@ func runTest() error {
 		return err
 	}
 
-	logrus.Infof("Test GenerateRootCAK KID Returned: %s", string(genCAKResp.RootCaKid))
+	logrus.Infof("Test 5  GenerateRootCAK KID Returned: %s", string(genCAKResp.RootCaKid))
+	/*
+		SignCSR
+	*/
+	logrus.Info("Test 6 SignCSR Root CA Cert")
+	var signCSRResp *istio.SignCSRResponse
+	template := &x509.CertificateRequest{
+
+		SignatureAlgorithm: 0,
+		PublicKeyAlgorithm: 0,
+		Subject:            pkix.Name{},
+		Attributes:         nil,
+		PublicKey:          sek.Public(),
+		Extensions: []pkix.Extension{
+		},
+		ExtraExtensions: []pkix.Extension{
+
+		},
+		DNSNames:       nil,
+		EmailAddresses: nil,
+		IPAddresses:    nil,
+		URIs:           nil,
+	}
+	req := &istio.SignCSRRequest{
+		RootCaKid: cakKid,
+	}
+	if req.Csr, err = x509.CreateCertificateRequest(rand.Reader, template, sek); err != nil {
+		return err
+	}
+	if signCSRResp, err = c.SignCSR(ctx, req); err != nil {
+		logrus.Fatal(err)
+		return err
+	}
+
+	logrus.Infof("Test 6 SignCSR Cert: %s", string(signCSRResp.Cert))
 	logrus.Infof("------------------------------------------------------------")
 	return err
 

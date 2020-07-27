@@ -130,6 +130,6 @@ message SignCSRRequest {
 }
 
 message SignCSRResponse {
-  // Clear SEK
-  bytes clear_sek = 1;
+  // Certificate in PEM Form
+  bytes cert = 1;
 }

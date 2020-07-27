@@ -361,6 +361,7 @@ func (p *P11) GenerateSEK(ctx context.Context, request *istio.GenerateSEKRequest
 	return
 }
 
+
 // LoadDEK unwraps the supplied SEK with the Wrapped SEK
 func (p *P11) LoadSEK(ctx context.Context, request *istio.LoadSEKRequest) (resp *istio.LoadSEKResponse, err error) {
 	if request == nil {
@@ -372,6 +373,8 @@ func (p *P11) LoadSEK(ctx context.Context, request *istio.LoadSEKRequest) (resp 
 			return
 		}
 	}
+
+	// Decrypt and Load the DEK for usage...
 	var clearDEK []byte
 	if clearDEK, _, err = decryptor.Decrypt(string(request.EncryptedDekBlob)); err != nil {
 		return
@@ -387,8 +390,10 @@ func (p *P11) LoadSEK(ctx context.Context, request *istio.LoadSEKRequest) (resp 
 	}
 	dekDecryptor := gose.NewJweDirectDecryptorImpl([]gose.AuthenticatedEncryptionKey{aead})
 	resp = &istio.LoadSEKResponse{
-
+		ClearSek: nil,
 	}
+
+	// Return the clear SEK in PEM format or bust
 	if resp.ClearSek, _, err = dekDecryptor.Decrypt(string(request.EncryptedSekBlob)); err != nil {
 		return
 	}
