@@ -78,6 +78,16 @@ message GenerateRootCAKResponse {
   bytes root_ca_kid = 1;
 }
 
+message GenerateRootCARequest {
+  // Root CA Key ID
+  bytes root_ca_kid = 1;
+}
+
+message GenerateRootCAResponse {
+  // Root CA cert in PEM format
+  bytes cert = 1;
+}
+
 message DestroyRootCAKRequest {
   // Required kid of KEK to find and delete
   bytes kek_kid = 1;

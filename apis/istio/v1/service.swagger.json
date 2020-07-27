@@ -98,6 +98,16 @@
         }
       }
     },
+    "v1GenerateRootCAResponse": {
+      "type": "object",
+      "properties": {
+        "cert": {
+          "type": "string",
+          "format": "byte",
+          "title": "Root CA cert in PEM format"
+        }
+      }
+    },
     "v1GenerateSEKResponse": {
       "type": "object",
       "properties": {

@@ -156,6 +156,19 @@ func generateSEK(ctx *crypto11.Context, request *istio.GenerateSEKRequest, dekEn
 	return
 }
 
+func loadCADbyID(ctx *crypto11.Context, identity, label []byte, ) (private crypto11.SignerDecrypter, err error) {
+	var sd crypto11.Signer
+	sd, err = ctx.FindKeyPair(identity, label)
+	if err != nil {
+		return
+	}
+	var ok bool
+	if private, ok = sd.(crypto11.SignerDecrypter); !ok {
+		err = errors.New("unable to load signer decryptor")
+	}
+	return
+}
+
 func loadKEKbyID(ctx *crypto11.Context, identity, label []byte, ) (encryptor gose.JweEncryptor, decryptor gose.JweDecryptor, err error) {
 
 	var rng io.Reader
@@ -309,6 +322,24 @@ func (p *P11) GenerateKEK(ctx context.Context, request *istio.GenerateKEKRequest
 
 }
 
+func (p *P11) GenerateRootCA(ctx context.Context, request *istio.GenerateRootCARequest) (resp *istio.GenerateRootCAResponse, err error) {
+
+	resp = &istio.GenerateRootCAResponse{
+
+	}
+	var ca *x509.Certificate
+	if ca, err = generateRootCA(p.ctx, request); err != nil {
+		return
+	}
+
+	logrus.Infof("CA Generated: %v", ca.Issuer)
+
+	return
+}
+func generateRootCA(ctx *crypto11.Context, request *istio.GenerateRootCARequest) (ca *x509.Certificate, err error) {
+
+	return
+}
 func (p *P11) GenerateRootCAK(ctx context.Context, request *istio.GenerateRootCAKRequest) (resp *istio.GenerateRootCAKResponse, err error) {
 	resp = &istio.GenerateRootCAKResponse{
 
@@ -361,7 +392,6 @@ func (p *P11) GenerateSEK(ctx context.Context, request *istio.GenerateSEKRequest
 	return
 }
 
-
 // LoadDEK unwraps the supplied SEK with the Wrapped SEK
 func (p *P11) LoadSEK(ctx context.Context, request *istio.LoadSEKRequest) (resp *istio.LoadSEKResponse, err error) {
 	if request == nil {
@@ -402,7 +432,21 @@ func (p *P11) LoadSEK(ctx context.Context, request *istio.LoadSEKRequest) (resp 
 }
 
 func (p *P11) SignCSR(ctx context.Context, request *istio.SignCSRRequest) (resp *istio.SignCSRResponse, err error) {
-
+	//var pp crypto11.SignerDecrypter
+	//if pp, err = loadCADbyID(p.ctx, request.RootCaKid, defaultCAKlabel); err != nil {
+	//	return
+	//}
+	//var rng io.Reader
+	//if rng, err = p.ctx.NewRandomReader(); err != nil {
+	//	return
+	//}
+	//var template *x509.CertificateRequest
+	//if template, err = x509.ParseCertificateRequest(request.Csr); err != nil {
+	//	return
+	//}
+	//resp = &istio.SignCSRResponse{
+	//
+	//}
 	return
 }
 
@@ -415,6 +459,11 @@ func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.
 
 func (p *P11) Version(ctx context.Context, request *v1.VersionRequest) (*v1.VersionResponse, error) {
 	panic("implement me")
+}
+
+func (p *P11) genCA() (err error) {
+
+	return
 }
 
 func (p *P11) genKekKid() (kid []byte, err error) {

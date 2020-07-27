@@ -168,10 +168,14 @@ func runTest() error {
 	var sek *rsa.PrivateKey
 	var b *pem.Block
 	b, _ = pem.Decode(loadSEKResp.ClearSek)
-	sek, err = x509.ParsePKCS1PrivateKey(b.Bytes)
+	if sek, err = x509.ParsePKCS1PrivateKey(b.Bytes); err != nil {
+		logrus.Fatal(err)
+	
+		return err
+	}
 	logrus.Infof("Test 4 Returned LoadedSEK in PEM Format: %v", out)
 	/*
-		GenerateRootCAK
+		GenerateCAK
 	*/
 	logrus.Info("Test 5 GenerateRootCAK 4096 RSA")
 	var genCAKResp *istio.GenerateRootCAKResponse
@@ -186,9 +190,28 @@ func runTest() error {
 
 	logrus.Infof("Test 5  GenerateRootCAK KID Returned: %s", string(genCAKResp.RootCaKid))
 	/*
+		GenerateRootCAK
+	*/
+	logrus.Info("Test 6 GenerateRootCA, Sign and Store")
+	var genCAResp *istio.GenerateRootCAResponse
+	if genCAResp, err = c.GenerateRootCA(ctx, &istio.GenerateRootCARequest{
+
+		RootCaKid: cakKid,
+	}); err != nil {
+		logrus.Fatal(err)
+		return err
+	}
+	if debug {
+		out = string(genCAResp.Cert)
+	} else {
+		out = "Success"
+	}
+	logrus.Infof("Test 6  GenerateRootCA in : %s", out)
+
+	/*
 		SignCSR
 	*/
-	logrus.Info("Test 6 SignCSR Root CA Cert")
+	logrus.Info("Test 7 SignCSR Root CA Cert")
 	var signCSRResp *istio.SignCSRResponse
 	template := &x509.CertificateRequest{
 
@@ -210,6 +233,7 @@ func runTest() error {
 	req := &istio.SignCSRRequest{
 		RootCaKid: cakKid,
 	}
+
 	if req.Csr, err = x509.CreateCertificateRequest(rand.Reader, template, sek); err != nil {
 		return err
 	}
@@ -218,7 +242,7 @@ func runTest() error {
 		return err
 	}
 
-	logrus.Infof("Test 6 SignCSR Cert: %s", string(signCSRResp.Cert))
+	logrus.Infof("Test 7 SignCSR Cert: %s", string(signCSRResp.Cert))
 	logrus.Infof("------------------------------------------------------------")
 	return err
 
