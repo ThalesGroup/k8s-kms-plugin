@@ -48,15 +48,21 @@ var (
 
 func generateDEK(ctx *crypto11.Context, encryptor gose.JweEncryptor, kind istio.KeyKind, size int) (encryptedKeyBlob []byte, err error) {
 
+
 	switch kind {
 	case istio.KeyKind_AES:
+		var key []byte
+		switch size {
+		case 256:
+			key = make([]byte, 32)
+		default:
+			err = errors.New("only AES 256 supported for DEK keys currently")
+		}
 		var rng io.Reader
 		if rng, err = ctx.NewRandomReader(); err != nil {
 			logrus.Error(err)
-
 			return
 		}
-		key := make([]byte, size)
 
 		if _, err = rng.Read(key); err != nil {
 			return
@@ -220,7 +226,7 @@ func (p *P11) GenerateDEK(ctx context.Context, request *istio.GenerateDEKRequest
 	}
 	var dekBlob []byte
 
-	if dekBlob, err = generateDEK(p.ctx, encryptor, request.Kind, 32); err != nil {
+	if dekBlob, err = generateDEK(p.ctx, encryptor, request.Kind, int(request.Size)); err != nil {
 		logrus.Error(err)
 		return
 	}
@@ -267,6 +273,8 @@ func (p *P11) GenerateSEK(ctx context.Context, request *istio.GenerateSEKRequest
 			return
 		}
 	}
+
+
 	var dekClear []byte
 	if dekClear, _, err = decryptor.Decrypt(string(request.EncryptedDekBlob)); err != nil {
 		return
@@ -296,6 +304,7 @@ func (p *P11) LoadSEK(ctx context.Context, request *istio.LoadSEKRequest) (resp 
 	if request == nil {
 		return nil, status.Error(codes.InvalidArgument, "no request sent")
 	}
+	logrus.Infof("Got SEK")
 	var decryptor gose.JweDecryptor
 	if decryptor = p.decryptors[string(request.KekKid)]; decryptor == nil {
 		if _, decryptor, err = loadKEKbyID(p.ctx, request.KekKid, []byte(defaultkeyLabel)); err != nil {
@@ -310,6 +319,8 @@ func (p *P11) LoadSEK(ctx context.Context, request *istio.LoadSEKRequest) (resp 
 	if jwk, err = gose.LoadJwk(bytes.NewReader(clearDEK), kekKeyOps); err != nil {
 		return
 	}
+	logrus.Infof("Got DEK in JWK form")
+
 	var aead gose.AuthenticatedEncryptionKey
 	if aead, err = gose.NewAesGcmCryptorFromJwk(jwk, kekKeyOps); err != nil {
 		return
