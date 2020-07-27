@@ -16,7 +16,14 @@ service KeyManagementService {
   // GenerateDEK returns a wrapped (by KMS handled key)
   rpc GenerateDEK(GenerateDEKRequest) returns (GenerateDEKResponse);
   // GenerateSEK returns a wrapped (by provided encrypted DEK ), for later use during loading and signing key generation
+
+  rpc GenerateRootCAK(GenerateRootCAKRequest) returns (GenerateRootCAKResponse);
+  // GenerateSEK returns a wrapped (by provided encrypted DEK ), for later use during loading and signing key generation
+  rpc DestroyRootCAK(DestroyRootCAKRequest) returns (DestroyRootCAKResponse);
+  // GenerateDEK returns a wrapped (by KMS handled key)
   rpc GenerateSEK(GenerateSEKRequest) returns (GenerateSEKResponse);
   // LoadSEK returns the SEK unwrapped for the controller to use for CA work...
   rpc LoadSEK(LoadSEKRequest) returns (LoadSEKResponse);
+  // SignCSR signs a CSR for the in inbound
+  rpc SignCSR(SignCSRRequest) returns (SignCSRResponse);
 }

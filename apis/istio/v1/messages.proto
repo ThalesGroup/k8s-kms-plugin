@@ -64,6 +64,30 @@ message GenerateDEKResponse {
   bytes encrypted_dek_blob = 1;
 }
 
+message GenerateRootCAKRequest {
+  // key size in bits
+  int64 size = 1;
+  // What kind of key is it... only Asymmetric kinds will be supported
+  KeyKind kind = 2;
+  // Root CA Key ID
+  bytes root_ca_kid = 3;
+}
+
+message GenerateRootCAKResponse {
+  // Root CA Key ID
+  bytes root_ca_kid = 1;
+}
+
+message DestroyRootCAKRequest {
+  // Required kid of KEK to find and delete
+  bytes kek_kid = 1;
+}
+
+message DestroyRootCAKResponse {
+  // successful destroy?
+  bool success = 1;
+}
+
 message GenerateSEKRequest {
   // key size in bits
   int64 size = 1;
@@ -89,9 +113,23 @@ message LoadSEKRequest {
   bytes encrypted_sek_blob = 2;
   // KEK
   bytes kek_kid = 3;
+  // Root CA Key ID
+  bytes root_ca_kid = 4;
 }
 
 message LoadSEKResponse {
+  // Clear SEK
+  bytes clear_sek = 1;
+}
+
+message SignCSRRequest {
+  // Encrypted blob of DEK
+  bytes csr = 1;
+  // Root CA Key ID
+  bytes root_ca_kid = 2;
+}
+
+message SignCSRResponse {
   // Clear SEK
   bytes clear_sek = 1;
 }

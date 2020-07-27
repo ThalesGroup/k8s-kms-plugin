@@ -69,7 +69,7 @@ func TestP11_Encrypt(t *testing.T) {
 				config:     testConfig,
 				ctx:        testCtx,
 				keyId:      []byte("afdjaklfjdaskl"),
-				keyLabel:   []byte(defaultkeyLabel),
+				keyLabel:   []byte(defaultKEKlabel),
 				encryptors: testEncryptor,
 				decryptors: testDecryptor,
 				createKey:  true,
@@ -340,7 +340,7 @@ func setupSoftHSMTestCase(t testing.TB) func(t testing.TB) {
 	testDecryptor[string(testKid)] = gose.NewJweDirectDecryptorImpl([]gose.AuthenticatedEncryptionKey{taead})
 	testEncryptedBlob, err = gose.NewJweDirectEncryptorImpl(taead).Encrypt(testPlainMessage, nil)
 	// Create the default key just so we can do some practical encrypt decrypting without having to mock..
-	if _, err = generateKEK(testCtx, testKid, []byte(defaultkeyLabel), jose.AlgA256GCM); err != nil {
+	if _, err = generateKEK(testCtx, testKid, []byte(defaultKEKlabel), jose.AlgA256GCM); err != nil {
 		t.Fatal(err)
 	}
 	if testWrappedDEK, err = generateDEK(testCtx, testEncryptor[string(testKid)], istio.KeyKind_AES, defaultDEKSize); err != nil {

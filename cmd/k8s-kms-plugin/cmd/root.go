@@ -54,9 +54,8 @@ var rootCmd = &cobra.Command{
 			logrus.SetFormatter(&logrus.JSONFormatter{})
 		case "text":
 			logrus.SetFormatter(&logrus.TextFormatter{
-				ForceColors:               true,
-				DisableTimestamp:          true,
-
+				ForceColors:      true,
+				DisableTimestamp: true,
 			})
 		default:
 			return errors.New("unknown format")
@@ -85,7 +84,7 @@ func init() {
 	// will be global for your application.
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "ConfigFile)")
 
-	rootCmd.Flags().BoolVar(&debug, "debug", true, "Debug")
+	rootCmd.Flags().BoolVar(&debug, "debug", false, "Debug")
 	rootCmd.PersistentFlags().StringVar(&host, "host", "0.0.0.0", "TCP Host")
 	rootCmd.PersistentFlags().Int64Var(&grpcPort, "port", 31400, "TCP Port for gRPC service")
 	rootCmd.PersistentFlags().StringVar(&logOutput, "output", "text", "Log output format... text or json supported")

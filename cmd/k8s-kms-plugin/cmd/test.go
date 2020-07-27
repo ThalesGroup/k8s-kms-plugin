@@ -119,8 +119,8 @@ func runTest() error {
 	*/
 
 	logrus.Info("Test 3 GenerateSEK RSA")
-	var resp *istio.GenerateSEKResponse
-	if resp, err = c.GenerateSEK(ctx, &istio.GenerateSEKRequest{
+	var genSEKResp *istio.GenerateSEKResponse
+	if genSEKResp, err = c.GenerateSEK(ctx, &istio.GenerateSEKRequest{
 		Size:             4096,
 		Kind:             istio.KeyKind_RSA,
 		KekKid:           genKEKResp.KekKid,
@@ -129,7 +129,45 @@ func runTest() error {
 		logrus.Fatal(err)
 		return err
 	}
-	logrus.Infof("Test 3 Returned WrappedSEK: %s", resp.EncryptedSekBlob)
+	logrus.Infof("Test 3 Returned WrappedSEK: %s", genSEKResp.EncryptedSekBlob)
+
+	/*
+		LoadSEK
+	*/
+	logrus.Info("Test 4 LoadSEK RSA")
+	var loadSEKResp *istio.LoadSEKResponse
+	if loadSEKResp, err = c.LoadSEK(ctx, &istio.LoadSEKRequest{
+
+		KekKid:           genKEKResp.KekKid,
+		EncryptedDekBlob: genDEKResp.EncryptedDekBlob,
+		EncryptedSekBlob: genSEKResp.EncryptedSekBlob,
+	}); err != nil {
+		logrus.Fatal(err)
+		return err
+	}
+	var out string
+	if debug {
+		out = string(loadSEKResp.ClearSek)
+	} else {
+
+		out = "Success"
+	}
+	logrus.Infof("Test 4 Returned LoadedSEK in PEM Format: %v", out)
+	logrus.Infof("------------------------------------------------------------")
+
+	/*
+		GenerateRootCAK
+	*/
+	logrus.Info("Test 5 GenerateRootCAK RSA")
+	var genCAKResp *istio.GenerateRootCAKResponse
+	if genCAKResp, err = c.GenerateRootCAK(ctx, &istio.GenerateRootCAKRequest{
+
+	}); err != nil {
+		logrus.Fatal(err)
+		return err
+	}
+
+	logrus.Infof("Test GenerateRootCAK KID Returned: %v", genCAKResp.RootCaKid)
 	logrus.Infof("------------------------------------------------------------")
 	return err
 

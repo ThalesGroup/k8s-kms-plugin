@@ -24,8 +24,9 @@ import (
 	"io"
 )
 
-const (
-	defaultkeyLabel = "k8s-kms-plugin-root-key"
+var (
+	defaultKEKlabel = []byte("k8s-kms-plugin-kek")
+	defaultCAKlabel = []byte("k8s-kms-plugin-cak")
 	defaultDEKSize  = 32 // 32 == 256 AES Key
 )
 
@@ -46,8 +47,19 @@ var (
 	}
 )
 
-func generateDEK(ctx *crypto11.Context, encryptor gose.JweEncryptor, kind istio.KeyKind, size int) (encryptedKeyBlob []byte, err error) {
+func generateCAK(ctx *crypto11.Context, kid []byte, kind istio.KeyKind, size int) (caKID []byte, err error) {
 
+	switch kind {
+	case istio.KeyKind_RSA:
+		ctx.GenerateRSAKeyPairWithLabel(kid, defaultCAKlabel, size)
+	default:
+		err = status.Error(codes.Unimplemented, "unsupported key kind")
+	}
+
+	return
+}
+
+func generateDEK(ctx *crypto11.Context, encryptor gose.JweEncryptor, kind istio.KeyKind, size int) (encryptedKeyBlob []byte, err error) {
 
 	switch kind {
 	case istio.KeyKind_AES:
@@ -122,9 +134,13 @@ func generateSEK(ctx *crypto11.Context, request *istio.GenerateSEKRequest, dekEn
 			Type:  "PRIVATE KEY",
 			Bytes: x509.MarshalPKCS1PrivateKey(kp),
 		}
+		buf := bytes.NewBuffer([]byte{})
+		if err = pem.Encode(buf, kpPEM); err != nil {
+			return
+		}
 		// Wrap and return the wrappedSEK
 		var wrappedSEKString string
-		if wrappedSEKString, err = dekEncryptor.Encrypt(kpPEM.Bytes, nil); err != nil {
+		if wrappedSEKString, err = dekEncryptor.Encrypt(buf.Bytes(), nil); err != nil {
 			return
 		}
 		wrappedSEK = []byte(wrappedSEKString)
@@ -146,6 +162,25 @@ type P11 struct {
 	encryptors map[string]gose.JweEncryptor
 	decryptors map[string]gose.JweDecryptor
 	createKey  bool
+}
+
+func (p *P11) GenerateRootCAK(ctx context.Context, request *istio.GenerateRootCAKRequest) (resp *istio.GenerateRootCAKResponse, err error) {
+	resp = &istio.GenerateRootCAKResponse{
+
+	}
+
+	resp.RootCaKid, err = generateCAK(p.ctx, request.RootCaKid, request.Kind, int(request.Size))
+
+	return
+}
+
+func (p *P11) DestroyRootCAK(ctx context.Context, request *istio.DestroyRootCAKRequest) (*istio.DestroyRootCAKResponse, error) {
+	panic("implement me")
+}
+
+func (p *P11) SignCSR(ctx context.Context, request *istio.SignCSRRequest) (resp *istio.SignCSRResponse, err error) {
+
+	return
 }
 
 func NewP11(config *crypto11.Config, createKey bool) (p *P11, err error) {
@@ -175,7 +210,7 @@ func (p *P11) Close() (err error) {
 func (p *P11) Decrypt(ctx context.Context, req *k8s.DecryptRequest) (resp *k8s.DecryptResponse, err error) {
 	var decryptor gose.JweDecryptor
 	if decryptor = p.decryptors[req.KeyId]; decryptor == nil {
-		if _, decryptor, err = loadKEKbyID(p.ctx, []byte(req.KeyId), []byte(defaultkeyLabel)); err != nil {
+		if _, decryptor, err = loadKEKbyID(p.ctx, []byte(req.KeyId), []byte(defaultKEKlabel)); err != nil {
 			return
 		}
 	}
@@ -197,7 +232,7 @@ func (p *P11) DestroyKEK(ctx context.Context, request *istio.DestroyKEKRequest) 
 func (p *P11) Encrypt(ctx context.Context, req *k8s.EncryptRequest) (resp *k8s.EncryptResponse, err error) {
 	var encryptor gose.JweEncryptor
 	if encryptor = p.encryptors[req.KeyId]; encryptor == nil {
-		if encryptor, _, err = loadKEKbyID(p.ctx, []byte(req.KeyId), []byte(defaultkeyLabel)); err != nil {
+		if encryptor, _, err = loadKEKbyID(p.ctx, []byte(req.KeyId), []byte(defaultKEKlabel)); err != nil {
 			return
 		}
 	}
@@ -220,7 +255,7 @@ func (p *P11) GenerateDEK(ctx context.Context, request *istio.GenerateDEKRequest
 	}
 	var encryptor gose.JweEncryptor
 	if encryptor = p.encryptors[string(request.KekKid)]; encryptor == nil {
-		if encryptor, _, err = loadKEKbyID(p.ctx, []byte(request.KekKid), []byte(defaultkeyLabel)); err != nil {
+		if encryptor, _, err = loadKEKbyID(p.ctx, []byte(request.KekKid), []byte(defaultKEKlabel)); err != nil {
 			return
 		}
 	}
@@ -246,7 +281,7 @@ func (p *P11) GenerateKEK(ctx context.Context, request *istio.GenerateKEKRequest
 		}
 	}
 
-	_, err = generateKEK(p.ctx, request.KekKid, []byte(defaultkeyLabel), jose.AlgA256GCM)
+	_, err = generateKEK(p.ctx, request.KekKid, []byte(defaultKEKlabel), jose.AlgA256GCM)
 	if err != nil {
 		logrus.Error(err)
 		return
@@ -269,11 +304,10 @@ func (p *P11) GenerateSEK(ctx context.Context, request *istio.GenerateSEKRequest
 	}
 	var decryptor gose.JweDecryptor
 	if decryptor = p.decryptors[string(request.KekKid)]; decryptor == nil {
-		if _, decryptor, err = loadKEKbyID(p.ctx, request.KekKid, []byte(defaultkeyLabel)); err != nil {
+		if _, decryptor, err = loadKEKbyID(p.ctx, request.KekKid, []byte(defaultKEKlabel)); err != nil {
 			return
 		}
 	}
-
 
 	var dekClear []byte
 	if dekClear, _, err = decryptor.Decrypt(string(request.EncryptedDekBlob)); err != nil {
@@ -307,7 +341,7 @@ func (p *P11) LoadSEK(ctx context.Context, request *istio.LoadSEKRequest) (resp 
 	logrus.Infof("Got SEK")
 	var decryptor gose.JweDecryptor
 	if decryptor = p.decryptors[string(request.KekKid)]; decryptor == nil {
-		if _, decryptor, err = loadKEKbyID(p.ctx, request.KekKid, []byte(defaultkeyLabel)); err != nil {
+		if _, decryptor, err = loadKEKbyID(p.ctx, request.KekKid, []byte(defaultKEKlabel)); err != nil {
 			return
 		}
 	}
