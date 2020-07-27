@@ -47,11 +47,12 @@ var (
 	}
 )
 
-func generateCAK(ctx *crypto11.Context, kid []byte, kind istio.KeyKind, size int) (caKID []byte, err error) {
+func generateCAK(ctx *crypto11.Context, kid []byte, kind istio.KeyKind, size int) (signer crypto11.SignerDecrypter, err error) {
 
 	switch kind {
 	case istio.KeyKind_RSA:
-		ctx.GenerateRSAKeyPairWithLabel(kid, defaultCAKlabel, size)
+		signer, err = ctx.GenerateRSAKeyPairWithLabel(kid, defaultCAKlabel, size)
+
 	default:
 		err = status.Error(codes.Unimplemented, "unsupported key kind")
 	}
@@ -155,6 +156,36 @@ func generateSEK(ctx *crypto11.Context, request *istio.GenerateSEKRequest, dekEn
 	return
 }
 
+func loadKEKbyID(ctx *crypto11.Context, identity, label []byte, ) (encryptor gose.JweEncryptor, decryptor gose.JweDecryptor, err error) {
+
+	var rng io.Reader
+	var aek gose.AuthenticatedEncryptionKey
+
+	if rng, err = ctx.NewRandomReader(); err != nil {
+		return
+	}
+	// get the HSM Key
+	var handle *crypto11.SecretKey
+	if handle, err = ctx.FindKey(identity, label); err != nil {
+		return
+	}
+	if handle == nil {
+		err = errors.New("no such key")
+		return
+	}
+	var aead cipher.AEAD
+	if aead, err = handle.NewGCM(); err != nil {
+		return
+	}
+	if aek, err = gose.NewAesGcmCryptor(aead, rng, string(identity), jose.AlgA256GCM, kekKeyOps); err != nil {
+		return
+	}
+	decryptor = gose.NewJweDirectDecryptorImpl([]gose.AuthenticatedEncryptionKey{aek})
+	encryptor = gose.NewJweDirectEncryptorImpl(aek)
+
+	return
+}
+
 type P11 struct {
 	//keyId     []byte
 	config     *crypto11.Config
@@ -162,25 +193,6 @@ type P11 struct {
 	encryptors map[string]gose.JweEncryptor
 	decryptors map[string]gose.JweDecryptor
 	createKey  bool
-}
-
-func (p *P11) GenerateRootCAK(ctx context.Context, request *istio.GenerateRootCAKRequest) (resp *istio.GenerateRootCAKResponse, err error) {
-	resp = &istio.GenerateRootCAKResponse{
-
-	}
-
-	resp.RootCaKid, err = generateCAK(p.ctx, request.RootCaKid, request.Kind, int(request.Size))
-
-	return
-}
-
-func (p *P11) DestroyRootCAK(ctx context.Context, request *istio.DestroyRootCAKRequest) (*istio.DestroyRootCAKResponse, error) {
-	panic("implement me")
-}
-
-func (p *P11) SignCSR(ctx context.Context, request *istio.SignCSRRequest) (resp *istio.SignCSRResponse, err error) {
-
-	return
 }
 
 func NewP11(config *crypto11.Config, createKey bool) (p *P11, err error) {
@@ -226,6 +238,10 @@ func (p *P11) Decrypt(ctx context.Context, req *k8s.DecryptRequest) (resp *k8s.D
 }
 
 func (p *P11) DestroyKEK(ctx context.Context, request *istio.DestroyKEKRequest) (*istio.DestroyKEKResponse, error) {
+	panic("implement me")
+}
+
+func (p *P11) DestroyRootCAK(ctx context.Context, request *istio.DestroyRootCAKRequest) (*istio.DestroyRootCAKResponse, error) {
 	panic("implement me")
 }
 
@@ -293,6 +309,18 @@ func (p *P11) GenerateKEK(ctx context.Context, request *istio.GenerateKEKRequest
 
 }
 
+func (p *P11) GenerateRootCAK(ctx context.Context, request *istio.GenerateRootCAKRequest) (resp *istio.GenerateRootCAKResponse, err error) {
+	resp = &istio.GenerateRootCAKResponse{
+
+	}
+	if _, err = generateCAK(p.ctx, request.RootCaKid, request.Kind, int(request.Size)); err != nil {
+		return
+	}
+
+	resp.RootCaKid = request.RootCaKid
+	return
+}
+
 // GenerateSEK gens a 4096 RSA Key with the DEK that is protected by the KEK for later Unwrapping by the remote client in it's pod/container
 func (p *P11) GenerateSEK(ctx context.Context, request *istio.GenerateSEKRequest) (resp *istio.GenerateSEKResponse, err error) {
 	if request == nil {
@@ -338,7 +366,6 @@ func (p *P11) LoadSEK(ctx context.Context, request *istio.LoadSEKRequest) (resp 
 	if request == nil {
 		return nil, status.Error(codes.InvalidArgument, "no request sent")
 	}
-	logrus.Infof("Got SEK")
 	var decryptor gose.JweDecryptor
 	if decryptor = p.decryptors[string(request.KekKid)]; decryptor == nil {
 		if _, decryptor, err = loadKEKbyID(p.ctx, request.KekKid, []byte(defaultKEKlabel)); err != nil {
@@ -353,7 +380,6 @@ func (p *P11) LoadSEK(ctx context.Context, request *istio.LoadSEKRequest) (resp 
 	if jwk, err = gose.LoadJwk(bytes.NewReader(clearDEK), kekKeyOps); err != nil {
 		return
 	}
-	logrus.Infof("Got DEK in JWK form")
 
 	var aead gose.AuthenticatedEncryptionKey
 	if aead, err = gose.NewAesGcmCryptorFromJwk(jwk, kekKeyOps); err != nil {
@@ -366,6 +392,11 @@ func (p *P11) LoadSEK(ctx context.Context, request *istio.LoadSEKRequest) (resp 
 	if resp.ClearSek, _, err = dekDecryptor.Decrypt(string(request.EncryptedSekBlob)); err != nil {
 		return
 	}
+
+	return
+}
+
+func (p *P11) SignCSR(ctx context.Context, request *istio.SignCSRRequest) (resp *istio.SignCSRResponse, err error) {
 
 	return
 }
@@ -391,36 +422,6 @@ func (p *P11) genKekKid() (kid []byte, err error) {
 	if err != nil {
 		return
 	}
-	return
-}
-
-func loadKEKbyID(ctx *crypto11.Context, identity, label []byte, ) (encryptor gose.JweEncryptor, decryptor gose.JweDecryptor, err error) {
-
-	var rng io.Reader
-	var aek gose.AuthenticatedEncryptionKey
-
-	if rng, err = ctx.NewRandomReader(); err != nil {
-		return
-	}
-	// get the HSM Key
-	var handle *crypto11.SecretKey
-	if handle, err = ctx.FindKey(identity, label); err != nil {
-		return
-	}
-	if handle == nil {
-		err = errors.New("no such key")
-		return
-	}
-	var aead cipher.AEAD
-	if aead, err = handle.NewGCM(); err != nil {
-		return
-	}
-	if aek, err = gose.NewAesGcmCryptor(aead, rng, string(identity), jose.AlgA256GCM, kekKeyOps); err != nil {
-		return
-	}
-	decryptor = gose.NewJweDirectDecryptorImpl([]gose.AuthenticatedEncryptionKey{aek})
-	encryptor = gose.NewJweDirectEncryptorImpl(aek)
-
 	return
 }
 

@@ -1,0 +1,47 @@
+# @license
+# Copyright 2019 Google LLC.
+#
+# This software is provided as-is, without warranty or
+# representation for any use or purpose. Your use of it is
+# subject to your agreements with Google.
+
+# The configuration schema is defined by service.proto file
+# https://github.com/googleapis/googleapis/blob/master/google/api/service.proto
+type: google.api.Service
+config_version: 3
+
+#
+# Name of the service configuration.
+#
+name: k8s-kms-domain.endpoints.thalescpl-io.cloud.goog
+
+#endpoints:
+#  - name: k8s-kms-domain.DOMAIN
+#    target: 35.192.152.118
+#    allow_cors: true
+
+#
+# API title to appear in the user interface (Google Cloud Console).
+#
+title: K8S KMS Plugin
+apis:
+  - name: thalescpl.io.ekms.istio.v1.KeyManagementService
+
+# BEGIN AUTHENTICATION
+
+#
+# Request authentication.
+#
+#authentication:
+#  rules:
+#    # Pass all Authentication to the EKMS Endpoint to process
+#    - selector: "*"
+
+# END AUTHENTICATION
+
+usage:
+  rules:
+    # Allow unregistered calls for all methods.
+    # This allows calls without an API key on all endpoints.
+    - selector: "*"
+      allow_unregistered_calls: true

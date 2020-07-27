@@ -2,6 +2,7 @@ protoc:
   version: 3.10.0
   includes:
     - apis
+    - apis/other/github.com/googleapis/googleapis/google
     - vendor
     - vendor/github.com/grpc-ecosystem/grpc-gateway
     - .
@@ -22,4 +23,10 @@ generate:
     - name: go
       flags: plugins=grpc
       output: ./generated
-
+    - name: descriptor_set
+      output: ./generated
+      file_suffix: pb
+      include_imports: true
+      include_source_info: true
+    - name: swagger
+      output: ./generated

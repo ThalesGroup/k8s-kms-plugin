@@ -192,6 +192,7 @@ type KeyManagementServiceClient interface {
 	DestroyKEK(ctx context.Context, in *DestroyKEKRequest, opts ...grpc.CallOption) (*DestroyKEKResponse, error)
 	// GenerateDEK returns a wrapped (by KMS handled key)
 	GenerateDEK(ctx context.Context, in *GenerateDEKRequest, opts ...grpc.CallOption) (*GenerateDEKResponse, error)
+	// GenerateRootCAK returns the kid, and it's public key of a Key Pair
 	GenerateRootCAK(ctx context.Context, in *GenerateRootCAKRequest, opts ...grpc.CallOption) (*GenerateRootCAKResponse, error)
 	// GenerateSEK returns a wrapped (by provided encrypted DEK ), for later use during loading and signing key generation
 	DestroyRootCAK(ctx context.Context, in *DestroyRootCAKRequest, opts ...grpc.CallOption) (*DestroyRootCAKResponse, error)
@@ -291,6 +292,7 @@ type KeyManagementServiceServer interface {
 	DestroyKEK(context.Context, *DestroyKEKRequest) (*DestroyKEKResponse, error)
 	// GenerateDEK returns a wrapped (by KMS handled key)
 	GenerateDEK(context.Context, *GenerateDEKRequest) (*GenerateDEKResponse, error)
+	// GenerateRootCAK returns the kid, and it's public key of a Key Pair
 	GenerateRootCAK(context.Context, *GenerateRootCAKRequest) (*GenerateRootCAKResponse, error)
 	// GenerateSEK returns a wrapped (by provided encrypted DEK ), for later use during loading and signing key generation
 	DestroyRootCAK(context.Context, *DestroyRootCAKRequest) (*DestroyRootCAKResponse, error)

@@ -17,8 +17,9 @@ coverage:
 ## Dev
 gen: gen-grpc gen-openapi
 gen-grpc:
-		@prototool all
+		@prototool all || true
 		@cp -r generated/github.com/thalescpl-io/k8s-kms-plugin/apis/* apis/
+		@cp -r generated/apis/* apis/
 		@rm -rf generated/
 gen-openapi:
 		@swagger generate server --quiet -m pkg/est/models -s pkg/est/restapi -f apis/kms/v1/est.yaml
@@ -36,3 +37,9 @@ p11tool-list:
 
 p11tool-delete:
 		@kubectl exec -it k8s-kms-plugin-server -- p11tool --lib /usr/lib64/libsofthsm2.so --pin $(P11_PIN) --token $(P11_TOKEN) delete
+
+
+## Deploy
+
+deploy:
+		@gcloud endpoints services deploy --format json "./apis/api-service.yaml" "./apis/istio/v1/v1.pb"  > "./deployed.json"

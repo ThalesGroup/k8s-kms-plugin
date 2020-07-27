@@ -7,16 +7,30 @@ option go_package = "github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1;istio"
 import "apis/istio/v1/messages.proto";
 import "google/protobuf/timestamp.proto";
 import "protoc-gen-swagger/options/annotations.proto";
+import "google/api/annotations.proto";
 
+option (grpc.gateway.protoc_gen_swagger.options.openapiv2_swagger) = {
+  host: "k8s-kms-domain.endpoints.thalescpl-io.cloud.goog"
+  info: {
+    title: "K8S KMS REST API "
+  }
+
+};
 service KeyManagementService {
   // GenerateKEK returns the KID of the GeneratedKEK if allowed/successful
-  rpc GenerateKEK(GenerateKEKRequest) returns (GenerateKEKResponse);
+  rpc GenerateKEK(GenerateKEKRequest) returns (GenerateKEKResponse) {
+      option (google.api.http) = {
+        post: "/v1/generate/kek"
+        body: "*"
+      };
+  };
   // DestroyKEK returns a success/failure to destroy the KEK... this is NON-REVERSIBLE...
   rpc DestroyKEK(DestroyKEKRequest) returns (DestroyKEKResponse);
   // GenerateDEK returns a wrapped (by KMS handled key)
   rpc GenerateDEK(GenerateDEKRequest) returns (GenerateDEKResponse);
   // GenerateSEK returns a wrapped (by provided encrypted DEK ), for later use during loading and signing key generation
 
+  // GenerateRootCAK returns the kid, and it's public key of a Key Pair
   rpc GenerateRootCAK(GenerateRootCAKRequest) returns (GenerateRootCAKResponse);
   // GenerateSEK returns a wrapped (by provided encrypted DEK ), for later use during loading and signing key generation
   rpc DestroyRootCAK(DestroyRootCAKRequest) returns (DestroyRootCAKResponse);

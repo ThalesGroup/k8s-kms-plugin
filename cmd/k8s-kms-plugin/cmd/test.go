@@ -73,13 +73,21 @@ func runTest() error {
 	}
 
 	// Generate a random UUID for request
-
-	testuuid, err := uuid.NewRandom()
+	var kekUuid, cakUuid uuid.UUID
+	var kekKid, cakKid []byte
+	kekUuid, err = uuid.NewRandom()
 	if err != nil {
 		return err
 	}
-	var testKid []byte
-	testKid, err = testuuid.MarshalText()
+	kekKid, err = kekUuid.MarshalText()
+	if err != nil {
+		return err
+	}
+	cakUuid, err = uuid.NewRandom()
+	if err != nil {
+		return err
+	}
+	cakKid, err = cakUuid.MarshalText()
 	if err != nil {
 		return err
 	}
@@ -87,10 +95,10 @@ func runTest() error {
 	/*
 		GenerateDEK
 	*/
-	logrus.Info("Test 1 GenerateKEK")
+	logrus.Info("Test 1 GenerateKEK 256 AES")
 	var genKEKResp *istio.GenerateKEKResponse
 	genKEKResp, err = c.GenerateKEK(ctx, &istio.GenerateKEKRequest{
-		KekKid: testKid,
+		KekKid: kekKid,
 	})
 	if err != nil {
 		logrus.Errorf("Test 1 Failed: %v", err)
@@ -100,7 +108,7 @@ func runTest() error {
 	/*
 		GenerateDEK
 	*/
-	logrus.Info("Test 2 GenerateDEK")
+	logrus.Info("Test 2 GenerateDEK 256 AES")
 	var genDEKResp *istio.GenerateDEKResponse
 	if genDEKResp, err = c.GenerateDEK(ctx, &istio.GenerateDEKRequest{
 		Size:   256,
@@ -118,7 +126,7 @@ func runTest() error {
 		GenerateSEK
 	*/
 
-	logrus.Info("Test 3 GenerateSEK RSA")
+	logrus.Info("Test 3 GenerateSEK 4096 RSA")
 	var genSEKResp *istio.GenerateSEKResponse
 	if genSEKResp, err = c.GenerateSEK(ctx, &istio.GenerateSEKRequest{
 		Size:             4096,
@@ -134,7 +142,7 @@ func runTest() error {
 	/*
 		LoadSEK
 	*/
-	logrus.Info("Test 4 LoadSEK RSA")
+	logrus.Info("Test 4 LoadSEK 4096 RSA")
 	var loadSEKResp *istio.LoadSEKResponse
 	if loadSEKResp, err = c.LoadSEK(ctx, &istio.LoadSEKRequest{
 
@@ -153,21 +161,21 @@ func runTest() error {
 		out = "Success"
 	}
 	logrus.Infof("Test 4 Returned LoadedSEK in PEM Format: %v", out)
-	logrus.Infof("------------------------------------------------------------")
-
 	/*
 		GenerateRootCAK
 	*/
-	logrus.Info("Test 5 GenerateRootCAK RSA")
+	logrus.Info("Test 5 GenerateRootCAK 4096 RSA")
 	var genCAKResp *istio.GenerateRootCAKResponse
 	if genCAKResp, err = c.GenerateRootCAK(ctx, &istio.GenerateRootCAKRequest{
-
+		Size:      4096,
+		Kind:      istio.KeyKind_RSA,
+		RootCaKid: cakKid,
 	}); err != nil {
 		logrus.Fatal(err)
 		return err
 	}
 
-	logrus.Infof("Test GenerateRootCAK KID Returned: %v", genCAKResp.RootCaKid)
+	logrus.Infof("Test GenerateRootCAK KID Returned: %s", string(genCAKResp.RootCaKid))
 	logrus.Infof("------------------------------------------------------------")
 	return err
 
