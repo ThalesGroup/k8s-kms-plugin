@@ -22,7 +22,7 @@ var (
 
 	testDecryptor      map[string]gose.JweDecryptor
 	testEncryptor      map[string]gose.JweEncryptor
-	testKid, testLabel []byte
+	testKid []byte
 	testPlainMessage   []byte
 	testWrappedDEK     []byte
 	testWrappedSEK     []byte
@@ -90,7 +90,6 @@ func TestP11_Encrypt(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &P11{
-				keyLabel:   tt.fields.keyLabel,
 				config:     tt.fields.config,
 				ctx:        tt.fields.ctx,
 				encryptors: tt.fields.encryptors,
@@ -124,7 +123,6 @@ func TestP11_GenerateDEK(t *testing.T) {
 	defer td(t)
 	type fields struct {
 		keyId      []byte
-		keyLabel   []byte
 		config     *crypto11.Config
 		ctx        *crypto11.Context
 		encryptors map[string]gose.JweEncryptor
@@ -145,7 +143,6 @@ func TestP11_GenerateDEK(t *testing.T) {
 			name: "ok",
 			fields: fields{
 				keyId:      testKid,
-				keyLabel:   testLabel,
 				config:     testConfig,
 				ctx:        testCtx,
 				decryptors: nil,
@@ -166,7 +163,6 @@ func TestP11_GenerateDEK(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &P11{
-				keyLabel:   tt.fields.keyLabel,
 				config:     tt.fields.config,
 				ctx:        tt.fields.ctx,
 				encryptors: tt.fields.encryptors,
@@ -191,7 +187,6 @@ func TestP11_GenerateSEK(t *testing.T) {
 	defer td(t)
 	type fields struct {
 		keyId      []byte
-		keyLabel   []byte
 		config     *crypto11.Config
 		ctx        *crypto11.Context
 		encryptors map[string]gose.JweEncryptor
@@ -213,7 +208,6 @@ func TestP11_GenerateSEK(t *testing.T) {
 			name: "OK",
 			fields: fields{
 				keyId:    testKid,
-				keyLabel: testLabel,
 				config:   testConfig,
 				ctx:      testCtx,
 
@@ -225,6 +219,7 @@ func TestP11_GenerateSEK(t *testing.T) {
 					Size:             4096,
 					Kind:             istio.KeyKind_RSA,
 					EncryptedDekBlob: testWrappedDEK,
+					KekKid:           testKid,
 				},
 			},
 			wantResp: nil,
@@ -234,7 +229,6 @@ func TestP11_GenerateSEK(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &P11{
-				keyLabel:   tt.fields.keyLabel,
 				config:     tt.fields.config,
 				ctx:        tt.fields.ctx,
 				encryptors: tt.fields.encryptors,
@@ -258,7 +252,6 @@ func TestP11_LoadDEK(t *testing.T) {
 	defer td(t)
 	type fields struct {
 		keyId      []byte
-		keyLabel   []byte
 		config     *crypto11.Config
 		ctx        *crypto11.Context
 		encryptors map[string]gose.JweEncryptor
@@ -280,7 +273,6 @@ func TestP11_LoadDEK(t *testing.T) {
 			name: "OK",
 			fields: fields{
 				keyId:      testKid,
-				keyLabel:   testLabel,
 				config:     testConfig,
 				ctx:        testCtx,
 				encryptors: testEncryptor,
@@ -301,7 +293,6 @@ func TestP11_LoadDEK(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &P11{
-				keyLabel:   tt.fields.keyLabel,
 				config:     tt.fields.config,
 				ctx:        tt.fields.ctx,
 				encryptors: tt.fields.encryptors,
@@ -329,7 +320,6 @@ func setupSoftHSMTestCase(t testing.TB) func(t testing.TB) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	testLabel = []byte(t.Name())
 
 	if os.Getenv("P11_LIBRARY") == "" {
 		t.Skip("No P11_LIBRARY provided, skipping")
@@ -339,7 +329,7 @@ func setupSoftHSMTestCase(t testing.TB) func(t testing.TB) {
 	gen := &gose.AuthenticatedEncryptionKeyGenerator{}
 	var taead gose.AuthenticatedEncryptionKey
 
-	taead, testAESKeyJWK, err = gen.Generate(jose.AlgA256GCM, keyOps)
+	taead, testAESKeyJWK, err = gen.Generate(jose.AlgA256GCM, kekKeyOps)
 	if testAESKeyJWKString, err = gose.JwkToString(testAESKeyJWK); err != nil {
 		t.Fatal(err)
 	}
@@ -350,6 +340,9 @@ func setupSoftHSMTestCase(t testing.TB) func(t testing.TB) {
 	testDecryptor[string(testKid)] = gose.NewJweDirectDecryptorImpl([]gose.AuthenticatedEncryptionKey{taead})
 	testEncryptedBlob, err = gose.NewJweDirectEncryptorImpl(taead).Encrypt(testPlainMessage, nil)
 	// Create the default key just so we can do some practical encrypt decrypting without having to mock..
+	if _, err = generateKEK(testCtx, testKid, []byte(defaultkeyLabel), jose.AlgA256GCM); err != nil {
+		t.Fatal(err)
+	}
 	if testWrappedDEK, err = generateDEK(testCtx, testEncryptor[string(testKid)], istio.KeyKind_AES, defaultDEKSize); err != nil {
 		t.Fatal(err)
 	}

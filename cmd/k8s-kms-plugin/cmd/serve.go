@@ -66,7 +66,7 @@ var serveCmd = &cobra.Command{
 		if a := os.Getenv("P11_LIB"); a != "" {
 			p11lib = a
 		}
-		if a := os.Getenv("P11_LABEL"); a != "" {
+		if a := os.Getenv("P11_TOKEN"); a != "" {
 			p11label = a
 		}
 		if a := os.Getenv("P11_SLOT"); a != "" {
@@ -95,6 +95,7 @@ var serveCmd = &cobra.Command{
 		g.Go(func() error { return grpcServe(grpcUNIX) })
 
 		if err = g.Wait(); err != nil {
+			logrus.Error(err)
 			panic(err)
 		}
 
@@ -106,7 +107,7 @@ var nativePath string
 
 func init() {
 	rootCmd.AddCommand(serveCmd)
-	serveCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), ".sock"), "Unix Socket")
+	serveCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), "run", ".sock"), "Unix Socket")
 
 	//
 	serveCmd.Flags().BoolVar(&enableTCP, "enable-server", false, "Enable TLS based server")
@@ -131,10 +132,24 @@ func grpcServe(gl net.Listener) (err error) {
 	var p providers.Provider
 
 	switch provider {
-	case "p11":
+	case "p11","softhsm":
 		config := &crypto11.Config{
 			Path: p11lib,
-
+			Pin:  p11pin,
+			UseGCMIVFromHSM: true,
+		}
+		if p11label != "" {
+			config.TokenLabel = p11label
+		} else {
+			config.SlotNumber = &p11slot
+		}
+		logrus.Info(*config)
+		if p, err = providers.NewP11(config, createKey); err != nil {
+			return
+		}
+	case "luna", "dpod":
+		config := &crypto11.Config{
+			Path:            p11lib,
 			Pin:             p11pin,
 			UseGCMIVFromHSM: true,
 		}
@@ -143,10 +158,9 @@ func grpcServe(gl net.Listener) (err error) {
 		} else {
 			config.SlotNumber = &p11slot
 		}
-		if p, err = providers.NewP11(keyName, config, createKey); err != nil {
+		if p, err = providers.NewP11(config, createKey); err != nil {
 			return
 		}
-
 	case "ekms":
 		panic("unimplemented")
 	default:
@@ -162,5 +176,11 @@ func grpcServe(gl net.Listener) (err error) {
 	reflection.Register(gs)
 	istio.RegisterKeyManagementServiceServer(gs, p)
 	logrus.Infof("Serving on socket: %s", socketPath)
-	return gs.Serve(gl)
+
+START:
+	if err = gs.Serve(gl); err != nil {
+		logrus.Error(err)
+		goto START
+	}
+	return
 }

@@ -1,3 +1,12 @@
+## Basic test tool
+FROM golang:1.14-stretch as p11tool
+ENV GOARCH amd64
+ENV GOOS linux
+ENV CGO_ENABLED 1
+RUN GO111MODULE=off go get -u github.com/thales-e-security/p11tool
+
+## build stack
+
 FROM golang:1.14-stretch as build
 WORKDIR /app
 ADD go.mod /app/go.mod
@@ -16,24 +25,19 @@ RUN go build -o k8s-kms-plugin ./cmd/k8s-kms-plugin
 RUN go build -o est-server ./cmd/est-server-server
 
 
-### Client
+### Plugin Server
+FROM ubuntu:20.04 as base-server
+RUN apt-get update && apt-get install -y softhsm curl openssl libssl-dev rsyslog && rm -rf /var/lib/apt/lists/
+#RUN softhsm2-util --init-token --slot 0 --label default --so-pin changeme --pin changeme
 
-FROM ubuntu:18.04 as client
-WORKDIR /
-COPY --from=build /app/k8s-kms-plugin /k8s-kms-plugin
-ENTRYPOINT ["/k8s-kms-plugin"]
-
-FROM centos:7 as base-server
-RUN yum install -y git softhsm glibc.i686 wget net-tools curl && \
-    softhsm2-util --init-token --slot 0 --label default --so-pin changeme --pin changeme && \
-    yum clean all
-
-FROM base-server as est-server
-WORKDIR /
-COPY --from=build /app/est-server /est-server
-ENTRYPOINT ["/est-server"]
+#FROM centos:7 as base-server
+#RUN yum install -y git softhsm glibc.i686 wget net-tools curl openssl-libs rsyslog && \
+#    yum clean all
 
 FROM base-server as kms-server
 WORKDIR /
 COPY --from=build /app/k8s-kms-plugin /k8s-kms-plugin
-ENTRYPOINT ["/k8s-kms-plugin"]
+COPY --from=p11tool /go/bin/p11tool /usr/bin/p11tool
+COPY scripts/start.sh /start.sh
+RUN chmod +x /start.sh
+ENTRYPOINT ["/start.sh"]

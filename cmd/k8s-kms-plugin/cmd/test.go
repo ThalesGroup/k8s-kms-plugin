@@ -27,7 +27,8 @@ import (
 )
 
 var loop bool
-var loopTime, maxLoops int
+var maxLoops int
+var loopTime time.Duration
 
 // testCmd represents the test command
 var testCmd = &cobra.Command{
@@ -50,8 +51,9 @@ var testCmd = &cobra.Command{
 func loopTestRun() error {
 	count := 0
 	for {
+		logrus.Info("Running Tests")
 		_ = runTest()
-		time.Sleep(time.Duration(loopTime) * time.Second)
+		time.Sleep(10 * time.Second)
 		count++
 		if count > maxLoops {
 			break
@@ -70,7 +72,7 @@ func runTest() error {
 		return err
 	}
 
-	// Generate a random key id for usage
+	// generateKEK a random key id for usage
 	testuuid, err := uuid.NewRandom()
 	if err != nil {
 		return err
@@ -80,40 +82,44 @@ func runTest() error {
 	if err != nil {
 		return err
 	}
-	logrus.Info("Test 1 - GenerateKEK")
+	logrus.Info("Test 1 GenerateKEK")
 	var genKEKResp *istio.GenerateKEKResponse
 	genKEKResp, err = c.GenerateKEK(ctx, &istio.GenerateKEKRequest{
 		KekKid: testKid,
 	})
 	if err != nil {
+		logrus.Errorf("Test 1 Failed: %v", err)
 		return err
 	}
-	logrus.Infof("Returned KEK ID: %s", string(genKEKResp.KekKid))
-	//logrus.Info("Test 2 - GenerateDEK ")
-	//var genDEKResp *istio.GenerateDEKResponse
-	//if genDEKResp, err = c.GenerateDEK(ctx, &istio.GenerateDEKRequest{
-	//	Size: 32,
-	//	Kind: istio.KeyKind_AES,
-	//}); err != nil {
-	//	logrus.Fatal(err)
-	//
-	//	return err
-	//}
-	//
-	//logrus.Infof("Returned WrappedDEK: %s", genDEKResp.EncryptedDekBlob)
-	//
-	//logrus.Info("Test 3 - GenerateSEK RSA")
-	//var resp *istio.GenerateSEKResponse
-	//if resp, err = c.GenerateSEK(ctx, &istio.GenerateSEKRequest{
-	//	Size: 4096,
-	//	Kind: istio.KeyKind_RSA,
-	//}); err != nil {
-	//	logrus.Fatal(err)
-	//	return err
-	//}
-	//logrus.Infof("Returned WrappedSEK: %s", resp.EncryptedSekBlob)
-	//
-	//
+	logrus.Infof("Test 1 Returned KEK ID: %s", string(genKEKResp.KekKid))
+	logrus.Infof("------------------------------------------------------------")
+	logrus.Info("Test 2 GenerateDEK")
+	var genDEKResp *istio.GenerateDEKResponse
+	if genDEKResp, err = c.GenerateDEK(ctx, &istio.GenerateDEKRequest{
+		Size:   32,
+		Kind:   istio.KeyKind_AES,
+		KekKid: genKEKResp.KekKid,
+	}); err != nil {
+		logrus.Fatal(err)
+
+		return err
+	}
+
+	logrus.Infof("Test 2 Returned WrappedDEK: %s", genDEKResp.EncryptedDekBlob)
+	logrus.Info("Test 3 GenerateSEK RSA")
+	var resp *istio.GenerateSEKResponse
+	if resp, err = c.GenerateSEK(ctx, &istio.GenerateSEKRequest{
+		Size: 4096,
+		Kind: istio.KeyKind_RSA,
+		KekKid: genKEKResp.KekKid,
+		EncryptedDekBlob: genDEKResp.EncryptedDekBlob,
+	}); err != nil {
+		logrus.Fatal(err)
+		return err
+	}
+	logrus.Infof("Test 3 Returned WrappedSEK: %s", resp.EncryptedSekBlob)
+
+
 
 	return err
 
@@ -121,10 +127,10 @@ func runTest() error {
 
 func init() {
 	rootCmd.AddCommand(testCmd)
-	testCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), ".sock"), "Unix Socket")
+	testCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), "run", ".sock"), "Unix Socket")
 	testCmd.Flags().BoolVar(&loop, "loop", false, "Should we run the test in a loop?")
-	testCmd.Flags().IntVar(&loopTime, "loop-sleep", 10, "How many seconds to sleep between test runs ")
-	testCmd.Flags().IntVar(&loopTime, "max-loops", 100, "How many seconds to sleep between test runs ")
+	testCmd.Flags().DurationVar(&loopTime, "loop-sleep", 10, "How many seconds to sleep between test runs ")
+	testCmd.Flags().IntVar(&maxLoops, "max-loops", 100, "How many seconds to sleep between test runs ")
 	// Here you will define your flags and configuration settings.
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:

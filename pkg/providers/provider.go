@@ -10,7 +10,9 @@ import (
 )
 
 var (
-	keyOps       = []jose.KeyOps{jose.KeyOpsDecrypt, jose.KeyOpsEncrypt}
+	kekKeyOps = []jose.KeyOps{jose.KeyOpsDecrypt, jose.KeyOpsEncrypt}
+	dekKeyOps = []jose.KeyOps{jose.KeyOpsDecrypt, jose.KeyOpsEncrypt}
+	sekKeyOps    = []jose.KeyOps{jose.KeyOpsSign, jose.KeyOpsVerify}
 	ErrNoSuchKey = errors.New("no such key")
 )
 
@@ -19,5 +21,4 @@ type Provider interface {
 	istio.KeyManagementServiceServer
 	// Ad
 	UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error)
-
 }

@@ -24,31 +24,53 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
+	"github.com/keepeye/logrus-filename"
 	"github.com/mitchellh/go-homedir"
 	"github.com/sirupsen/logrus"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"os"
 )
 
 var (
-	socketPath    string
-	grpcPort      int64
-	host          string
-	cfgFile       string
-	debug         bool
+	socketPath string
+	grpcPort   int64
+	host       string
+	cfgFile    string
+	logOutput  string
+	debug      bool
 )
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "",
 	Short: "Thales KMS Server for K8S ",
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		switch logOutput {
+		case "json":
+			logrus.SetFormatter(&logrus.JSONFormatter{})
+		case "text":
+			logrus.SetFormatter(&logrus.TextFormatter{
+				ForceColors:               true,
+				DisableTimestamp:          true,
+
+			})
+		default:
+			return errors.New("unknown format")
+		}
+		return nil
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
+	filenameHook := filename.NewHook()
+	filenameHook.Field = "line"
+	logrus.AddHook(filenameHook)
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -61,13 +83,12 @@ func init() {
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
-
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "ConfigFile)")
 
 	rootCmd.Flags().BoolVar(&debug, "debug", true, "Debug")
 	rootCmd.PersistentFlags().StringVar(&host, "host", "0.0.0.0", "TCP Host")
 	rootCmd.PersistentFlags().Int64Var(&grpcPort, "port", 31400, "TCP Port for gRPC service")
-
+	rootCmd.PersistentFlags().StringVar(&logOutput, "output", "text", "Log output format... text or json supported")
 	// Provider
 	rootCmd.PersistentFlags().StringVar(&provider, "provider", "p11", "Provider")
 
@@ -78,7 +99,6 @@ func init() {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	logrus.SetFormatter(&logrus.JSONFormatter{})
 	if cfgFile != "" {
 		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)

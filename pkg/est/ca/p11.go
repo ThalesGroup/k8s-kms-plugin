@@ -138,7 +138,7 @@ func (p *P11) BootstrapCA() (err error) {
 	if err = ioutil.WriteFile(p.ca, caPEM.Bytes(), 0600); err != nil {
 		return
 	}
-	// Generate EST Server Certificate
+	// generateKEK EST Server Certificate
 	var fqdn string
 	if fqdn, err = os.Hostname(); err != nil {
 		return

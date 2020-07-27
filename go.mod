@@ -13,9 +13,11 @@ require (
 	github.com/go-openapi/strfmt v0.19.5
 	github.com/go-openapi/swag v0.19.9
 	github.com/golang/protobuf v1.4.1
+	github.com/google/uuid v1.1.1
 	github.com/grpc-ecosystem/grpc-gateway v1.14.6
 	github.com/infobloxopen/atlas-app-toolkit v0.22.0
 	github.com/jessevdk/go-flags v1.4.0
+	github.com/keepeye/logrus-filename v0.0.0-20190711075016-ce01a4391dd1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/protoc-gen-go-json v0.0.0-20200717004536-8fbb6f3d7291
 	github.com/pkg/errors v0.9.1

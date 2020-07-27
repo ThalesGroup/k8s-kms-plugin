@@ -76,6 +76,7 @@ github.com/golang/protobuf/ptypes/duration
 github.com/golang/protobuf/ptypes/struct
 github.com/golang/protobuf/ptypes/timestamp
 # github.com/google/uuid v1.1.1
+## explicit
 github.com/google/uuid
 # github.com/grpc-ecosystem/grpc-gateway v1.14.6
 ## explicit
@@ -110,6 +111,9 @@ github.com/infobloxopen/atlas-app-toolkit/rpc/resource
 # github.com/jessevdk/go-flags v1.4.0
 ## explicit
 github.com/jessevdk/go-flags
+# github.com/keepeye/logrus-filename v0.0.0-20190711075016-ce01a4391dd1
+## explicit
+github.com/keepeye/logrus-filename
 # github.com/konsorten/go-windows-terminal-sequences v1.0.3
 github.com/konsorten/go-windows-terminal-sequences
 # github.com/magiconair/properties v1.8.1

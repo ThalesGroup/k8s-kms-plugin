@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: Pod
+
+metadata:
+  name: k8s-kms-plugin-server
+  labels:
+    app.kubernetes.io/name: k8s-kms-plugin-server
+spec:
+  volumes:
+    - name: certstore
+      emptyDir: {}
+    - name: ca
+      hostPath:
+        path: /etc/
+    - name: socket
+      emptyDir: {}
+    - name: logs
+      emptyDir: {}
+  containers:
+    - name: k8s-kms-plugin-server
+      image: "gcr.io/thalescpl-io/k8s-kms-plugin/server"
+      imagePullPolicy: IfNotPresent
+      volumeMounts:
+        - mountPath: /certs/
+          name: certstore
+        - mountPath: /tmp/run
+          name: socket
+#        - mountPath: /var/log
+#          name: logs
+      env:
+        - name: P11_LIB
+#          value: /usr/lib64/libsofthsm2.so # Centos
+          value: /usr/lib/softhsm/libsofthsm2.so # Ubuntu
+        - name: P11_TOKEN
+          value: default
+        - name: P11_PIN
+          value: changeme
+    - name: k8s-kms-plugin-client
+      image: "gcr.io/thalescpl-io/k8s-kms-plugin/server"
+      imagePullPolicy: IfNotPresent
+      command:
+        - /k8s-kms-plugin
+        - test
+        - --loop=true
+      volumeMounts:
+        - mountPath: /tmp/run
+          name: socket

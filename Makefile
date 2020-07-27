@@ -3,6 +3,8 @@
 all: build
 
 SECRETNAME=gcr-json-key
+P11_TOKEN=default
+P11_PIN=changeme
 ## Pipeline
 
 lint:
@@ -26,3 +28,11 @@ build:
 
 dev:
 		@skaffold dev --port-forward=true
+
+## Testing
+
+p11tool-list:
+		@kubectl exec -it k8s-kms-plugin-server -- p11tool --lib /usr/lib64/libsofthsm2.so --pin changeme --token default list
+
+p11tool-delete:
+		@kubectl exec -it k8s-kms-plugin-server -- p11tool --lib /usr/lib64/libsofthsm2.so --pin $(P11_PIN) --token $(P11_TOKEN) delete
