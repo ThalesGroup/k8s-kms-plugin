@@ -333,13 +333,13 @@ func (p *P11) GenerateKEK(ctx context.Context, request *istio.GenerateKEKRequest
 
 }
 
-func (p *P11) GenerateRootCA(ctx context.Context, request *istio.GenerateRootCARequest) (resp *istio.GenerateRootCAResponse, err error) {
+func (p *P11) GenerateCA(ctx context.Context, request *istio.GenerateCARequest) (resp *istio.GenerateCAResponse, err error) {
 
-	resp = &istio.GenerateRootCAResponse{
+	resp = &istio.GenerateCAResponse{
 
 	}
 	var ca *x509.Certificate
-	if ca, err = generateRootCA(p.ctx, request); err != nil {
+	if ca, err = GenerateCA(p.ctx, request); err != nil {
 		return
 	}
 
@@ -347,7 +347,7 @@ func (p *P11) GenerateRootCA(ctx context.Context, request *istio.GenerateRootCAR
 
 	return
 }
-func generateRootCA(ctx *crypto11.Context, request *istio.GenerateRootCARequest) (ca *x509.Certificate, err error) {
+func GenerateCA(ctx *crypto11.Context, request *istio.GenerateCARequest) (ca *x509.Certificate, err error) {
 	templateCA := &x509.Certificate{
 		SerialNumber: big.NewInt(2019),
 		Subject: pkix.Name{
@@ -386,8 +386,8 @@ func generateRootCA(ctx *crypto11.Context, request *istio.GenerateRootCARequest)
 
 	return
 }
-func (p *P11) GenerateRootCAK(ctx context.Context, request *istio.GenerateRootCAKRequest) (resp *istio.GenerateRootCAKResponse, err error) {
-	resp = &istio.GenerateRootCAKResponse{
+func (p *P11) GenerateCAK(ctx context.Context, request *istio.GenerateCAKRequest) (resp *istio.GenerateCAKResponse, err error) {
+	resp = &istio.GenerateCAKResponse{
 
 	}
 	if _, err = generateCAK(p.ctx, request.RootCaKid, request.Kind, int(request.Size)); err != nil {
@@ -485,9 +485,9 @@ func (p *P11) SignCSR(ctx context.Context, request *istio.SignCSRRequest) (resp 
 	var ca *x509.Certificate
 	if ca, err = loadCAbyID(p.ctx, request.RootCaKid, defaultCAKlabel, defaultCASerial); err != nil {
 		logrus.Info(err)
-
 		return
 	}
+	logrus.Infof("CA Cert from HSM: %s", ca.Subject)
 	var rng io.Reader
 	if rng, err = p.ctx.NewRandomReader(); err != nil {
 		return
@@ -499,17 +499,20 @@ func (p *P11) SignCSR(ctx context.Context, request *istio.SignCSRRequest) (resp 
 		return
 	}
 	leaf := &x509.Certificate{
+		Signature:             template.Signature,
+		SignatureAlgorithm:    template.SignatureAlgorithm,
+		PublicKeyAlgorithm:    template.PublicKeyAlgorithm,
+		PublicKey:             template.PublicKey,
 		SerialNumber:          defaultCASerial,
 		Subject:               template.Subject,
+		Issuer:                ca.Subject,
 		NotBefore:             time.Now(),
 		NotAfter:              time.Now().Add(90 * 24 * time.Hour),
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		DNSNames:              template.DNSNames,
 		IPAddresses:           template.IPAddresses,
-		Extensions:            template.Extensions,
-		ExtraExtensions:       template.ExtraExtensions,
-		BasicConstraintsValid: true,
+
 	}
 	var certBytes []byte
 	if certBytes, err = x509.CreateCertificate(rng, leaf, ca, pp.Public(), pp); err != nil {

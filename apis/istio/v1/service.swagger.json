@@ -68,6 +68,26 @@
         }
       }
     },
+    "v1GenerateCAKResponse": {
+      "type": "object",
+      "properties": {
+        "root_ca_kid": {
+          "type": "string",
+          "format": "byte",
+          "title": "Root CA Key ID"
+        }
+      }
+    },
+    "v1GenerateCAResponse": {
+      "type": "object",
+      "properties": {
+        "cert": {
+          "type": "string",
+          "format": "byte",
+          "title": "Root CA cert in PEM format"
+        }
+      }
+    },
     "v1GenerateDEKResponse": {
       "type": "object",
       "properties": {
@@ -85,26 +105,6 @@
           "type": "string",
           "format": "byte",
           "title": "KEK kid"
-        }
-      }
-    },
-    "v1GenerateRootCAKResponse": {
-      "type": "object",
-      "properties": {
-        "root_ca_kid": {
-          "type": "string",
-          "format": "byte",
-          "title": "Root CA Key ID"
-        }
-      }
-    },
-    "v1GenerateRootCAResponse": {
-      "type": "object",
-      "properties": {
-        "cert": {
-          "type": "string",
-          "format": "byte",
-          "title": "Root CA cert in PEM format"
         }
       }
     },

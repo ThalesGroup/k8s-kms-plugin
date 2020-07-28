@@ -177,9 +177,9 @@ func runTest() error {
 	/*
 		GenerateCAK
 	*/
-	logrus.Info("Test 5 GenerateRootCAK 4096 RSA")
-	var genCAKResp *istio.GenerateRootCAKResponse
-	if genCAKResp, err = c.GenerateRootCAK(ctx, &istio.GenerateRootCAKRequest{
+	logrus.Info("Test 5 GenerateCAK 4096 RSA")
+	var genCAKResp *istio.GenerateCAKResponse
+	if genCAKResp, err = c.GenerateCAK(ctx, &istio.GenerateCAKRequest{
 		Size:      4096,
 		Kind:      istio.KeyKind_RSA,
 		RootCaKid: cakKid,
@@ -188,13 +188,13 @@ func runTest() error {
 		return err
 	}
 
-	logrus.Infof("Test 5  GenerateRootCAK KID Returned: %s", string(genCAKResp.RootCaKid))
+	logrus.Infof("Test 5  GenerateCAK KID Returned: %s", string(genCAKResp.RootCaKid))
 	/*
-		GenerateRootCAK
+		GenerateCAK
 	*/
-	logrus.Info("Test 6 GenerateRootCA, Sign and Store")
-	var genCAResp *istio.GenerateRootCAResponse
-	if genCAResp, err = c.GenerateRootCA(ctx, &istio.GenerateRootCARequest{
+	logrus.Info("Test 6 GenerateCA, Sign and Store")
+	var genCAResp *istio.GenerateCAResponse
+	if genCAResp, err = c.GenerateCA(ctx, &istio.GenerateCARequest{
 
 		RootCaKid: cakKid,
 	}); err != nil {
@@ -206,7 +206,7 @@ func runTest() error {
 	} else {
 		out = "Success"
 	}
-	logrus.Infof("Test 6  GenerateRootCA in : %s", out)
+	logrus.Infof("Test 6  GenerateCA in : %s", out)
 
 	/*
 		SignCSR

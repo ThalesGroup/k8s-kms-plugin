@@ -64,7 +64,7 @@ message GenerateDEKResponse {
   bytes encrypted_dek_blob = 1;
 }
 
-message GenerateRootCAKRequest {
+message GenerateCAKRequest {
   // key size in bits
   int64 size = 1;
   // What kind of key is it... only Asymmetric kinds will be supported
@@ -73,17 +73,17 @@ message GenerateRootCAKRequest {
   bytes root_ca_kid = 3;
 }
 
-message GenerateRootCAKResponse {
+message GenerateCAKResponse {
   // Root CA Key ID
   bytes root_ca_kid = 1;
 }
 
-message GenerateRootCARequest {
+message GenerateCARequest {
   // Root CA Key ID
   bytes root_ca_kid = 1;
 }
 
-message GenerateRootCAResponse {
+message GenerateCAResponse {
   // Root CA cert in PEM format
   bytes cert = 1;
 }

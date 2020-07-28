@@ -17,9 +17,9 @@ service KeyManagementService {
   // GenerateSEK returns a wrapped (by provided encrypted DEK ), for later use during loading and signing key generation
 
   // GenerateRootCAK returns the kid, and it's public key of a Key Pair
-  rpc GenerateRootCAK(GenerateRootCAKRequest) returns (GenerateRootCAKResponse);
+  rpc GenerateCAK(GenerateCAKRequest) returns (GenerateCAKResponse);
   // GenerateRootCA and store in in the PKCS11 device
-  rpc GenerateRootCA(GenerateRootCARequest) returns (GenerateRootCAResponse);
+  rpc GenerateCA(GenerateCARequest) returns (GenerateCAResponse);
   // GenerateSEK returns a wrapped (by provided encrypted DEK ), for later use during loading and signing key generation
   rpc DestroyRootCAK(DestroyRootCAKRequest) returns (DestroyRootCAKResponse);
   // GenerateDEK returns a wrapped (by KMS handled key)

@@ -401,7 +401,7 @@ func (x *GenerateDEKResponse) GetEncryptedDekBlob() []byte {
 	return nil
 }
 
-type GenerateRootCAKRequest struct {
+type GenerateCAKRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -414,8 +414,8 @@ type GenerateRootCAKRequest struct {
 	RootCaKid []byte `protobuf:"bytes,3,opt,name=root_ca_kid,json=rootCaKid,proto3" json:"root_ca_kid,omitempty"`
 }
 
-func (x *GenerateRootCAKRequest) Reset() {
-	*x = GenerateRootCAKRequest{}
+func (x *GenerateCAKRequest) Reset() {
+	*x = GenerateCAKRequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_apis_istio_v1_messages_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -423,13 +423,13 @@ func (x *GenerateRootCAKRequest) Reset() {
 	}
 }
 
-func (x *GenerateRootCAKRequest) String() string {
+func (x *GenerateCAKRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GenerateRootCAKRequest) ProtoMessage() {}
+func (*GenerateCAKRequest) ProtoMessage() {}
 
-func (x *GenerateRootCAKRequest) ProtoReflect() protoreflect.Message {
+func (x *GenerateCAKRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_apis_istio_v1_messages_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -441,33 +441,33 @@ func (x *GenerateRootCAKRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GenerateRootCAKRequest.ProtoReflect.Descriptor instead.
-func (*GenerateRootCAKRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use GenerateCAKRequest.ProtoReflect.Descriptor instead.
+func (*GenerateCAKRequest) Descriptor() ([]byte, []int) {
 	return file_apis_istio_v1_messages_proto_rawDescGZIP(), []int{6}
 }
 
-func (x *GenerateRootCAKRequest) GetSize() int64 {
+func (x *GenerateCAKRequest) GetSize() int64 {
 	if x != nil {
 		return x.Size
 	}
 	return 0
 }
 
-func (x *GenerateRootCAKRequest) GetKind() KeyKind {
+func (x *GenerateCAKRequest) GetKind() KeyKind {
 	if x != nil {
 		return x.Kind
 	}
 	return KeyKind_UNKNOWN
 }
 
-func (x *GenerateRootCAKRequest) GetRootCaKid() []byte {
+func (x *GenerateCAKRequest) GetRootCaKid() []byte {
 	if x != nil {
 		return x.RootCaKid
 	}
 	return nil
 }
 
-type GenerateRootCAKResponse struct {
+type GenerateCAKResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -476,8 +476,8 @@ type GenerateRootCAKResponse struct {
 	RootCaKid []byte `protobuf:"bytes,1,opt,name=root_ca_kid,json=rootCaKid,proto3" json:"root_ca_kid,omitempty"`
 }
 
-func (x *GenerateRootCAKResponse) Reset() {
-	*x = GenerateRootCAKResponse{}
+func (x *GenerateCAKResponse) Reset() {
+	*x = GenerateCAKResponse{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_apis_istio_v1_messages_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -485,13 +485,13 @@ func (x *GenerateRootCAKResponse) Reset() {
 	}
 }
 
-func (x *GenerateRootCAKResponse) String() string {
+func (x *GenerateCAKResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GenerateRootCAKResponse) ProtoMessage() {}
+func (*GenerateCAKResponse) ProtoMessage() {}
 
-func (x *GenerateRootCAKResponse) ProtoReflect() protoreflect.Message {
+func (x *GenerateCAKResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_apis_istio_v1_messages_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -503,19 +503,19 @@ func (x *GenerateRootCAKResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GenerateRootCAKResponse.ProtoReflect.Descriptor instead.
-func (*GenerateRootCAKResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use GenerateCAKResponse.ProtoReflect.Descriptor instead.
+func (*GenerateCAKResponse) Descriptor() ([]byte, []int) {
 	return file_apis_istio_v1_messages_proto_rawDescGZIP(), []int{7}
 }
 
-func (x *GenerateRootCAKResponse) GetRootCaKid() []byte {
+func (x *GenerateCAKResponse) GetRootCaKid() []byte {
 	if x != nil {
 		return x.RootCaKid
 	}
 	return nil
 }
 
-type GenerateRootCARequest struct {
+type GenerateCARequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -524,8 +524,8 @@ type GenerateRootCARequest struct {
 	RootCaKid []byte `protobuf:"bytes,1,opt,name=root_ca_kid,json=rootCaKid,proto3" json:"root_ca_kid,omitempty"`
 }
 
-func (x *GenerateRootCARequest) Reset() {
-	*x = GenerateRootCARequest{}
+func (x *GenerateCARequest) Reset() {
+	*x = GenerateCARequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_apis_istio_v1_messages_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -533,13 +533,13 @@ func (x *GenerateRootCARequest) Reset() {
 	}
 }
 
-func (x *GenerateRootCARequest) String() string {
+func (x *GenerateCARequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GenerateRootCARequest) ProtoMessage() {}
+func (*GenerateCARequest) ProtoMessage() {}
 
-func (x *GenerateRootCARequest) ProtoReflect() protoreflect.Message {
+func (x *GenerateCARequest) ProtoReflect() protoreflect.Message {
 	mi := &file_apis_istio_v1_messages_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -551,19 +551,19 @@ func (x *GenerateRootCARequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GenerateRootCARequest.ProtoReflect.Descriptor instead.
-func (*GenerateRootCARequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use GenerateCARequest.ProtoReflect.Descriptor instead.
+func (*GenerateCARequest) Descriptor() ([]byte, []int) {
 	return file_apis_istio_v1_messages_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *GenerateRootCARequest) GetRootCaKid() []byte {
+func (x *GenerateCARequest) GetRootCaKid() []byte {
 	if x != nil {
 		return x.RootCaKid
 	}
 	return nil
 }
 
-type GenerateRootCAResponse struct {
+type GenerateCAResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -572,8 +572,8 @@ type GenerateRootCAResponse struct {
 	Cert []byte `protobuf:"bytes,1,opt,name=cert,proto3" json:"cert,omitempty"`
 }
 
-func (x *GenerateRootCAResponse) Reset() {
-	*x = GenerateRootCAResponse{}
+func (x *GenerateCAResponse) Reset() {
+	*x = GenerateCAResponse{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_apis_istio_v1_messages_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -581,13 +581,13 @@ func (x *GenerateRootCAResponse) Reset() {
 	}
 }
 
-func (x *GenerateRootCAResponse) String() string {
+func (x *GenerateCAResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GenerateRootCAResponse) ProtoMessage() {}
+func (*GenerateCAResponse) ProtoMessage() {}
 
-func (x *GenerateRootCAResponse) ProtoReflect() protoreflect.Message {
+func (x *GenerateCAResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_apis_istio_v1_messages_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -599,12 +599,12 @@ func (x *GenerateRootCAResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GenerateRootCAResponse.ProtoReflect.Descriptor instead.
-func (*GenerateRootCAResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use GenerateCAResponse.ProtoReflect.Descriptor instead.
+func (*GenerateCAResponse) Descriptor() ([]byte, []int) {
 	return file_apis_istio_v1_messages_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *GenerateRootCAResponse) GetCert() []byte {
+func (x *GenerateCAResponse) GetCert() []byte {
 	if x != nil {
 		return x.Cert
 	}
@@ -1102,24 +1102,23 @@ var file_apis_istio_v1_messages_proto_rawDesc = []byte{
 	0x4b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x2c, 0x0a, 0x12, 0x65, 0x6e, 0x63,
 	0x72, 0x79, 0x70, 0x74, 0x65, 0x64, 0x5f, 0x64, 0x65, 0x6b, 0x5f, 0x62, 0x6c, 0x6f, 0x62, 0x18,
 	0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x10, 0x65, 0x6e, 0x63, 0x72, 0x79, 0x70, 0x74, 0x65, 0x64,
-	0x44, 0x65, 0x6b, 0x42, 0x6c, 0x6f, 0x62, 0x22, 0x85, 0x01, 0x0a, 0x16, 0x47, 0x65, 0x6e, 0x65,
-	0x72, 0x61, 0x74, 0x65, 0x52, 0x6f, 0x6f, 0x74, 0x43, 0x41, 0x4b, 0x52, 0x65, 0x71, 0x75, 0x65,
-	0x73, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x73, 0x69, 0x7a, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x03,
-	0x52, 0x04, 0x73, 0x69, 0x7a, 0x65, 0x12, 0x37, 0x0a, 0x04, 0x6b, 0x69, 0x6e, 0x64, 0x18, 0x02,
-	0x20, 0x01, 0x28, 0x0e, 0x32, 0x23, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c,
-	0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2e, 0x76,
-	0x31, 0x2e, 0x4b, 0x65, 0x79, 0x4b, 0x69, 0x6e, 0x64, 0x52, 0x04, 0x6b, 0x69, 0x6e, 0x64, 0x12,
-	0x1e, 0x0a, 0x0b, 0x72, 0x6f, 0x6f, 0x74, 0x5f, 0x63, 0x61, 0x5f, 0x6b, 0x69, 0x64, 0x18, 0x03,
-	0x20, 0x01, 0x28, 0x0c, 0x52, 0x09, 0x72, 0x6f, 0x6f, 0x74, 0x43, 0x61, 0x4b, 0x69, 0x64, 0x22,
-	0x39, 0x0a, 0x17, 0x47, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x52, 0x6f, 0x6f, 0x74, 0x43,
-	0x41, 0x4b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x1e, 0x0a, 0x0b, 0x72, 0x6f,
-	0x6f, 0x74, 0x5f, 0x63, 0x61, 0x5f, 0x6b, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52,
-	0x09, 0x72, 0x6f, 0x6f, 0x74, 0x43, 0x61, 0x4b, 0x69, 0x64, 0x22, 0x37, 0x0a, 0x15, 0x47, 0x65,
-	0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x52, 0x6f, 0x6f, 0x74, 0x43, 0x41, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x12, 0x1e, 0x0a, 0x0b, 0x72, 0x6f, 0x6f, 0x74, 0x5f, 0x63, 0x61, 0x5f, 0x6b,
-	0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x09, 0x72, 0x6f, 0x6f, 0x74, 0x43, 0x61,
-	0x4b, 0x69, 0x64, 0x22, 0x2c, 0x0a, 0x16, 0x47, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x52,
-	0x6f, 0x6f, 0x74, 0x43, 0x41, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x12, 0x0a,
+	0x44, 0x65, 0x6b, 0x42, 0x6c, 0x6f, 0x62, 0x22, 0x81, 0x01, 0x0a, 0x12, 0x47, 0x65, 0x6e, 0x65,
+	0x72, 0x61, 0x74, 0x65, 0x43, 0x41, 0x4b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x12,
+	0x0a, 0x04, 0x73, 0x69, 0x7a, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x03, 0x52, 0x04, 0x73, 0x69,
+	0x7a, 0x65, 0x12, 0x37, 0x0a, 0x04, 0x6b, 0x69, 0x6e, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0e,
+	0x32, 0x23, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e,
+	0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2e, 0x76, 0x31, 0x2e, 0x4b, 0x65,
+	0x79, 0x4b, 0x69, 0x6e, 0x64, 0x52, 0x04, 0x6b, 0x69, 0x6e, 0x64, 0x12, 0x1e, 0x0a, 0x0b, 0x72,
+	0x6f, 0x6f, 0x74, 0x5f, 0x63, 0x61, 0x5f, 0x6b, 0x69, 0x64, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0c,
+	0x52, 0x09, 0x72, 0x6f, 0x6f, 0x74, 0x43, 0x61, 0x4b, 0x69, 0x64, 0x22, 0x35, 0x0a, 0x13, 0x47,
+	0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x43, 0x41, 0x4b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x12, 0x1e, 0x0a, 0x0b, 0x72, 0x6f, 0x6f, 0x74, 0x5f, 0x63, 0x61, 0x5f, 0x6b, 0x69,
+	0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x09, 0x72, 0x6f, 0x6f, 0x74, 0x43, 0x61, 0x4b,
+	0x69, 0x64, 0x22, 0x33, 0x0a, 0x11, 0x47, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x43, 0x41,
+	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1e, 0x0a, 0x0b, 0x72, 0x6f, 0x6f, 0x74, 0x5f,
+	0x63, 0x61, 0x5f, 0x6b, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x09, 0x72, 0x6f,
+	0x6f, 0x74, 0x43, 0x61, 0x4b, 0x69, 0x64, 0x22, 0x28, 0x0a, 0x12, 0x47, 0x65, 0x6e, 0x65, 0x72,
+	0x61, 0x74, 0x65, 0x43, 0x41, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x12, 0x0a,
 	0x04, 0x63, 0x65, 0x72, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x04, 0x63, 0x65, 0x72,
 	0x74, 0x22, 0x30, 0x0a, 0x15, 0x44, 0x65, 0x73, 0x74, 0x72, 0x6f, 0x79, 0x52, 0x6f, 0x6f, 0x74,
 	0x43, 0x41, 0x4b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x17, 0x0a, 0x07, 0x6b, 0x65,
@@ -1191,29 +1190,29 @@ func file_apis_istio_v1_messages_proto_rawDescGZIP() []byte {
 var file_apis_istio_v1_messages_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_apis_istio_v1_messages_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_apis_istio_v1_messages_proto_goTypes = []interface{}{
-	(KeyKind)(0),                    // 0: thalescpl.io.ekms.istio.v1.KeyKind
-	(*GenerateKEKRequest)(nil),      // 1: thalescpl.io.ekms.istio.v1.GenerateKEKRequest
-	(*GenerateKEKResponse)(nil),     // 2: thalescpl.io.ekms.istio.v1.GenerateKEKResponse
-	(*DestroyKEKRequest)(nil),       // 3: thalescpl.io.ekms.istio.v1.DestroyKEKRequest
-	(*DestroyKEKResponse)(nil),      // 4: thalescpl.io.ekms.istio.v1.DestroyKEKResponse
-	(*GenerateDEKRequest)(nil),      // 5: thalescpl.io.ekms.istio.v1.GenerateDEKRequest
-	(*GenerateDEKResponse)(nil),     // 6: thalescpl.io.ekms.istio.v1.GenerateDEKResponse
-	(*GenerateRootCAKRequest)(nil),  // 7: thalescpl.io.ekms.istio.v1.GenerateRootCAKRequest
-	(*GenerateRootCAKResponse)(nil), // 8: thalescpl.io.ekms.istio.v1.GenerateRootCAKResponse
-	(*GenerateRootCARequest)(nil),   // 9: thalescpl.io.ekms.istio.v1.GenerateRootCARequest
-	(*GenerateRootCAResponse)(nil),  // 10: thalescpl.io.ekms.istio.v1.GenerateRootCAResponse
-	(*DestroyRootCAKRequest)(nil),   // 11: thalescpl.io.ekms.istio.v1.DestroyRootCAKRequest
-	(*DestroyRootCAKResponse)(nil),  // 12: thalescpl.io.ekms.istio.v1.DestroyRootCAKResponse
-	(*GenerateSEKRequest)(nil),      // 13: thalescpl.io.ekms.istio.v1.GenerateSEKRequest
-	(*GenerateSEKResponse)(nil),     // 14: thalescpl.io.ekms.istio.v1.GenerateSEKResponse
-	(*LoadSEKRequest)(nil),          // 15: thalescpl.io.ekms.istio.v1.LoadSEKRequest
-	(*LoadSEKResponse)(nil),         // 16: thalescpl.io.ekms.istio.v1.LoadSEKResponse
-	(*SignCSRRequest)(nil),          // 17: thalescpl.io.ekms.istio.v1.SignCSRRequest
-	(*SignCSRResponse)(nil),         // 18: thalescpl.io.ekms.istio.v1.SignCSRResponse
+	(KeyKind)(0),                   // 0: thalescpl.io.ekms.istio.v1.KeyKind
+	(*GenerateKEKRequest)(nil),     // 1: thalescpl.io.ekms.istio.v1.GenerateKEKRequest
+	(*GenerateKEKResponse)(nil),    // 2: thalescpl.io.ekms.istio.v1.GenerateKEKResponse
+	(*DestroyKEKRequest)(nil),      // 3: thalescpl.io.ekms.istio.v1.DestroyKEKRequest
+	(*DestroyKEKResponse)(nil),     // 4: thalescpl.io.ekms.istio.v1.DestroyKEKResponse
+	(*GenerateDEKRequest)(nil),     // 5: thalescpl.io.ekms.istio.v1.GenerateDEKRequest
+	(*GenerateDEKResponse)(nil),    // 6: thalescpl.io.ekms.istio.v1.GenerateDEKResponse
+	(*GenerateCAKRequest)(nil),     // 7: thalescpl.io.ekms.istio.v1.GenerateCAKRequest
+	(*GenerateCAKResponse)(nil),    // 8: thalescpl.io.ekms.istio.v1.GenerateCAKResponse
+	(*GenerateCARequest)(nil),      // 9: thalescpl.io.ekms.istio.v1.GenerateCARequest
+	(*GenerateCAResponse)(nil),     // 10: thalescpl.io.ekms.istio.v1.GenerateCAResponse
+	(*DestroyRootCAKRequest)(nil),  // 11: thalescpl.io.ekms.istio.v1.DestroyRootCAKRequest
+	(*DestroyRootCAKResponse)(nil), // 12: thalescpl.io.ekms.istio.v1.DestroyRootCAKResponse
+	(*GenerateSEKRequest)(nil),     // 13: thalescpl.io.ekms.istio.v1.GenerateSEKRequest
+	(*GenerateSEKResponse)(nil),    // 14: thalescpl.io.ekms.istio.v1.GenerateSEKResponse
+	(*LoadSEKRequest)(nil),         // 15: thalescpl.io.ekms.istio.v1.LoadSEKRequest
+	(*LoadSEKResponse)(nil),        // 16: thalescpl.io.ekms.istio.v1.LoadSEKResponse
+	(*SignCSRRequest)(nil),         // 17: thalescpl.io.ekms.istio.v1.SignCSRRequest
+	(*SignCSRResponse)(nil),        // 18: thalescpl.io.ekms.istio.v1.SignCSRResponse
 }
 var file_apis_istio_v1_messages_proto_depIdxs = []int32{
 	0, // 0: thalescpl.io.ekms.istio.v1.GenerateDEKRequest.kind:type_name -> thalescpl.io.ekms.istio.v1.KeyKind
-	0, // 1: thalescpl.io.ekms.istio.v1.GenerateRootCAKRequest.kind:type_name -> thalescpl.io.ekms.istio.v1.KeyKind
+	0, // 1: thalescpl.io.ekms.istio.v1.GenerateCAKRequest.kind:type_name -> thalescpl.io.ekms.istio.v1.KeyKind
 	0, // 2: thalescpl.io.ekms.istio.v1.GenerateSEKRequest.kind:type_name -> thalescpl.io.ekms.istio.v1.KeyKind
 	3, // [3:3] is the sub-list for method output_type
 	3, // [3:3] is the sub-list for method input_type
@@ -1301,7 +1300,7 @@ func file_apis_istio_v1_messages_proto_init() {
 			}
 		}
 		file_apis_istio_v1_messages_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GenerateRootCAKRequest); i {
+			switch v := v.(*GenerateCAKRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1313,7 +1312,7 @@ func file_apis_istio_v1_messages_proto_init() {
 			}
 		}
 		file_apis_istio_v1_messages_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GenerateRootCAKResponse); i {
+			switch v := v.(*GenerateCAKResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1325,7 +1324,7 @@ func file_apis_istio_v1_messages_proto_init() {
 			}
 		}
 		file_apis_istio_v1_messages_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GenerateRootCARequest); i {
+			switch v := v.(*GenerateCARequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1337,7 +1336,7 @@ func file_apis_istio_v1_messages_proto_init() {
 			}
 		}
 		file_apis_istio_v1_messages_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GenerateRootCAResponse); i {
+			switch v := v.(*GenerateCAResponse); i {
 			case 0:
 				return &v.state
 			case 1:
