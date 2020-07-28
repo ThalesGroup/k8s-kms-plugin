@@ -170,7 +170,7 @@ func runTest() error {
 	b, _ = pem.Decode(loadSEKResp.ClearSek)
 	if sek, err = x509.ParsePKCS1PrivateKey(b.Bytes); err != nil {
 		logrus.Fatal(err)
-	
+
 		return err
 	}
 	logrus.Infof("Test 4 Returned LoadedSEK in PEM Format: %v", out)
@@ -215,20 +215,13 @@ func runTest() error {
 	var signCSRResp *istio.SignCSRResponse
 	template := &x509.CertificateRequest{
 
-		SignatureAlgorithm: 0,
-		PublicKeyAlgorithm: 0,
-		Subject:            pkix.Name{},
-		Attributes:         nil,
-		PublicKey:          sek.Public(),
-		Extensions: []pkix.Extension{
+		SignatureAlgorithm: x509.SHA512WithRSA,
+		PublicKeyAlgorithm: x509.RSA,
+		Subject: pkix.Name{
+			CommonName: "Hello",
 		},
-		ExtraExtensions: []pkix.Extension{
-
-		},
-		DNSNames:       nil,
-		EmailAddresses: nil,
-		IPAddresses:    nil,
-		URIs:           nil,
+		PublicKey: sek.Public(),
+		DNSNames:  []string{"awesome.com"},
 	}
 	req := &istio.SignCSRRequest{
 		RootCaKid: cakKid,

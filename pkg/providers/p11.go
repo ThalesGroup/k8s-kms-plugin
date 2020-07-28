@@ -30,6 +30,7 @@ import (
 var (
 	defaultKEKlabel = []byte("k8s-kms-plugin-kek")
 	defaultCAKlabel = []byte("k8s-kms-plugin-cak")
+	defaultCASerial = big.NewInt(int64(1))
 	defaultDEKSize  = 32 // 32 == 256 AES Key
 )
 
@@ -482,7 +483,9 @@ func (p *P11) SignCSR(ctx context.Context, request *istio.SignCSRRequest) (resp 
 		return
 	}
 	var ca *x509.Certificate
-	if ca, err = loadCAbyID(p.ctx, request.RootCaKid, defaultCAKlabel, nil); err != nil {
+	if ca, err = loadCAbyID(p.ctx, request.RootCaKid, defaultCAKlabel, defaultCASerial); err != nil {
+		logrus.Info(err)
+
 		return
 	}
 	var rng io.Reader
@@ -491,22 +494,26 @@ func (p *P11) SignCSR(ctx context.Context, request *istio.SignCSRRequest) (resp 
 	}
 	var template *x509.CertificateRequest
 	if template, err = x509.ParseCertificateRequest(request.Csr); err != nil {
+		logrus.Info(err)
+
 		return
 	}
 	leaf := &x509.Certificate{
-		SerialNumber: big.NewInt(int64(1)),
-		Subject:      template.Subject,
-		NotBefore:    time.Now(),
-		NotAfter:     time.Now().Add(90 * 24 * time.Hour),
-		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
-		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		DNSNames:     template.DNSNames,
-		IPAddresses:  template.IPAddresses,
-
+		SerialNumber:          defaultCASerial,
+		Subject:               template.Subject,
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().Add(90 * 24 * time.Hour),
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		DNSNames:              template.DNSNames,
+		IPAddresses:           template.IPAddresses,
+		Extensions:            template.Extensions,
+		ExtraExtensions:       template.ExtraExtensions,
 		BasicConstraintsValid: true,
 	}
 	var certBytes []byte
 	if certBytes, err = x509.CreateCertificate(rng, leaf, ca, pp.Public(), pp); err != nil {
+		logrus.Info(err)
 		return
 	}
 	certPEM := &pem.Block{
