@@ -27,7 +27,7 @@ RUN go build -o est-server ./cmd/est-server-server
 
 ### Plugin Server
 FROM ubuntu:20.04 as base-server
-RUN apt-get update && apt-get install -y softhsm curl openssl libssl-dev rsyslog && rm -rf /var/lib/apt/lists/
+RUN apt-get update && apt-get install -y softhsm curl openssl libssl-dev && rm -rf /var/lib/apt/lists/
 #RUN softhsm2-util --init-token --slot 0 --label default --so-pin changeme --pin changeme
 
 #FROM centos:7 as base-server

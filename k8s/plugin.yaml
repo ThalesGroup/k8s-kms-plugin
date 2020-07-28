@@ -17,7 +17,7 @@ spec:
     - name: logs
       emptyDir: {}
   containers:
-    - name: k8s-kms-plugin-server
+    - name: plugin-server
       image: "gcr.io/thalescpl-io/k8s-kms-plugin/server"
       imagePullPolicy: IfNotPresent
       volumeMounts:
@@ -35,7 +35,7 @@ spec:
           value: default
         - name: P11_PIN
           value: changeme
-    - name: k8s-kms-plugin-client
+    - name: e2e-test
       image: "gcr.io/thalescpl-io/k8s-kms-plugin/server"
       imagePullPolicy: IfNotPresent
       command:

@@ -88,12 +88,22 @@ message GenerateCAResponse {
   bytes cert = 1;
 }
 
-message DestroyRootCAKRequest {
+message DestroyCAKRequest {
   // Required kid of KEK to find and delete
   bytes kek_kid = 1;
 }
 
-message DestroyRootCAKResponse {
+message DestroyCAKResponse {
+  // successful destroy?
+  bool success = 1;
+}
+
+message DestroyCARequest {
+  // Required kid of KEK to find and delete
+  bytes kek_kid = 1;
+}
+
+message DestroyCAResponse {
   // successful destroy?
   bool success = 1;
 }

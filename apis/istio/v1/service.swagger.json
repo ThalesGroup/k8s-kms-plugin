@@ -48,7 +48,7 @@
         }
       }
     },
-    "v1DestroyKEKResponse": {
+    "v1DestroyCAKResponse": {
       "type": "object",
       "properties": {
         "success": {
@@ -58,7 +58,17 @@
         }
       }
     },
-    "v1DestroyRootCAKResponse": {
+    "v1DestroyCAResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "format": "boolean",
+          "title": "successful destroy?"
+        }
+      }
+    },
+    "v1DestroyKEKResponse": {
       "type": "object",
       "properties": {
         "success": {

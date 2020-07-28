@@ -190,7 +190,7 @@ func runTest() error {
 
 	logrus.Infof("Test 5  GenerateCAK KID Returned: %s", string(genCAKResp.RootCaKid))
 	/*
-		GenerateCAK
+		GenerateCA
 	*/
 	logrus.Info("Test 6 GenerateCA, Sign and Store")
 	var genCAResp *istio.GenerateCAResponse
@@ -236,6 +236,34 @@ func runTest() error {
 	}
 
 	logrus.Infof("Test 7 SignCSR Cert: %s", string(signCSRResp.Cert))
+
+	/*
+		DestroyCA
+	*/
+	logrus.Info("Test 8 DestroyCA")
+	var destroyCAResp *istio.DestroyCAResponse
+	if destroyCAResp, err = c.DestroyCA(ctx, &istio.DestroyCARequest{
+		KekKid: cakKid,
+	}); err != nil {
+		logrus.Fatal(err)
+		return err
+	}
+
+	logrus.Infof("Test 8 DestroyCA result : %b", destroyCAResp.Success)
+
+	/*
+		DestroyCAK
+	*/
+	logrus.Info("Test 9 DestroyCA")
+	var destroyCAKResp *istio.DestroyCAKResponse
+	if destroyCAKResp, err = c.DestroyCAK(ctx, &istio.DestroyCAKRequest{
+		KekKid: cakKid,
+	}); err != nil {
+		logrus.Fatal(err)
+		return err
+	}
+
+	logrus.Infof("Test 9 DestroyCAK result : %b", destroyCAKResp.Success)
 	logrus.Infof("------------------------------------------------------------")
 	return err
 
