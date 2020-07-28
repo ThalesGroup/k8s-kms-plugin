@@ -6,6 +6,7 @@ import (
 	"crypto/cipher"
 	"crypto/rsa"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -22,6 +23,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"io"
+	"math/big"
+	"time"
 )
 
 var (
@@ -166,6 +169,13 @@ func loadCADbyID(ctx *crypto11.Context, identity, label []byte, ) (private crypt
 	if private, ok = sd.(crypto11.SignerDecrypter); !ok {
 		err = errors.New("unable to load signer decryptor")
 	}
+	return
+}
+func loadCAbyID(ctx *crypto11.Context, identity, label []byte, serial *big.Int) (ca *x509.Certificate, err error) {
+	if ca, err = ctx.FindCertificate(identity, label, serial); err != nil {
+		return
+	}
+
 	return
 }
 
@@ -337,6 +347,41 @@ func (p *P11) GenerateRootCA(ctx context.Context, request *istio.GenerateRootCAR
 	return
 }
 func generateRootCA(ctx *crypto11.Context, request *istio.GenerateRootCARequest) (ca *x509.Certificate, err error) {
+	templateCA := &x509.Certificate{
+		SerialNumber: big.NewInt(2019),
+		Subject: pkix.Name{
+			CommonName: fmt.Sprintf("CA for CAK %s", string(request.RootCaKid)),
+		},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().AddDate(10, 0, 0),
+		IsCA:                  true,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		BasicConstraintsValid: true,
+	}
+	var rng io.Reader
+	if rng, err = ctx.NewRandomReader(); err != nil {
+		return
+	}
+	var k crypto11.Signer
+	if k, err = ctx.FindKeyPair(request.RootCaKid, defaultCAKlabel); err != nil {
+		return
+	}
+	var caBytes []byte
+	if caBytes, err = x509.CreateCertificate(rng, templateCA, templateCA, k.Public(), k); err != nil {
+		return
+	}
+	caPEM := new(bytes.Buffer)
+	if err = pem.Encode(caPEM, &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: caBytes,
+	}); err != nil {
+		return
+	}
+	ca = templateCA
+	if err = ctx.ImportCertificateWithLabel(request.RootCaKid, defaultCAKlabel, ca); err != nil {
+		return
+	}
 
 	return
 }
@@ -432,21 +477,46 @@ func (p *P11) LoadSEK(ctx context.Context, request *istio.LoadSEKRequest) (resp 
 }
 
 func (p *P11) SignCSR(ctx context.Context, request *istio.SignCSRRequest) (resp *istio.SignCSRResponse, err error) {
-	//var pp crypto11.SignerDecrypter
-	//if pp, err = loadCADbyID(p.ctx, request.RootCaKid, defaultCAKlabel); err != nil {
-	//	return
-	//}
-	//var rng io.Reader
-	//if rng, err = p.ctx.NewRandomReader(); err != nil {
-	//	return
-	//}
-	//var template *x509.CertificateRequest
-	//if template, err = x509.ParseCertificateRequest(request.Csr); err != nil {
-	//	return
-	//}
-	//resp = &istio.SignCSRResponse{
-	//
-	//}
+	var pp crypto11.SignerDecrypter
+	if pp, err = loadCADbyID(p.ctx, request.RootCaKid, defaultCAKlabel); err != nil {
+		return
+	}
+	var ca *x509.Certificate
+	if ca, err = loadCAbyID(p.ctx, request.RootCaKid, defaultCAKlabel, nil); err != nil {
+		return
+	}
+	var rng io.Reader
+	if rng, err = p.ctx.NewRandomReader(); err != nil {
+		return
+	}
+	var template *x509.CertificateRequest
+	if template, err = x509.ParseCertificateRequest(request.Csr); err != nil {
+		return
+	}
+	leaf := &x509.Certificate{
+		SerialNumber: big.NewInt(int64(1)),
+		Subject:      template.Subject,
+		NotBefore:    time.Now(),
+		NotAfter:     time.Now().Add(90 * 24 * time.Hour),
+		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		DNSNames:     template.DNSNames,
+		IPAddresses:  template.IPAddresses,
+
+		BasicConstraintsValid: true,
+	}
+	var certBytes []byte
+	if certBytes, err = x509.CreateCertificate(rng, leaf, ca, pp.Public(), pp); err != nil {
+		return
+	}
+	certPEM := &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: certBytes,
+	}
+
+	resp = &istio.SignCSRResponse{
+		Cert: pem.EncodeToMemory(certPEM),
+	}
 	return
 }
 
