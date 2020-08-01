@@ -14,6 +14,11 @@ So for development purposes, you'll want a cluster that can be configured to use
 
 Locally you should install [skaffold.dev](https://skaffold.dev) tooling as well as Cloud Code in your favorite IDE to leverage the skaffold.yaml file in this repo.
 
+## Quick Start for testing
+
+- Get a k8s cluster to deploy the `k8s-kms-plugin`
+- Install skaffold.dev  [skaffold.dev](https://skaffold.dev) 
+- Running `skaffold dev` or `make dev` should put the  stack into a local deployment pipeline of the plugin being tested as a KMS gRPC server.
 ## Deployment scenarios
 
 This plugin is designed to be deployed in 2 configurations
