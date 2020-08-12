@@ -39,130 +39,55 @@ var file_apis_istio_v1_service_proto_rawDesc = []byte{
 	0x69, 0x73, 0x74, 0x69, 0x6f, 0x2f, 0x76, 0x31, 0x2f, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65,
 	0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x1f, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2f,
 	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2f, 0x74, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61,
-	0x6d, 0x70, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x32, 0xcf, 0x08, 0x0a, 0x14, 0x4b, 0x65, 0x79,
+	0x6d, 0x70, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x32, 0xda, 0x02, 0x0a, 0x14, 0x4b, 0x65, 0x79,
 	0x4d, 0x61, 0x6e, 0x61, 0x67, 0x65, 0x6d, 0x65, 0x6e, 0x74, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63,
-	0x65, 0x12, 0x6e, 0x0a, 0x0b, 0x47, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x4b, 0x45, 0x4b,
+	0x65, 0x12, 0x6e, 0x0a, 0x0b, 0x47, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x44, 0x45, 0x4b,
 	0x12, 0x2e, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e,
 	0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65,
-	0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x4b, 0x45, 0x4b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
+	0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x44, 0x45, 0x4b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
 	0x1a, 0x2f, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e,
 	0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65,
-	0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x4b, 0x45, 0x4b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
-	0x65, 0x12, 0x6b, 0x0a, 0x0a, 0x44, 0x65, 0x73, 0x74, 0x72, 0x6f, 0x79, 0x4b, 0x45, 0x4b, 0x12,
-	0x2d, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e, 0x65,
-	0x6b, 0x6d, 0x73, 0x2e, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2e, 0x76, 0x31, 0x2e, 0x44, 0x65, 0x73,
-	0x74, 0x72, 0x6f, 0x79, 0x4b, 0x45, 0x4b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x2e,
-	0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b,
-	0x6d, 0x73, 0x2e, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2e, 0x76, 0x31, 0x2e, 0x44, 0x65, 0x73, 0x74,
-	0x72, 0x6f, 0x79, 0x4b, 0x45, 0x4b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x6e,
-	0x0a, 0x0b, 0x47, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x44, 0x45, 0x4b, 0x12, 0x2e, 0x2e,
-	0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d,
-	0x73, 0x2e, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x6e, 0x65, 0x72,
-	0x61, 0x74, 0x65, 0x44, 0x45, 0x4b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x2f, 0x2e,
-	0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d,
-	0x73, 0x2e, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x6e, 0x65, 0x72,
-	0x61, 0x74, 0x65, 0x44, 0x45, 0x4b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x6e,
-	0x0a, 0x0b, 0x47, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x43, 0x41, 0x4b, 0x12, 0x2e, 0x2e,
-	0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d,
-	0x73, 0x2e, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x6e, 0x65, 0x72,
-	0x61, 0x74, 0x65, 0x43, 0x41, 0x4b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x2f, 0x2e,
-	0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d,
-	0x73, 0x2e, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x6e, 0x65, 0x72,
-	0x61, 0x74, 0x65, 0x43, 0x41, 0x4b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x6b,
-	0x0a, 0x0a, 0x47, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x43, 0x41, 0x12, 0x2d, 0x2e, 0x74,
+	0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x44, 0x45, 0x4b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
+	0x65, 0x12, 0x6e, 0x0a, 0x0b, 0x47, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x53, 0x45, 0x4b,
+	0x12, 0x2e, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e,
+	0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65,
+	0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x53, 0x45, 0x4b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
+	0x1a, 0x2f, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e,
+	0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65,
+	0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x53, 0x45, 0x4b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
+	0x65, 0x12, 0x62, 0x0a, 0x07, 0x4c, 0x6f, 0x61, 0x64, 0x53, 0x45, 0x4b, 0x12, 0x2a, 0x2e, 0x74,
 	0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d, 0x73,
-	0x2e, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x6e, 0x65, 0x72, 0x61,
-	0x74, 0x65, 0x43, 0x41, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x2e, 0x2e, 0x74, 0x68,
-	0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e,
-	0x69, 0x73, 0x74, 0x69, 0x6f, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74,
-	0x65, 0x43, 0x41, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x6b, 0x0a, 0x0a, 0x44,
-	0x65, 0x73, 0x74, 0x72, 0x6f, 0x79, 0x43, 0x41, 0x4b, 0x12, 0x2d, 0x2e, 0x74, 0x68, 0x61, 0x6c,
-	0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x69, 0x73,
-	0x74, 0x69, 0x6f, 0x2e, 0x76, 0x31, 0x2e, 0x44, 0x65, 0x73, 0x74, 0x72, 0x6f, 0x79, 0x43, 0x41,
-	0x4b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x2e, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65,
+	0x2e, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2e, 0x76, 0x31, 0x2e, 0x4c, 0x6f, 0x61, 0x64, 0x53, 0x45,
+	0x4b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x2b, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65,
 	0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x69, 0x73, 0x74,
-	0x69, 0x6f, 0x2e, 0x76, 0x31, 0x2e, 0x44, 0x65, 0x73, 0x74, 0x72, 0x6f, 0x79, 0x43, 0x41, 0x4b,
-	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x68, 0x0a, 0x09, 0x44, 0x65, 0x73, 0x74,
-	0x72, 0x6f, 0x79, 0x43, 0x41, 0x12, 0x2c, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70,
-	0x6c, 0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2e,
-	0x76, 0x31, 0x2e, 0x44, 0x65, 0x73, 0x74, 0x72, 0x6f, 0x79, 0x43, 0x41, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x1a, 0x2d, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e,
-	0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2e, 0x76, 0x31,
-	0x2e, 0x44, 0x65, 0x73, 0x74, 0x72, 0x6f, 0x79, 0x43, 0x41, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
-	0x73, 0x65, 0x12, 0x6e, 0x0a, 0x0b, 0x47, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x53, 0x45,
-	0x4b, 0x12, 0x2e, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f,
-	0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2e, 0x76, 0x31, 0x2e, 0x47,
-	0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x53, 0x45, 0x4b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
-	0x74, 0x1a, 0x2f, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f,
-	0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2e, 0x76, 0x31, 0x2e, 0x47,
-	0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x53, 0x45, 0x4b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
-	0x73, 0x65, 0x12, 0x62, 0x0a, 0x07, 0x4c, 0x6f, 0x61, 0x64, 0x53, 0x45, 0x4b, 0x12, 0x2a, 0x2e,
-	0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d,
-	0x73, 0x2e, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2e, 0x76, 0x31, 0x2e, 0x4c, 0x6f, 0x61, 0x64, 0x53,
-	0x45, 0x4b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x2b, 0x2e, 0x74, 0x68, 0x61, 0x6c,
-	0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x69, 0x73,
-	0x74, 0x69, 0x6f, 0x2e, 0x76, 0x31, 0x2e, 0x4c, 0x6f, 0x61, 0x64, 0x53, 0x45, 0x4b, 0x52, 0x65,
-	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x62, 0x0a, 0x07, 0x53, 0x69, 0x67, 0x6e, 0x43, 0x53,
-	0x52, 0x12, 0x2a, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f,
-	0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2e, 0x76, 0x31, 0x2e, 0x53,
-	0x69, 0x67, 0x6e, 0x43, 0x53, 0x52, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x2b, 0x2e,
-	0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d,
-	0x73, 0x2e, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2e, 0x76, 0x31, 0x2e, 0x53, 0x69, 0x67, 0x6e, 0x43,
-	0x53, 0x52, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42, 0x3c, 0x5a, 0x3a, 0x67, 0x69,
-	0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63,
-	0x70, 0x6c, 0x2d, 0x69, 0x6f, 0x2f, 0x6b, 0x38, 0x73, 0x2d, 0x6b, 0x6d, 0x73, 0x2d, 0x70, 0x6c,
-	0x75, 0x67, 0x69, 0x6e, 0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2f,
-	0x76, 0x31, 0x3b, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x69, 0x6f, 0x2e, 0x76, 0x31, 0x2e, 0x4c, 0x6f, 0x61, 0x64, 0x53, 0x45, 0x4b, 0x52, 0x65, 0x73,
+	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42, 0x3c, 0x5a, 0x3a, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e,
+	0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2d, 0x69, 0x6f,
+	0x2f, 0x6b, 0x38, 0x73, 0x2d, 0x6b, 0x6d, 0x73, 0x2d, 0x70, 0x6c, 0x75, 0x67, 0x69, 0x6e, 0x2f,
+	0x61, 0x70, 0x69, 0x73, 0x2f, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2f, 0x76, 0x31, 0x3b, 0x69, 0x73,
+	0x74, 0x69, 0x6f, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var file_apis_istio_v1_service_proto_goTypes = []interface{}{
-	(*GenerateKEKRequest)(nil),  // 0: thalescpl.io.ekms.istio.v1.GenerateKEKRequest
-	(*DestroyKEKRequest)(nil),   // 1: thalescpl.io.ekms.istio.v1.DestroyKEKRequest
-	(*GenerateDEKRequest)(nil),  // 2: thalescpl.io.ekms.istio.v1.GenerateDEKRequest
-	(*GenerateCAKRequest)(nil),  // 3: thalescpl.io.ekms.istio.v1.GenerateCAKRequest
-	(*GenerateCARequest)(nil),   // 4: thalescpl.io.ekms.istio.v1.GenerateCARequest
-	(*DestroyCAKRequest)(nil),   // 5: thalescpl.io.ekms.istio.v1.DestroyCAKRequest
-	(*DestroyCARequest)(nil),    // 6: thalescpl.io.ekms.istio.v1.DestroyCARequest
-	(*GenerateSEKRequest)(nil),  // 7: thalescpl.io.ekms.istio.v1.GenerateSEKRequest
-	(*LoadSEKRequest)(nil),      // 8: thalescpl.io.ekms.istio.v1.LoadSEKRequest
-	(*SignCSRRequest)(nil),      // 9: thalescpl.io.ekms.istio.v1.SignCSRRequest
-	(*GenerateKEKResponse)(nil), // 10: thalescpl.io.ekms.istio.v1.GenerateKEKResponse
-	(*DestroyKEKResponse)(nil),  // 11: thalescpl.io.ekms.istio.v1.DestroyKEKResponse
-	(*GenerateDEKResponse)(nil), // 12: thalescpl.io.ekms.istio.v1.GenerateDEKResponse
-	(*GenerateCAKResponse)(nil), // 13: thalescpl.io.ekms.istio.v1.GenerateCAKResponse
-	(*GenerateCAResponse)(nil),  // 14: thalescpl.io.ekms.istio.v1.GenerateCAResponse
-	(*DestroyCAKResponse)(nil),  // 15: thalescpl.io.ekms.istio.v1.DestroyCAKResponse
-	(*DestroyCAResponse)(nil),   // 16: thalescpl.io.ekms.istio.v1.DestroyCAResponse
-	(*GenerateSEKResponse)(nil), // 17: thalescpl.io.ekms.istio.v1.GenerateSEKResponse
-	(*LoadSEKResponse)(nil),     // 18: thalescpl.io.ekms.istio.v1.LoadSEKResponse
-	(*SignCSRResponse)(nil),     // 19: thalescpl.io.ekms.istio.v1.SignCSRResponse
+	(*GenerateDEKRequest)(nil),  // 0: thalescpl.io.ekms.istio.v1.GenerateDEKRequest
+	(*GenerateSEKRequest)(nil),  // 1: thalescpl.io.ekms.istio.v1.GenerateSEKRequest
+	(*LoadSEKRequest)(nil),      // 2: thalescpl.io.ekms.istio.v1.LoadSEKRequest
+	(*GenerateDEKResponse)(nil), // 3: thalescpl.io.ekms.istio.v1.GenerateDEKResponse
+	(*GenerateSEKResponse)(nil), // 4: thalescpl.io.ekms.istio.v1.GenerateSEKResponse
+	(*LoadSEKResponse)(nil),     // 5: thalescpl.io.ekms.istio.v1.LoadSEKResponse
 }
 var file_apis_istio_v1_service_proto_depIdxs = []int32{
-	0,  // 0: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateKEK:input_type -> thalescpl.io.ekms.istio.v1.GenerateKEKRequest
-	1,  // 1: thalescpl.io.ekms.istio.v1.KeyManagementService.DestroyKEK:input_type -> thalescpl.io.ekms.istio.v1.DestroyKEKRequest
-	2,  // 2: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateDEK:input_type -> thalescpl.io.ekms.istio.v1.GenerateDEKRequest
-	3,  // 3: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateCAK:input_type -> thalescpl.io.ekms.istio.v1.GenerateCAKRequest
-	4,  // 4: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateCA:input_type -> thalescpl.io.ekms.istio.v1.GenerateCARequest
-	5,  // 5: thalescpl.io.ekms.istio.v1.KeyManagementService.DestroyCAK:input_type -> thalescpl.io.ekms.istio.v1.DestroyCAKRequest
-	6,  // 6: thalescpl.io.ekms.istio.v1.KeyManagementService.DestroyCA:input_type -> thalescpl.io.ekms.istio.v1.DestroyCARequest
-	7,  // 7: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateSEK:input_type -> thalescpl.io.ekms.istio.v1.GenerateSEKRequest
-	8,  // 8: thalescpl.io.ekms.istio.v1.KeyManagementService.LoadSEK:input_type -> thalescpl.io.ekms.istio.v1.LoadSEKRequest
-	9,  // 9: thalescpl.io.ekms.istio.v1.KeyManagementService.SignCSR:input_type -> thalescpl.io.ekms.istio.v1.SignCSRRequest
-	10, // 10: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateKEK:output_type -> thalescpl.io.ekms.istio.v1.GenerateKEKResponse
-	11, // 11: thalescpl.io.ekms.istio.v1.KeyManagementService.DestroyKEK:output_type -> thalescpl.io.ekms.istio.v1.DestroyKEKResponse
-	12, // 12: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateDEK:output_type -> thalescpl.io.ekms.istio.v1.GenerateDEKResponse
-	13, // 13: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateCAK:output_type -> thalescpl.io.ekms.istio.v1.GenerateCAKResponse
-	14, // 14: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateCA:output_type -> thalescpl.io.ekms.istio.v1.GenerateCAResponse
-	15, // 15: thalescpl.io.ekms.istio.v1.KeyManagementService.DestroyCAK:output_type -> thalescpl.io.ekms.istio.v1.DestroyCAKResponse
-	16, // 16: thalescpl.io.ekms.istio.v1.KeyManagementService.DestroyCA:output_type -> thalescpl.io.ekms.istio.v1.DestroyCAResponse
-	17, // 17: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateSEK:output_type -> thalescpl.io.ekms.istio.v1.GenerateSEKResponse
-	18, // 18: thalescpl.io.ekms.istio.v1.KeyManagementService.LoadSEK:output_type -> thalescpl.io.ekms.istio.v1.LoadSEKResponse
-	19, // 19: thalescpl.io.ekms.istio.v1.KeyManagementService.SignCSR:output_type -> thalescpl.io.ekms.istio.v1.SignCSRResponse
-	10, // [10:20] is the sub-list for method output_type
-	0,  // [0:10] is the sub-list for method input_type
-	0,  // [0:0] is the sub-list for extension type_name
-	0,  // [0:0] is the sub-list for extension extendee
-	0,  // [0:0] is the sub-list for field type_name
+	0, // 0: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateDEK:input_type -> thalescpl.io.ekms.istio.v1.GenerateDEKRequest
+	1, // 1: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateSEK:input_type -> thalescpl.io.ekms.istio.v1.GenerateSEKRequest
+	2, // 2: thalescpl.io.ekms.istio.v1.KeyManagementService.LoadSEK:input_type -> thalescpl.io.ekms.istio.v1.LoadSEKRequest
+	3, // 3: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateDEK:output_type -> thalescpl.io.ekms.istio.v1.GenerateDEKResponse
+	4, // 4: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateSEK:output_type -> thalescpl.io.ekms.istio.v1.GenerateSEKResponse
+	5, // 5: thalescpl.io.ekms.istio.v1.KeyManagementService.LoadSEK:output_type -> thalescpl.io.ekms.istio.v1.LoadSEKResponse
+	3, // [3:6] is the sub-list for method output_type
+	0, // [0:3] is the sub-list for method input_type
+	0, // [0:0] is the sub-list for extension type_name
+	0, // [0:0] is the sub-list for extension extendee
+	0, // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_apis_istio_v1_service_proto_init() }
@@ -202,26 +127,12 @@ const _ = grpc.SupportPackageIsVersion6
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type KeyManagementServiceClient interface {
-	// GenerateKEK returns the KID of the GeneratedKEK if allowed/successful
-	GenerateKEK(ctx context.Context, in *GenerateKEKRequest, opts ...grpc.CallOption) (*GenerateKEKResponse, error)
-	// DestroyKEK returns a success/failure to destroy the KEK... this is NON-REVERSIBLE...
-	DestroyKEK(ctx context.Context, in *DestroyKEKRequest, opts ...grpc.CallOption) (*DestroyKEKResponse, error)
 	// GenerateDEK returns a wrapped (by KMS handled key)
 	GenerateDEK(ctx context.Context, in *GenerateDEKRequest, opts ...grpc.CallOption) (*GenerateDEKResponse, error)
-	// GenerateCAK returns the kid, and it's public key of a new Key Pair in the PKCS11 device
-	GenerateCAK(ctx context.Context, in *GenerateCAKRequest, opts ...grpc.CallOption) (*GenerateCAKResponse, error)
-	// GenerateCA Certificate and store in in the PKCS11 device
-	GenerateCA(ctx context.Context, in *GenerateCARequest, opts ...grpc.CallOption) (*GenerateCAResponse, error)
-	// DestroyCAK in the PKCS11 device... this is NON-REVERSIBLE...
-	DestroyCAK(ctx context.Context, in *DestroyCAKRequest, opts ...grpc.CallOption) (*DestroyCAKResponse, error)
-	// DestroyCA in the PKCS11 device... this is NON-REVERSIBLE...
-	DestroyCA(ctx context.Context, in *DestroyCARequest, opts ...grpc.CallOption) (*DestroyCAResponse, error)
-	// GenerateDEK returns a wrapped (by KMS handled key)
+	// GenerateSEK returns a wrapped (by provided encrypted DEK ), for later use during loading and signing key generation
 	GenerateSEK(ctx context.Context, in *GenerateSEKRequest, opts ...grpc.CallOption) (*GenerateSEKResponse, error)
 	// LoadSEK returns the SEK unwrapped for the controller to use for CA work...
 	LoadSEK(ctx context.Context, in *LoadSEKRequest, opts ...grpc.CallOption) (*LoadSEKResponse, error)
-	// SignCSR signs a CSR for the in inbound
-	SignCSR(ctx context.Context, in *SignCSRRequest, opts ...grpc.CallOption) (*SignCSRResponse, error)
 }
 
 type keyManagementServiceClient struct {
@@ -232,63 +143,9 @@ func NewKeyManagementServiceClient(cc grpc.ClientConnInterface) KeyManagementSer
 	return &keyManagementServiceClient{cc}
 }
 
-func (c *keyManagementServiceClient) GenerateKEK(ctx context.Context, in *GenerateKEKRequest, opts ...grpc.CallOption) (*GenerateKEKResponse, error) {
-	out := new(GenerateKEKResponse)
-	err := c.cc.Invoke(ctx, "/thalescpl.io.ekms.istio.v1.KeyManagementService/GenerateKEK", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *keyManagementServiceClient) DestroyKEK(ctx context.Context, in *DestroyKEKRequest, opts ...grpc.CallOption) (*DestroyKEKResponse, error) {
-	out := new(DestroyKEKResponse)
-	err := c.cc.Invoke(ctx, "/thalescpl.io.ekms.istio.v1.KeyManagementService/DestroyKEK", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *keyManagementServiceClient) GenerateDEK(ctx context.Context, in *GenerateDEKRequest, opts ...grpc.CallOption) (*GenerateDEKResponse, error) {
 	out := new(GenerateDEKResponse)
 	err := c.cc.Invoke(ctx, "/thalescpl.io.ekms.istio.v1.KeyManagementService/GenerateDEK", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *keyManagementServiceClient) GenerateCAK(ctx context.Context, in *GenerateCAKRequest, opts ...grpc.CallOption) (*GenerateCAKResponse, error) {
-	out := new(GenerateCAKResponse)
-	err := c.cc.Invoke(ctx, "/thalescpl.io.ekms.istio.v1.KeyManagementService/GenerateCAK", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *keyManagementServiceClient) GenerateCA(ctx context.Context, in *GenerateCARequest, opts ...grpc.CallOption) (*GenerateCAResponse, error) {
-	out := new(GenerateCAResponse)
-	err := c.cc.Invoke(ctx, "/thalescpl.io.ekms.istio.v1.KeyManagementService/GenerateCA", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *keyManagementServiceClient) DestroyCAK(ctx context.Context, in *DestroyCAKRequest, opts ...grpc.CallOption) (*DestroyCAKResponse, error) {
-	out := new(DestroyCAKResponse)
-	err := c.cc.Invoke(ctx, "/thalescpl.io.ekms.istio.v1.KeyManagementService/DestroyCAK", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *keyManagementServiceClient) DestroyCA(ctx context.Context, in *DestroyCARequest, opts ...grpc.CallOption) (*DestroyCAResponse, error) {
-	out := new(DestroyCAResponse)
-	err := c.cc.Invoke(ctx, "/thalescpl.io.ekms.istio.v1.KeyManagementService/DestroyCA", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -313,63 +170,22 @@ func (c *keyManagementServiceClient) LoadSEK(ctx context.Context, in *LoadSEKReq
 	return out, nil
 }
 
-func (c *keyManagementServiceClient) SignCSR(ctx context.Context, in *SignCSRRequest, opts ...grpc.CallOption) (*SignCSRResponse, error) {
-	out := new(SignCSRResponse)
-	err := c.cc.Invoke(ctx, "/thalescpl.io.ekms.istio.v1.KeyManagementService/SignCSR", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // KeyManagementServiceServer is the server API for KeyManagementService service.
 type KeyManagementServiceServer interface {
-	// GenerateKEK returns the KID of the GeneratedKEK if allowed/successful
-	GenerateKEK(context.Context, *GenerateKEKRequest) (*GenerateKEKResponse, error)
-	// DestroyKEK returns a success/failure to destroy the KEK... this is NON-REVERSIBLE...
-	DestroyKEK(context.Context, *DestroyKEKRequest) (*DestroyKEKResponse, error)
 	// GenerateDEK returns a wrapped (by KMS handled key)
 	GenerateDEK(context.Context, *GenerateDEKRequest) (*GenerateDEKResponse, error)
-	// GenerateCAK returns the kid, and it's public key of a new Key Pair in the PKCS11 device
-	GenerateCAK(context.Context, *GenerateCAKRequest) (*GenerateCAKResponse, error)
-	// GenerateCA Certificate and store in in the PKCS11 device
-	GenerateCA(context.Context, *GenerateCARequest) (*GenerateCAResponse, error)
-	// DestroyCAK in the PKCS11 device... this is NON-REVERSIBLE...
-	DestroyCAK(context.Context, *DestroyCAKRequest) (*DestroyCAKResponse, error)
-	// DestroyCA in the PKCS11 device... this is NON-REVERSIBLE...
-	DestroyCA(context.Context, *DestroyCARequest) (*DestroyCAResponse, error)
-	// GenerateDEK returns a wrapped (by KMS handled key)
+	// GenerateSEK returns a wrapped (by provided encrypted DEK ), for later use during loading and signing key generation
 	GenerateSEK(context.Context, *GenerateSEKRequest) (*GenerateSEKResponse, error)
 	// LoadSEK returns the SEK unwrapped for the controller to use for CA work...
 	LoadSEK(context.Context, *LoadSEKRequest) (*LoadSEKResponse, error)
-	// SignCSR signs a CSR for the in inbound
-	SignCSR(context.Context, *SignCSRRequest) (*SignCSRResponse, error)
 }
 
 // UnimplementedKeyManagementServiceServer can be embedded to have forward compatible implementations.
 type UnimplementedKeyManagementServiceServer struct {
 }
 
-func (*UnimplementedKeyManagementServiceServer) GenerateKEK(context.Context, *GenerateKEKRequest) (*GenerateKEKResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GenerateKEK not implemented")
-}
-func (*UnimplementedKeyManagementServiceServer) DestroyKEK(context.Context, *DestroyKEKRequest) (*DestroyKEKResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DestroyKEK not implemented")
-}
 func (*UnimplementedKeyManagementServiceServer) GenerateDEK(context.Context, *GenerateDEKRequest) (*GenerateDEKResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GenerateDEK not implemented")
-}
-func (*UnimplementedKeyManagementServiceServer) GenerateCAK(context.Context, *GenerateCAKRequest) (*GenerateCAKResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GenerateCAK not implemented")
-}
-func (*UnimplementedKeyManagementServiceServer) GenerateCA(context.Context, *GenerateCARequest) (*GenerateCAResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GenerateCA not implemented")
-}
-func (*UnimplementedKeyManagementServiceServer) DestroyCAK(context.Context, *DestroyCAKRequest) (*DestroyCAKResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DestroyCAK not implemented")
-}
-func (*UnimplementedKeyManagementServiceServer) DestroyCA(context.Context, *DestroyCARequest) (*DestroyCAResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DestroyCA not implemented")
 }
 func (*UnimplementedKeyManagementServiceServer) GenerateSEK(context.Context, *GenerateSEKRequest) (*GenerateSEKResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GenerateSEK not implemented")
@@ -377,48 +193,9 @@ func (*UnimplementedKeyManagementServiceServer) GenerateSEK(context.Context, *Ge
 func (*UnimplementedKeyManagementServiceServer) LoadSEK(context.Context, *LoadSEKRequest) (*LoadSEKResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method LoadSEK not implemented")
 }
-func (*UnimplementedKeyManagementServiceServer) SignCSR(context.Context, *SignCSRRequest) (*SignCSRResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SignCSR not implemented")
-}
 
 func RegisterKeyManagementServiceServer(s *grpc.Server, srv KeyManagementServiceServer) {
 	s.RegisterService(&_KeyManagementService_serviceDesc, srv)
-}
-
-func _KeyManagementService_GenerateKEK_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GenerateKEKRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(KeyManagementServiceServer).GenerateKEK(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/thalescpl.io.ekms.istio.v1.KeyManagementService/GenerateKEK",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyManagementServiceServer).GenerateKEK(ctx, req.(*GenerateKEKRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _KeyManagementService_DestroyKEK_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DestroyKEKRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(KeyManagementServiceServer).DestroyKEK(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/thalescpl.io.ekms.istio.v1.KeyManagementService/DestroyKEK",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyManagementServiceServer).DestroyKEK(ctx, req.(*DestroyKEKRequest))
-	}
-	return interceptor(ctx, in, info, handler)
 }
 
 func _KeyManagementService_GenerateDEK_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -435,78 +212,6 @@ func _KeyManagementService_GenerateDEK_Handler(srv interface{}, ctx context.Cont
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(KeyManagementServiceServer).GenerateDEK(ctx, req.(*GenerateDEKRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _KeyManagementService_GenerateCAK_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GenerateCAKRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(KeyManagementServiceServer).GenerateCAK(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/thalescpl.io.ekms.istio.v1.KeyManagementService/GenerateCAK",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyManagementServiceServer).GenerateCAK(ctx, req.(*GenerateCAKRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _KeyManagementService_GenerateCA_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GenerateCARequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(KeyManagementServiceServer).GenerateCA(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/thalescpl.io.ekms.istio.v1.KeyManagementService/GenerateCA",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyManagementServiceServer).GenerateCA(ctx, req.(*GenerateCARequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _KeyManagementService_DestroyCAK_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DestroyCAKRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(KeyManagementServiceServer).DestroyCAK(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/thalescpl.io.ekms.istio.v1.KeyManagementService/DestroyCAK",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyManagementServiceServer).DestroyCAK(ctx, req.(*DestroyCAKRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _KeyManagementService_DestroyCA_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DestroyCARequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(KeyManagementServiceServer).DestroyCA(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/thalescpl.io.ekms.istio.v1.KeyManagementService/DestroyCA",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyManagementServiceServer).DestroyCA(ctx, req.(*DestroyCARequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -547,55 +252,13 @@ func _KeyManagementService_LoadSEK_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
-func _KeyManagementService_SignCSR_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SignCSRRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(KeyManagementServiceServer).SignCSR(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/thalescpl.io.ekms.istio.v1.KeyManagementService/SignCSR",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyManagementServiceServer).SignCSR(ctx, req.(*SignCSRRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 var _KeyManagementService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "thalescpl.io.ekms.istio.v1.KeyManagementService",
 	HandlerType: (*KeyManagementServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "GenerateKEK",
-			Handler:    _KeyManagementService_GenerateKEK_Handler,
-		},
-		{
-			MethodName: "DestroyKEK",
-			Handler:    _KeyManagementService_DestroyKEK_Handler,
-		},
-		{
 			MethodName: "GenerateDEK",
 			Handler:    _KeyManagementService_GenerateDEK_Handler,
-		},
-		{
-			MethodName: "GenerateCAK",
-			Handler:    _KeyManagementService_GenerateCAK_Handler,
-		},
-		{
-			MethodName: "GenerateCA",
-			Handler:    _KeyManagementService_GenerateCA_Handler,
-		},
-		{
-			MethodName: "DestroyCAK",
-			Handler:    _KeyManagementService_DestroyCAK_Handler,
-		},
-		{
-			MethodName: "DestroyCA",
-			Handler:    _KeyManagementService_DestroyCA_Handler,
 		},
 		{
 			MethodName: "GenerateSEK",
@@ -604,10 +267,6 @@ var _KeyManagementService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "LoadSEK",
 			Handler:    _KeyManagementService_LoadSEK_Handler,
-		},
-		{
-			MethodName: "SignCSR",
-			Handler:    _KeyManagementService_SignCSR_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

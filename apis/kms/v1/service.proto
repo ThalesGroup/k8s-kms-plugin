@@ -32,4 +32,18 @@ import "apis/kms/v1/messages.proto";
 service KMSPluginService {
   // Version returns the runtime name and runtime version of the KMS provider.
   rpc Version(VersionRequest) returns (VersionResponse);
+  // GenerateCAK returns the kid, and it's public key of a new Key Pair in the PKCS11 device
+  rpc GenerateCAK(GenerateCAKRequest) returns (GenerateCAKResponse);
+  // GenerateCA Certificate and store in in the PKCS11 device
+  rpc GenerateCA(GenerateCARequest) returns (GenerateCAResponse);
+  // DestroyCAK in the PKCS11 device... this is NON-REVERSIBLE...
+  rpc DestroyCAK(DestroyCAKRequest) returns (DestroyCAKResponse);
+  // DestroyCA in the PKCS11 device... this is NON-REVERSIBLE...
+  rpc DestroyCA(DestroyCARequest) returns (DestroyCAResponse);
+  // SignCSR signs a CSR for the in inbound
+  rpc SignCSR(SignCSRRequest) returns (SignCSRResponse);
+  // GenerateKEK returns the KID of the GeneratedKEK if allowed/successful
+  rpc GenerateKEK(GenerateKEKRequest) returns (GenerateKEKResponse);
+  // DestroyKEK returns a success/failure to destroy the KEK... this is NON-REVERSIBLE...
+  rpc DestroyKEK(DestroyKEKRequest) returns (DestroyKEKResponse);
 }

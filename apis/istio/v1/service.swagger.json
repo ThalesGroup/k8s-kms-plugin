@@ -48,56 +48,6 @@
         }
       }
     },
-    "v1DestroyCAKResponse": {
-      "type": "object",
-      "properties": {
-        "success": {
-          "type": "boolean",
-          "format": "boolean",
-          "title": "successful destroy?"
-        }
-      }
-    },
-    "v1DestroyCAResponse": {
-      "type": "object",
-      "properties": {
-        "success": {
-          "type": "boolean",
-          "format": "boolean",
-          "title": "successful destroy?"
-        }
-      }
-    },
-    "v1DestroyKEKResponse": {
-      "type": "object",
-      "properties": {
-        "success": {
-          "type": "boolean",
-          "format": "boolean",
-          "title": "successful destroy?"
-        }
-      }
-    },
-    "v1GenerateCAKResponse": {
-      "type": "object",
-      "properties": {
-        "root_ca_kid": {
-          "type": "string",
-          "format": "byte",
-          "title": "Root CA Key ID"
-        }
-      }
-    },
-    "v1GenerateCAResponse": {
-      "type": "object",
-      "properties": {
-        "cert": {
-          "type": "string",
-          "format": "byte",
-          "title": "Root CA cert in PEM format"
-        }
-      }
-    },
     "v1GenerateDEKResponse": {
       "type": "object",
       "properties": {
@@ -105,16 +55,6 @@
           "type": "string",
           "format": "byte",
           "title": "Encrypted key blob"
-        }
-      }
-    },
-    "v1GenerateKEKResponse": {
-      "type": "object",
-      "properties": {
-        "kek_kid": {
-          "type": "string",
-          "format": "byte",
-          "title": "KEK kid"
         }
       }
     },
@@ -145,16 +85,6 @@
           "type": "string",
           "format": "byte",
           "title": "Clear SEK"
-        }
-      }
-    },
-    "v1SignCSRResponse": {
-      "type": "object",
-      "properties": {
-        "cert": {
-          "type": "string",
-          "format": "byte",
-          "title": "Certificate in PEM Form"
         }
       }
     }

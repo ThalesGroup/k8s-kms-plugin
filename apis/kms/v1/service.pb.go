@@ -59,32 +59,106 @@ var file_apis_kms_v1_service_proto_rawDesc = []byte{
 	0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x6b,
 	0x6d, 0x73, 0x2e, 0x76, 0x31, 0x1a, 0x1a, 0x61, 0x70, 0x69, 0x73, 0x2f, 0x6b, 0x6d, 0x73, 0x2f,
 	0x76, 0x31, 0x2f, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74,
-	0x6f, 0x32, 0x72, 0x0a, 0x10, 0x4b, 0x4d, 0x53, 0x50, 0x6c, 0x75, 0x67, 0x69, 0x6e, 0x53, 0x65,
-	0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x5e, 0x0a, 0x07, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e,
-	0x12, 0x28, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e,
-	0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x6b, 0x6d, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x56, 0x65, 0x72, 0x73,
-	0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x29, 0x2e, 0x74, 0x68, 0x61,
-	0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x6b,
-	0x6d, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73,
-	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42, 0x38, 0x5a, 0x36, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e,
-	0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2d, 0x69, 0x6f,
-	0x2f, 0x6b, 0x38, 0x73, 0x2d, 0x6b, 0x6d, 0x73, 0x2d, 0x70, 0x6c, 0x75, 0x67, 0x69, 0x6e, 0x2f,
-	0x61, 0x70, 0x69, 0x73, 0x2f, 0x6b, 0x6d, 0x73, 0x2f, 0x76, 0x31, 0x3b, 0x6b, 0x6d, 0x73, 0x62,
-	0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x6f, 0x32, 0xcb, 0x06, 0x0a, 0x10, 0x4b, 0x4d, 0x53, 0x50, 0x6c, 0x75, 0x67, 0x69, 0x6e, 0x53,
+	0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x5e, 0x0a, 0x07, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f,
+	0x6e, 0x12, 0x28, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f,
+	0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x6b, 0x6d, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x56, 0x65, 0x72,
+	0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x29, 0x2e, 0x74, 0x68,
+	0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e,
+	0x6b, 0x6d, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x65,
+	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x6a, 0x0a, 0x0b, 0x47, 0x65, 0x6e, 0x65, 0x72, 0x61,
+	0x74, 0x65, 0x43, 0x41, 0x4b, 0x12, 0x2c, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70,
+	0x6c, 0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x6b, 0x6d, 0x73, 0x2e, 0x76, 0x31,
+	0x2e, 0x47, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x43, 0x41, 0x4b, 0x52, 0x65, 0x71, 0x75,
+	0x65, 0x73, 0x74, 0x1a, 0x2d, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e,
+	0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x6b, 0x6d, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x47,
+	0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x43, 0x41, 0x4b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x12, 0x67, 0x0a, 0x0a, 0x47, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x43, 0x41,
+	0x12, 0x2b, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e,
+	0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x6b, 0x6d, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x6e, 0x65,
+	0x72, 0x61, 0x74, 0x65, 0x43, 0x41, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x2c, 0x2e,
+	0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d,
+	0x73, 0x2e, 0x6b, 0x6d, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74,
+	0x65, 0x43, 0x41, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x67, 0x0a, 0x0a, 0x44,
+	0x65, 0x73, 0x74, 0x72, 0x6f, 0x79, 0x43, 0x41, 0x4b, 0x12, 0x2b, 0x2e, 0x74, 0x68, 0x61, 0x6c,
+	0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x6b, 0x6d,
+	0x73, 0x2e, 0x76, 0x31, 0x2e, 0x44, 0x65, 0x73, 0x74, 0x72, 0x6f, 0x79, 0x43, 0x41, 0x4b, 0x52,
+	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x2c, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63,
+	0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x6b, 0x6d, 0x73, 0x2e, 0x76,
+	0x31, 0x2e, 0x44, 0x65, 0x73, 0x74, 0x72, 0x6f, 0x79, 0x43, 0x41, 0x4b, 0x52, 0x65, 0x73, 0x70,
+	0x6f, 0x6e, 0x73, 0x65, 0x12, 0x64, 0x0a, 0x09, 0x44, 0x65, 0x73, 0x74, 0x72, 0x6f, 0x79, 0x43,
+	0x41, 0x12, 0x2a, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f,
+	0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x6b, 0x6d, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x44, 0x65, 0x73,
+	0x74, 0x72, 0x6f, 0x79, 0x43, 0x41, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x2b, 0x2e,
+	0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d,
+	0x73, 0x2e, 0x6b, 0x6d, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x44, 0x65, 0x73, 0x74, 0x72, 0x6f, 0x79,
+	0x43, 0x41, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x5e, 0x0a, 0x07, 0x53, 0x69,
+	0x67, 0x6e, 0x43, 0x53, 0x52, 0x12, 0x28, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70,
+	0x6c, 0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x6b, 0x6d, 0x73, 0x2e, 0x76, 0x31,
+	0x2e, 0x53, 0x69, 0x67, 0x6e, 0x43, 0x53, 0x52, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a,
+	0x29, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e, 0x65,
+	0x6b, 0x6d, 0x73, 0x2e, 0x6b, 0x6d, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x53, 0x69, 0x67, 0x6e, 0x43,
+	0x53, 0x52, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x6a, 0x0a, 0x0b, 0x47, 0x65,
+	0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x4b, 0x45, 0x4b, 0x12, 0x2c, 0x2e, 0x74, 0x68, 0x61, 0x6c,
+	0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x6b, 0x6d,
+	0x73, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x4b, 0x45, 0x4b,
+	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x2d, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73,
+	0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x6b, 0x6d, 0x73, 0x2e,
+	0x76, 0x31, 0x2e, 0x47, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x4b, 0x45, 0x4b, 0x52, 0x65,
+	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x67, 0x0a, 0x0a, 0x44, 0x65, 0x73, 0x74, 0x72, 0x6f,
+	0x79, 0x4b, 0x45, 0x4b, 0x12, 0x2b, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c,
+	0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x6b, 0x6d, 0x73, 0x2e, 0x76, 0x31, 0x2e,
+	0x44, 0x65, 0x73, 0x74, 0x72, 0x6f, 0x79, 0x4b, 0x45, 0x4b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
+	0x74, 0x1a, 0x2c, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f,
+	0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x6b, 0x6d, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x44, 0x65, 0x73,
+	0x74, 0x72, 0x6f, 0x79, 0x4b, 0x45, 0x4b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42,
+	0x38, 0x5a, 0x36, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68,
+	0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2d, 0x69, 0x6f, 0x2f, 0x6b, 0x38, 0x73, 0x2d, 0x6b,
+	0x6d, 0x73, 0x2d, 0x70, 0x6c, 0x75, 0x67, 0x69, 0x6e, 0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f, 0x6b,
+	0x6d, 0x73, 0x2f, 0x76, 0x31, 0x3b, 0x6b, 0x6d, 0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x33,
 }
 
 var file_apis_kms_v1_service_proto_goTypes = []interface{}{
-	(*VersionRequest)(nil),  // 0: thalescpl.io.ekms.kms.v1.VersionRequest
-	(*VersionResponse)(nil), // 1: thalescpl.io.ekms.kms.v1.VersionResponse
+	(*VersionRequest)(nil),      // 0: thalescpl.io.ekms.kms.v1.VersionRequest
+	(*GenerateCAKRequest)(nil),  // 1: thalescpl.io.ekms.kms.v1.GenerateCAKRequest
+	(*GenerateCARequest)(nil),   // 2: thalescpl.io.ekms.kms.v1.GenerateCARequest
+	(*DestroyCAKRequest)(nil),   // 3: thalescpl.io.ekms.kms.v1.DestroyCAKRequest
+	(*DestroyCARequest)(nil),    // 4: thalescpl.io.ekms.kms.v1.DestroyCARequest
+	(*SignCSRRequest)(nil),      // 5: thalescpl.io.ekms.kms.v1.SignCSRRequest
+	(*GenerateKEKRequest)(nil),  // 6: thalescpl.io.ekms.kms.v1.GenerateKEKRequest
+	(*DestroyKEKRequest)(nil),   // 7: thalescpl.io.ekms.kms.v1.DestroyKEKRequest
+	(*VersionResponse)(nil),     // 8: thalescpl.io.ekms.kms.v1.VersionResponse
+	(*GenerateCAKResponse)(nil), // 9: thalescpl.io.ekms.kms.v1.GenerateCAKResponse
+	(*GenerateCAResponse)(nil),  // 10: thalescpl.io.ekms.kms.v1.GenerateCAResponse
+	(*DestroyCAKResponse)(nil),  // 11: thalescpl.io.ekms.kms.v1.DestroyCAKResponse
+	(*DestroyCAResponse)(nil),   // 12: thalescpl.io.ekms.kms.v1.DestroyCAResponse
+	(*SignCSRResponse)(nil),     // 13: thalescpl.io.ekms.kms.v1.SignCSRResponse
+	(*GenerateKEKResponse)(nil), // 14: thalescpl.io.ekms.kms.v1.GenerateKEKResponse
+	(*DestroyKEKResponse)(nil),  // 15: thalescpl.io.ekms.kms.v1.DestroyKEKResponse
 }
 var file_apis_kms_v1_service_proto_depIdxs = []int32{
-	0, // 0: thalescpl.io.ekms.kms.v1.KMSPluginService.Version:input_type -> thalescpl.io.ekms.kms.v1.VersionRequest
-	1, // 1: thalescpl.io.ekms.kms.v1.KMSPluginService.Version:output_type -> thalescpl.io.ekms.kms.v1.VersionResponse
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	0,  // 0: thalescpl.io.ekms.kms.v1.KMSPluginService.Version:input_type -> thalescpl.io.ekms.kms.v1.VersionRequest
+	1,  // 1: thalescpl.io.ekms.kms.v1.KMSPluginService.GenerateCAK:input_type -> thalescpl.io.ekms.kms.v1.GenerateCAKRequest
+	2,  // 2: thalescpl.io.ekms.kms.v1.KMSPluginService.GenerateCA:input_type -> thalescpl.io.ekms.kms.v1.GenerateCARequest
+	3,  // 3: thalescpl.io.ekms.kms.v1.KMSPluginService.DestroyCAK:input_type -> thalescpl.io.ekms.kms.v1.DestroyCAKRequest
+	4,  // 4: thalescpl.io.ekms.kms.v1.KMSPluginService.DestroyCA:input_type -> thalescpl.io.ekms.kms.v1.DestroyCARequest
+	5,  // 5: thalescpl.io.ekms.kms.v1.KMSPluginService.SignCSR:input_type -> thalescpl.io.ekms.kms.v1.SignCSRRequest
+	6,  // 6: thalescpl.io.ekms.kms.v1.KMSPluginService.GenerateKEK:input_type -> thalescpl.io.ekms.kms.v1.GenerateKEKRequest
+	7,  // 7: thalescpl.io.ekms.kms.v1.KMSPluginService.DestroyKEK:input_type -> thalescpl.io.ekms.kms.v1.DestroyKEKRequest
+	8,  // 8: thalescpl.io.ekms.kms.v1.KMSPluginService.Version:output_type -> thalescpl.io.ekms.kms.v1.VersionResponse
+	9,  // 9: thalescpl.io.ekms.kms.v1.KMSPluginService.GenerateCAK:output_type -> thalescpl.io.ekms.kms.v1.GenerateCAKResponse
+	10, // 10: thalescpl.io.ekms.kms.v1.KMSPluginService.GenerateCA:output_type -> thalescpl.io.ekms.kms.v1.GenerateCAResponse
+	11, // 11: thalescpl.io.ekms.kms.v1.KMSPluginService.DestroyCAK:output_type -> thalescpl.io.ekms.kms.v1.DestroyCAKResponse
+	12, // 12: thalescpl.io.ekms.kms.v1.KMSPluginService.DestroyCA:output_type -> thalescpl.io.ekms.kms.v1.DestroyCAResponse
+	13, // 13: thalescpl.io.ekms.kms.v1.KMSPluginService.SignCSR:output_type -> thalescpl.io.ekms.kms.v1.SignCSRResponse
+	14, // 14: thalescpl.io.ekms.kms.v1.KMSPluginService.GenerateKEK:output_type -> thalescpl.io.ekms.kms.v1.GenerateKEKResponse
+	15, // 15: thalescpl.io.ekms.kms.v1.KMSPluginService.DestroyKEK:output_type -> thalescpl.io.ekms.kms.v1.DestroyKEKResponse
+	8,  // [8:16] is the sub-list for method output_type
+	0,  // [0:8] is the sub-list for method input_type
+	0,  // [0:0] is the sub-list for extension type_name
+	0,  // [0:0] is the sub-list for extension extendee
+	0,  // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_apis_kms_v1_service_proto_init() }
@@ -126,6 +200,20 @@ const _ = grpc.SupportPackageIsVersion6
 type KMSPluginServiceClient interface {
 	// Version returns the runtime name and runtime version of the KMS provider.
 	Version(ctx context.Context, in *VersionRequest, opts ...grpc.CallOption) (*VersionResponse, error)
+	// GenerateCAK returns the kid, and it's public key of a new Key Pair in the PKCS11 device
+	GenerateCAK(ctx context.Context, in *GenerateCAKRequest, opts ...grpc.CallOption) (*GenerateCAKResponse, error)
+	// GenerateCA Certificate and store in in the PKCS11 device
+	GenerateCA(ctx context.Context, in *GenerateCARequest, opts ...grpc.CallOption) (*GenerateCAResponse, error)
+	// DestroyCAK in the PKCS11 device... this is NON-REVERSIBLE...
+	DestroyCAK(ctx context.Context, in *DestroyCAKRequest, opts ...grpc.CallOption) (*DestroyCAKResponse, error)
+	// DestroyCA in the PKCS11 device... this is NON-REVERSIBLE...
+	DestroyCA(ctx context.Context, in *DestroyCARequest, opts ...grpc.CallOption) (*DestroyCAResponse, error)
+	// SignCSR signs a CSR for the in inbound
+	SignCSR(ctx context.Context, in *SignCSRRequest, opts ...grpc.CallOption) (*SignCSRResponse, error)
+	// GenerateKEK returns the KID of the GeneratedKEK if allowed/successful
+	GenerateKEK(ctx context.Context, in *GenerateKEKRequest, opts ...grpc.CallOption) (*GenerateKEKResponse, error)
+	// DestroyKEK returns a success/failure to destroy the KEK... this is NON-REVERSIBLE...
+	DestroyKEK(ctx context.Context, in *DestroyKEKRequest, opts ...grpc.CallOption) (*DestroyKEKResponse, error)
 }
 
 type kMSPluginServiceClient struct {
@@ -145,10 +233,87 @@ func (c *kMSPluginServiceClient) Version(ctx context.Context, in *VersionRequest
 	return out, nil
 }
 
+func (c *kMSPluginServiceClient) GenerateCAK(ctx context.Context, in *GenerateCAKRequest, opts ...grpc.CallOption) (*GenerateCAKResponse, error) {
+	out := new(GenerateCAKResponse)
+	err := c.cc.Invoke(ctx, "/thalescpl.io.ekms.kms.v1.KMSPluginService/GenerateCAK", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *kMSPluginServiceClient) GenerateCA(ctx context.Context, in *GenerateCARequest, opts ...grpc.CallOption) (*GenerateCAResponse, error) {
+	out := new(GenerateCAResponse)
+	err := c.cc.Invoke(ctx, "/thalescpl.io.ekms.kms.v1.KMSPluginService/GenerateCA", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *kMSPluginServiceClient) DestroyCAK(ctx context.Context, in *DestroyCAKRequest, opts ...grpc.CallOption) (*DestroyCAKResponse, error) {
+	out := new(DestroyCAKResponse)
+	err := c.cc.Invoke(ctx, "/thalescpl.io.ekms.kms.v1.KMSPluginService/DestroyCAK", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *kMSPluginServiceClient) DestroyCA(ctx context.Context, in *DestroyCARequest, opts ...grpc.CallOption) (*DestroyCAResponse, error) {
+	out := new(DestroyCAResponse)
+	err := c.cc.Invoke(ctx, "/thalescpl.io.ekms.kms.v1.KMSPluginService/DestroyCA", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *kMSPluginServiceClient) SignCSR(ctx context.Context, in *SignCSRRequest, opts ...grpc.CallOption) (*SignCSRResponse, error) {
+	out := new(SignCSRResponse)
+	err := c.cc.Invoke(ctx, "/thalescpl.io.ekms.kms.v1.KMSPluginService/SignCSR", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *kMSPluginServiceClient) GenerateKEK(ctx context.Context, in *GenerateKEKRequest, opts ...grpc.CallOption) (*GenerateKEKResponse, error) {
+	out := new(GenerateKEKResponse)
+	err := c.cc.Invoke(ctx, "/thalescpl.io.ekms.kms.v1.KMSPluginService/GenerateKEK", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *kMSPluginServiceClient) DestroyKEK(ctx context.Context, in *DestroyKEKRequest, opts ...grpc.CallOption) (*DestroyKEKResponse, error) {
+	out := new(DestroyKEKResponse)
+	err := c.cc.Invoke(ctx, "/thalescpl.io.ekms.kms.v1.KMSPluginService/DestroyKEK", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // KMSPluginServiceServer is the server API for KMSPluginService service.
 type KMSPluginServiceServer interface {
 	// Version returns the runtime name and runtime version of the KMS provider.
 	Version(context.Context, *VersionRequest) (*VersionResponse, error)
+	// GenerateCAK returns the kid, and it's public key of a new Key Pair in the PKCS11 device
+	GenerateCAK(context.Context, *GenerateCAKRequest) (*GenerateCAKResponse, error)
+	// GenerateCA Certificate and store in in the PKCS11 device
+	GenerateCA(context.Context, *GenerateCARequest) (*GenerateCAResponse, error)
+	// DestroyCAK in the PKCS11 device... this is NON-REVERSIBLE...
+	DestroyCAK(context.Context, *DestroyCAKRequest) (*DestroyCAKResponse, error)
+	// DestroyCA in the PKCS11 device... this is NON-REVERSIBLE...
+	DestroyCA(context.Context, *DestroyCARequest) (*DestroyCAResponse, error)
+	// SignCSR signs a CSR for the in inbound
+	SignCSR(context.Context, *SignCSRRequest) (*SignCSRResponse, error)
+	// GenerateKEK returns the KID of the GeneratedKEK if allowed/successful
+	GenerateKEK(context.Context, *GenerateKEKRequest) (*GenerateKEKResponse, error)
+	// DestroyKEK returns a success/failure to destroy the KEK... this is NON-REVERSIBLE...
+	DestroyKEK(context.Context, *DestroyKEKRequest) (*DestroyKEKResponse, error)
 }
 
 // UnimplementedKMSPluginServiceServer can be embedded to have forward compatible implementations.
@@ -157,6 +322,27 @@ type UnimplementedKMSPluginServiceServer struct {
 
 func (*UnimplementedKMSPluginServiceServer) Version(context.Context, *VersionRequest) (*VersionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Version not implemented")
+}
+func (*UnimplementedKMSPluginServiceServer) GenerateCAK(context.Context, *GenerateCAKRequest) (*GenerateCAKResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GenerateCAK not implemented")
+}
+func (*UnimplementedKMSPluginServiceServer) GenerateCA(context.Context, *GenerateCARequest) (*GenerateCAResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GenerateCA not implemented")
+}
+func (*UnimplementedKMSPluginServiceServer) DestroyCAK(context.Context, *DestroyCAKRequest) (*DestroyCAKResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DestroyCAK not implemented")
+}
+func (*UnimplementedKMSPluginServiceServer) DestroyCA(context.Context, *DestroyCARequest) (*DestroyCAResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DestroyCA not implemented")
+}
+func (*UnimplementedKMSPluginServiceServer) SignCSR(context.Context, *SignCSRRequest) (*SignCSRResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SignCSR not implemented")
+}
+func (*UnimplementedKMSPluginServiceServer) GenerateKEK(context.Context, *GenerateKEKRequest) (*GenerateKEKResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GenerateKEK not implemented")
+}
+func (*UnimplementedKMSPluginServiceServer) DestroyKEK(context.Context, *DestroyKEKRequest) (*DestroyKEKResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DestroyKEK not implemented")
 }
 
 func RegisterKMSPluginServiceServer(s *grpc.Server, srv KMSPluginServiceServer) {
@@ -181,6 +367,132 @@ func _KMSPluginService_Version_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _KMSPluginService_GenerateCAK_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GenerateCAKRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KMSPluginServiceServer).GenerateCAK(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/thalescpl.io.ekms.kms.v1.KMSPluginService/GenerateCAK",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KMSPluginServiceServer).GenerateCAK(ctx, req.(*GenerateCAKRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KMSPluginService_GenerateCA_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GenerateCARequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KMSPluginServiceServer).GenerateCA(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/thalescpl.io.ekms.kms.v1.KMSPluginService/GenerateCA",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KMSPluginServiceServer).GenerateCA(ctx, req.(*GenerateCARequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KMSPluginService_DestroyCAK_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DestroyCAKRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KMSPluginServiceServer).DestroyCAK(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/thalescpl.io.ekms.kms.v1.KMSPluginService/DestroyCAK",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KMSPluginServiceServer).DestroyCAK(ctx, req.(*DestroyCAKRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KMSPluginService_DestroyCA_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DestroyCARequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KMSPluginServiceServer).DestroyCA(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/thalescpl.io.ekms.kms.v1.KMSPluginService/DestroyCA",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KMSPluginServiceServer).DestroyCA(ctx, req.(*DestroyCARequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KMSPluginService_SignCSR_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SignCSRRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KMSPluginServiceServer).SignCSR(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/thalescpl.io.ekms.kms.v1.KMSPluginService/SignCSR",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KMSPluginServiceServer).SignCSR(ctx, req.(*SignCSRRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KMSPluginService_GenerateKEK_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GenerateKEKRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KMSPluginServiceServer).GenerateKEK(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/thalescpl.io.ekms.kms.v1.KMSPluginService/GenerateKEK",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KMSPluginServiceServer).GenerateKEK(ctx, req.(*GenerateKEKRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KMSPluginService_DestroyKEK_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DestroyKEKRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KMSPluginServiceServer).DestroyKEK(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/thalescpl.io.ekms.kms.v1.KMSPluginService/DestroyKEK",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KMSPluginServiceServer).DestroyKEK(ctx, req.(*DestroyKEKRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _KMSPluginService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "thalescpl.io.ekms.kms.v1.KMSPluginService",
 	HandlerType: (*KMSPluginServiceServer)(nil),
@@ -188,6 +500,34 @@ var _KMSPluginService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Version",
 			Handler:    _KMSPluginService_Version_Handler,
+		},
+		{
+			MethodName: "GenerateCAK",
+			Handler:    _KMSPluginService_GenerateCAK_Handler,
+		},
+		{
+			MethodName: "GenerateCA",
+			Handler:    _KMSPluginService_GenerateCA_Handler,
+		},
+		{
+			MethodName: "DestroyCAK",
+			Handler:    _KMSPluginService_DestroyCAK_Handler,
+		},
+		{
+			MethodName: "DestroyCA",
+			Handler:    _KMSPluginService_DestroyCA_Handler,
+		},
+		{
+			MethodName: "SignCSR",
+			Handler:    _KMSPluginService_SignCSR_Handler,
+		},
+		{
+			MethodName: "GenerateKEK",
+			Handler:    _KMSPluginService_GenerateKEK_Handler,
+		},
+		{
+			MethodName: "DestroyKEK",
+			Handler:    _KMSPluginService_DestroyKEK_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

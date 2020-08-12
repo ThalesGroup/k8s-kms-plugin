@@ -20,7 +20,7 @@
         p11 -> server : KEK Loaded
     end
 
-    group PKI Operations
+    group Istio PKI Operations
         ==key gen==
         apis -> server : GenerateDEK(GenerateDEKRequest)
         server -> p11 : GenerateDEK(KeyKind+Params)
@@ -30,6 +30,7 @@
         server -> p11 : GenerateSEK(KeyKind+Params+WrappedDEK)
         server <- p11 : GenerateSEK(WrappedSEK)
         apis <- server : GenerateSEK(GenerateSEKResponse)
+
         ==key load==
         apis -> server : LoadSEK(GenerateSEKRequest)
         server -> p11 : LoadSEK(WrappedDEK+WrappedSEK)
@@ -37,8 +38,7 @@
         apis <- server : LoadSEK(GenerateSEKResponse)
 
     end
-
-    group Data Protection Operations
+    group K8S Data Protection Operations
 
         apis -> server : Encrypt(EncryptRequest)
         server -> p11 : Encrypt(Clear)
@@ -52,6 +52,10 @@
 
     end
 
+
+    group General Purpose PKI Operations
+        apis -> server :
+    end
     actor "kms admin" as kmsa
 
 @enduml
