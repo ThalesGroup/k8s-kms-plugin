@@ -25,6 +25,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
+	"github.com/thalescpl-io/k8s-kms-plugin/apis/kms/v1"
 	"golang.org/x/sync/errgroup"
 	"os"
 	"path/filepath"
@@ -70,13 +71,18 @@ func loopTestRun() error {
 func runTest() error {
 	// Run Istio e2e tests against the socket
 
-	ctx, cancel, c, err := istio.GetClientSocket(socketPath, timeout)
-	defer cancel()
+	ictx, icancel, ic, err := istio.GetClientSocket(socketPath, timeout)
+	defer icancel()
 	if err != nil {
 		logrus.Fatal(err)
 		return err
 	}
-
+	kctx, kcancel, kc, err := kms.GetClientSocket(socketPath, timeout)
+	defer kcancel()
+	if err != nil {
+		logrus.Fatal(err)
+		return err
+	}
 	// Generate a random UUID for request
 	var kekUuid, cakUuid uuid.UUID
 	var kekKid, cakKid []byte
@@ -102,7 +108,7 @@ func runTest() error {
 	*/
 	logrus.Info("Test 1 GenerateKEK 256 AES")
 	var genKEKResp *istio.GenerateKEKResponse
-	genKEKResp, err = c.GenerateKEK(ctx, &istio.GenerateKEKRequest{
+	genKEKResp, err = ic.GenerateKEK(ictx, &istio.GenerateKEKRequest{
 		KekKid: kekKid,
 	})
 	if err != nil {
@@ -115,7 +121,7 @@ func runTest() error {
 	*/
 	logrus.Info("Test 2 GenerateDEK 256 AES")
 	var genDEKResp *istio.GenerateDEKResponse
-	if genDEKResp, err = c.GenerateDEK(ctx, &istio.GenerateDEKRequest{
+	if genDEKResp, err = ic.GenerateDEK(ictx, &istio.GenerateDEKRequest{
 		Size:   256,
 		Kind:   istio.KeyKind_AES,
 		KekKid: genKEKResp.KekKid,
@@ -133,7 +139,7 @@ func runTest() error {
 
 	logrus.Info("Test 3 GenerateSEK 4096 RSA")
 	var genSEKResp *istio.GenerateSEKResponse
-	if genSEKResp, err = c.GenerateSEK(ctx, &istio.GenerateSEKRequest{
+	if genSEKResp, err = ic.GenerateSEK(ictx, &istio.GenerateSEKRequest{
 		Size:             4096,
 		Kind:             istio.KeyKind_RSA,
 		KekKid:           genKEKResp.KekKid,
@@ -149,7 +155,7 @@ func runTest() error {
 	*/
 	logrus.Info("Test 4 LoadSEK 4096 RSA")
 	var loadSEKResp *istio.LoadSEKResponse
-	if loadSEKResp, err = c.LoadSEK(ctx, &istio.LoadSEKRequest{
+	if loadSEKResp, err = ic.LoadSEK(ictx, &istio.LoadSEKRequest{
 
 		KekKid:           genKEKResp.KekKid,
 		EncryptedDekBlob: genDEKResp.EncryptedDekBlob,
@@ -178,10 +184,10 @@ func runTest() error {
 		GenerateCAK
 	*/
 	logrus.Info("Test 5 GenerateCAK 4096 RSA")
-	var genCAKResp *istio.GenerateCAKResponse
-	if genCAKResp, err = c.GenerateCAK(ctx, &istio.GenerateCAKRequest{
+	var genCAKResp *kms.GenerateCAKResponse
+	if genCAKResp, err = kc.GenerateCAK(kctx, &kms.GenerateCAKRequest{
 		Size:      4096,
-		Kind:      istio.KeyKind_RSA,
+		Kind:      kms.KeyKind_RSA,
 		RootCaKid: cakKid,
 	}); err != nil {
 		logrus.Fatal(err)
@@ -193,8 +199,8 @@ func runTest() error {
 		GenerateCA
 	*/
 	logrus.Info("Test 6 GenerateCA, Sign and Store")
-	var genCAResp *istio.GenerateCAResponse
-	if genCAResp, err = c.GenerateCA(ctx, &istio.GenerateCARequest{
+	var genCAResp *kms.GenerateCAResponse
+	if genCAResp, err = kc.GenerateCA(kctx, &kms.GenerateCARequest{
 
 		RootCaKid: cakKid,
 	}); err != nil {
@@ -212,7 +218,7 @@ func runTest() error {
 		SignCSR
 	*/
 	logrus.Info("Test 7 SignCSR Root CA Cert")
-	var signCSRResp *istio.SignCSRResponse
+	var signCSRResp *kms.SignCSRResponse
 	template := &x509.CertificateRequest{
 
 		SignatureAlgorithm: x509.SHA512WithRSA,
@@ -223,14 +229,14 @@ func runTest() error {
 		PublicKey: sek.Public(),
 		DNSNames:  []string{"awesome.com"},
 	}
-	req := &istio.SignCSRRequest{
+	req := &kms.SignCSRRequest{
 		RootCaKid: cakKid,
 	}
 
 	if req.Csr, err = x509.CreateCertificateRequest(rand.Reader, template, sek); err != nil {
 		return err
 	}
-	if signCSRResp, err = c.SignCSR(ctx, req); err != nil {
+	if signCSRResp, err = kc.SignCSR(kctx, req); err != nil {
 		logrus.Fatal(err)
 		return err
 	}
@@ -241,8 +247,8 @@ func runTest() error {
 		DestroyCA
 	*/
 	logrus.Info("Test 8 DestroyCA")
-	var destroyCAResp *istio.DestroyCAResponse
-	if destroyCAResp, err = c.DestroyCA(ctx, &istio.DestroyCARequest{
+	var destroyCAResp *kms.DestroyCAResponse
+	if destroyCAResp, err = kc.DestroyCA(kctx, &kms.DestroyCARequest{
 		KekKid: cakKid,
 	}); err != nil {
 		logrus.Fatal(err)
@@ -255,8 +261,8 @@ func runTest() error {
 		DestroyCAK
 	*/
 	logrus.Info("Test 9 DestroyCA")
-	var destroyCAKResp *istio.DestroyCAKResponse
-	if destroyCAKResp, err = c.DestroyCAK(ctx, &istio.DestroyCAKRequest{
+	var destroyCAKResp *kms.DestroyCAKResponse
+	if destroyCAKResp, err = kc.DestroyCAK(kctx, &kms.DestroyCAKRequest{
 		KekKid: cakKid,
 	}); err != nil {
 		logrus.Fatal(err)

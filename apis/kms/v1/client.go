@@ -27,10 +27,12 @@ import (
 	"context"
 	"fmt"
 	"google.golang.org/grpc"
+	"net/url"
 	"time"
 )
 
-func GetClient(host string, port int64) (ctx context.Context, cancel context.CancelFunc, c KMSPluginServiceClient, err error) {
+
+func GetClientTCP(host string, port int64, timeout time.Duration) (ctx context.Context, cancel context.CancelFunc, c KMSPluginServiceClient, err error) {
 	// Get Client
 	options := []grpc.DialOption{grpc.WithInsecure()}
 	var conn *grpc.ClientConn
@@ -38,7 +40,23 @@ func GetClient(host string, port int64) (ctx context.Context, cancel context.Can
 		return
 	}
 
-	ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel = context.WithTimeout(context.Background(), timeout)
+	c = NewKMSPluginServiceClient(conn)
+	return
+}
+func GetClientSocket(socket string, timeout time.Duration) (ctx context.Context, cancel context.CancelFunc, c KMSPluginServiceClient, err error) {
+	// Get Client
+	options := []grpc.DialOption{grpc.WithInsecure()}
+	var conn *grpc.ClientConn
+	u := &url.URL{
+		Scheme: "unix",
+		Path:   socket,
+	}
+	if conn, err = grpc.Dial(u.String(), options...); err != nil {
+		return
+	}
+
+	ctx, cancel = context.WithTimeout(context.Background(), timeout)
 	c = NewKMSPluginServiceClient(conn)
 	return
 }

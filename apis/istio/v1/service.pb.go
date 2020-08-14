@@ -39,7 +39,7 @@ var file_apis_istio_v1_service_proto_rawDesc = []byte{
 	0x69, 0x73, 0x74, 0x69, 0x6f, 0x2f, 0x76, 0x31, 0x2f, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65,
 	0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x1f, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2f,
 	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2f, 0x74, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61,
-	0x6d, 0x70, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x32, 0xda, 0x02, 0x0a, 0x14, 0x4b, 0x65, 0x79,
+	0x6d, 0x70, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x32, 0xb7, 0x04, 0x0a, 0x14, 0x4b, 0x65, 0x79,
 	0x4d, 0x61, 0x6e, 0x61, 0x67, 0x65, 0x6d, 0x65, 0x6e, 0x74, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63,
 	0x65, 0x12, 0x6e, 0x0a, 0x0b, 0x47, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x44, 0x45, 0x4b,
 	0x12, 0x2e, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e,
@@ -61,30 +61,52 @@ var file_apis_istio_v1_service_proto_rawDesc = []byte{
 	0x4b, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x2b, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65,
 	0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x69, 0x73, 0x74,
 	0x69, 0x6f, 0x2e, 0x76, 0x31, 0x2e, 0x4c, 0x6f, 0x61, 0x64, 0x53, 0x45, 0x4b, 0x52, 0x65, 0x73,
-	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42, 0x3c, 0x5a, 0x3a, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e,
-	0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2d, 0x69, 0x6f,
-	0x2f, 0x6b, 0x38, 0x73, 0x2d, 0x6b, 0x6d, 0x73, 0x2d, 0x70, 0x6c, 0x75, 0x67, 0x69, 0x6e, 0x2f,
-	0x61, 0x70, 0x69, 0x73, 0x2f, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2f, 0x76, 0x31, 0x3b, 0x69, 0x73,
-	0x74, 0x69, 0x6f, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x6e, 0x0a, 0x0b, 0x47, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74,
+	0x65, 0x4b, 0x45, 0x4b, 0x12, 0x2e, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c,
+	0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2e, 0x76,
+	0x31, 0x2e, 0x47, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x4b, 0x45, 0x4b, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x1a, 0x2f, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c,
+	0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2e, 0x76,
+	0x31, 0x2e, 0x47, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x4b, 0x45, 0x4b, 0x52, 0x65, 0x73,
+	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x6b, 0x0a, 0x0a, 0x44, 0x65, 0x73, 0x74, 0x72, 0x6f, 0x79,
+	0x4b, 0x45, 0x4b, 0x12, 0x2d, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e,
+	0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2e, 0x76, 0x31,
+	0x2e, 0x44, 0x65, 0x73, 0x74, 0x72, 0x6f, 0x79, 0x4b, 0x45, 0x4b, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x1a, 0x2e, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69,
+	0x6f, 0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2e, 0x76, 0x31, 0x2e,
+	0x44, 0x65, 0x73, 0x74, 0x72, 0x6f, 0x79, 0x4b, 0x45, 0x4b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x42, 0x3c, 0x5a, 0x3a, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d,
+	0x2f, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2d, 0x69, 0x6f, 0x2f, 0x6b, 0x38,
+	0x73, 0x2d, 0x6b, 0x6d, 0x73, 0x2d, 0x70, 0x6c, 0x75, 0x67, 0x69, 0x6e, 0x2f, 0x61, 0x70, 0x69,
+	0x73, 0x2f, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2f, 0x76, 0x31, 0x3b, 0x69, 0x73, 0x74, 0x69, 0x6f,
+	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var file_apis_istio_v1_service_proto_goTypes = []interface{}{
 	(*GenerateDEKRequest)(nil),  // 0: thalescpl.io.ekms.istio.v1.GenerateDEKRequest
 	(*GenerateSEKRequest)(nil),  // 1: thalescpl.io.ekms.istio.v1.GenerateSEKRequest
 	(*LoadSEKRequest)(nil),      // 2: thalescpl.io.ekms.istio.v1.LoadSEKRequest
-	(*GenerateDEKResponse)(nil), // 3: thalescpl.io.ekms.istio.v1.GenerateDEKResponse
-	(*GenerateSEKResponse)(nil), // 4: thalescpl.io.ekms.istio.v1.GenerateSEKResponse
-	(*LoadSEKResponse)(nil),     // 5: thalescpl.io.ekms.istio.v1.LoadSEKResponse
+	(*GenerateKEKRequest)(nil),  // 3: thalescpl.io.ekms.istio.v1.GenerateKEKRequest
+	(*DestroyKEKRequest)(nil),   // 4: thalescpl.io.ekms.istio.v1.DestroyKEKRequest
+	(*GenerateDEKResponse)(nil), // 5: thalescpl.io.ekms.istio.v1.GenerateDEKResponse
+	(*GenerateSEKResponse)(nil), // 6: thalescpl.io.ekms.istio.v1.GenerateSEKResponse
+	(*LoadSEKResponse)(nil),     // 7: thalescpl.io.ekms.istio.v1.LoadSEKResponse
+	(*GenerateKEKResponse)(nil), // 8: thalescpl.io.ekms.istio.v1.GenerateKEKResponse
+	(*DestroyKEKResponse)(nil),  // 9: thalescpl.io.ekms.istio.v1.DestroyKEKResponse
 }
 var file_apis_istio_v1_service_proto_depIdxs = []int32{
 	0, // 0: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateDEK:input_type -> thalescpl.io.ekms.istio.v1.GenerateDEKRequest
 	1, // 1: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateSEK:input_type -> thalescpl.io.ekms.istio.v1.GenerateSEKRequest
 	2, // 2: thalescpl.io.ekms.istio.v1.KeyManagementService.LoadSEK:input_type -> thalescpl.io.ekms.istio.v1.LoadSEKRequest
-	3, // 3: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateDEK:output_type -> thalescpl.io.ekms.istio.v1.GenerateDEKResponse
-	4, // 4: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateSEK:output_type -> thalescpl.io.ekms.istio.v1.GenerateSEKResponse
-	5, // 5: thalescpl.io.ekms.istio.v1.KeyManagementService.LoadSEK:output_type -> thalescpl.io.ekms.istio.v1.LoadSEKResponse
-	3, // [3:6] is the sub-list for method output_type
-	0, // [0:3] is the sub-list for method input_type
+	3, // 3: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateKEK:input_type -> thalescpl.io.ekms.istio.v1.GenerateKEKRequest
+	4, // 4: thalescpl.io.ekms.istio.v1.KeyManagementService.DestroyKEK:input_type -> thalescpl.io.ekms.istio.v1.DestroyKEKRequest
+	5, // 5: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateDEK:output_type -> thalescpl.io.ekms.istio.v1.GenerateDEKResponse
+	6, // 6: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateSEK:output_type -> thalescpl.io.ekms.istio.v1.GenerateSEKResponse
+	7, // 7: thalescpl.io.ekms.istio.v1.KeyManagementService.LoadSEK:output_type -> thalescpl.io.ekms.istio.v1.LoadSEKResponse
+	8, // 8: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateKEK:output_type -> thalescpl.io.ekms.istio.v1.GenerateKEKResponse
+	9, // 9: thalescpl.io.ekms.istio.v1.KeyManagementService.DestroyKEK:output_type -> thalescpl.io.ekms.istio.v1.DestroyKEKResponse
+	5, // [5:10] is the sub-list for method output_type
+	0, // [0:5] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -133,6 +155,10 @@ type KeyManagementServiceClient interface {
 	GenerateSEK(ctx context.Context, in *GenerateSEKRequest, opts ...grpc.CallOption) (*GenerateSEKResponse, error)
 	// LoadSEK returns the SEK unwrapped for the controller to use for CA work...
 	LoadSEK(ctx context.Context, in *LoadSEKRequest, opts ...grpc.CallOption) (*LoadSEKResponse, error)
+	// GenerateKEK returns the KID of the GeneratedKEK if allowed/successful
+	GenerateKEK(ctx context.Context, in *GenerateKEKRequest, opts ...grpc.CallOption) (*GenerateKEKResponse, error)
+	// DestroyKEK returns a success/failure to destroy the KEK... this is NON-REVERSIBLE...
+	DestroyKEK(ctx context.Context, in *DestroyKEKRequest, opts ...grpc.CallOption) (*DestroyKEKResponse, error)
 }
 
 type keyManagementServiceClient struct {
@@ -170,6 +196,24 @@ func (c *keyManagementServiceClient) LoadSEK(ctx context.Context, in *LoadSEKReq
 	return out, nil
 }
 
+func (c *keyManagementServiceClient) GenerateKEK(ctx context.Context, in *GenerateKEKRequest, opts ...grpc.CallOption) (*GenerateKEKResponse, error) {
+	out := new(GenerateKEKResponse)
+	err := c.cc.Invoke(ctx, "/thalescpl.io.ekms.istio.v1.KeyManagementService/GenerateKEK", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *keyManagementServiceClient) DestroyKEK(ctx context.Context, in *DestroyKEKRequest, opts ...grpc.CallOption) (*DestroyKEKResponse, error) {
+	out := new(DestroyKEKResponse)
+	err := c.cc.Invoke(ctx, "/thalescpl.io.ekms.istio.v1.KeyManagementService/DestroyKEK", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // KeyManagementServiceServer is the server API for KeyManagementService service.
 type KeyManagementServiceServer interface {
 	// GenerateDEK returns a wrapped (by KMS handled key)
@@ -178,6 +222,10 @@ type KeyManagementServiceServer interface {
 	GenerateSEK(context.Context, *GenerateSEKRequest) (*GenerateSEKResponse, error)
 	// LoadSEK returns the SEK unwrapped for the controller to use for CA work...
 	LoadSEK(context.Context, *LoadSEKRequest) (*LoadSEKResponse, error)
+	// GenerateKEK returns the KID of the GeneratedKEK if allowed/successful
+	GenerateKEK(context.Context, *GenerateKEKRequest) (*GenerateKEKResponse, error)
+	// DestroyKEK returns a success/failure to destroy the KEK... this is NON-REVERSIBLE...
+	DestroyKEK(context.Context, *DestroyKEKRequest) (*DestroyKEKResponse, error)
 }
 
 // UnimplementedKeyManagementServiceServer can be embedded to have forward compatible implementations.
@@ -192,6 +240,12 @@ func (*UnimplementedKeyManagementServiceServer) GenerateSEK(context.Context, *Ge
 }
 func (*UnimplementedKeyManagementServiceServer) LoadSEK(context.Context, *LoadSEKRequest) (*LoadSEKResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method LoadSEK not implemented")
+}
+func (*UnimplementedKeyManagementServiceServer) GenerateKEK(context.Context, *GenerateKEKRequest) (*GenerateKEKResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GenerateKEK not implemented")
+}
+func (*UnimplementedKeyManagementServiceServer) DestroyKEK(context.Context, *DestroyKEKRequest) (*DestroyKEKResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DestroyKEK not implemented")
 }
 
 func RegisterKeyManagementServiceServer(s *grpc.Server, srv KeyManagementServiceServer) {
@@ -252,6 +306,42 @@ func _KeyManagementService_LoadSEK_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _KeyManagementService_GenerateKEK_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GenerateKEKRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KeyManagementServiceServer).GenerateKEK(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/thalescpl.io.ekms.istio.v1.KeyManagementService/GenerateKEK",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KeyManagementServiceServer).GenerateKEK(ctx, req.(*GenerateKEKRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KeyManagementService_DestroyKEK_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DestroyKEKRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KeyManagementServiceServer).DestroyKEK(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/thalescpl.io.ekms.istio.v1.KeyManagementService/DestroyKEK",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KeyManagementServiceServer).DestroyKEK(ctx, req.(*DestroyKEKRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _KeyManagementService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "thalescpl.io.ekms.istio.v1.KeyManagementService",
 	HandlerType: (*KeyManagementServiceServer)(nil),
@@ -267,6 +357,14 @@ var _KeyManagementService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "LoadSEK",
 			Handler:    _KeyManagementService_LoadSEK_Handler,
+		},
+		{
+			MethodName: "GenerateKEK",
+			Handler:    _KeyManagementService_GenerateKEK_Handler,
+		},
+		{
+			MethodName: "DestroyKEK",
+			Handler:    _KeyManagementService_DestroyKEK_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

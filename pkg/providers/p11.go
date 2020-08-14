@@ -53,7 +53,7 @@ var (
 	}
 )
 
-func generateCA(ctx *crypto11.Context, request *istio.GenerateCARequest) (ca *x509.Certificate, err error) {
+func generateCA(ctx *crypto11.Context, request *v1.GenerateCARequest) (ca *x509.Certificate, err error) {
 	templateCA := &x509.Certificate{
 		SerialNumber: randomSerial(),
 		Subject: pkix.Name{
@@ -97,10 +97,10 @@ func generateCA(ctx *crypto11.Context, request *istio.GenerateCARequest) (ca *x5
 	return
 }
 
-func generateCAK(ctx *crypto11.Context, kid []byte, kind istio.KeyKind, size int) (signer crypto11.SignerDecrypter, err error) {
+func generateCAK(ctx *crypto11.Context, kid []byte, kind v1.KeyKind, size int) (signer crypto11.SignerDecrypter, err error) {
 
 	switch kind {
-	case istio.KeyKind_RSA:
+	case v1.KeyKind_RSA:
 		signer, err = ctx.GenerateRSAKeyPairWithLabel(kid, defaultCAKlabel, size)
 
 	default:
@@ -364,11 +364,11 @@ func (p *P11) Decrypt(ctx context.Context, req *k8s.DecryptRequest) (resp *k8s.D
 	return
 }
 
-func (p *P11) DestroyCA(ctx context.Context, request *istio.DestroyCARequest) (*istio.DestroyCAResponse, error) {
+func (p *P11) DestroyCA(ctx context.Context, request *v1.DestroyCARequest) (*v1.DestroyCAResponse, error) {
 	panic("implement me")
 }
 
-func (p *P11) DestroyCAK(ctx context.Context, request *istio.DestroyCAKRequest) (*istio.DestroyCAKResponse, error) {
+func (p *P11) DestroyCAK(ctx context.Context, request *v1.DestroyCAKRequest) (*v1.DestroyCAKResponse, error) {
 	panic("implement me")
 }
 
@@ -397,7 +397,7 @@ func randomSerial() (serial *big.Int) {
 	serial, _ = rand.Int(rand.Reader, big.NewInt(20000))
 	return
 }
-func (p *P11) GenerateCA(ctx context.Context, request *istio.GenerateCARequest) (resp *istio.GenerateCAResponse, err error) {
+func (p *P11) GenerateCA(ctx context.Context, request *v1.GenerateCARequest) (resp *v1.GenerateCAResponse, err error) {
 
 	var ca *x509.Certificate
 	if ca, err = generateCA(p.ctx, request); err != nil {
@@ -407,14 +407,14 @@ func (p *P11) GenerateCA(ctx context.Context, request *istio.GenerateCARequest) 
 		Bytes: ca.Raw,
 		Type:  "CERTIFICATE",
 	}
-	resp = &istio.GenerateCAResponse{
+	resp = &v1.GenerateCAResponse{
 		Cert: pem.EncodeToMemory(caPEM),
 	}
 	return
 }
 
-func (p *P11) GenerateCAK(ctx context.Context, request *istio.GenerateCAKRequest) (resp *istio.GenerateCAKResponse, err error) {
-	resp = &istio.GenerateCAKResponse{
+func (p *P11) GenerateCAK(ctx context.Context, request *v1.GenerateCAKRequest) (resp *v1.GenerateCAKResponse, err error) {
+	resp = &v1.GenerateCAKResponse{
 
 	}
 	if _, err = generateCAK(p.ctx, request.RootCaKid, request.Kind, int(request.Size)); err != nil {
@@ -550,13 +550,13 @@ func (p *P11) LoadSEK(ctx context.Context, request *istio.LoadSEKRequest) (resp 
 	return
 }
 
-func (p *P11) SignCSR(ctx context.Context, request *istio.SignCSRRequest) (resp *istio.SignCSRResponse, err error) {
+func (p *P11) SignCSR(ctx context.Context, request *v1.SignCSRRequest) (resp *v1.SignCSRResponse, err error) {
 
 	var certPEM *pem.Block
 	if certPEM, err = signCSR(p.ctx, request.RootCaKid, request.Csr); err != nil {
 		return
 	}
-	resp = &istio.SignCSRResponse{
+	resp = &v1.SignCSRResponse{
 		Cert: pem.EncodeToMemory(certPEM),
 	}
 	return

@@ -48,6 +48,16 @@
         }
       }
     },
+    "v1DestroyKEKResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "format": "boolean",
+          "title": "successful destroy?"
+        }
+      }
+    },
     "v1GenerateDEKResponse": {
       "type": "object",
       "properties": {
@@ -55,6 +65,16 @@
           "type": "string",
           "format": "byte",
           "title": "Encrypted key blob"
+        }
+      }
+    },
+    "v1GenerateKEKResponse": {
+      "type": "object",
+      "properties": {
+        "kek_kid": {
+          "type": "string",
+          "format": "byte",
+          "title": "KEK kid"
         }
       }
     },

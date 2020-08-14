@@ -24,9 +24,7 @@
 package cmd
 
 import (
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/thalescpl-io/k8s-kms-plugin/apis/kms/v1"
 )
 
 // versionCmd represents the version command
@@ -35,20 +33,8 @@ var versionCmd = &cobra.Command{
 	Short: "Print the Version of the KMS",
 
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx, _, c, err := kms.GetClient(host, grpcPort)
-		if err != nil {
-			return err
-		}
-		var resp *kms.VersionResponse
-		resp, err = c.Version(ctx, &kms.VersionRequest{})
-		if err != nil {
-			return err
-		}
 
-		logrus.Println(resp.Version)
-		logrus.Println(resp.RuntimeName)
-		logrus.Println(resp.RuntimeVersion)
-		return err
+		return nil
 	},
 }
 
