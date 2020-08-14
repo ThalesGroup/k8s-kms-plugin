@@ -3,8 +3,8 @@
 all: build
 
 SECRETNAME=gcr-json-key
-P11_TOKEN=default
-P11_PIN=changeme
+P11_TOKEN=ajak
+P11_PIN=password
 ## Pipeline
 
 lint:
@@ -26,6 +26,11 @@ gen-openapi:
 		@swagger generate client --quiet --existing-models=pkg/est/models -c pkg/est/client -f apis/kms/v1/est.yaml
 build:
 		@go build -o k8s-kms-plugin cmd/k8s-kms-plugin/main.go
+run:
+		@go run cmd/k8s-kms-plugin/main.go serve --disable-socket --enable-server --p11-lib /usr/local/lib/softhsm/libsofthsm2.so --p11-pin $(P11_PIN) --p11-label $(P11_TOKEN)
+run-test:
+		@go run cmd/k8s-kms-plugin/main.go test
+
 
 dev:
 		@skaffold dev --port-forward=true

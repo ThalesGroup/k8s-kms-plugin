@@ -83,16 +83,21 @@ var serveCmd = &cobra.Command{
 		if grpcTCP, err = net.Listen("tcp", grpcAddr); err != nil {
 			return
 		}
-		_ = os.Remove(socketPath)
-		if grpcUNIX, err = net.Listen("unix", socketPath); err != nil {
-			return
-		}
+
 
 		if enableTCP {
 			g.Go(func() error { return grpcServe(grpcTCP) })
 			logrus.Infof("KMS Plugin Listening on : %d\n", grpcPort)
 		}
-		g.Go(func() error { return grpcServe(grpcUNIX) })
+		if !disableSocket {
+			_ = os.Remove(socketPath)
+			if grpcUNIX, err = net.Listen("unix", socketPath); err != nil {
+				return
+			}
+			g.Go(func() error { return grpcServe(grpcUNIX) })
+			logrus.Infof("KMS Plugin Listening on : %d\n", socketPath)
+
+		}
 
 		if err = g.Wait(); err != nil {
 			logrus.Error(err)
@@ -102,15 +107,16 @@ var serveCmd = &cobra.Command{
 		return
 	},
 }
-var enableTCP bool
+var enableTCP, disableSocket bool
 var nativePath string
 
 func init() {
 	rootCmd.AddCommand(serveCmd)
-	serveCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), "run", ".sock"), "Unix Socket")
+	serveCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), "run.sock"), "Unix Socket")
 
 	//
 	serveCmd.Flags().BoolVar(&enableTCP, "enable-server", false, "Enable TLS based server")
+	serveCmd.Flags().BoolVar(&disableSocket, "disable-socket", false, "Disable socket based server")
 	serveCmd.Flags().StringVar(&caTLSCert, "tls-ca", "certs/ca.crt", "TLS CA cert")
 	serveCmd.Flags().StringVar(&serverTLSKey, "tls-key", "certs/tls.key", "TLS server key")
 	serveCmd.Flags().StringVar(&serverTLSCert, "tls-certificate", "certs/tls.crt", "TLS server cert")
@@ -132,10 +138,10 @@ func grpcServe(gl net.Listener) (err error) {
 	var p providers.Provider
 
 	switch provider {
-	case "p11","softhsm":
+	case "p11", "softhsm":
 		config := &crypto11.Config{
-			Path: p11lib,
-			Pin:  p11pin,
+			Path:            p11lib,
+			Pin:             p11pin,
 			UseGCMIVFromHSM: true,
 		}
 		if p11label != "" {
