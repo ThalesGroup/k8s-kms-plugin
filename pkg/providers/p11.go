@@ -417,8 +417,13 @@ func (p *P11) genOrLoadRootCA() (err error) {
 	// check if CA already exists in the PKCS11 device
 
 	if p.rootCert, err = p.ctx.FindCertificate([]byte(wellKnownCertificate), []byte(labelRootCA), rootCASerial); err != nil {
-		err = utils.ErrNoSuchCert
+		logrus.Fatal(err)
 		return
+	}
+
+	if p.rootCert == nil {
+		// assumed we ahve been here before and we are healthy so far..
+
 	}
 	var signer crypto11.Signer
 	if signer, err = p.ctx.FindKeyPair([]byte(wellKnownRootKeyPair), []byte(labelKEK)); err != nil {

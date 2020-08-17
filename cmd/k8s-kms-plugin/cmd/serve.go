@@ -121,7 +121,7 @@ func init() {
 	//
 	serveCmd.Flags().BoolVar(&enableTCP, "enable-server", false, "Enable TLS based server")
 	serveCmd.Flags().BoolVar(&disableSocket, "disable-socket", false, "Disable socket based server")
-	serveCmd.Flags().StringVar(&caTLSCert, "tls-ca.go", "certs/ca.go.crt", "TLS CA cert")
+	serveCmd.Flags().StringVar(&caTLSCert, "tls-ca", "certs/ca.crt", "TLS CA cert")
 	serveCmd.Flags().StringVar(&serverTLSKey, "tls-key", "certs/tls.key", "TLS server key")
 	serveCmd.Flags().StringVar(&serverTLSCert, "tls-certificate", "certs/tls.crt", "TLS server cert")
 	// Here you will define your flags and configuration settings.
