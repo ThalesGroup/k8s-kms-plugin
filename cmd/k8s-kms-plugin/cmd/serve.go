@@ -29,7 +29,8 @@ import (
 	"github.com/ThalesIgnite/crypto11"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
+	"github.com/thalescpl-io/k8s-kms-plugin/apis/kms/v1"
+	"github.com/thalescpl-io/k8s-kms-plugin/pkg/keystore"
 	"github.com/thalescpl-io/k8s-kms-plugin/pkg/providers"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -38,6 +39,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 var (
@@ -84,7 +86,6 @@ var serveCmd = &cobra.Command{
 			return
 		}
 
-
 		if enableTCP {
 			g.Go(func() error { return grpcServe(grpcTCP) })
 			logrus.Infof("KMS Plugin Listening on : %d\n", grpcPort)
@@ -95,7 +96,7 @@ var serveCmd = &cobra.Command{
 				return
 			}
 			g.Go(func() error { return grpcServe(grpcUNIX) })
-			logrus.Infof("KMS Plugin Listening on : %d\n", socketPath)
+			logrus.Infof("KMS Plugin Listening at : %s\n", socketPath)
 
 		}
 
@@ -109,6 +110,9 @@ var serveCmd = &cobra.Command{
 }
 var enableTCP, disableSocket bool
 var nativePath string
+var keystoreKind, fileDir string
+var ks keystore.KeyStore
+var wrappedIntKek []byte
 
 func init() {
 	rootCmd.AddCommand(serveCmd)
@@ -117,7 +121,7 @@ func init() {
 	//
 	serveCmd.Flags().BoolVar(&enableTCP, "enable-server", false, "Enable TLS based server")
 	serveCmd.Flags().BoolVar(&disableSocket, "disable-socket", false, "Disable socket based server")
-	serveCmd.Flags().StringVar(&caTLSCert, "tls-ca", "certs/ca.crt", "TLS CA cert")
+	serveCmd.Flags().StringVar(&caTLSCert, "tls-ca.go", "certs/ca.go.crt", "TLS CA cert")
 	serveCmd.Flags().StringVar(&serverTLSKey, "tls-key", "certs/tls.key", "TLS server key")
 	serveCmd.Flags().StringVar(&serverTLSCert, "tls-certificate", "certs/tls.crt", "TLS server cert")
 	// Here you will define your flags and configuration settings.
@@ -132,11 +136,24 @@ func init() {
 	serveCmd.Flags().BoolVar(&createKey, "auto-create", true, "Auto create the keys if needed")
 	serveCmd.Flags().BoolVar(&allowAny, "allow-any", false, "Allow any device (accepts all ids/secrets)")
 
+	// KeyStore
+	serveCmd.Flags().StringVarP(&keystoreKind, "keystore", "k", "file", "Keystore Kind to store the JWK DEK Blobs")
+	serveCmd.Flags().StringVar(&fileDir, "file-dir", "./.keystore", "Directory to use for the `file` based keystore")
+
 }
 
 func grpcServe(gl net.Listener) (err error) {
 	var p providers.Provider
+	// KeyStore startup
+	switch strings.ToLower(keystoreKind) {
+	case "file", "filesystem", "fs":
 
+		if ks, err = keystore.NewFilePrivateKeyStore(fileDir); err != nil {
+			return
+		}
+	default:
+		ks = keystore.NewMemoryPrivateKeyStore(wrappedIntKek)
+	}
 	switch provider {
 	case "p11", "softhsm":
 		config := &crypto11.Config{
@@ -149,8 +166,7 @@ func grpcServe(gl net.Listener) (err error) {
 		} else {
 			config.SlotNumber = &p11slot
 		}
-		logrus.Info(*config)
-		if p, err = providers.NewP11(config, createKey); err != nil {
+		if p, err = providers.NewP11(config, ks, wrappedIntKek, createKey); err != nil {
 			return
 		}
 	case "luna", "dpod":
@@ -164,13 +180,16 @@ func grpcServe(gl net.Listener) (err error) {
 		} else {
 			config.SlotNumber = &p11slot
 		}
-		if p, err = providers.NewP11(config, createKey); err != nil {
+		if p, err = providers.NewP11(config, ks, wrappedIntKek, createKey); err != nil {
 			return
 		}
 	case "ekms":
 		panic("unimplemented")
 	default:
 		err = errors.New("unknown provider")
+		return
+	}
+	if err = p.LoadIntKek(); err != nil {
 		return
 	}
 	// Create a gRPC server to host the services
@@ -180,8 +199,8 @@ func grpcServe(gl net.Listener) (err error) {
 
 	gs := grpc.NewServer(serverOptions...)
 	reflection.Register(gs)
-	istio.RegisterKeyManagementServiceServer(gs, p)
-	logrus.Infof("Serving on socket: %s", socketPath)
+	kms.RegisterKeyManagementServiceServer(gs, p)
+	logrus.Infof("Serving on socket: %v", socketPath)
 
 START:
 	if err = gs.Serve(gl); err != nil {

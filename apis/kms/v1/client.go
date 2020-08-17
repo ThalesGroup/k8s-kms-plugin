@@ -31,8 +31,7 @@ import (
 	"time"
 )
 
-
-func GetClientTCP(host string, port int64, timeout time.Duration) (ctx context.Context, cancel context.CancelFunc, c KMSPluginServiceClient, err error) {
+func GetClientTCP(host string, port int64, timeout time.Duration) (ctx context.Context, cancel context.CancelFunc, c KeyManagementServiceClient, err error) {
 	// Get Client
 	options := []grpc.DialOption{grpc.WithInsecure()}
 	var conn *grpc.ClientConn
@@ -41,10 +40,10 @@ func GetClientTCP(host string, port int64, timeout time.Duration) (ctx context.C
 	}
 
 	ctx, cancel = context.WithTimeout(context.Background(), timeout)
-	c = NewKMSPluginServiceClient(conn)
+	c = NewKeyManagementServiceClient(conn)
 	return
 }
-func GetClientSocket(socket string, timeout time.Duration) (ctx context.Context, cancel context.CancelFunc, c KMSPluginServiceClient, err error) {
+func GetClientSocket(socket string, timeout time.Duration) (ctx context.Context, cancel context.CancelFunc, c KeyManagementServiceClient, err error) {
 	// Get Client
 	options := []grpc.DialOption{grpc.WithInsecure()}
 	var conn *grpc.ClientConn
@@ -57,6 +56,6 @@ func GetClientSocket(socket string, timeout time.Duration) (ctx context.Context,
 	}
 
 	ctx, cancel = context.WithTimeout(context.Background(), timeout)
-	c = NewKMSPluginServiceClient(conn)
+	c = NewKeyManagementServiceClient(conn)
 	return
 }

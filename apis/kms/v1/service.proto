@@ -1,49 +1,78 @@
-//
-// * // Copyright 2020 Thales DIS CPL Inc
-// * //
-// * // Permission is hereby granted, free of charge, to any person obtaining
-// * // a copy of this software and associated documentation files (the
-// * // "Software"), to deal in the Software without restriction, including
-// * // without limitation the rights to use, copy, modify, merge, publish,
-// * // distribute, sublicense, and/or sell copies of the Software, and to
-// * // permit persons to whom the Software is furnished to do so, subject to
-// * // the following conditions:
-// * //
-// * // The above copyright notice and this permission notice shall be
-// * // included in all copies or substantial portions of the Software.
-// * //
-// * // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-// * // EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// * // MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-// * // NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-// * // LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-// * // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-// * // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-//
-
 syntax = "proto3";
 
-package thalescpl.io.ekms.kms.v1;
+package thalescpl.io.k8s.kms.v1;
 
 option go_package = "github.com/thalescpl-io/k8s-kms-plugin/apis/kms/v1;kms";
 
 import "apis/kms/v1/messages.proto";
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+import "google/api/http.proto";
+import "google/protobuf/timestamp.proto";
 
-service KMSPluginService {
-  // Version returns the runtime name and runtime version of the KMS provider.
-  rpc Version(VersionRequest) returns (VersionResponse);
-  // GenerateCAK returns the kid, and it's public key of a new Key Pair in the PKCS11 device
-  rpc GenerateCAK(GenerateCAKRequest) returns (GenerateCAKResponse);
-  // GenerateCA Certificate and store in in the PKCS11 device
-  rpc GenerateCA(GenerateCARequest) returns (GenerateCAResponse);
-  // DestroyCAK in the PKCS11 device... this is NON-REVERSIBLE...
-  rpc DestroyCAK(DestroyCAKRequest) returns (DestroyCAKResponse);
-  // DestroyCA in the PKCS11 device... this is NON-REVERSIBLE...
-  rpc DestroyCA(DestroyCARequest) returns (DestroyCAResponse);
-  // SignCSR signs a CSR for the in inbound
-  rpc SignCSR(SignCSRRequest) returns (SignCSRResponse);
-  // GenerateKEK returns the KID of the GeneratedKEK if allowed/successful
-  rpc GenerateKEK(GenerateKEKRequest) returns (GenerateKEKResponse);
-  // DestroyKEK returns a success/failure to destroy the KEK... this is NON-REVERSIBLE...
-  rpc DestroyKEK(DestroyKEKRequest) returns (DestroyKEKResponse);
+service KeyManagementService {
+
+  // Returns the CABundle
+  rpc GetCABundle(GetCABundleRequest) returns (CABundle) {
+    option (google.api.http) = {
+      get: "/v1/ca/bundle"
+    };
+    option (google.api.method_signature) = "name";
+  }
+
+  // Create a new [CryptoKey][google.cloud.kms.v1.CryptoKey] within a [KeyRing][google.cloud.kms.v1.KeyRing].
+  //
+  // [CryptoKey.purpose][google.cloud.kms.v1.CryptoKey.purpose] and
+  // [CryptoKey.version_template.algorithm][google.cloud.kms.v1.CryptoKeyVersionTemplate.algorithm]
+  // are required.
+  rpc SignCSR(SignCSRRequest) returns (SignCSRResponse) {
+    option (google.api.http) = {
+      post: "/v1/ca/sign"
+      body: "*"
+    };
+  }
+
+  // Create a new [CryptoKey][google.cloud.kms.v1.CryptoKey] within a [KeyRing][google.cloud.kms.v1.KeyRing].
+  //
+  // [CryptoKey.purpose][google.cloud.kms.v1.CryptoKey.purpose] and
+  // [CryptoKey.version_template.algorithm][google.cloud.kms.v1.CryptoKeyVersionTemplate.algorithm]
+  // are required.
+  rpc CreateCryptoKey(CreateCryptoKeyRequest) returns (CryptoKey) {
+    option (google.api.http) = {
+      post: "/v1/keys"
+      body: "crypto_key"
+    };
+    option (google.api.method_signature) = "parent,crypto_key_id,crypto_key";
+  }
+  // Create a new [CryptoKey][google.cloud.kms.v1.CryptoKey] within a [KeyRing][google.cloud.kms.v1.KeyRing].
+  //
+  // [CryptoKey.purpose][google.cloud.kms.v1.CryptoKey.purpose] and
+  // [CryptoKey.version_template.algorithm][google.cloud.kms.v1.CryptoKeyVersionTemplate.algorithm]
+  // are required.
+  rpc ListCryptoKeys(ListCryptoKeysRequest) returns (ListCryptoKeysResponse) {
+    option (google.api.http) = {
+      get: "/v1/keys"
+
+    };
+  }
+  // Encrypts data, so that it can only be recovered by a call to [Decrypt][thalescpl.io.istio.v1.KeyManagementService.Decrypt].
+  // The [CryptoKey.purpose][thalescpl.io.istio.v1.CryptoKey.purpose] must be
+  // [ENCRYPT_DECRYPT][thalescpl.io.istio.v1.CryptoKey.CryptoKeyPurpose.ENCRYPT_DECRYPT].
+  rpc Encrypt(EncryptRequest) returns (EncryptResponse) {
+    option (google.api.http) = {
+      post: "/v1/crypto/encrypt"
+      body: "*"
+    };
+    option (google.api.method_signature) = "name,plaintext";
+  }
+
+  // Decrypts data that was protected by [Encrypt][thalescpl.io.istio.v1.KeyManagementService.Encrypt]. The [CryptoKey.purpose][thalescpl.io.istio.v1.CryptoKey.purpose]
+  // must be [ENCRYPT_DECRYPT][thalescpl.io.istio.v1.CryptoKey.CryptoKeyPurpose.ENCRYPT_DECRYPT].
+  rpc Decrypt(DecryptRequest) returns (DecryptResponse) {
+    option (google.api.http) = {
+      post: "/v1/crypto/decrypt"
+      body: "*"
+    };
+    option (google.api.method_signature) = "name,ciphertext";
+  }
 }

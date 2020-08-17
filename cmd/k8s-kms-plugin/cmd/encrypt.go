@@ -26,7 +26,7 @@ package cmd
 import (
 	"context"
 	"errors"
-	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
+	"github.com/thalescpl-io/k8s-kms-plugin/apis/kms/v1"
 	"io/ioutil"
 	"os"
 
@@ -55,15 +55,15 @@ var encryptCmd = &cobra.Command{
 			return errors.New("no file or string provided to encrypt")
 		}
 		var ctx context.Context
-		var c k8s.KeyManagementServiceClient
-		ctx, _, c, err = k8s.GetClientTCP(host, grpcPort)
+		var c kms.KeyManagementServiceClient
+		ctx, _, c, err = kms.GetClientTCP(host, grpcPort, timeout)
 		if err != nil {
 			return
 		}
-		var resp *k8s.EncryptResponse
-		resp, err = c.Encrypt(ctx, &k8s.EncryptRequest{
-			Version: "version",
-			Plain:   data,
+		var resp *kms.EncryptResponse
+		resp, err = c.Encrypt(ctx, &kms.EncryptRequest{
+			AdditionalAuthenticatedData: []byte("hello"),
+			Plaintext:                   data,
 		})
 		if err != nil {
 			return
@@ -73,7 +73,7 @@ var encryptCmd = &cobra.Command{
 				return
 			}
 		} else {
-			if _, err = os.Stdout.Write(resp.Cipher); err != nil {
+			if _, err = os.Stdout.Write(resp.Ciphertext); err != nil {
 				return
 			}
 		}

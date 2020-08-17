@@ -1,0 +1,23 @@
+@startuml
+
+'	labelKEK         = "k8s-kms-plugin-kek"
+'	labelRootKeypair = "k8s-kms-plugin-root-keypair"
+'	labelRootCA      = "k8s-kms-plugin-root-ca"
+'	labelIntKeypair  = "k8s-kms-plugin-int-keypair"
+'	labelIntCA       = "k8s-kms-plugin-int-ca"
+package "CA" {
+    package "HSM" {
+        component "k8s-kms-plugin-root-keypair" as rkp
+
+
+    }
+
+}
+
+package "Other Groups" {
+FTP - [Second Component]
+
+[First Component] --> FTP
+}
+
+@enduml

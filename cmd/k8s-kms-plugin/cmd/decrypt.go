@@ -27,7 +27,7 @@ import (
 	"context"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
+	"github.com/thalescpl-io/k8s-kms-plugin/apis/kms/v1"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -48,14 +48,13 @@ var decryptCmd = &cobra.Command{
 			data = []byte(inputString)
 		}
 		var ctx context.Context
-		var c k8s.KeyManagementServiceClient
-		if ctx, _, c, err = k8s.GetClientTCP(host, grpcPort); err != nil {
+		var c kms.KeyManagementServiceClient
+		if ctx, _, c, err = kms.GetClientTCP(host, grpcPort, timeout); err != nil {
 			return
 		}
-		var resp *k8s.DecryptResponse
-		if resp, err = c.Decrypt(ctx, &k8s.DecryptRequest{
-			Version: "version",
-			Cipher:  data,
+		var resp *kms.DecryptResponse
+		if resp, err = c.Decrypt(ctx, &kms.DecryptRequest{
+			Ciphertext: data,
 		}); err != nil {
 			return
 		}
@@ -64,7 +63,7 @@ var decryptCmd = &cobra.Command{
 				logrus.Fatal(err)
 			}
 		} else {
-			logrus.Info(string(resp.Plain))
+			logrus.Info(string(resp.Plaintext))
 		}
 		return
 	},

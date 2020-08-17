@@ -60,7 +60,7 @@ type P11 struct {
 }
 
 const (
-	defaultkeyLabel = "k8s-kms-plugin-est-ca-key"
+	defaultkeyLabel = "k8s-kms-plugin-est-ca.go-key"
 )
 
 var (

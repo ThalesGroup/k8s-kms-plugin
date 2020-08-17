@@ -3,6 +3,7 @@ protoc:
   includes:
     - apis
     - vendor
+    - protos
     - vendor/github.com/grpc-ecosystem/grpc-gateway
     - .
   allow_unused_imports: true
@@ -12,12 +13,18 @@ lint:
 excludes:
   - vendor
   - cmd
+  - protos
 generate:
   # The list of plugins.
+
   go_options:
     # The base import path. This should be the go path of the prototool.yaml file.
     # This is required if you have any go plugins.
     import_path: github.com/thalescpl-io/k8s-kms-plugin
+    extra_modifiers:
+      google/api/annotations.proto: google.golang.org/genproto/googleapis/api/annotations
+      google/api/http.proto: google.golang.org/genproto/googleapis/api/annotations
+      google/api/field_behavior.proto: google.golang.org/genproto/googleapis/api/field_behavior
   plugins:
     - name: go
       flags: plugins=grpc

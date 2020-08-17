@@ -1,128 +1,240 @@
 //
-// * // Copyright 2020 Thales DIS CPL Inc
-// * //
-// * // Permission is hereby granted, free of charge, to any person obtaining
-// * // a copy of this software and associated documentation files (the
-// * // "Software"), to deal in the Software without restriction, including
-// * // without limitation the rights to use, copy, modify, merge, publish,
-// * // distribute, sublicense, and/or sell copies of the Software, and to
-// * // permit persons to whom the Software is furnished to do so, subject to
-// * // the following conditions:
-// * //
-// * // The above copyright notice and this permission notice shall be
-// * // included in all copies or substantial portions of the Software.
-// * //
-// * // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-// * // EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// * // MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-// * // NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-// * // LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-// * // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-// * // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//Copyright 2018 The Kubernetes Authors.
+//
+//Licensed under the Apache License, Version 2.0 (the "License");
+//you may not use this file except in compliance with the License.
+//You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+//Unless required by applicable law or agreed to in writing, software
+//distributed under the License is distributed on an "AS IS" BASIS,
+//WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//See the License for the specific language governing permissions and
+//limitations under the License.
 //
 
 syntax = "proto3";
 
-package thalescpl.io.ekms.kms.v1;
+package thalescpl.io.k8s.kms.v1;
 
 option go_package = "github.com/thalescpl-io/k8s-kms-plugin/apis/kms/v1;kms";
 
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+import "google/api/resource.proto";
+import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
 import "protoc-gen-swagger/options/annotations.proto";
 
-enum KeyKind {
-  UNKNOWN = 0;
-  AES = 1;
-  RSA = 2;
-  ECC = 3;
+message Cert {
+  enum CertKind {
+    CERT_KIND_CLIENT = 0;
+    CERT_KIND_SERVER = 1;
+    CERT_KIND_ROOT = 2;
+    CERT_KIND_INTERMEDIATE = 3;
+  }
+  string cert = 1;
+  string fingerprint = 2;
+  CertKind kind = 3;
+  string modified = 4;
+  string name = 5;
+  string parent = 6;
+  // A base64 JWK encoded string.
+  string public = 7;
+  bool revoked = 8;
 }
 
-message VersionRequest {
-  // Version of the KMS plugin API.
-  string version = 1;
+enum CryptoKeyAlgorithm {
+  // Not specified.
+  CRYPTO_KEY_VERSION_ALGORITHM_UNSPECIFIED = 0;
+  // Creates symmetric encryption keys.
+  GOOGLE_SYMMETRIC_ENCRYPTION = 1;
+  // RSASSA-PSS 2048 bit key with a SHA256 digest.
+  RSA_SIGN_PSS_2048_SHA256 = 2;
+  // RSASSA-PSS 3072 bit key with a SHA256 digest.
+  RSA_SIGN_PSS_3072_SHA256 = 3;
+  // RSASSA-PSS 4096 bit key with a SHA256 digest.
+  RSA_SIGN_PSS_4096_SHA256 = 4;
+  // RSASSA-PSS 4096 bit key with a SHA512 digest.
+  RSA_SIGN_PSS_4096_SHA512 = 15;
+  // RSASSA-PKCS1-v1_5 with a 2048 bit key and a SHA256 digest.
+  RSA_SIGN_PKCS1_2048_SHA256 = 5;
+  // RSASSA-PKCS1-v1_5 with a 3072 bit key and a SHA256 digest.
+  RSA_SIGN_PKCS1_3072_SHA256 = 6;
+  // RSASSA-PKCS1-v1_5 with a 4096 bit key and a SHA256 digest.
+  RSA_SIGN_PKCS1_4096_SHA256 = 7;
+  // RSASSA-PKCS1-v1_5 with a 4096 bit key and a SHA512 digest.
+  RSA_SIGN_PKCS1_4096_SHA512 = 16;
+  // RSAES-OAEP 2048 bit key with a SHA256 digest.
+  RSA_DECRYPT_OAEP_2048_SHA256 = 8;
+  // RSAES-OAEP 3072 bit key with a SHA256 digest.
+  RSA_DECRYPT_OAEP_3072_SHA256 = 9;
+  // RSAES-OAEP 4096 bit key with a SHA256 digest.
+  RSA_DECRYPT_OAEP_4096_SHA256 = 10;
+  // RSAES-OAEP 4096 bit key with a SHA512 digest.
+  RSA_DECRYPT_OAEP_4096_SHA512 = 17;
+  // ECDSA on the NIST P-256 curve with a SHA256 digest.
+  EC_SIGN_P256_SHA256 = 12;
+  // ECDSA on the NIST P-384 curve with a SHA384 digest.
+  EC_SIGN_P384_SHA384 = 13;
+  // Algorithm representing symmetric encryption by an external key manager.
+  EXTERNAL_SYMMETRIC_ENCRYPTION = 18;
 }
 
-message VersionResponse {
-  // Version of the KMS plugin API.
-  string version = 1;
-  // Name of the KMS provider.
-  string runtime_name = 2;
-  // Version of the KMS provider. The string must be semver-compatible.
-  string runtime_version = 3;
+// Request message for [KeyManagementService.CreateCryptoKey][google.cloud.kms.v1.KeyManagementService.CreateCryptoKey].
+message CreateCryptoKeyRequest {
+  // Required. It must be unique with the KeyStore and match the regular
+  // expression `[a-zA-Z0-9_-]{1,63}`
+  string crypto_key_id = 1 [(google.api.field_behavior) = REQUIRED];
+  // Required. A [CryptoKey][google.cloud.kms.v1.CryptoKey] with initial field values.
+  CryptoKey crypto_key = 2 [(google.api.field_behavior) = REQUIRED];
+}
+// Request message for [KeyManagementService.ListCryptoKeys][google.cloud.kms.v1.KeyManagementService.ListCryptoKeys].
+message ListCryptoKeysRequest {
+  // Optional.  Include all metadata about the crypto keys
+  bool all_metadata = 1 ;
+
 }
 
-message GenerateKEKRequest {
-  // optional kid, otherwise will be autogenerated as a UUID.v4 in the response
-  bytes kek_kid = 1;
+
+// Response message for [KeyManagementService.ListCryptoKeys][google.cloud.kms.v1.KeyManagementService.ListCryptoKeys].
+message ListCryptoKeysResponse{
+  // List of crypto keys in scope for this requesting client...
+  repeated CryptoKey crypto_keys = 1[(google.api.field_behavior) = OUTPUT_ONLY];
+}
+// A [CryptoKey][thalescpl.io.kms.v1.CryptoKey] represents a logical key that can be used for cryptographic
+// operations.
+//
+// A [CryptoKey][thalescpl.io.kms.v1.CryptoKey] is made up of zero or more [versions][thalescpl.io.kms.v1.CryptoKeyVersion],
+// which represent the actual key material used in cryptographic operations.
+message CryptoKey {
+  // [CryptoKeyPurpose][thalescpl.io.kms.v1.CryptoKey.CryptoKeyPurpose] describes the cryptographic capabilities of a
+  // [CryptoKey][thalescpl.io.kms.v1.CryptoKey]. A given key can only be used for the operations allowed by
+  // its purpose.
+  enum CryptoKeyPurpose {
+    // Not specified.
+    CRYPTO_KEY_PURPOSE_UNSPECIFIED = 0;
+    // [CryptoKeys][thalescpl.io.kms.v1.CryptoKey] with this purpose may be used with
+    // [Encrypt][thalescpl.io.kms.v1.KeyManagementService.Encrypt] and
+    // [Decrypt][thalescpl.io.kms.v1.KeyManagementService.Decrypt].
+    ENCRYPT_DECRYPT = 1;
+    // [CryptoKeys][thalescpl.io.kms.v1.CryptoKey] with this purpose may be used with
+    // [AsymmetricSign][thalescpl.io.kms.v1.KeyManagementService.AsymmetricSign] and
+    // [GetPublicKey][thalescpl.io.kms.v1.KeyManagementService.GetPublicKey].
+    ASYMMETRIC_SIGN = 5;
+    // [CryptoKeys][thalescpl.io.kms.v1.CryptoKey] with this purpose may be used with
+    // [AsymmetricDecrypt][thalescpl.io.kms.v1.KeyManagementService.AsymmetricDecrypt] and
+    // [GetPublicKey][thalescpl.io.kms.v1.KeyManagementService.GetPublicKey].
+    ASYMMETRIC_DECRYPT = 6;
+  }
+  // The resource name for this [CryptoKey][thalescpl.io.kms.v1.CryptoKey]
+  // Should be unique to the device, and will fail if an existing key has been created by that name in the KMS
+  string name = 1 [(google.api.field_behavior) = OUTPUT_ONLY];
+  // Immutable. The immutable purpose of this [CryptoKey][thalescpl.io.kms.v1.CryptoKey].
+  CryptoKeyPurpose purpose = 3 [(google.api.field_behavior) = IMMUTABLE];
+  // Output only. The time at which this [CryptoKey][thalescpl.io.kms.v1.CryptoKey] was created.
+  google.protobuf.Timestamp create_time = 5 [(google.api.field_behavior) = OUTPUT_ONLY];
 }
 
-message GenerateKEKResponse {
-  // KEK kid
-  bytes kek_kid = 1;
+// Request message for [KeyManagementService.Encrypt][thalescpl.io.kms.v1.KeyManagementService.Encrypt].
+message EncryptRequest {
+  // Required. The resource name of the [CryptoKey][thalescpl.io.kms.v1.CryptoKey]
+  // to use for encryption.
+
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "*"
+    }
+  ];
+  // Required. The data to encrypt. Must be no larger than 64KiB.
+  //
+  // The maximum size depends on the key version's
+  bytes plaintext = 2 [(google.api.field_behavior) = REQUIRED];
+  // Optional. Optional data that, if specified, must also be provided during decryption
+  // through [DecryptRequest.additional_authenticated_data][thalescpl.io.kms.v1.DecryptRequest.additional_authenticated_data].
+  //
+  // The maximum size depends on the key version's
+  // NOTE: he combined length of the
+  // plaintext and additional_authenticated_data fields must be no larger than
+  // 8KiB.
+  bytes additional_authenticated_data = 3 [(google.api.field_behavior) = OPTIONAL];
 }
 
-message DestroyKEKRequest {
-  // Required kid of KEK to find and delete
-  bytes kek_kid = 1;
+// Request message for [KeyManagementService.Decrypt][thalescpl.io.kms.v1.KeyManagementService.Decrypt].
+message DecryptRequest {
+  // Required. The resource name of the [CryptoKey][thalescpl.io.kms.v1.CryptoKey] to use for decryption.
+  // The server will choose the appropriate version.
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
+  // Required. The encrypted data originally returned in
+  // [EncryptResponse.ciphertext][thalescpl.io.kms.v1.EncryptResponse.ciphertext].
+  bytes ciphertext = 2 [(google.api.field_behavior) = REQUIRED];
+  // Optional. Optional data that must match the data originally supplied in
+  // [EncryptRequest.additional_authenticated_data][thalescpl.io.kms.v1.EncryptRequest.additional_authenticated_data].
+  bytes additional_authenticated_data = 3 [(google.api.field_behavior) = OPTIONAL];
 }
 
-message DestroyKEKResponse {
-  // successful destroy?
-  bool success = 1;
-}
-
-message GenerateCAKRequest {
-  // key size in bits
-  int64 size = 1;
-  // What kind of key is it... only Asymmetric kinds will be supported
-  KeyKind kind = 2;
-  // Root CA Key ID
-  bytes root_ca_kid = 3;
-}
-
-message GenerateCAKResponse {
-  // Root CA Key ID
-  bytes root_ca_kid = 1;
-}
-
-message GenerateCARequest {
-  // Root CA Key ID
-  bytes root_ca_kid = 1;
-}
-
-message GenerateCAResponse {
-  // Root CA cert in PEM format
-  bytes cert = 1;
-}
-
-message DestroyCAKRequest {
-  // Required kid of KEK to find and delete
-  bytes kek_kid = 1;
-}
-
-message DestroyCAKResponse {
-  // successful destroy?
-  bool success = 1;
-}
-
-message DestroyCARequest {
-  // Required kid of KEK to find and delete
-  bytes kek_kid = 1;
-}
-
-message DestroyCAResponse {
-  // successful destroy?
-  bool success = 1;
-}
-
+// Request message for [KeyManagementService.SignCSRRequest][thalescpl.io.kms.v1.KeyManagementService.SignCSRRequest].
 message SignCSRRequest {
-  // Encrypted blob of DEK
-  bytes csr = 1;
-  // Root CA Key ID
-  bytes root_ca_kid = 2;
+  // Required. The resource name of the [CryptoKeyVersion][thalescpl.io.kms.v1.CryptoKey] to use for signing.
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
+  // Required. The Certificate Signing Request
+  // [SignCSRRequest.csr][thalescpl.io.kms.v1.SignCSRRequest.csr].
+  bytes csr = 2 [(google.api.field_behavior) = REQUIRED];
 }
 
+// Request message for [KeyManagementService.SignCSRResponse][thalescpl.io.kms.v1.KeyManagementService.SignCSRResponse].
 message SignCSRResponse {
-  // Certificate in PEM Form
-  bytes cert = 1;
+  // The resource name of the [CryptoKey][thalescpl.io.kms.v1.CryptoKey] used for the signing. Check
+  // this field to verify that the intended resource was used for signing.
+  string name = 1;
+  // Required. The signed  Certificate Signing Request
+  // [SignCSRResponse.certificate][thalescpl.io.kms.v1.SignCSRResponse.cert].
+  bytes certificate = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+// Response message for [KeyManagementService.Decrypt][thalescpl.io.kms.v1.KeyManagementService.Decrypt].
+message DecryptResponse {
+  // The decrypted data originally supplied in [EncryptRequest.plaintext][thalescpl.io.kms.v1.EncryptRequest.plaintext].
+  bytes plaintext = 1;
+}
+
+// Response message for [KeyManagementService.Encrypt][thalescpl.io.kms.v1.KeyManagementService.Encrypt].
+message EncryptResponse {
+  // The resource name of the [CryptoKey][thalescpl.io.kms.v1.CryptoKey] used in encryption. Check
+  // this field to verify that the intended resource was used for encryption.
+  string name = 1;
+  // The encrypted data.
+  bytes ciphertext = 2;
+}
+
+// Request message for [KeyManagementService.GetCABundle][thalescpl.io.kms.v1.KeyManagementService.GetCABundle].
+message GetCABundleRequest {
+  // Optional. If set to true, a full truststore will be returned, not just the current CA Cert Chain
+  bool include_bundle = 1;
+}
+
+// The public key for a given [CryptoKey][thalescpl.io.kms.v1.CABundle]. Obtained via
+// [GetCABundle][thalescpl.io.kms.v1.KeyManagementService.GetCABundle].
+message CABundle {
+  // The CA Bundle, encoded in PEM format
+  string pem = 1;
+
+}
+
+
+// The public key for a given [CryptoKey][thalescpl.io.kms.v1.CryptoKey]. Obtained via
+// [GetPublicKey][thalescpl.io.kms.v1.KeyManagementService.GetPublicKey].
+message PublicKey {
+  // The public key, encoded in PEM format. For more information, see the
+  // [RFC 7468](https://tools.ietf.org/html/rfc7468) sections for
+  // [General Considerations](https://tools.ietf.org/html/rfc7468#section-2) and
+  // [Textual Encoding of Subject Public Key Info]
+  // (https://tools.ietf.org/html/rfc7468#section-13).
+  string pem = 1;
+  // The [Algorithm][thalescpl.io.kms.v1.CryptoKeyVersion.CryptoKeyVersionAlgorithm] associated
+  // with this key.
+  CryptoKeyAlgorithm algorithm = 2;
 }

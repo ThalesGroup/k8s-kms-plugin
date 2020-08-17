@@ -10,8 +10,186 @@
   "produces": [
     "application/json"
   ],
-  "paths": {},
+  "paths": {
+    "/v1/decrypt": {
+      "post": {
+        "summary": "Decrypts data that was protected by [Encrypt][thalescpl.io.istio.v1.KeyManagementService.Encrypt]. The [CryptoKey.purpose][thalescpl.io.istio.v1.CryptoKey.purpose]\nmust be [ENCRYPT_DECRYPT][thalescpl.io.istio.v1.CryptoKey.CryptoKeyPurpose.ENCRYPT_DECRYPT].",
+        "operationId": "KeyManagementService_Decrypt",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1DecryptResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1DecryptRequest"
+            }
+          }
+        ],
+        "tags": [
+          "KeyManagementService"
+        ]
+      }
+    },
+    "/v1/encrypt": {
+      "post": {
+        "summary": "Encrypts data, so that it can only be recovered by a call to [Decrypt][thalescpl.io.istio.v1.KeyManagementService.Decrypt].\nThe [CryptoKey.purpose][thalescpl.io.istio.v1.CryptoKey.purpose] must be\n[ENCRYPT_DECRYPT][thalescpl.io.istio.v1.CryptoKey.CryptoKeyPurpose.ENCRYPT_DECRYPT].",
+        "operationId": "KeyManagementService_Encrypt",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1EncryptResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1EncryptRequest"
+            }
+          }
+        ],
+        "tags": [
+          "KeyManagementService"
+        ]
+      }
+    },
+    "/v1/keys": {
+      "post": {
+        "summary": "Create a new [CryptoKey][google.cloud.kms.v1.CryptoKey] within a [KeyRing][google.cloud.kms.v1.KeyRing].",
+        "description": "[CryptoKey.purpose][google.cloud.kms.v1.CryptoKey.purpose] and\n[CryptoKey.version_template.algorithm][google.cloud.kms.v1.CryptoKeyVersionTemplate.algorithm]\nare required.",
+        "operationId": "KeyManagementService_CreateCryptoKey",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1CryptoKey"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "Required. A [CryptoKey][google.cloud.kms.v1.CryptoKey] with initial field values.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1CryptoKey"
+            }
+          }
+        ],
+        "tags": [
+          "KeyManagementService"
+        ]
+      }
+    },
+    "/v1/public": {
+      "get": {
+        "summary": "Returns the public key for the k8s-kms-plugin's built in CA",
+        "operationId": "KeyManagementService_GetPublicKey",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1PublicKey"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "include_bundle",
+            "description": "Optional. If set to true, a full truststore will be returned, not just the current CA Cert Chain.",
+            "in": "query",
+            "required": false,
+            "type": "boolean",
+            "format": "boolean"
+          }
+        ],
+        "tags": [
+          "KeyManagementService"
+        ]
+      }
+    },
+    "/v1/sign": {
+      "post": {
+        "operationId": "KeyManagementService_SignCSR",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1SignCSRResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1SignCSRRequest"
+            }
+          }
+        ],
+        "tags": [
+          "KeyManagementService"
+        ]
+      }
+    }
+  },
   "definitions": {
+    "CryptoKeyCryptoKeyPurpose": {
+      "type": "string",
+      "enum": [
+        "CRYPTO_KEY_PURPOSE_UNSPECIFIED",
+        "ENCRYPT_DECRYPT",
+        "ASYMMETRIC_SIGN",
+        "ASYMMETRIC_DECRYPT"
+      ],
+      "default": "CRYPTO_KEY_PURPOSE_UNSPECIFIED",
+      "description": "[CryptoKeyPurpose][thalescpl.io.kms.v1.CryptoKey.CryptoKeyPurpose] describes the cryptographic capabilities of a\n[CryptoKey][thalescpl.io.kms.v1.CryptoKey]. A given key can only be used for the operations allowed by\nits purpose.\n\n - CRYPTO_KEY_PURPOSE_UNSPECIFIED: Not specified.\n - ENCRYPT_DECRYPT: [CryptoKeys][thalescpl.io.kms.v1.CryptoKey] with this purpose may be used with\n[Encrypt][thalescpl.io.kms.v1.KeyManagementService.Encrypt] and\n[Decrypt][thalescpl.io.kms.v1.KeyManagementService.Decrypt].\n - ASYMMETRIC_SIGN: [CryptoKeys][thalescpl.io.kms.v1.CryptoKey] with this purpose may be used with\n[AsymmetricSign][thalescpl.io.kms.v1.KeyManagementService.AsymmetricSign] and\n[GetPublicKey][thalescpl.io.kms.v1.KeyManagementService.GetPublicKey].\n - ASYMMETRIC_DECRYPT: [CryptoKeys][thalescpl.io.kms.v1.CryptoKey] with this purpose may be used with\n[AsymmetricDecrypt][thalescpl.io.kms.v1.KeyManagementService.AsymmetricDecrypt] and\n[GetPublicKey][thalescpl.io.kms.v1.KeyManagementService.GetPublicKey]."
+    },
     "protobufAny": {
       "type": "object",
       "properties": {
@@ -48,102 +226,158 @@
         }
       }
     },
-    "v1DestroyCAKResponse": {
+    "v1CryptoKey": {
       "type": "object",
       "properties": {
-        "success": {
-          "type": "boolean",
-          "format": "boolean",
-          "title": "successful destroy?"
-        }
-      }
-    },
-    "v1DestroyCAResponse": {
-      "type": "object",
-      "properties": {
-        "success": {
-          "type": "boolean",
-          "format": "boolean",
-          "title": "successful destroy?"
-        }
-      }
-    },
-    "v1DestroyKEKResponse": {
-      "type": "object",
-      "properties": {
-        "success": {
-          "type": "boolean",
-          "format": "boolean",
-          "title": "successful destroy?"
-        }
-      }
-    },
-    "v1GenerateCAKResponse": {
-      "type": "object",
-      "properties": {
-        "root_ca_kid": {
+        "name": {
           "type": "string",
-          "format": "byte",
-          "title": "Root CA Key ID"
-        }
-      }
-    },
-    "v1GenerateCAResponse": {
-      "type": "object",
-      "properties": {
-        "cert": {
+          "title": "The resource name for this [CryptoKey][thalescpl.io.kms.v1.CryptoKey]\nShould be unique to the device, and will fail if an existing key has been created by that name in the KMS"
+        },
+        "purpose": {
+          "$ref": "#/definitions/CryptoKeyCryptoKeyPurpose",
+          "description": "Immutable. The immutable purpose of this [CryptoKey][thalescpl.io.kms.v1.CryptoKey]."
+        },
+        "create_time": {
           "type": "string",
-          "format": "byte",
-          "title": "Root CA cert in PEM format"
+          "format": "date-time",
+          "description": "Output only. The time at which this [CryptoKey][thalescpl.io.kms.v1.CryptoKey] was created.",
+          "readOnly": true
         }
-      }
+      },
+      "description": "A [CryptoKey][thalescpl.io.kms.v1.CryptoKey] represents a logical key that can be used for cryptographic\noperations.\n\nA [CryptoKey][thalescpl.io.kms.v1.CryptoKey] is made up of zero or more [versions][thalescpl.io.kms.v1.CryptoKeyVersion],\nwhich represent the actual key material used in cryptographic operations."
     },
-    "v1GenerateKEKResponse": {
-      "type": "object",
-      "properties": {
-        "kek_kid": {
-          "type": "string",
-          "format": "byte",
-          "title": "KEK kid"
-        }
-      }
-    },
-    "v1KeyKind": {
+    "v1CryptoKeyAlgorithm": {
       "type": "string",
       "enum": [
-        "UNKNOWN",
-        "AES",
-        "RSA",
-        "ECC"
+        "CRYPTO_KEY_VERSION_ALGORITHM_UNSPECIFIED",
+        "GOOGLE_SYMMETRIC_ENCRYPTION",
+        "RSA_SIGN_PSS_2048_SHA256",
+        "RSA_SIGN_PSS_3072_SHA256",
+        "RSA_SIGN_PSS_4096_SHA256",
+        "RSA_SIGN_PSS_4096_SHA512",
+        "RSA_SIGN_PKCS1_2048_SHA256",
+        "RSA_SIGN_PKCS1_3072_SHA256",
+        "RSA_SIGN_PKCS1_4096_SHA256",
+        "RSA_SIGN_PKCS1_4096_SHA512",
+        "RSA_DECRYPT_OAEP_2048_SHA256",
+        "RSA_DECRYPT_OAEP_3072_SHA256",
+        "RSA_DECRYPT_OAEP_4096_SHA256",
+        "RSA_DECRYPT_OAEP_4096_SHA512",
+        "EC_SIGN_P256_SHA256",
+        "EC_SIGN_P384_SHA384",
+        "EXTERNAL_SYMMETRIC_ENCRYPTION"
       ],
-      "default": "UNKNOWN"
+      "default": "CRYPTO_KEY_VERSION_ALGORITHM_UNSPECIFIED",
+      "description": " - CRYPTO_KEY_VERSION_ALGORITHM_UNSPECIFIED: Not specified.\n - GOOGLE_SYMMETRIC_ENCRYPTION: Creates symmetric encryption keys.\n - RSA_SIGN_PSS_2048_SHA256: RSASSA-PSS 2048 bit key with a SHA256 digest.\n - RSA_SIGN_PSS_3072_SHA256: RSASSA-PSS 3072 bit key with a SHA256 digest.\n - RSA_SIGN_PSS_4096_SHA256: RSASSA-PSS 4096 bit key with a SHA256 digest.\n - RSA_SIGN_PSS_4096_SHA512: RSASSA-PSS 4096 bit key with a SHA512 digest.\n - RSA_SIGN_PKCS1_2048_SHA256: RSASSA-PKCS1-v1_5 with a 2048 bit key and a SHA256 digest.\n - RSA_SIGN_PKCS1_3072_SHA256: RSASSA-PKCS1-v1_5 with a 3072 bit key and a SHA256 digest.\n - RSA_SIGN_PKCS1_4096_SHA256: RSASSA-PKCS1-v1_5 with a 4096 bit key and a SHA256 digest.\n - RSA_SIGN_PKCS1_4096_SHA512: RSASSA-PKCS1-v1_5 with a 4096 bit key and a SHA512 digest.\n - RSA_DECRYPT_OAEP_2048_SHA256: RSAES-OAEP 2048 bit key with a SHA256 digest.\n - RSA_DECRYPT_OAEP_3072_SHA256: RSAES-OAEP 3072 bit key with a SHA256 digest.\n - RSA_DECRYPT_OAEP_4096_SHA256: RSAES-OAEP 4096 bit key with a SHA256 digest.\n - RSA_DECRYPT_OAEP_4096_SHA512: RSAES-OAEP 4096 bit key with a SHA512 digest.\n - EC_SIGN_P256_SHA256: ECDSA on the NIST P-256 curve with a SHA256 digest.\n - EC_SIGN_P384_SHA384: ECDSA on the NIST P-384 curve with a SHA384 digest.\n - EXTERNAL_SYMMETRIC_ENCRYPTION: Algorithm representing symmetric encryption by an external key manager."
+    },
+    "v1DecryptRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Required. The resource name of the [CryptoKey][thalescpl.io.kms.v1.CryptoKey] to use for decryption.\nThe server will choose the appropriate version."
+        },
+        "ciphertext": {
+          "type": "string",
+          "format": "byte",
+          "description": "Required. The encrypted data originally returned in\n[EncryptResponse.ciphertext][thalescpl.io.kms.v1.EncryptResponse.ciphertext]."
+        },
+        "additional_authenticated_data": {
+          "type": "string",
+          "format": "byte",
+          "description": "Optional. Optional data that must match the data originally supplied in\n[EncryptRequest.additional_authenticated_data][thalescpl.io.kms.v1.EncryptRequest.additional_authenticated_data]."
+        }
+      },
+      "description": "Request message for [KeyManagementService.Decrypt][thalescpl.io.kms.v1.KeyManagementService.Decrypt]."
+    },
+    "v1DecryptResponse": {
+      "type": "object",
+      "properties": {
+        "plaintext": {
+          "type": "string",
+          "format": "byte",
+          "description": "The decrypted data originally supplied in [EncryptRequest.plaintext][thalescpl.io.kms.v1.EncryptRequest.plaintext]."
+        }
+      },
+      "description": "Response message for [KeyManagementService.Decrypt][thalescpl.io.kms.v1.KeyManagementService.Decrypt]."
+    },
+    "v1EncryptRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "plaintext": {
+          "type": "string",
+          "format": "byte",
+          "description": "Required. The data to encrypt. Must be no larger than 64KiB.\n\nThe maximum size depends on the key version's"
+        },
+        "additional_authenticated_data": {
+          "type": "string",
+          "format": "byte",
+          "description": "Optional. Optional data that, if specified, must also be provided during decryption\nthrough [DecryptRequest.additional_authenticated_data][thalescpl.io.kms.v1.DecryptRequest.additional_authenticated_data].\n\nThe maximum size depends on the key version's\nNOTE: he combined length of the\nplaintext and additional_authenticated_data fields must be no larger than\n8KiB."
+        }
+      },
+      "description": "Request message for [KeyManagementService.Encrypt][thalescpl.io.kms.v1.KeyManagementService.Encrypt]."
+    },
+    "v1EncryptResponse": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The resource name of the [CryptoKey][thalescpl.io.kms.v1.CryptoKey] used in encryption. Check\nthis field to verify that the intended resource was used for encryption."
+        },
+        "ciphertext": {
+          "type": "string",
+          "format": "byte",
+          "description": "The encrypted data."
+        }
+      },
+      "description": "Response message for [KeyManagementService.Encrypt][thalescpl.io.kms.v1.KeyManagementService.Encrypt]."
+    },
+    "v1PublicKey": {
+      "type": "object",
+      "properties": {
+        "pem": {
+          "type": "string",
+          "description": "The public key, encoded in PEM format. For more information, see the\n[RFC 7468](https://tools.ietf.org/html/rfc7468) sections for\n[General Considerations](https://tools.ietf.org/html/rfc7468#section-2) and\n[Textual Encoding of Subject Public Key Info]\n(https://tools.ietf.org/html/rfc7468#section-13)."
+        },
+        "algorithm": {
+          "$ref": "#/definitions/v1CryptoKeyAlgorithm",
+          "description": "The [Algorithm][thalescpl.io.kms.v1.CryptoKeyVersion.CryptoKeyVersionAlgorithm] associated\nwith this key."
+        }
+      },
+      "description": "The public key for a given [CryptoKey][thalescpl.io.kms.v1.CryptoKey]. Obtained via\n[GetPublicKey][thalescpl.io.kms.v1.KeyManagementService.GetPublicKey]."
+    },
+    "v1SignCSRRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Required. The resource name of the [CryptoKeyVersion][thalescpl.io.kms.v1.CryptoKey] to use for signing."
+        },
+        "csr": {
+          "type": "string",
+          "format": "byte",
+          "description": "Required. The Certificate Signing Request\n[SignCSRRequest.csr][thalescpl.io.kms.v1.SignCSRRequest.csr]."
+        }
+      },
+      "description": "Request message for [KeyManagementService.SignCSRRequest][thalescpl.io.kms.v1.KeyManagementService.SignCSRRequest]."
     },
     "v1SignCSRResponse": {
       "type": "object",
       "properties": {
-        "cert": {
+        "name": {
+          "type": "string",
+          "description": "The resource name of the [CryptoKey][thalescpl.io.kms.v1.CryptoKey] used for the signing. Check\nthis field to verify that the intended resource was used for signing."
+        },
+        "certificate": {
           "type": "string",
           "format": "byte",
-          "title": "Certificate in PEM Form"
+          "description": "Required. The signed  Certificate Signing Request\n[SignCSRResponse.certificate][thalescpl.io.kms.v1.SignCSRResponse.cert]."
         }
-      }
-    },
-    "v1VersionResponse": {
-      "type": "object",
-      "properties": {
-        "version": {
-          "type": "string",
-          "description": "Version of the KMS plugin API."
-        },
-        "runtime_name": {
-          "type": "string",
-          "description": "Name of the KMS provider."
-        },
-        "runtime_version": {
-          "type": "string",
-          "description": "Version of the KMS provider. The string must be semver-compatible."
-        }
-      }
+      },
+      "description": "Request message for [KeyManagementService.SignCSRResponse][thalescpl.io.kms.v1.KeyManagementService.SignCSRResponse]."
     }
   }
 }

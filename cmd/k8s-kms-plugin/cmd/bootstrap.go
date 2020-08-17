@@ -78,7 +78,7 @@ func init() {
 	rootCmd.AddCommand(bootstrapCmd)
 
 	// Here you will define your flags and configuration settings.
-	bootstrapCmd.Flags().StringVar(&caTLSCert, "tls-ca", "certs/ca.crt", "EST TLS")
+	bootstrapCmd.Flags().StringVar(&caTLSCert, "tls-ca.go", "certs/ca.go.crt", "EST TLS")
 	bootstrapCmd.Flags().StringVar(&serverTLSKey, "tls-key", "certs/tls.key", "Key for Server TLS")
 	bootstrapCmd.Flags().StringVar(&serverTLSCert, "tls-certificate", "certs/tls.crt", "Cert for Server TLS")
 	bootstrapCmd.Flags().StringVar(&p11lib, "p11-lib", "", "Path to p11 library/client")

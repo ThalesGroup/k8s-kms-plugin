@@ -16,17 +16,13 @@ limitations under the License.
 package cmd
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
-	"crypto/x509/pkix"
-	"encoding/pem"
-	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/kms/v1"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"os"
 	"path/filepath"
 	"time"
@@ -35,6 +31,13 @@ import (
 var loop bool
 var maxLoops int
 var loopTime, timeout time.Duration
+
+const (
+	testDekName1 = "test-kms-dek-1"
+	testDekName2 = "test-kms-dek-2"
+	testCakName1 = "test-kms-cak-1"
+	testCakName2 = "test-kms-cak-2"
+)
 
 // testCmd represents the test command
 var testCmd = &cobra.Command{
@@ -69,208 +72,275 @@ func loopTestRun() error {
 }
 
 func runTest() error {
-	// Run Istio e2e tests against the socket
+	// Run kms e2e tests against the socket
 
-	ictx, icancel, ic, err := istio.GetClientSocket(socketPath, timeout)
+	ictx, icancel, ic, err := kms.GetClientSocket(socketPath, timeout)
 	defer icancel()
 	if err != nil {
 		logrus.Fatal(err)
 		return err
 	}
-	kctx, kcancel, kc, err := kms.GetClientSocket(socketPath, timeout)
-	defer kcancel()
-	if err != nil {
-		logrus.Fatal(err)
-		return err
-	}
-	// Generate a random UUID for request
-	var kekUuid, cakUuid uuid.UUID
-	var kekKid, cakKid []byte
-	kekUuid, err = uuid.NewRandom()
-	if err != nil {
-		return err
-	}
-	kekKid, err = kekUuid.MarshalText()
-	if err != nil {
-		return err
-	}
-	cakUuid, err = uuid.NewRandom()
-	if err != nil {
-		return err
-	}
-	cakKid, err = cakUuid.MarshalText()
-	if err != nil {
-		return err
-	}
+	//kctx, kcancel, kc, err := k8s.GetClientSocket(socketPath, timeout)
+	//defer kcancel()
+	//if err != nil {
+	//	logrus.Fatal(err)
+	//	return err
+	//}
 
 	/*
-		GenerateDEK
+		HealthCheck
 	*/
-	logrus.Info("Test 1 GenerateKEK 256 AES")
-	var genKEKResp *istio.GenerateKEKResponse
-	genKEKResp, err = ic.GenerateKEK(ictx, &istio.GenerateKEKRequest{
-		KekKid: kekKid,
-	})
-	if err != nil {
-		logrus.Errorf("Test 1 Failed: %v", err)
-		return err
-	}
-	logrus.Infof("Test 1 Returned KEK ID: %s", string(genKEKResp.KekKid))
+	logrus.Info("------------------------------------------------------------")
+	logrus.Info("Test 1 HealthCheck - Handler(s) should always stay up...")
+	logrus.Info("------------------------------------------------------------")
+
 	/*
-		GenerateDEK
+		GetPublicKey
 	*/
-	logrus.Info("Test 2 GenerateDEK 256 AES")
-	var genDEKResp *istio.GenerateDEKResponse
-	if genDEKResp, err = ic.GenerateDEK(ictx, &istio.GenerateDEKRequest{
-		Size:   256,
-		Kind:   istio.KeyKind_AES,
-		KekKid: genKEKResp.KekKid,
+	logrus.Info("------------------------------------------------------------")
+	logrus.Info("Test 2 GetPublicKey - Get the Public Key for the Root CA")
+	var pubKey *kms.PublicKey
+	if pubKey, err = ic.GetPublicKey(ictx, &kms.GetPublicKeyRequest{
+		IncludeBundle: false,
 	}); err != nil {
-		logrus.Fatal(err)
-
 		return err
 	}
-
-	logrus.Infof("Test 2 Returned WrappedDEK: %s", genDEKResp.EncryptedDekBlob)
-
+	if pubKey == nil {
+		err = status.Error(codes.Internal, "pubic key unavailable... did you bootstrap the PKCS11 device?")
+		return err
+	}
+	logrus.Infof("Public Key : %s", pubKey.Algorithm.String())
 	/*
-		GenerateSEK
+		CreateCryptoKey ENCRYPT_DECRYPT
 	*/
+	logrus.Info("------------------------------------------------------------")
+	logrus.Info("Test 3 CreateCryptoKey - Purpose ENCRYPT_DECRYPT")
 
-	logrus.Info("Test 3 GenerateSEK 4096 RSA")
-	var genSEKResp *istio.GenerateSEKResponse
-	if genSEKResp, err = ic.GenerateSEK(ictx, &istio.GenerateSEKRequest{
-		Size:             4096,
-		Kind:             istio.KeyKind_RSA,
-		KekKid:           genKEKResp.KekKid,
-		EncryptedDekBlob: genDEKResp.EncryptedDekBlob,
-	}); err != nil {
-		logrus.Fatal(err)
-		return err
-	}
-	logrus.Infof("Test 3 Returned WrappedSEK: %s", genSEKResp.EncryptedSekBlob)
+	var dek *kms.CryptoKey
 
-	/*
-		LoadSEK
-	*/
-	logrus.Info("Test 4 LoadSEK 4096 RSA")
-	var loadSEKResp *istio.LoadSEKResponse
-	if loadSEKResp, err = ic.LoadSEK(ictx, &istio.LoadSEKRequest{
-
-		KekKid:           genKEKResp.KekKid,
-		EncryptedDekBlob: genDEKResp.EncryptedDekBlob,
-		EncryptedSekBlob: genSEKResp.EncryptedSekBlob,
-	}); err != nil {
-		logrus.Fatal(err)
-		return err
-	}
-	var out string
-	if debug {
-		out = string(loadSEKResp.ClearSek)
-	} else {
-		out = "Success"
-	}
-	// Load the PEM and use it...
-	var sek *rsa.PrivateKey
-	var b *pem.Block
-	b, _ = pem.Decode(loadSEKResp.ClearSek)
-	if sek, err = x509.ParsePKCS1PrivateKey(b.Bytes); err != nil {
-		logrus.Fatal(err)
-
-		return err
-	}
-	logrus.Infof("Test 4 Returned LoadedSEK in PEM Format: %v", out)
-	/*
-		GenerateCAK
-	*/
-	logrus.Info("Test 5 GenerateCAK 4096 RSA")
-	var genCAKResp *kms.GenerateCAKResponse
-	if genCAKResp, err = kc.GenerateCAK(kctx, &kms.GenerateCAKRequest{
-		Size:      4096,
-		Kind:      kms.KeyKind_RSA,
-		RootCaKid: cakKid,
-	}); err != nil {
-		logrus.Fatal(err)
-		return err
-	}
-
-	logrus.Infof("Test 5  GenerateCAK KID Returned: %s", string(genCAKResp.RootCaKid))
-	/*
-		GenerateCA
-	*/
-	logrus.Info("Test 6 GenerateCA, Sign and Store")
-	var genCAResp *kms.GenerateCAResponse
-	if genCAResp, err = kc.GenerateCA(kctx, &kms.GenerateCARequest{
-
-		RootCaKid: cakKid,
-	}); err != nil {
-		logrus.Fatal(err)
-		return err
-	}
-	if debug {
-		out = string(genCAResp.Cert)
-	} else {
-		out = "Success"
-	}
-	logrus.Infof("Test 6  GenerateCA in : %s", out)
-
-	/*
-		SignCSR
-	*/
-	logrus.Info("Test 7 SignCSR Root CA Cert")
-	var signCSRResp *kms.SignCSRResponse
-	template := &x509.CertificateRequest{
-
-		SignatureAlgorithm: x509.SHA512WithRSA,
-		PublicKeyAlgorithm: x509.RSA,
-		Subject: pkix.Name{
-			CommonName: "Hello",
+	if dek, err = ic.CreateCryptoKey(ictx, &kms.CreateCryptoKeyRequest{
+		CryptoKeyId: testDekName1,
+		CryptoKey: &kms.CryptoKey{
+			Name:       testDekName1,
+			Purpose:    kms.CryptoKey_ENCRYPT_DECRYPT,
+			CreateTime: timestamppb.New(time.Now()),
 		},
-		PublicKey: sek.Public(),
-		DNSNames:  []string{"awesome.com"},
-	}
-	req := &kms.SignCSRRequest{
-		RootCaKid: cakKid,
-	}
-
-	if req.Csr, err = x509.CreateCertificateRequest(rand.Reader, template, sek); err != nil {
-		return err
-	}
-	if signCSRResp, err = kc.SignCSR(kctx, req); err != nil {
-		logrus.Fatal(err)
+	}); err != nil {
 		return err
 	}
 
-	logrus.Infof("Test 7 SignCSR Cert: %s", string(signCSRResp.Cert))
+	logrus.Infof("Created CryptoKey DEK : %s ", testDekName1)
+	logrus.Info("------------------------------------------------------------")
 
 	/*
-		DestroyCA
+		CreateCryptoKey -
 	*/
-	logrus.Info("Test 8 DestroyCA")
-	var destroyCAResp *kms.DestroyCAResponse
-	if destroyCAResp, err = kc.DestroyCA(kctx, &kms.DestroyCARequest{
-		KekKid: cakKid,
+	logrus.Info("------------------------------------------------------------")
+	logrus.Info("Test 4 Encrypt and Decrypt - Simple")
+	var encryptResp *kms.EncryptResponse
+	if encryptResp, err = ic.Encrypt(ictx, &kms.EncryptRequest{
+		Name:                        dek.Name,
+		Plaintext:                   []byte("Hello World"),
+		AdditionalAuthenticatedData: []byte("some aad"),
 	}); err != nil {
-		logrus.Fatal(err)
 		return err
 	}
-
-	logrus.Infof("Test 8 DestroyCA result : %b", destroyCAResp.Success)
+	logrus.Infof("Encrypted : %s", string(encryptResp.Ciphertext))
+	var decryptResp *kms.DecryptResponse
+	if decryptResp, err = ic.Decrypt(ictx, &kms.DecryptRequest{
+		Name:                        dek.Name,
+		Ciphertext:                  encryptResp.Ciphertext,
+		AdditionalAuthenticatedData: []byte("some aad"),
+	}); err != nil {
+		return err
+	}
+	logrus.Infof("Decrypted : %s", string(decryptResp.Plaintext))
+	logrus.Info("------------------------------------------------------------")
 
 	/*
-		DestroyCAK
+		CreateCryptoKey -
 	*/
-	logrus.Info("Test 9 DestroyCA")
-	var destroyCAKResp *kms.DestroyCAKResponse
-	if destroyCAKResp, err = kc.DestroyCAK(kctx, &kms.DestroyCAKRequest{
-		KekKid: cakKid,
+	logrus.Info("------------------------------------------------------------")
+	logrus.Info("Test 5 CreateCryptoKey - Purpose ASYMMETRIC_SIGN")
+	var cak *kms.CryptoKey
+	if cak, err = ic.CreateCryptoKey(ictx, &kms.CreateCryptoKeyRequest{
+		CryptoKeyId: testDekName1,
+		CryptoKey: &kms.CryptoKey{
+			Name:       "AEAD1",
+			Purpose:    kms.CryptoKey_ASYMMETRIC_SIGN,
+			CreateTime: timestamppb.New(time.Now()),
+		},
 	}); err != nil {
-		logrus.Fatal(err)
 		return err
 	}
+	logrus.Infof("Generated CryptoKey : %s", cak.Name)
+	logrus.Infof("Created CAK : %s ", testCakName1)
+	logrus.Info("------------------------------------------------------------")
 
-	logrus.Infof("Test 9 DestroyCAK result : %b", destroyCAKResp.Success)
-	logrus.Infof("------------------------------------------------------------")
+	//var genKEKResp *kms.GenerateKEKResponse
+	//genKEKResp, err = ic.GenerateKEK(ictx, &kms.GenerateKEKRequest{
+	//	KekKid: kekKid,
+	//})
+	//if err != nil {
+	//	logrus.Errorf("Test 1 Failed: %v", err)
+	//	return err
+	//}
+	//logrus.Infof("Test 1 Returned KEK ID: %s", string(genKEKResp.KekKid))
+	///*
+	//	GenerateDEK
+	//*/
+	//logrus.Info("Test 2 GenerateDEK 256 AES")
+	//var genDEKResp *kms.GenerateDEKResponse
+	//if genDEKResp, err = ic.GenerateDEK(ictx, &kms.GenerateDEKRequest{
+	//	Size:   256,
+	//	Kind:   kms.KeyKind_AES,
+	//	KekKid: genKEKResp.KekKid,
+	//}); err != nil {
+	//	logrus.Fatal(err)
+	//
+	//	return err
+	//}
+	//
+	//logrus.Infof("Test 2 Returned WrappedDEK: %s", genDEKResp.EncryptedDekBlob)
+	//
+	///*
+	//	GenerateSEK
+	//*/
+	//
+	//logrus.Info("Test 3 GenerateSEK 4096 RSA")
+	//var genSEKResp *kms.GenerateSEKResponse
+	//if genSEKResp, err = ic.GenerateSEK(ictx, &kms.GenerateSEKRequest{
+	//	Size:             4096,
+	//	Kind:             kms.KeyKind_RSA,
+	//	KekKid:           genKEKResp.KekKid,
+	//	EncryptedDekBlob: genDEKResp.EncryptedDekBlob,
+	//}); err != nil {
+	//	logrus.Fatal(err)
+	//	return err
+	//}
+	//logrus.Infof("Test 3 Returned WrappedSEK: %s", genSEKResp.EncryptedSekBlob)
+	//
+	///*
+	//	LoadSEK
+	//*/
+	//logrus.Info("Test 4 LoadSEK 4096 RSA")
+	//var loadSEKResp *kms.LoadSEKResponse
+	//if loadSEKResp, err = ic.LoadSEK(ictx, &kms.LoadSEKRequest{
+	//
+	//	KekKid:           genKEKResp.KekKid,
+	//	EncryptedDekBlob: genDEKResp.EncryptedDekBlob,
+	//	EncryptedSekBlob: genSEKResp.EncryptedSekBlob,
+	//}); err != nil {
+	//	logrus.Fatal(err)
+	//	return err
+	//}
+	//var out string
+	//if debug {
+	//	out = string(loadSEKResp.ClearSek)
+	//} else {
+	//	out = "Success"
+	//}
+	//// Load the PEM and use it...
+	//var sek *rsa.PrivateKey
+	//var b *pem.Block
+	//b, _ = pem.Decode(loadSEKResp.ClearSek)
+	//if sek, err = x509.ParsePKCS1PrivateKey(b.Bytes); err != nil {
+	//	logrus.Fatal(err)
+	//
+	//	return err
+	//}
+	//logrus.Infof("Test 4 Returned LoadedSEK in PEM Format: %v", out)
+	///*
+	//	GenerateCAK
+	//*/
+	//logrus.Info("Test 5 GenerateCAK 4096 RSA")
+	//var genCAKResp *kms.GenerateCAKResponse
+	//if genCAKResp, err = kc.GenerateCAK(kctx, &kms.GenerateCAKRequest{
+	//	Size:      4096,
+	//	Kind:      kms.KeyKind_RSA,
+	//	RootCaKid: cakKid,
+	//}); err != nil {
+	//	logrus.Fatal(err)
+	//	return err
+	//}
+	//
+	//logrus.Infof("Test 5  GenerateCAK KID Returned: %s", string(genCAKResp.RootCaKid))
+	///*
+	//	GenerateCA
+	//*/
+	//logrus.Info("Test 6 GenerateCA, Sign and Store")
+	//var genCAResp *kms.GenerateCAResponse
+	//if genCAResp, err = kc.GenerateCA(kctx, &kms.GenerateCARequest{
+	//
+	//	RootCaKid: cakKid,
+	//}); err != nil {
+	//	logrus.Fatal(err)
+	//	return err
+	//}
+	//if debug {
+	//	out = string(genCAResp.Cert)
+	//} else {
+	//	out = "Success"
+	//}
+	//logrus.Infof("Test 6  GenerateCA in : %s", out)
+	//
+	///*
+	//	SignCSR
+	//*/
+	//logrus.Info("Test 7 SignCSR Root CA Cert")
+	//var signCSRResp *kms.SignCSRResponse
+	//template := &x509.CertificateRequest{
+	//
+	//	SignatureAlgorithm: x509.SHA512WithRSA,
+	//	PublicKeyAlgorithm: x509.RSA,
+	//	Subject: pkix.Name{
+	//		CommonName: "Hello",
+	//	},
+	//	PublicKey: sek.Public(),
+	//	DNSNames:  []string{"awesome.com"},
+	//}
+	//req := &kms.SignCSRRequest{
+	//	RootCaKid: cakKid,
+	//}
+	//
+	//if req.Csr, err = x509.CreateCertificateRequest(rand.Reader, template, sek); err != nil {
+	//	return err
+	//}
+	//if signCSRResp, err = kc.SignCSR(kctx, req); err != nil {
+	//	logrus.Fatal(err)
+	//	return err
+	//}
+	//
+	//logrus.Infof("Test 7 SignCSR Cert: %s", string(signCSRResp.Cert))
+	//
+	///*
+	//	DestroyCA
+	//*/
+	//logrus.Info("Test 8 DestroyCA")
+	//var destroyCAResp *kms.DestroyCAResponse
+	//if destroyCAResp, err = kc.DestroyCA(kctx, &kms.DestroyCARequest{
+	//	KekKid: cakKid,
+	//}); err != nil {
+	//	logrus.Fatal(err)
+	//	return err
+	//}
+	//
+	//logrus.Infof("Test 8 DestroyCA result : %b", destroyCAResp.Success)
+	//
+	///*
+	//	DestroyCAK
+	//*/
+	//logrus.Info("Test 9 DestroyCA")
+	//var destroyCAKResp *kms.DestroyCAKResponse
+	//if destroyCAKResp, err = kc.DestroyCAK(kctx, &kms.DestroyCAKRequest{
+	//	KekKid: cakKid,
+	//}); err != nil {
+	//	logrus.Fatal(err)
+	//	return err
+	//}
+	//
+	//logrus.Infof("Test 9 DestroyCAK result : %b", destroyCAKResp.Success)
+	//logrus.Infof("------------------------------------------------------------")
 	return err
 
 }

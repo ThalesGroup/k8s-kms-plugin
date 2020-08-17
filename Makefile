@@ -3,8 +3,9 @@
 all: build
 
 SECRETNAME=gcr-json-key
-P11_TOKEN=ajak
+P11_TOKEN=user
 P11_PIN=password
+
 ## Pipeline
 
 lint:
@@ -15,7 +16,7 @@ coverage:
 		go tool cover -html=build/coverage.out -o build/coverage.html
 
 ## Dev
-gen: gen-grpc gen-openapi
+gen:  gen-grpc
 gen-grpc:
 		@prototool all || true
 		@cp -r generated/github.com/thalescpl-io/k8s-kms-plugin/apis/* apis/

@@ -24,8 +24,21 @@
 package utils
 
 import (
+	"errors"
 	"github.com/ThalesIgnite/crypto11"
+	"github.com/ThalesIgnite/gose/jose"
 	"os"
+)
+
+var (
+	ErrNoSuchKey  = errors.New("no such key")
+	ErrNoSuchCert = errors.New("no such cert")
+
+	AuthenticatedEncryptedKeyOperations = []jose.KeyOps{jose.KeyOpsDecrypt, jose.KeyOpsEncrypt}
+	AsymmetricDecryptionKeyOperations   = []jose.KeyOps{jose.KeyOpsDecrypt, jose.KeyOpsEncrypt}
+
+	SigningKeyOperations      = []jose.KeyOps{jose.KeyOpsSign}
+	VerificationKeyOperations = []jose.KeyOps{jose.KeyOpsVerify}
 )
 
 func GetCrypto11Config() (config *crypto11.Config) {
