@@ -95,6 +95,10 @@ var serveCmd = &cobra.Command{
 			if grpcUNIX, err = net.Listen("unix", socketPath); err != nil {
 				return
 			}
+			// Istiod runs with uid and gid 1337, but the plugin runs with uid 0 and
+			// gid 1337.  Change the socket permissions so the group has read/write
+			// access to the socket.
+			os.Chmod(socketPath, 0775);
 			g.Go(func() error { return grpcServe(grpcUNIX) })
 			logrus.Infof("KMS Plugin Listening at : %s\n", socketPath)
 
