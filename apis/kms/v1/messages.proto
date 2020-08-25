@@ -91,19 +91,19 @@ message CreateCryptoKeyRequest {
   // Required. A [CryptoKey][google.cloud.kms.v1.CryptoKey] with initial field values.
   CryptoKey crypto_key = 2 [(google.api.field_behavior) = REQUIRED];
 }
+
 // Request message for [KeyManagementService.ListCryptoKeys][google.cloud.kms.v1.KeyManagementService.ListCryptoKeys].
 message ListCryptoKeysRequest {
   // Optional.  Include all metadata about the crypto keys
-  bool all_metadata = 1 ;
-
+  bool all_metadata = 1;
 }
-
 
 // Response message for [KeyManagementService.ListCryptoKeys][google.cloud.kms.v1.KeyManagementService.ListCryptoKeys].
-message ListCryptoKeysResponse{
+message ListCryptoKeysResponse {
   // List of crypto keys in scope for this requesting client...
-  repeated CryptoKey crypto_keys = 1[(google.api.field_behavior) = OUTPUT_ONLY];
+  repeated CryptoKey crypto_keys = 1 [(google.api.field_behavior) = OUTPUT_ONLY];
 }
+
 // A [CryptoKey][thalescpl.io.kms.v1.CryptoKey] represents a logical key that can be used for cryptographic
 // operations.
 //
@@ -212,18 +212,16 @@ message EncryptResponse {
 
 // Request message for [KeyManagementService.GetCABundle][thalescpl.io.kms.v1.KeyManagementService.GetCABundle].
 message GetCABundleRequest {
-  // Optional. If set to true, a full truststore will be returned, not just the current CA Cert Chain
-  bool include_bundle = 1;
+  // Optional. If set to true, additional CA Certs will be injected from many federated trust provided (TODO: Future implementation)
+  bool include_federated_truststore = 1;
 }
 
 // The public key for a given [CryptoKey][thalescpl.io.kms.v1.CABundle]. Obtained via
 // [GetCABundle][thalescpl.io.kms.v1.KeyManagementService.GetCABundle].
 message CABundle {
-  // The CA Bundle, encoded in PEM format
+  // The CA Certificate Chain bundle, encoded in PEM format with concatinated certificates from the int and root CA
   string pem = 1;
-
 }
-
 
 // The public key for a given [CryptoKey][thalescpl.io.kms.v1.CryptoKey]. Obtained via
 // [GetPublicKey][thalescpl.io.kms.v1.KeyManagementService.GetPublicKey].
