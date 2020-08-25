@@ -23,6 +23,7 @@ import (
 	"math/big"
 	"net"
 	"reflect"
+	"strings"
 	"time"
 )
 
@@ -83,6 +84,27 @@ type P11 struct {
 
 	// Dev stuff
 	overwrite bool
+}
+
+func (p *P11) GetCABundle(ctx context.Context, request *kms.GetCABundleRequest) (resp *kms.CABundle, err error) {
+	rootCert := &pem.Block{
+		Type:    "CERTIFICATE",
+		Headers: nil,
+		Bytes:   p.rootCert.Raw,
+	}
+	intCert := &pem.Block{
+		Type:    "CERTIFICATE",
+		Headers: nil,
+		Bytes:   p.intCert.Raw,
+	}
+	resp = &kms.CABundle{
+		Pem: strings.Join([]string{string(pem.EncodeToMemory(rootCert)), string(pem.EncodeToMemory(intCert))}, "\n"),
+	}
+	return
+}
+
+func (p *P11) ListCryptoKeys(ctx context.Context, request *kms.ListCryptoKeysRequest) (*kms.ListCryptoKeysResponse, error) {
+	panic("implement me")
 }
 
 func (p *P11) LoadIntKek() (err error) {
@@ -189,19 +211,6 @@ func (p *P11) Encrypt(ctx context.Context, req *kms.EncryptRequest) (resp *kms.E
 	}
 	resp = &kms.EncryptResponse{
 		Ciphertext: []byte(out),
-	}
-	return
-}
-
-func (p *P11) GetPublicKey(ctx context.Context, request *kms.GetPublicKeyRequest) (resp *kms.PublicKey, err error) {
-	pp := &pem.Block{
-		Type:    "RSA PUBLIC KEY",
-		Headers: nil,
-		Bytes:   nil,
-	}
-	resp = &kms.PublicKey{
-		Pem:       string(pem.EncodeToMemory(pp)),
-		Algorithm: kms.CryptoKeyAlgorithm_RSA_SIGN_PSS_4096_SHA512,
 	}
 	return
 }
