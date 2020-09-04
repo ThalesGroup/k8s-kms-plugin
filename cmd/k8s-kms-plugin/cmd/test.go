@@ -177,7 +177,7 @@ func runTest() error {
 		return err
 	}
 	logrus.Infof("Test 4 Returned LoadedSEK in PEM Format: %v", out)
-
+	sek.Public()
 	return nil
 }
 
