@@ -122,8 +122,7 @@ func runTest() error {
 	logrus.Info("Test 2 GenerateDEK 256 AES")
 	var genDEKResp *istio.GenerateDEKResponse
 	if genDEKResp, err = ic.GenerateDEK(ictx, &istio.GenerateDEKRequest{
-		Size:   256,
-		Kind:   istio.KeyKind_AES,
+
 		KekKid: genKEKResp.KekKid,
 	}); err != nil {
 		logrus.Fatal(err)
@@ -138,8 +137,8 @@ func runTest() error {
 	*/
 
 	logrus.Info("Test 3 GenerateSEK 4096 RSA")
-	var genSEKResp *istio.GenerateSEKResponse
-	if genSEKResp, err = ic.GenerateSEK(ictx, &istio.GenerateSEKRequest{
+	var genSEKResp *istio.GenerateSKeyResponse
+	if genSEKResp, err = ic.GenerateSKey(ictx, &istio.GenerateSKeyRequest{
 		Size:             4096,
 		Kind:             istio.KeyKind_RSA,
 		KekKid:           genKEKResp.KekKid,
@@ -148,32 +147,32 @@ func runTest() error {
 		logrus.Fatal(err)
 		return err
 	}
-	logrus.Infof("Test 3 Returned WrappedSEK: %s", genSEKResp.EncryptedSekBlob)
+	logrus.Infof("Test 3 Returned WrappedSEK: %s", genSEKResp.EncryptedSkeyBlob)
 
 	/*
 		LoadSEK
 	*/
 	logrus.Info("Test 4 LoadSEK 4096 RSA")
-	var loadSEKResp *istio.LoadSEKResponse
-	if loadSEKResp, err = ic.LoadSEK(ictx, &istio.LoadSEKRequest{
+	var loadSEKResp *istio.LoadSKeyResponse
+	if loadSEKResp, err = ic.LoadSKey(ictx, &istio.LoadSKeyRequest{
 
 		KekKid:           genKEKResp.KekKid,
 		EncryptedDekBlob: genDEKResp.EncryptedDekBlob,
-		EncryptedSekBlob: genSEKResp.EncryptedSekBlob,
+		EncryptedSkeyBlob: genSEKResp.EncryptedSkeyBlob,
 	}); err != nil {
 		logrus.Fatal(err)
 		return err
 	}
 	var out string
 	if debug {
-		out = string(loadSEKResp.ClearSek)
+		out = string(loadSEKResp.PlaintextSkey)
 	} else {
 		out = "Success"
 	}
 	// Load the PEM and use it...
 	var sek *rsa.PrivateKey
 	var b *pem.Block
-	b, _ = pem.Decode(loadSEKResp.ClearSek)
+	b, _ = pem.Decode(loadSEKResp.PlaintextSkey)
 	if sek, err = x509.ParsePKCS1PrivateKey(b.Bytes); err != nil {
 		logrus.Fatal(err)
 

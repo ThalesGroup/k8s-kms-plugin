@@ -48,15 +48,41 @@
         }
       }
     },
-    "v1DestroyKEKResponse": {
+    "v1AuthenticatedDecryptResponse": {
       "type": "object",
       "properties": {
-        "success": {
-          "type": "boolean",
-          "format": "boolean",
-          "title": "successful destroy?"
+        "plaintext": {
+          "type": "string",
+          "format": "byte"
         }
-      }
+      },
+      "title": "AuthenticatedDecryptResponse"
+    },
+    "v1AuthenticatedEncryptResponse": {
+      "type": "object",
+      "properties": {
+        "ciphertext": {
+          "type": "string",
+          "format": "byte"
+        },
+        "iv": {
+          "type": "string",
+          "format": "byte"
+        },
+        "auth_tag": {
+          "type": "string",
+          "format": "byte"
+        }
+      },
+      "title": "AuthenticatedEncryptResponse"
+    },
+    "v1Curve": {
+      "type": "string",
+      "enum": [
+        "UNSUPPORTED",
+        "ED25519"
+      ],
+      "default": "UNSUPPORTED"
     },
     "v1GenerateDEKResponse": {
       "type": "object",
@@ -78,13 +104,13 @@
         }
       }
     },
-    "v1GenerateSEKResponse": {
+    "v1GenerateSKeyResponse": {
       "type": "object",
       "properties": {
-        "encrypted_sek_blob": {
+        "encrypted_skey_blob": {
           "type": "string",
           "format": "byte",
-          "title": "Encrypted blob of SEK encrypted by DEK"
+          "title": "Encrypted blob of SKey encrypted by DEK"
         }
       }
     },
@@ -98,13 +124,13 @@
       ],
       "default": "UNKNOWN"
     },
-    "v1LoadSEKResponse": {
+    "v1LoadSKeyResponse": {
       "type": "object",
       "properties": {
-        "clear_sek": {
+        "plaintext_skey": {
           "type": "string",
           "format": "byte",
-          "title": "Clear SEK"
+          "title": "Intermediate CA Signing KeyPair in plaintext in PEM Format"
         }
       }
     }

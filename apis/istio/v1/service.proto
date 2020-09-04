@@ -8,14 +8,16 @@ import "apis/istio/v1/messages.proto";
 import "google/protobuf/timestamp.proto";
 
 service KeyManagementService {
-  // GenerateDEK returns a wrapped (by KMS handled key)
-  rpc GenerateDEK(GenerateDEKRequest) returns (GenerateDEKResponse);
-  // GenerateSEK returns a wrapped (by provided encrypted DEK ), for later use during loading and signing key generation
-  rpc GenerateSEK(GenerateSEKRequest) returns (GenerateSEKResponse);
-  // LoadSEK returns the SEK unwrapped for the controller to use for CA work...
-  rpc LoadSEK(LoadSEKRequest) returns (LoadSEKResponse);
   // GenerateKEK returns the KID of the GeneratedKEK if allowed/successful
   rpc GenerateKEK(GenerateKEKRequest) returns (GenerateKEKResponse);
-  // DestroyKEK returns a success/failure to destroy the KEK... this is NON-REVERSIBLE...
-  rpc DestroyKEK(DestroyKEKRequest) returns (DestroyKEKResponse);
+  // GenerateDEK returns a wrapped (by HSM handled KEK)
+  rpc GenerateDEK(GenerateDEKRequest) returns (GenerateDEKResponse);
+  // GenerateSKey returns a wrapped (by provided encrypted DEK ), for later use during loading and signing key generation
+  rpc GenerateSKey(GenerateSKeyRequest) returns (GenerateSKeyResponse);
+  // LoadSKey returns the SKey unwrapped for the controller to use for CA work...
+  rpc LoadSKey(LoadSKeyRequest) returns (LoadSKeyResponse);
+  // AuthenticatedEncrypt returns a payload protect by AEAD (Authenticated Encryption with Associated Data) AES-GCM with 256-bit
+  rpc AuthenticatedEncrypt(AuthenticatedEncryptRequest) returns (AuthenticatedEncryptResponse);
+  // AuthenticatedDecrypt returns a payload decrypted from the previously invoke AE
+  rpc AuthenticatedDecrypt(AuthenticatedDecryptRequest) returns (AuthenticatedDecryptResponse);
 }
