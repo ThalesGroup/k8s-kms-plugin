@@ -16,10 +16,8 @@ limitations under the License.
 package cmd
 
 import (
-	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/pem"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -156,8 +154,8 @@ func runTest() error {
 	var loadSEKResp *istio.LoadSKeyResponse
 	if loadSEKResp, err = ic.LoadSKey(ictx, &istio.LoadSKeyRequest{
 
-		KekKid:           genKEKResp.KekKid,
-		EncryptedDekBlob: genDEKResp.EncryptedDekBlob,
+		KekKid:            genKEKResp.KekKid,
+		EncryptedDekBlob:  genDEKResp.EncryptedDekBlob,
 		EncryptedSkeyBlob: genSEKResp.EncryptedSkeyBlob,
 	}); err != nil {
 		logrus.Fatal(err)
@@ -179,99 +177,8 @@ func runTest() error {
 		return err
 	}
 	logrus.Infof("Test 4 Returned LoadedSEK in PEM Format: %v", out)
-	/*
-		GenerateCAK
-	*/
-	logrus.Info("Test 5 GenerateCAK 4096 RSA")
-	var genCAKResp *kms.GenerateCAKResponse
-	if genCAKResp, err = kc.GenerateCAK(kctx, &kms.GenerateCAKRequest{
-		Size:      4096,
-		Kind:      kms.KeyKind_RSA,
-		RootCaKid: cakKid,
-	}); err != nil {
-		logrus.Fatal(err)
-		return err
-	}
 
-	logrus.Infof("Test 5  GenerateCAK KID Returned: %s", string(genCAKResp.RootCaKid))
-	/*
-		GenerateCA
-	*/
-	logrus.Info("Test 6 GenerateCA, Sign and Store")
-	var genCAResp *kms.GenerateCAResponse
-	if genCAResp, err = kc.GenerateCA(kctx, &kms.GenerateCARequest{
-
-		RootCaKid: cakKid,
-	}); err != nil {
-		logrus.Fatal(err)
-		return err
-	}
-	if debug {
-		out = string(genCAResp.Cert)
-	} else {
-		out = "Success"
-	}
-	logrus.Infof("Test 6  GenerateCA in : %s", out)
-
-	/*
-		SignCSR
-	*/
-	logrus.Info("Test 7 SignCSR Root CA Cert")
-	var signCSRResp *kms.SignCSRResponse
-	template := &x509.CertificateRequest{
-
-		SignatureAlgorithm: x509.SHA512WithRSA,
-		PublicKeyAlgorithm: x509.RSA,
-		Subject: pkix.Name{
-			CommonName: "Hello",
-		},
-		PublicKey: sek.Public(),
-		DNSNames:  []string{"awesome.com"},
-	}
-	req := &kms.SignCSRRequest{
-		RootCaKid: cakKid,
-	}
-
-	if req.Csr, err = x509.CreateCertificateRequest(rand.Reader, template, sek); err != nil {
-		return err
-	}
-	if signCSRResp, err = kc.SignCSR(kctx, req); err != nil {
-		logrus.Fatal(err)
-		return err
-	}
-
-	logrus.Infof("Test 7 SignCSR Cert: %s", string(signCSRResp.Cert))
-
-	/*
-		DestroyCA
-	*/
-	logrus.Info("Test 8 DestroyCA")
-	var destroyCAResp *kms.DestroyCAResponse
-	if destroyCAResp, err = kc.DestroyCA(kctx, &kms.DestroyCARequest{
-		KekKid: cakKid,
-	}); err != nil {
-		logrus.Fatal(err)
-		return err
-	}
-
-	logrus.Infof("Test 8 DestroyCA result : %b", destroyCAResp.Success)
-
-	/*
-		DestroyCAK
-	*/
-	logrus.Info("Test 9 DestroyCA")
-	var destroyCAKResp *kms.DestroyCAKResponse
-	if destroyCAKResp, err = kc.DestroyCAK(kctx, &kms.DestroyCAKRequest{
-		KekKid: cakKid,
-	}); err != nil {
-		logrus.Fatal(err)
-		return err
-	}
-
-	logrus.Infof("Test 9 DestroyCAK result : %b", destroyCAKResp.Success)
-	logrus.Infof("------------------------------------------------------------")
-	return err
-
+	return nil
 }
 
 func init() {
