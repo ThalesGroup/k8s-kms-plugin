@@ -99,7 +99,7 @@ func runTest() error {
 		logrus.Errorf("Test 1 Failed: %v", err)
 		return err
 	}
-	logrus.Infof("Test 1 Returned KEK ID: %s", string(genKEKResp.KekKid))
+	logrus.Infof("Test 1 Returned KEK KID: %s", string(genKEKResp.KekKid))
 	/*
 		GenerateDEK
 	*/
@@ -114,7 +114,7 @@ func runTest() error {
 		return err
 	}
 
-	logrus.Infof("Test 2 Returned WrappedDEK: %s", genDEKResp.EncryptedDekBlob)
+	logrus.Infof("Test 2 Returned EncryptedDekBlob: %s", genDEKResp.EncryptedDekBlob)
 
 	/*
 		GenerateSKey
@@ -131,14 +131,14 @@ func runTest() error {
 		logrus.Fatal(err)
 		return err
 	}
-	logrus.Infof("Test 3 Returned WrappedSEK: %s", genSKeyResp.EncryptedSkeyBlob)
+	logrus.Infof("Test 3 Returned WrappedSKEY: %s", genSKeyResp.EncryptedSkeyBlob)
 
 	/*
-		LoadSEK
+		LoadSKEY
 	*/
-	logrus.Info("Test 4 LoadSEK 4096 RSA")
-	var loadSEKResp *istio.LoadSKeyResponse
-	if loadSEKResp, err = ic.LoadSKey(ictx, &istio.LoadSKeyRequest{
+	logrus.Info("Test 4 LoadSKEY 4096 RSA")
+	var loadSKEYResp *istio.LoadSKeyResponse
+	if loadSKEYResp, err = ic.LoadSKey(ictx, &istio.LoadSKeyRequest{
 
 		KekKid:            genKEKResp.KekKid,
 		EncryptedDekBlob:  genDEKResp.EncryptedDekBlob,
@@ -149,21 +149,21 @@ func runTest() error {
 	}
 	var out string
 	if debug {
-		out = string(loadSEKResp.PlaintextSkey)
+		out = string(loadSKEYResp.PlaintextSkey)
 	} else {
 		out = "Success"
 	}
 	// Load the PEM and use it...
-	var sek *rsa.PrivateKey
+	var skey *rsa.PrivateKey
 	var b *pem.Block
-	b, _ = pem.Decode(loadSEKResp.PlaintextSkey)
-	if sek, err = x509.ParsePKCS1PrivateKey(b.Bytes); err != nil {
+	b, _ = pem.Decode(loadSKEYResp.PlaintextSkey)
+	if skey, err = x509.ParsePKCS1PrivateKey(b.Bytes); err != nil {
 		logrus.Fatal(err)
 
 		return err
 	}
-	logrus.Infof("Test 4 Returned LoadedSEK in PEM Format: %v", out)
-	sek.Public()
+	logrus.Infof("Test 4 Returned LoadedSKey in PEM Format: %v", out)
+	skey.Public()
 	return nil
 }
 
