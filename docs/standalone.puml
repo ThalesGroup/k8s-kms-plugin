@@ -26,16 +26,16 @@
         server -> p11 : GenerateDEK(KeyKind+Params)
         server <- p11 : GenerateDEK(WrappedDEK)
         apis <- server : GenerateDEK(GenerateDEKResponse)
-        apis -> server : GenerateSEK(GenerateSEKRequest)
-        server -> p11 : GenerateSEK(KeyKind+Params+WrappedDEK)
-        server <- p11 : GenerateSEK(WrappedSEK)
-        apis <- server : GenerateSEK(GenerateSEKResponse)
+        apis -> server : GenerateSKey(GenerateSKeyRequest)
+        server -> p11 : GenerateSKey(KeyKind+Params+WrappedDEK)
+        server <- p11 : GenerateSKey(WrappedSKey)
+        apis <- server : GenerateSKey(GenerateSKeyResponse)
 
         ==key load==
-        apis -> server : LoadSEK(GenerateSEKRequest)
-        server -> p11 : LoadSEK(WrappedDEK+WrappedSEK)
-        server <- p11 : LoadSEK(SEK in PEM Format)
-        apis <- server : LoadSEK(GenerateSEKResponse)
+        apis -> server : LoadSKey(GenerateSKeyRequest)
+        server -> p11 : LoadSKey(WrappedDEK+WrappedSKey)
+        server <- p11 : LoadSKey(SKey in PEM Format)
+        apis <- server : LoadSKey(GenerateSKeyResponse)
 
     end
     group K8S Data Protection Operations

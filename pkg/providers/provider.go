@@ -10,10 +10,10 @@ import (
 )
 
 var (
-	kekKeyOps = []jose.KeyOps{jose.KeyOpsDecrypt, jose.KeyOpsEncrypt}
-	dekKeyOps = []jose.KeyOps{jose.KeyOpsDecrypt, jose.KeyOpsEncrypt}
-	sekKeyOps    = []jose.KeyOps{jose.KeyOpsSign, jose.KeyOpsVerify}
-	ErrNoSuchKey = errors.New("no such key")
+	kekKeyOps     = []jose.KeyOps{jose.KeyOpsDecrypt, jose.KeyOpsEncrypt}
+	dekKeyOps     = []jose.KeyOps{jose.KeyOpsDecrypt, jose.KeyOpsEncrypt}
+	skeyKeyOps    = []jose.KeyOps{jose.KeyOpsSign, jose.KeyOpsVerify}
+	ErrNoSuchKey  = errors.New("no such key")
 	ErrNoSuchCert = errors.New("no such cert")
 )
 

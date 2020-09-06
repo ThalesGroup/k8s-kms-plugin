@@ -29,10 +29,6 @@ import (
 
 var (
 	defaultKEKlabel = []byte("k8s-kms-plugin-kek")
-	defaultCAKlabel = []byte("k8s-kms-plugin-cak")
-	defaultCAlabel  = []byte("k8s-kms-plugin-ca")
-	defaultCASerial = big.NewInt(int64(1))
-	defaultDEKSize  = 32 // 32 == 256 AES Key
 )
 
 var (
@@ -52,13 +48,12 @@ var (
 	}
 )
 
-
-func generateDEK(ctx *crypto11.Context, encryptor gose.JweEncryptor) (encryptedKeyBlob []byte, err error) {
+func generateDEK(ctx11 *crypto11.Context, encryptor gose.JweEncryptor) (encryptedKeyBlob []byte, err error) {
 
 	key := make([]byte, 32)
 
 	var rng io.Reader
-	if rng, err = ctx.NewRandomReader(); err != nil {
+	if rng, err = ctx11.NewRandomReader(); err != nil {
 		logrus.Error(err)
 		return
 	}
@@ -84,7 +79,7 @@ func generateDEK(ctx *crypto11.Context, encryptor gose.JweEncryptor) (encryptedK
 	return
 }
 
-//generateKEK an KEK
+// generateKEK an KEK
 func generateKEK(ctx *crypto11.Context, identity, label []byte, alg jose.Alg) (key gose.AuthenticatedEncryptionKey, err error) {
 	params, supported := algToKeyGenParams[alg]
 	if !supported {
@@ -99,8 +94,8 @@ func generateKEK(ctx *crypto11.Context, identity, label []byte, alg jose.Alg) (k
 	return
 }
 
-func generateSEK(ctx *crypto11.Context, request *istio.GenerateSKeyRequest, dekEncryptor gose.JweEncryptor) (wrappedSEK []byte, err error) {
-	// generateKEK the actual SEK
+func generateSKey(ctx *crypto11.Context, request *istio.GenerateSKeyRequest, dekEncryptor gose.JweEncryptor) (wrappedSkey []byte, err error) {
+	// generateKEK the actual Skey
 	var rng io.Reader
 	if rng, err = ctx.NewRandomReader(); err != nil {
 		return
@@ -119,12 +114,12 @@ func generateSEK(ctx *crypto11.Context, request *istio.GenerateSKeyRequest, dekE
 		if err = pem.Encode(buf, kpPEM); err != nil {
 			return
 		}
-		// Wrap and return the wrappedSEK
-		var wrappedSEKString string
-		if wrappedSEKString, err = dekEncryptor.Encrypt(buf.Bytes(), nil); err != nil {
+		// Wrap and return the wrappedSkey
+		var wrappedSkeyString string
+		if wrappedSkeyString, err = dekEncryptor.Encrypt(buf.Bytes(), nil); err != nil {
 			return
 		}
-		wrappedSEK = []byte(wrappedSEKString)
+		wrappedSkey = []byte(wrappedSkeyString)
 	case istio.KeyKind_ECC:
 		err = status.Error(codes.Unimplemented, "ECC not yet implemented")
 		return
@@ -278,7 +273,6 @@ func randomSerial() (serial *big.Int) {
 	return
 }
 
-
 // generateKEK a 256 bit AES DEK Key , Wrapped via JWE with the PKCS11 base KEK
 func (p *P11) GenerateDEK(ctx context.Context, request *istio.GenerateDEKRequest) (resp *istio.GenerateDEKResponse, err error) {
 	if request == nil {
@@ -325,7 +319,7 @@ func (p *P11) GenerateKEK(ctx context.Context, request *istio.GenerateKEKRequest
 
 }
 
-// GenerateSEK gens a 4096 RSA Key with the DEK that is protected by the KEK for later Unwrapping by the remote client in it's pod/container
+// GenerateSkey gens a 4096 RSA Key with the DEK that is protected by the KEK for later Unwrapping by the remote client in it's pod/container
 func (p *P11) GenerateSKey(ctx context.Context, request *istio.GenerateSKeyRequest) (resp *istio.GenerateSKeyResponse, err error) {
 	if request == nil {
 		return nil, status.Error(codes.InvalidArgument, "no request sent")
@@ -356,16 +350,16 @@ func (p *P11) GenerateSKey(ctx context.Context, request *istio.GenerateSKeyReque
 	}
 	dekEncryptor := gose.NewJweDirectEncryptorImpl(aead)
 
-	var wrappedSEK []byte
-	if wrappedSEK, err = generateSEK(p.ctx, request, dekEncryptor); err != nil {
+	var wrappedSkey []byte
+	if wrappedSkey, err = generateSKey(p.ctx, request, dekEncryptor); err != nil {
 		return
 	}
 	resp = &istio.GenerateSKeyResponse{}
-	resp.EncryptedSkeyBlob = []byte(wrappedSEK)
+	resp.EncryptedSkeyBlob = []byte(wrappedSkey)
 	return
 }
 
-// LoadDEK unwraps the supplied SEK with the Wrapped SEK
+// LoadDEK unwraps the supplied Skey with the Wrapped Skey
 func (p *P11) LoadSKey(ctx context.Context, request *istio.LoadSKeyRequest) (resp *istio.LoadSKeyResponse, err error) {
 	if request == nil {
 		return nil, status.Error(codes.InvalidArgument, "no request sent")
@@ -396,7 +390,7 @@ func (p *P11) LoadSKey(ctx context.Context, request *istio.LoadSKeyRequest) (res
 		PlaintextSkey: nil,
 	}
 
-	// Return the clear SEK in PEM format or bust
+	// Return the clear Skey in PEM format or bust
 	if resp.PlaintextSkey, _, err = dekDecryptor.Decrypt(string(request.EncryptedSkeyBlob)); err != nil {
 		return
 	}
