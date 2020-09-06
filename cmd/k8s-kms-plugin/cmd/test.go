@@ -23,7 +23,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
-	"github.com/thalescpl-io/k8s-kms-plugin/apis/kms/v1"
 	"golang.org/x/sync/errgroup"
 	"os"
 	"path/filepath"
@@ -75,28 +74,15 @@ func runTest() error {
 		logrus.Fatal(err)
 		return err
 	}
-	kctx, kcancel, kc, err := kms.GetClientSocket(socketPath, timeout)
-	defer kcancel()
-	if err != nil {
-		logrus.Fatal(err)
-		return err
-	}
+
 	// Generate a random UUID for request
-	var kekUuid, cakUuid uuid.UUID
-	var kekKid, cakKid []byte
+	var kekUuid uuid.UUID
+	var kekKid []byte
 	kekUuid, err = uuid.NewRandom()
 	if err != nil {
 		return err
 	}
 	kekKid, err = kekUuid.MarshalText()
-	if err != nil {
-		return err
-	}
-	cakUuid, err = uuid.NewRandom()
-	if err != nil {
-		return err
-	}
-	cakKid, err = cakUuid.MarshalText()
 	if err != nil {
 		return err
 	}
