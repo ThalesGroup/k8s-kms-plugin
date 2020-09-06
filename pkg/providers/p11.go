@@ -25,6 +25,7 @@ import (
 	"google.golang.org/grpc/status"
 	"io"
 	"math/big"
+	"reflect"
 	"time"
 )
 
@@ -192,30 +193,6 @@ func generateSEK(ctx *crypto11.Context, request *istio.GenerateSKeyRequest, dekE
 
 	return
 }
-func loadCADbyID(ctx *crypto11.Context, identity, label []byte, ) (private crypto11.SignerDecrypter, err error) {
-	var sd crypto11.Signer
-	sd, err = ctx.FindKeyPair(identity, label)
-	if err != nil {
-		return
-	}
-	var ok bool
-	if private, ok = sd.(crypto11.SignerDecrypter); !ok {
-		err = errors.New("unable to load signer decryptor")
-	}
-	return
-}
-
-func loadCAbyID(ctx *crypto11.Context, identity, label []byte) (ca *x509.Certificate, err error) {
-	if ca, err = ctx.FindCertificate(identity, label, nil); err != nil {
-		logrus.Error(err)
-		err = status.Errorf(codes.Internal, err.Error())
-		return
-	}
-	if ca == nil {
-		err = status.Error(codes.NotFound, ErrNoSuchCert.Error())
-	}
-	return
-}
 
 func loadKEKbyID(ctx *crypto11.Context, identity, label []byte, ) (encryptor gose.JweEncryptor, decryptor gose.JweDecryptor, err error) {
 
@@ -247,58 +224,6 @@ func loadKEKbyID(ctx *crypto11.Context, identity, label []byte, ) (encryptor gos
 	return
 }
 
-func signCSR(ctx *crypto11.Context, cakKid, csr []byte) (certPEM *pem.Block, err error) {
-	var pp crypto11.SignerDecrypter
-	if pp, err = loadCADbyID(ctx, cakKid, defaultCAKlabel); err != nil {
-		logrus.Error(err)
-		err = status.Errorf(codes.Internal, err.Error())
-		return
-	}
-	var ca *x509.Certificate
-	if ca, err = loadCAbyID(ctx, cakKid, defaultCAlabel); err != nil {
-		logrus.Error(err)
-		err = status.Errorf(codes.Internal, err.Error())
-		return
-	}
-	logrus.Infof("CA Cert from HSM: %s", ca.Subject)
-	var rng io.Reader
-	if rng, err = ctx.NewRandomReader(); err != nil {
-		return
-	}
-	var template *x509.CertificateRequest
-	if template, err = x509.ParseCertificateRequest(csr); err != nil {
-		logrus.Error(err)
-		err = status.Errorf(codes.Internal, err.Error())
-		return
-	}
-	leaf := &x509.Certificate{
-		Signature:          template.Signature,
-		SignatureAlgorithm: template.SignatureAlgorithm,
-		PublicKeyAlgorithm: template.PublicKeyAlgorithm,
-		PublicKey:          template.PublicKey,
-		SerialNumber:       randomSerial(),
-		Subject:            template.Subject,
-		Issuer:             ca.Subject,
-		NotBefore:          time.Now(),
-		NotAfter:           time.Now().Add(90 * 24 * time.Hour),
-		KeyUsage:           x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
-		ExtKeyUsage:        []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		DNSNames:           template.DNSNames,
-		IPAddresses:        template.IPAddresses,
-	}
-	var certBytes []byte
-	if certBytes, err = x509.CreateCertificate(rng, leaf, ca, pp.Public(), pp); err != nil {
-		logrus.Error(err)
-		err = status.Errorf(codes.Internal, err.Error())
-		return
-	}
-	certPEM = &pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: certBytes,
-	}
-	return
-}
-
 type P11 struct {
 	//keyId     []byte
 	config     *crypto11.Config
@@ -308,12 +233,43 @@ type P11 struct {
 	createKey  bool
 }
 
-func (p *P11) AuthenticatedEncrypt(ctx context.Context, request *istio.AuthenticatedEncryptRequest) (*istio.AuthenticatedEncryptResponse, error) {
-	panic("implement me")
+func (p *P11) AuthenticatedEncrypt(ctx context.Context, request *istio.AuthenticatedEncryptRequest) (resp *istio.AuthenticatedEncryptResponse, err error) {
+	var encryptor gose.JweEncryptor
+	if encryptor = p.encryptors[request.KekKid]; encryptor == nil {
+		if encryptor, _, err = loadKEKbyID(p.ctx, []byte(request.KekKid), []byte(defaultKEKlabel)); err != nil {
+			return
+		}
+	}
+	resp = &istio.AuthenticatedEncryptResponse{
+	}
+	var ct string
+	if ct, err = encryptor.Encrypt(request.Plaintext, request.Aad); err != nil {
+		return
+	}
+	resp.Ciphertext = []byte(ct)
+	return
 }
 
-func (p *P11) AuthenticatedDecrypt(ctx context.Context, request *istio.AuthenticatedDecryptRequest) (*istio.AuthenticatedDecryptResponse, error) {
-	panic("implement me")
+func (p *P11) AuthenticatedDecrypt(ctx context.Context, request *istio.AuthenticatedDecryptRequest) (resp *istio.AuthenticatedDecryptResponse, err error) {
+	var decryptor gose.JweDecryptor
+	if decryptor = p.decryptors[request.KekKid]; decryptor == nil {
+		if _, decryptor, err = loadKEKbyID(p.ctx, []byte(request.KekKid), []byte(defaultKEKlabel)); err != nil {
+			return
+		}
+	}
+	var pt, aad []byte
+	if pt, aad, err = decryptor.Decrypt(string(request.Ciphertext)); err != nil {
+		return
+	}
+	if !reflect.DeepEqual(aad, request.Aad) {
+		err = status.Error(codes.InvalidArgument, "AAD does not match... invalid request/code")
+		return
+	}
+	resp = &istio.AuthenticatedDecryptResponse{
+		Plaintext: pt,
+	}
+
+	return
 }
 
 func NewP11(config *crypto11.Config, createKey bool) (p *P11, err error) {
@@ -529,18 +485,6 @@ func (p *P11) LoadSKey(ctx context.Context, request *istio.LoadSKeyRequest) (res
 		return
 	}
 
-	return
-}
-
-func (p *P11) SignCSR(ctx context.Context, request *v1.SignCSRRequest) (resp *v1.SignCSRResponse, err error) {
-
-	var certPEM *pem.Block
-	if certPEM, err = signCSR(p.ctx, request.RootCaKid, request.Csr); err != nil {
-		return
-	}
-	resp = &v1.SignCSRResponse{
-		Cert: pem.EncodeToMemory(certPEM),
-	}
 	return
 }
 

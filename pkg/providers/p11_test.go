@@ -20,12 +20,12 @@ var (
 	testCtx             *crypto11.Context
 	testEncryptedBlob   string
 
-	testDecryptor      map[string]gose.JweDecryptor
-	testEncryptor      map[string]gose.JweEncryptor
-	testKid []byte
-	testPlainMessage   []byte
-	testWrappedDEK     []byte
-	testWrappedSEK     []byte
+	testDecryptor    map[string]gose.JweDecryptor
+	testEncryptor    map[string]gose.JweEncryptor
+	testKid          []byte
+	testPlainMessage []byte
+	testWrappedDEK   []byte
+	testWrappedSEK   []byte
 )
 
 func init() {
@@ -152,8 +152,7 @@ func TestP11_GenerateDEK(t *testing.T) {
 			args: args{
 				ctx: context.Background(),
 				request: &istio.GenerateDEKRequest{
-					Size:   32,
-					Kind:   istio.KeyKind_AES,
+
 					KekKid: testKid,
 				},
 			},
@@ -195,27 +194,27 @@ func TestP11_GenerateSEK(t *testing.T) {
 	}
 	type args struct {
 		ctx     context.Context
-		request *istio.GenerateSEKRequest
+		request *istio.GenerateSKeyRequest
 	}
 	tests := []struct {
 		name     string
 		fields   fields
 		args     args
-		wantResp *istio.GenerateSEKResponse
+		wantResp *istio.GenerateSKeyResponse
 		wantErr  bool
 	}{
 		{
 			name: "OK",
 			fields: fields{
-				keyId:    testKid,
-				config:   testConfig,
-				ctx:      testCtx,
+				keyId:  testKid,
+				config: testConfig,
+				ctx:    testCtx,
 
 				createKey: true,
 			},
 			args: args{
 				ctx: context.Background(),
-				request: &istio.GenerateSEKRequest{
+				request: &istio.GenerateSKeyRequest{
 					Size:             4096,
 					Kind:             istio.KeyKind_RSA,
 					EncryptedDekBlob: testWrappedDEK,
@@ -235,7 +234,7 @@ func TestP11_GenerateSEK(t *testing.T) {
 				decryptors: tt.fields.decryptors,
 				createKey:  tt.fields.createKey,
 			}
-			gotResp, err := p.GenerateSEK(tt.args.ctx, tt.args.request)
+			gotResp, err := p.GenerateSKey(tt.args.ctx, tt.args.request)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GenerateSEK() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -260,13 +259,13 @@ func TestP11_LoadDEK(t *testing.T) {
 	}
 	type args struct {
 		ctx     context.Context
-		request *istio.LoadSEKRequest
+		request *istio.LoadSKeyRequest
 	}
 	tests := []struct {
 		name     string
 		fields   fields
 		args     args
-		wantResp *istio.LoadSEKResponse
+		wantResp *istio.LoadSKeyResponse
 		wantErr  bool
 	}{
 		{
@@ -281,9 +280,9 @@ func TestP11_LoadDEK(t *testing.T) {
 			},
 			args: args{
 				ctx: context.Background(),
-				request: &istio.LoadSEKRequest{
-					EncryptedDekBlob: testWrappedDEK,
-					EncryptedSekBlob: testWrappedSEK,
+				request: &istio.LoadSKeyRequest{
+					EncryptedDekBlob:  testWrappedDEK,
+					EncryptedSkeyBlob: testWrappedSEK,
 				},
 			},
 			wantResp: nil,
@@ -299,7 +298,7 @@ func TestP11_LoadDEK(t *testing.T) {
 				decryptors: tt.fields.decryptors,
 				createKey:  tt.fields.createKey,
 			}
-			gotResp, err := p.LoadSEK(tt.args.ctx, tt.args.request)
+			gotResp, err := p.LoadSKey(tt.args.ctx, tt.args.request)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("LoadDEK() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -343,7 +342,7 @@ func setupSoftHSMTestCase(t testing.TB) func(t testing.TB) {
 	if _, err = generateKEK(testCtx, testKid, []byte(defaultKEKlabel), jose.AlgA256GCM); err != nil {
 		t.Fatal(err)
 	}
-	if testWrappedDEK, err = generateDEK(testCtx, testEncryptor[string(testKid)], istio.KeyKind_AES, defaultDEKSize); err != nil {
+	if testWrappedDEK, err = generateDEK(testCtx, testEncryptor[string(testKid)]); err != nil {
 		t.Fatal(err)
 	}
 
