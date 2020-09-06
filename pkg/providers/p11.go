@@ -7,7 +7,6 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -26,7 +25,6 @@ import (
 	"io"
 	"math/big"
 	"reflect"
-	"time"
 )
 
 var (
@@ -54,62 +52,6 @@ var (
 	}
 )
 
-func generateCA(ctx *crypto11.Context, request *v1.GenerateCARequest) (ca *x509.Certificate, err error) {
-	templateCA := &x509.Certificate{
-		SerialNumber: randomSerial(),
-		Subject: pkix.Name{
-			CommonName:   "CA for CAK",
-			Organization: []string{"Thales"},
-			Country:      []string{"US"},
-			Province:     []string{"OR"},
-			Locality:     []string{"Portland"},
-		},
-		NotBefore:             time.Now(),
-		NotAfter:              time.Now().AddDate(10, 0, 0),
-		IsCA:                  true,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
-		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
-		BasicConstraintsValid: true,
-	}
-	var rng io.Reader
-	if rng, err = ctx.NewRandomReader(); err != nil {
-		return
-	}
-	var k crypto11.Signer
-	if k, err = ctx.FindKeyPair(request.RootCaKid, defaultCAKlabel); err != nil {
-		return
-	}
-	var caBytes []byte
-	if caBytes, err = x509.CreateCertificate(rng, templateCA, templateCA, k.Public(), k); err != nil {
-		return
-	}
-	caPEM := new(bytes.Buffer)
-	if err = pem.Encode(caPEM, &pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: caBytes,
-	}); err != nil {
-		return
-	}
-	ca = templateCA
-	if err = ctx.ImportCertificateWithLabel(request.RootCaKid, defaultCAlabel, ca); err != nil {
-		return
-	}
-
-	return
-}
-
-func generateCAK(ctx *crypto11.Context, kid []byte, kind v1.KeyKind, size int) (signer crypto11.SignerDecrypter, err error) {
-
-	switch kind {
-	case v1.KeyKind_RSA:
-		signer, err = ctx.GenerateRSAKeyPairWithLabel(kid, defaultCAKlabel, size)
-
-	default:
-		err = status.Error(codes.Unimplemented, "unsupported key kind")
-	}
-
-	return
-}
 
 func generateDEK(ctx *crypto11.Context, encryptor gose.JweEncryptor) (encryptedKeyBlob []byte, err error) {
 
@@ -335,33 +277,7 @@ func randomSerial() (serial *big.Int) {
 	serial, _ = rand.Int(rand.Reader, big.NewInt(20000))
 	return
 }
-func (p *P11) GenerateCA(ctx context.Context, request *v1.GenerateCARequest) (resp *v1.GenerateCAResponse, err error) {
 
-	var ca *x509.Certificate
-	if ca, err = generateCA(p.ctx, request); err != nil {
-		return
-	}
-	caPEM := &pem.Block{
-		Bytes: ca.Raw,
-		Type:  "CERTIFICATE",
-	}
-	resp = &v1.GenerateCAResponse{
-		Cert: pem.EncodeToMemory(caPEM),
-	}
-	return
-}
-
-func (p *P11) GenerateCAK(ctx context.Context, request *v1.GenerateCAKRequest) (resp *v1.GenerateCAKResponse, err error) {
-	resp = &v1.GenerateCAKResponse{
-
-	}
-	if _, err = generateCAK(p.ctx, request.RootCaKid, request.Kind, int(request.Size)); err != nil {
-		return
-	}
-
-	resp.RootCaKid = request.RootCaKid
-	return
-}
 
 // generateKEK a 256 bit AES DEK Key , Wrapped via JWE with the PKCS11 base KEK
 func (p *P11) GenerateDEK(ctx context.Context, request *istio.GenerateDEKRequest) (resp *istio.GenerateDEKResponse, err error) {
