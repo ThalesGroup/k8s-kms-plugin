@@ -117,12 +117,12 @@ func runTest() error {
 	logrus.Infof("Test 2 Returned WrappedDEK: %s", genDEKResp.EncryptedDekBlob)
 
 	/*
-		GenerateSEK
+		GenerateSKey
 	*/
 
-	logrus.Info("Test 3 GenerateSEK 4096 RSA")
-	var genSEKResp *istio.GenerateSKeyResponse
-	if genSEKResp, err = ic.GenerateSKey(ictx, &istio.GenerateSKeyRequest{
+	logrus.Info("Test 3 GenerateSKey 4096 RSA")
+	var genSKeyResp *istio.GenerateSKeyResponse
+	if genSKeyResp, err = ic.GenerateSKey(ictx, &istio.GenerateSKeyRequest{
 		Size:             4096,
 		Kind:             istio.KeyKind_RSA,
 		KekKid:           genKEKResp.KekKid,
@@ -131,7 +131,7 @@ func runTest() error {
 		logrus.Fatal(err)
 		return err
 	}
-	logrus.Infof("Test 3 Returned WrappedSEK: %s", genSEKResp.EncryptedSkeyBlob)
+	logrus.Infof("Test 3 Returned WrappedSEK: %s", genSKeyResp.EncryptedSkeyBlob)
 
 	/*
 		LoadSEK
@@ -142,7 +142,7 @@ func runTest() error {
 
 		KekKid:            genKEKResp.KekKid,
 		EncryptedDekBlob:  genDEKResp.EncryptedDekBlob,
-		EncryptedSkeyBlob: genSEKResp.EncryptedSkeyBlob,
+		EncryptedSkeyBlob: genSKeyResp.EncryptedSkeyBlob,
 	}); err != nil {
 		logrus.Fatal(err)
 		return err
