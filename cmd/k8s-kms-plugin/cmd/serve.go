@@ -26,6 +26,11 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"net"
+	"os"
+	"path/filepath"
+	"strconv"
+
 	"github.com/ThalesIgnite/crypto11"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -34,10 +39,6 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-	"net"
-	"os"
-	"path/filepath"
-	"strconv"
 )
 
 var (
@@ -84,10 +85,9 @@ var serveCmd = &cobra.Command{
 			return
 		}
 
-
 		if enableTCP {
 			g.Go(func() error { return grpcServe(grpcTCP) })
-			logrus.Infof("KMS Plugin Listening on : %d\n", grpcPort)
+			logrus.Infof("KMS Plugin Listening on : %v\n", grpcPort)
 		}
 		if !disableSocket {
 			_ = os.Remove(socketPath)
@@ -99,7 +99,7 @@ var serveCmd = &cobra.Command{
 			// access to the socket.
 			os.Chmod(socketPath, 0775);
 			g.Go(func() error { return grpcServe(grpcUNIX) })
-			logrus.Infof("KMS Plugin Listening on : %d\n", socketPath)
+			logrus.Infof("KMS Plugin Listening on : %v\n", socketPath)
 
 		}
 
