@@ -25,7 +25,7 @@ var (
 	testKid []byte
 	testPlainMessage   []byte
 	testWrappedDEK     []byte
-	testWrappedSEK     []byte
+	testWrappedSKey    []byte
 )
 
 func init() {
@@ -182,7 +182,7 @@ func TestP11_GenerateDEK(t *testing.T) {
 	}
 }
 
-func TestP11_GenerateSEK(t *testing.T) {
+func TestP11_GenerateSKey(t *testing.T) {
 	td := setupSoftHSMTestCase(t)
 	defer td(t)
 	type fields struct {
@@ -195,13 +195,13 @@ func TestP11_GenerateSEK(t *testing.T) {
 	}
 	type args struct {
 		ctx     context.Context
-		request *istio.GenerateSEKRequest
+		request *istio.GenerateSKeyRequest
 	}
 	tests := []struct {
 		name     string
 		fields   fields
 		args     args
-		wantResp *istio.GenerateSEKResponse
+		wantResp *istio.GenerateSKeyResponse
 		wantErr  bool
 	}{
 		{
@@ -215,7 +215,7 @@ func TestP11_GenerateSEK(t *testing.T) {
 			},
 			args: args{
 				ctx: context.Background(),
-				request: &istio.GenerateSEKRequest{
+				request: &istio.GenerateSKeyRequest{
 					Size:             4096,
 					Kind:             istio.KeyKind_RSA,
 					EncryptedDekBlob: testWrappedDEK,
@@ -235,13 +235,13 @@ func TestP11_GenerateSEK(t *testing.T) {
 				decryptors: tt.fields.decryptors,
 				createKey:  tt.fields.createKey,
 			}
-			gotResp, err := p.GenerateSEK(tt.args.ctx, tt.args.request)
+			gotResp, err := p.GenerateSKey(tt.args.ctx, tt.args.request)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("GenerateSEK() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("GenerateSKey() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(gotResp, tt.wantResp) {
-				t.Errorf("GenerateSEK() gotResp = %v, want %v", gotResp, tt.wantResp)
+				t.Errorf("GenerateSKey() gotResp = %v, want %v", gotResp, tt.wantResp)
 			}
 		})
 	}
@@ -260,13 +260,13 @@ func TestP11_LoadDEK(t *testing.T) {
 	}
 	type args struct {
 		ctx     context.Context
-		request *istio.LoadSEKRequest
+		request *istio.LoadSKeyRequest
 	}
 	tests := []struct {
 		name     string
 		fields   fields
 		args     args
-		wantResp *istio.LoadSEKResponse
+		wantResp *istio.LoadSKeyResponse
 		wantErr  bool
 	}{
 		{
@@ -281,9 +281,9 @@ func TestP11_LoadDEK(t *testing.T) {
 			},
 			args: args{
 				ctx: context.Background(),
-				request: &istio.LoadSEKRequest{
+				request: &istio.LoadSKeyRequest{
 					EncryptedDekBlob: testWrappedDEK,
-					EncryptedSekBlob: testWrappedSEK,
+					EncryptedSkeyBlob: testWrappedSKey,
 				},
 			},
 			wantResp: nil,
@@ -299,7 +299,7 @@ func TestP11_LoadDEK(t *testing.T) {
 				decryptors: tt.fields.decryptors,
 				createKey:  tt.fields.createKey,
 			}
-			gotResp, err := p.LoadSEK(tt.args.ctx, tt.args.request)
+			gotResp, err := p.LoadSKey(tt.args.ctx, tt.args.request)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("LoadDEK() error = %v, wantErr %v", err, tt.wantErr)
 				return
