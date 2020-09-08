@@ -90,7 +90,7 @@ message LoadSKeyResponse {
 // AuthenticatedEncryptRequest
 message AuthenticatedEncryptRequest {
   string kek_kid = 1; // Generated out of band or via GenerateKEK
-  bytes encrypted_dek = 2; // Encrypted DEK payload wrapped by the KEK
+  bytes encrypted_dek_blob = 2; // Encrypted DEK payload wrapped by the KEK
   bytes plaintext = 3;
   bytes aad = 4;
 }
@@ -105,7 +105,7 @@ message AuthenticatedEncryptResponse {
 // AuthenticatedDecryptRequest
 message AuthenticatedDecryptRequest {
   string kek_kid = 1;
-  bytes encrypted_dek = 2;
+  bytes encrypted_dek_blob = 2;
   bytes ciphertext = 3;
   bytes iv = 4;
   bytes aad = 5;

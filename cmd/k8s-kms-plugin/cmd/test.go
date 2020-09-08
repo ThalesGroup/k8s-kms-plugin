@@ -32,7 +32,30 @@ import (
 var loop bool
 var maxLoops int
 var loopTime, timeout time.Duration
-
+var defaultAAD = []byte("this is clear but can't change...")
+//var fakeCSR = &x509.CertificateRequest{
+//	Raw:                      nil,
+//	RawTBSCertificateRequest: nil,
+//	RawSubjectPublicKeyInfo:  nil,
+//	RawSubject:               nil,
+//	Version:                  0,
+//	Signature:                nil,
+//	SignatureAlgorithm:       0,
+//	PublicKeyAlgorithm:       0,
+//	PublicKey:                nil,
+//	Subject:                  pkix.Name{},
+//	Attributes:               nil,
+//	Extensions:               nil,
+//	ExtraExtensions:          nil,
+//	DNSNames:                 nil,
+//	EmailAddresses:           nil,
+//	IPAddresses:              nil,
+//	URIs:                     nil,
+//}
+//var fakeCSRBytes []byte
+//func init() {
+//	fakeCSRBytes, _ = x509.CreateCertificateRequest(rand.Reader, fakeCSR, nil)
+//}
 // testCmd represents the test command
 var testCmd = &cobra.Command{
 	Use:   "test",
@@ -164,6 +187,38 @@ func runTest() error {
 	}
 	logrus.Infof("Test 4 Returned LoadedSKey in PEM Format: %v", out)
 	skey.Public()
+
+	/*
+		AuthenticatedEncrypt
+	*/
+	logrus.Info("Test 5 AuthenticatedEncrypt ")
+	var aeResp *istio.AuthenticatedEncryptResponse
+	if aeResp, err = ic.AuthenticatedEncrypt(ictx, &istio.AuthenticatedEncryptRequest{
+		KekKid: string(genKEKResp.KekKid),
+		Plaintext: []byte("Hello World"),
+		Aad: defaultAAD,
+	}); err != nil {
+		logrus.Fatal(err)
+		return err
+	}
+
+	logrus.Infof("Test 5 Returned AuthenticatedEncrypt: %s", aeResp.Ciphertext)
+	/*
+		AuthenticatedEncrypt
+	*/
+	logrus.Info("Test 6 AuthenticatedDecrypt ")
+	var adResp *istio.AuthenticatedDecryptResponse
+	if adResp, err = ic.AuthenticatedDecrypt(ictx, &istio.AuthenticatedDecryptRequest{
+		KekKid:       string(genKEKResp.KekKid),
+		EncryptedDekBlob:  genDEKResp.EncryptedDekBlob,
+		Ciphertext:   aeResp.Ciphertext,
+		Aad:          defaultAAD,
+	}); err != nil {
+		logrus.Fatal(err)
+		return err
+	}
+
+	logrus.Infof("Test 6 Returned AuthenticatedDecrypt: %s", adResp.Plaintext)
 	return nil
 }
 

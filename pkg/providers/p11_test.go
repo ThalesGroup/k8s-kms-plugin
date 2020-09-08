@@ -20,6 +20,7 @@ var (
 	testCtx             *crypto11.Context
 	testEncryptedBlob   string
 
+
 	testDecryptor      map[string]gose.JweDecryptor
 	testEncryptor      map[string]gose.JweEncryptor
 	testKid []byte
@@ -152,8 +153,7 @@ func TestP11_GenerateDEK(t *testing.T) {
 			args: args{
 				ctx: context.Background(),
 				request: &istio.GenerateDEKRequest{
-					Size:   32,
-					Kind:   istio.KeyKind_AES,
+
 					KekKid: testKid,
 				},
 			},
@@ -207,9 +207,9 @@ func TestP11_GenerateSKey(t *testing.T) {
 		{
 			name: "OK",
 			fields: fields{
-				keyId:    testKid,
-				config:   testConfig,
-				ctx:      testCtx,
+				keyId:  testKid,
+				config: testConfig,
+				ctx:    testCtx,
 
 				createKey: true,
 			},
@@ -237,6 +237,7 @@ func TestP11_GenerateSKey(t *testing.T) {
 			}
 			gotResp, err := p.GenerateSKey(tt.args.ctx, tt.args.request)
 			if (err != nil) != tt.wantErr {
+
 				t.Errorf("GenerateSKey() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
@@ -282,6 +283,7 @@ func TestP11_LoadDEK(t *testing.T) {
 			args: args{
 				ctx: context.Background(),
 				request: &istio.LoadSKeyRequest{
+
 					EncryptedDekBlob: testWrappedDEK,
 					EncryptedSkeyBlob: testWrappedSKey,
 				},
@@ -343,7 +345,7 @@ func setupSoftHSMTestCase(t testing.TB) func(t testing.TB) {
 	if _, err = generateKEK(testCtx, testKid, []byte(defaultKEKlabel), jose.AlgA256GCM); err != nil {
 		t.Fatal(err)
 	}
-	if testWrappedDEK, err = generateDEK(testCtx, testEncryptor[string(testKid)], istio.KeyKind_AES, defaultDEKSize); err != nil {
+	if testWrappedDEK, err = generateDEK(testCtx, testEncryptor[string(testKid)]); err != nil {
 		t.Fatal(err)
 	}
 

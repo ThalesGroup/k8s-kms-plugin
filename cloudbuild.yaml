@@ -1,0 +1,5 @@
+steps:
+
+  - name: "gcr.io/k8s-skaffold/skaffold"
+    entrypoint: "skaffold"
+    args: ["build"]

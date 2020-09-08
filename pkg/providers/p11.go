@@ -7,7 +7,6 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -25,15 +24,11 @@ import (
 	"google.golang.org/grpc/status"
 	"io"
 	"math/big"
-	"time"
+	"reflect"
 )
 
 var (
 	defaultKEKlabel = []byte("k8s-kms-plugin-kek")
-	defaultCAKlabel = []byte("k8s-kms-plugin-cak")
-	defaultCAlabel  = []byte("k8s-kms-plugin-ca")
-	defaultCASerial = big.NewInt(int64(1))
-	defaultDEKSize  = 32 // 32 == 256 AES Key
 )
 
 var (
@@ -53,69 +48,12 @@ var (
 	}
 )
 
-func generateCA(ctx *crypto11.Context, request *v1.GenerateCARequest) (ca *x509.Certificate, err error) {
-	templateCA := &x509.Certificate{
-		SerialNumber: randomSerial(),
-		Subject: pkix.Name{
-			CommonName:   "CA for CAK",
-			Organization: []string{"Thales"},
-			Country:      []string{"US"},
-			Province:     []string{"OR"},
-			Locality:     []string{"Portland"},
-		},
-		NotBefore:             time.Now(),
-		NotAfter:              time.Now().AddDate(10, 0, 0),
-		IsCA:                  true,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
-		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
-		BasicConstraintsValid: true,
-	}
-	var rng io.Reader
-	if rng, err = ctx.NewRandomReader(); err != nil {
-		return
-	}
-	var k crypto11.Signer
-	if k, err = ctx.FindKeyPair(request.RootCaKid, defaultCAKlabel); err != nil {
-		return
-	}
-	var caBytes []byte
-	if caBytes, err = x509.CreateCertificate(rng, templateCA, templateCA, k.Public(), k); err != nil {
-		return
-	}
-	caPEM := new(bytes.Buffer)
-	if err = pem.Encode(caPEM, &pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: caBytes,
-	}); err != nil {
-		return
-	}
-	ca = templateCA
-	if err = ctx.ImportCertificateWithLabel(request.RootCaKid, defaultCAlabel, ca); err != nil {
-		return
-	}
-
-	return
-}
-
-func generateCAK(ctx *crypto11.Context, kid []byte, kind v1.KeyKind, size int) (signer crypto11.SignerDecrypter, err error) {
-
-	switch kind {
-	case v1.KeyKind_RSA:
-		signer, err = ctx.GenerateRSAKeyPairWithLabel(kid, defaultCAKlabel, size)
-
-	default:
-		err = status.Error(codes.Unimplemented, "unsupported key kind")
-	}
-
-	return
-}
-
-func generateDEK(ctx *crypto11.Context, encryptor gose.JweEncryptor) (encryptedKeyBlob []byte, err error) {
+func generateDEK(ctx11 *crypto11.Context, encryptor gose.JweEncryptor) (encryptedKeyBlob []byte, err error) {
 
 	key := make([]byte, 32)
 
 	var rng io.Reader
-	if rng, err = ctx.NewRandomReader(); err != nil {
+	if rng, err = ctx11.NewRandomReader(); err != nil {
 		logrus.Error(err)
 		return
 	}
@@ -141,7 +79,7 @@ func generateDEK(ctx *crypto11.Context, encryptor gose.JweEncryptor) (encryptedK
 	return
 }
 
-//generateKEK an KEK
+// generateKEK an KEK
 func generateKEK(ctx *crypto11.Context, identity, label []byte, alg jose.Alg) (key gose.AuthenticatedEncryptionKey, err error) {
 	params, supported := algToKeyGenParams[alg]
 	if !supported {
@@ -155,6 +93,7 @@ func generateKEK(ctx *crypto11.Context, identity, label []byte, alg jose.Alg) (k
 
 	return
 }
+
 
 func generateSKey(ctx *crypto11.Context, request *istio.GenerateSKeyRequest, dekEncryptor gose.JweEncryptor) (wrappedSKey []byte, err error) {
 	var rng io.Reader
@@ -175,6 +114,7 @@ func generateSKey(ctx *crypto11.Context, request *istio.GenerateSKeyRequest, dek
 		if err = pem.Encode(buf, kpPEM); err != nil {
 			return
 		}
+
 		// Wrap and return the wrappedSKey
 		var wrappedSKeyString string
 		if wrappedSKeyString, err = dekEncryptor.Encrypt(buf.Bytes(), nil); err != nil {
@@ -189,30 +129,6 @@ func generateSKey(ctx *crypto11.Context, request *istio.GenerateSKeyRequest, dek
 		return
 	}
 
-	return
-}
-func loadCADbyID(ctx *crypto11.Context, identity, label []byte, ) (private crypto11.SignerDecrypter, err error) {
-	var sd crypto11.Signer
-	sd, err = ctx.FindKeyPair(identity, label)
-	if err != nil {
-		return
-	}
-	var ok bool
-	if private, ok = sd.(crypto11.SignerDecrypter); !ok {
-		err = errors.New("unable to load signer decryptor")
-	}
-	return
-}
-
-func loadCAbyID(ctx *crypto11.Context, identity, label []byte) (ca *x509.Certificate, err error) {
-	if ca, err = ctx.FindCertificate(identity, label, nil); err != nil {
-		logrus.Error(err)
-		err = status.Errorf(codes.Internal, err.Error())
-		return
-	}
-	if ca == nil {
-		err = status.Error(codes.NotFound, ErrNoSuchCert.Error())
-	}
 	return
 }
 
@@ -246,58 +162,6 @@ func loadKEKbyID(ctx *crypto11.Context, identity, label []byte, ) (encryptor gos
 	return
 }
 
-func signCSR(ctx *crypto11.Context, cakKid, csr []byte) (certPEM *pem.Block, err error) {
-	var pp crypto11.SignerDecrypter
-	if pp, err = loadCADbyID(ctx, cakKid, defaultCAKlabel); err != nil {
-		logrus.Error(err)
-		err = status.Errorf(codes.Internal, err.Error())
-		return
-	}
-	var ca *x509.Certificate
-	if ca, err = loadCAbyID(ctx, cakKid, defaultCAlabel); err != nil {
-		logrus.Error(err)
-		err = status.Errorf(codes.Internal, err.Error())
-		return
-	}
-	logrus.Infof("CA Cert from HSM: %s", ca.Subject)
-	var rng io.Reader
-	if rng, err = ctx.NewRandomReader(); err != nil {
-		return
-	}
-	var template *x509.CertificateRequest
-	if template, err = x509.ParseCertificateRequest(csr); err != nil {
-		logrus.Error(err)
-		err = status.Errorf(codes.Internal, err.Error())
-		return
-	}
-	leaf := &x509.Certificate{
-		Signature:          template.Signature,
-		SignatureAlgorithm: template.SignatureAlgorithm,
-		PublicKeyAlgorithm: template.PublicKeyAlgorithm,
-		PublicKey:          template.PublicKey,
-		SerialNumber:       randomSerial(),
-		Subject:            template.Subject,
-		Issuer:             ca.Subject,
-		NotBefore:          time.Now(),
-		NotAfter:           time.Now().Add(90 * 24 * time.Hour),
-		KeyUsage:           x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
-		ExtKeyUsage:        []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		DNSNames:           template.DNSNames,
-		IPAddresses:        template.IPAddresses,
-	}
-	var certBytes []byte
-	if certBytes, err = x509.CreateCertificate(rng, leaf, ca, pp.Public(), pp); err != nil {
-		logrus.Error(err)
-		err = status.Errorf(codes.Internal, err.Error())
-		return
-	}
-	certPEM = &pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: certBytes,
-	}
-	return
-}
-
 type P11 struct {
 	//keyId     []byte
 	config     *crypto11.Config
@@ -307,12 +171,43 @@ type P11 struct {
 	createKey  bool
 }
 
-func (p *P11) AuthenticatedEncrypt(ctx context.Context, request *istio.AuthenticatedEncryptRequest) (*istio.AuthenticatedEncryptResponse, error) {
-	panic("implement me")
+func (p *P11) AuthenticatedEncrypt(ctx context.Context, request *istio.AuthenticatedEncryptRequest) (resp *istio.AuthenticatedEncryptResponse, err error) {
+	var encryptor gose.JweEncryptor
+	if encryptor = p.encryptors[request.KekKid]; encryptor == nil {
+		if encryptor, _, err = loadKEKbyID(p.ctx, []byte(request.KekKid), []byte(defaultKEKlabel)); err != nil {
+			return
+		}
+	}
+	resp = &istio.AuthenticatedEncryptResponse{
+	}
+	var ct string
+	if ct, err = encryptor.Encrypt(request.Plaintext, request.Aad); err != nil {
+		return
+	}
+	resp.Ciphertext = []byte(ct)
+	return
 }
 
-func (p *P11) AuthenticatedDecrypt(ctx context.Context, request *istio.AuthenticatedDecryptRequest) (*istio.AuthenticatedDecryptResponse, error) {
-	panic("implement me")
+func (p *P11) AuthenticatedDecrypt(ctx context.Context, request *istio.AuthenticatedDecryptRequest) (resp *istio.AuthenticatedDecryptResponse, err error) {
+	var decryptor gose.JweDecryptor
+	if decryptor = p.decryptors[request.KekKid]; decryptor == nil {
+		if _, decryptor, err = loadKEKbyID(p.ctx, []byte(request.KekKid), []byte(defaultKEKlabel)); err != nil {
+			return
+		}
+	}
+	var pt, aad []byte
+	if pt, aad, err = decryptor.Decrypt(string(request.Ciphertext)); err != nil {
+		return
+	}
+	if !reflect.DeepEqual(aad, request.Aad) {
+		err = status.Error(codes.InvalidArgument, "AAD does not match... invalid request/code")
+		return
+	}
+	resp = &istio.AuthenticatedDecryptResponse{
+		Plaintext: pt,
+	}
+
+	return
 }
 
 func NewP11(config *crypto11.Config, createKey bool) (p *P11, err error) {
@@ -376,33 +271,6 @@ func (p *P11) Encrypt(ctx context.Context, req *k8s.EncryptRequest) (resp *k8s.E
 }
 func randomSerial() (serial *big.Int) {
 	serial, _ = rand.Int(rand.Reader, big.NewInt(20000))
-	return
-}
-func (p *P11) GenerateCA(ctx context.Context, request *v1.GenerateCARequest) (resp *v1.GenerateCAResponse, err error) {
-
-	var ca *x509.Certificate
-	if ca, err = generateCA(p.ctx, request); err != nil {
-		return
-	}
-	caPEM := &pem.Block{
-		Bytes: ca.Raw,
-		Type:  "CERTIFICATE",
-	}
-	resp = &v1.GenerateCAResponse{
-		Cert: pem.EncodeToMemory(caPEM),
-	}
-	return
-}
-
-func (p *P11) GenerateCAK(ctx context.Context, request *v1.GenerateCAKRequest) (resp *v1.GenerateCAKResponse, err error) {
-	resp = &v1.GenerateCAKResponse{
-
-	}
-	if _, err = generateCAK(p.ctx, request.RootCaKid, request.Kind, int(request.Size)); err != nil {
-		return
-	}
-
-	resp.RootCaKid = request.RootCaKid
 	return
 }
 
@@ -483,6 +351,7 @@ func (p *P11) GenerateSKey(ctx context.Context, request *istio.GenerateSKeyReque
 	}
 	dekEncryptor := gose.NewJweDirectEncryptorImpl(aead)
 
+
 	var wrappedSKey []byte
 	if wrappedSKey, err = generateSKey(p.ctx, request, dekEncryptor); err != nil {
 		return
@@ -523,23 +392,12 @@ func (p *P11) LoadSKey(ctx context.Context, request *istio.LoadSKeyRequest) (res
 		PlaintextSkey: nil,
 	}
 
+
 	// Return the clear sKey in PEM format or bust
 	if resp.PlaintextSkey, _, err = dekDecryptor.Decrypt(string(request.EncryptedSkeyBlob)); err != nil {
 		return
 	}
 
-	return
-}
-
-func (p *P11) SignCSR(ctx context.Context, request *v1.SignCSRRequest) (resp *v1.SignCSRResponse, err error) {
-
-	var certPEM *pem.Block
-	if certPEM, err = signCSR(p.ctx, request.RootCaKid, request.Csr); err != nil {
-		return
-	}
-	resp = &v1.SignCSRResponse{
-		Cert: pem.EncodeToMemory(certPEM),
-	}
 	return
 }
 

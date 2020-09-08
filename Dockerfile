@@ -22,7 +22,6 @@ ENV GOARCH amd64
 ENV CGO_ENABLED 1
 ENV GOFLAGS -mod=vendor
 RUN go build -o k8s-kms-plugin ./cmd/k8s-kms-plugin
-RUN go build -o est-server ./cmd/est-server-server
 
 
 ### Plugin Server
