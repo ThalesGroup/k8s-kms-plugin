@@ -254,7 +254,7 @@ func (p *P11) Decrypt(ctx context.Context, req *k8s.DecryptRequest) (resp *k8s.D
 func (p *P11) Encrypt(ctx context.Context, req *k8s.EncryptRequest) (resp *k8s.EncryptResponse, err error) {
 	var encryptor gose.JweEncryptor
 	if encryptor = p.encryptors[req.KeyId]; encryptor == nil {
-		if encryptor, _, err = loadKEKbyID(p.ctx, []byte(req.KeyId), defaultKEKlabel); err != nil {
+		if encryptor, _, err = loadKEKbyID(p.ctx, []byte(req.KeyId), []byte(defaultKEKlabel)); err != nil {
 			return
 		}
 	}
@@ -281,7 +281,7 @@ func (p *P11) GenerateDEK(ctx context.Context, request *istio.GenerateDEKRequest
 	}
 	var encryptor gose.JweEncryptor
 	if encryptor = p.encryptors[string(request.KekKid)]; encryptor == nil {
-		if encryptor, _, err = loadKEKbyID(p.ctx, request.KekKid, defaultKEKlabel); err != nil {
+		if encryptor, _, err = loadKEKbyID(p.ctx, []byte(request.KekKid), []byte(defaultKEKlabel)); err != nil {
 			return
 		}
 	}
