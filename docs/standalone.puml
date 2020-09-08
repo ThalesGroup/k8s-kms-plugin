@@ -34,7 +34,7 @@
         ==key load==
         apis -> server : LoadSKey(GenerateSKeyRequest)
         server -> p11 : LoadSKey(WrappedDEK+WrappedSKey)
-        server <- p11 : LoadSKey(SKey in PEM Format)
+        server <- p11 : LoadSKey(sKey in PEM Format)
         apis <- server : LoadSKey(GenerateSKeyResponse)
 
     end

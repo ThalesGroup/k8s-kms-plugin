@@ -125,6 +125,7 @@ func init() {
 	serveCmd.Flags().StringVar(&serverTLSKey, "tls-key", "certs/tls.key", "TLS server key")
 	serveCmd.Flags().StringVar(&serverTLSCert, "tls-certificate", "certs/tls.crt", "TLS server cert")
 	// Here you will define your flags and configuration settings.
+
 	serveCmd.Flags().StringVar(&kekKeyId, "kms-kid", "a37807cd-6d1a-4d75-813a-e120f30176f7", "Key ID for KMS KEK")
 	serveCmd.Flags().StringVar(&p11lib, "p11-lib", "", "Path to p11 library/client")
 	serveCmd.Flags().StringVar(&p11label, "p11-label", "", "P11 token label")

@@ -20,12 +20,13 @@ var (
 	testCtx             *crypto11.Context
 	testEncryptedBlob   string
 
-	testDecryptor    map[string]gose.JweDecryptor
-	testEncryptor    map[string]gose.JweEncryptor
-	testKid          []byte
-	testPlainMessage []byte
-	testWrappedDEK   []byte
-	testWrappedSKEY   []byte
+
+	testDecryptor      map[string]gose.JweDecryptor
+	testEncryptor      map[string]gose.JweEncryptor
+	testKid []byte
+	testPlainMessage   []byte
+	testWrappedDEK     []byte
+	testWrappedSKey    []byte
 )
 
 func init() {
@@ -181,7 +182,7 @@ func TestP11_GenerateDEK(t *testing.T) {
 	}
 }
 
-func TestP11_GenerateSKEY(t *testing.T) {
+func TestP11_GenerateSKey(t *testing.T) {
 	td := setupSoftHSMTestCase(t)
 	defer td(t)
 	type fields struct {
@@ -236,11 +237,12 @@ func TestP11_GenerateSKEY(t *testing.T) {
 			}
 			gotResp, err := p.GenerateSKey(tt.args.ctx, tt.args.request)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("GenerateSKEY() error = %v, wantErr %v", err, tt.wantErr)
+
+				t.Errorf("GenerateSKey() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(gotResp, tt.wantResp) {
-				t.Errorf("GenerateSKEY() gotResp = %v, want %v", gotResp, tt.wantResp)
+				t.Errorf("GenerateSKey() gotResp = %v, want %v", gotResp, tt.wantResp)
 			}
 		})
 	}
@@ -281,8 +283,9 @@ func TestP11_LoadDEK(t *testing.T) {
 			args: args{
 				ctx: context.Background(),
 				request: &istio.LoadSKeyRequest{
-					EncryptedDekBlob:  testWrappedDEK,
-					EncryptedSkeyBlob: testWrappedSKEY,
+
+					EncryptedDekBlob: testWrappedDEK,
+					EncryptedSkeyBlob: testWrappedSKey,
 				},
 			},
 			wantResp: nil,
