@@ -169,7 +169,7 @@ func generateSEK(ctx *crypto11.Context, request *istio.GenerateSKeyRequest, dekE
 			return
 		}
 		kpPEM := &pem.Block{
-			Type:  "PRIVATE KEY",
+			Type:  "RSA PRIVATE KEY",
 			Bytes: x509.MarshalPKCS1PrivateKey(kp),
 		}
 		buf := bytes.NewBuffer([]byte{})
