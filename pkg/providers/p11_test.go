@@ -25,7 +25,7 @@ var (
 	testKid          []byte
 	testPlainMessage []byte
 	testWrappedDEK   []byte
-	testWrappedSKEY   []byte
+	testWrappedSKEY  []byte
 )
 
 func init() {
@@ -68,8 +68,8 @@ func TestP11_Encrypt(t *testing.T) {
 			fields: fields{
 				config:     testConfig,
 				ctx:        testCtx,
-				keyId:      []byte("afdjaklfjdaskl"),
-				keyLabel:   []byte(defaultKEKlabel),
+				keyId:      testKid,
+				keyLabel:   defaultKEKlabel,
 				encryptors: testEncryptor,
 				decryptors: testDecryptor,
 				createKey:  true,
@@ -77,8 +77,10 @@ func TestP11_Encrypt(t *testing.T) {
 			args: args{
 				ctx: context.Background(),
 				req: &k8s.EncryptRequest{
-					Version: "1",
-					Plain:   testPlainMessage,
+					Version:   "1",
+					Plain:     testPlainMessage,
+					KeyringId: "",
+					KeyId:     "",
 				},
 			},
 			wantResp: &k8s.EncryptResponse{
@@ -145,8 +147,8 @@ func TestP11_GenerateDEK(t *testing.T) {
 				keyId:      testKid,
 				config:     testConfig,
 				ctx:        testCtx,
-				decryptors: nil,
-				encryptors: nil,
+				encryptors: testEncryptor,
+				decryptors: testDecryptor,
 				createKey:  true,
 			},
 			args: args{
@@ -200,17 +202,18 @@ func TestP11_GenerateSKEY(t *testing.T) {
 		name     string
 		fields   fields
 		args     args
-		wantResp *istio.GenerateSKeyResponse
+		wantResp bool
 		wantErr  bool
 	}{
 		{
 			name: "OK",
 			fields: fields{
-				keyId:  testKid,
-				config: testConfig,
-				ctx:    testCtx,
-
-				createKey: true,
+				keyId:      testKid,
+				config:     testConfig,
+				ctx:        testCtx,
+				encryptors: testEncryptor,
+				decryptors: testDecryptor,
+				createKey:  true,
 			},
 			args: args{
 				ctx: context.Background(),
@@ -221,7 +224,7 @@ func TestP11_GenerateSKEY(t *testing.T) {
 					KekKid:           testKid,
 				},
 			},
-			wantResp: nil,
+			wantResp: true,
 			wantErr:  false,
 		},
 	}
@@ -239,9 +242,12 @@ func TestP11_GenerateSKEY(t *testing.T) {
 				t.Errorf("GenerateSKEY() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(gotResp, tt.wantResp) {
-				t.Errorf("GenerateSKEY() gotResp = %v, want %v", gotResp, tt.wantResp)
+			if tt.wantResp && (gotResp == nil) {
+				t.Errorf("GenerateSKEY() gotResp = %v, want %v", (gotResp == nil), tt.wantResp)
+				return
+
 			}
+
 		})
 	}
 }
@@ -319,7 +325,6 @@ func setupSoftHSMTestCase(t testing.TB) func(t testing.TB) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	if os.Getenv("P11_LIBRARY") == "" {
 		t.Skip("No P11_LIBRARY provided, skipping")
 	}
@@ -328,7 +333,9 @@ func setupSoftHSMTestCase(t testing.TB) func(t testing.TB) {
 	gen := &gose.AuthenticatedEncryptionKeyGenerator{}
 	var taead gose.AuthenticatedEncryptionKey
 
-	taead, testAESKeyJWK, err = gen.Generate(jose.AlgA256GCM, kekKeyOps)
+	if taead, testAESKeyJWK, err = gen.Generate(jose.AlgA256GCM, kekKeyOps); err != nil {
+		t.Fatal(err)
+	}
 	if testAESKeyJWKString, err = gose.JwkToString(testAESKeyJWK); err != nil {
 		t.Fatal(err)
 	}
