@@ -2,6 +2,7 @@ apiVersion: skaffold/v2beta5
 kind: Config
 build:
   local:
+    push: true
     useDockerCLI: true
   artifacts:
     - image: gcr.io/thalescpl-io/k8s-kms-plugin/server
