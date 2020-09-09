@@ -1,12 +1,12 @@
-## Test Tool build
-FROM golang:1.14-stretch as p11tool
+## Basic test tool
+FROM goboring/golang:1.14.6b4 as p11tool
 ENV GOARCH amd64
 ENV GOOS linux
 ENV CGO_ENABLED 1
 RUN GO111MODULE=off go get -u github.com/thales-e-security/p11tool
 
-## Build Stage
-FROM golang:1.14-stretch as build
+## Build stage
+FROM goboring/golang:1.14.6b4 as build
 WORKDIR /app
 ADD go.mod /app/go.mod
 ADD go.sum /app/go.sum
