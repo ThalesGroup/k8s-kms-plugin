@@ -98,8 +98,6 @@ message AuthenticatedEncryptRequest {
 // AuthenticatedEncryptResponse
 message AuthenticatedEncryptResponse {
   bytes ciphertext = 1;
-  bytes iv = 2;
-  bytes auth_tag = 3;
 }
 
 // AuthenticatedDecryptRequest
@@ -107,9 +105,7 @@ message AuthenticatedDecryptRequest {
   string kek_kid = 1;
   bytes encrypted_dek_blob = 2;
   bytes ciphertext = 3;
-  bytes iv = 4;
-  bytes aad = 5;
-  bytes auth_tag = 6;
+  bytes aad = 4;
 }
 
 // AuthenticatedDecryptResponse

@@ -64,14 +64,6 @@
         "ciphertext": {
           "type": "string",
           "format": "byte"
-        },
-        "iv": {
-          "type": "string",
-          "format": "byte"
-        },
-        "auth_tag": {
-          "type": "string",
-          "format": "byte"
         }
       },
       "title": "AuthenticatedEncryptResponse"
