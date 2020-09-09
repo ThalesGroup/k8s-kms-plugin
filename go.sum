@@ -37,6 +37,8 @@ github.com/ThalesIgnite/crypto11 v1.2.1 h1:KxAScWrgX9gEykv/+mU0Gzwvv7CRmrPQJOqTo
 github.com/ThalesIgnite/crypto11 v1.2.1/go.mod h1:vmlYtalkn8uCp3eStRZ0r7Sslmf1jAtL8De0PIyqPks=
 github.com/ThalesIgnite/gose v0.8.0 h1:lNrJDJJ0YjV92UF7ZeC4mdTVB3VibzM8J6f0/kMWUgw=
 github.com/ThalesIgnite/gose v0.8.0/go.mod h1:Df9sTdqrq0CSY9Xr3zkEoN2KvaWbQnqMZn/uxIj/Uk0=
+github.com/ThalesIgnite/gose v0.8.1 h1:foi+XJDxjac7Ouc015A1BL84/lg5i3YUi/Pswixndr8=
+github.com/ThalesIgnite/gose v0.8.1/go.mod h1:F+Q6902so/4qLvk2V30s0MiJ3GIP3F4K+abEKFJC8ro=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=

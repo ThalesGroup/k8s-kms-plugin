@@ -1,62 +1,28 @@
-# github.com/PuerkitoBio/purell v1.1.1
-github.com/PuerkitoBio/purell
-# github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578
-github.com/PuerkitoBio/urlesc
 # github.com/ThalesIgnite/crypto11 v1.2.1
 ## explicit
 github.com/ThalesIgnite/crypto11
-# github.com/ThalesIgnite/gose v0.8.0
+# github.com/ThalesIgnite/gose v0.8.1
 ## explicit
 github.com/ThalesIgnite/gose
 github.com/ThalesIgnite/gose/jose
-# github.com/asaskevich/govalidator v0.0.0-20200428143746-21a406dcc535
-github.com/asaskevich/govalidator
-# github.com/docker/go-units v0.4.0
-github.com/docker/go-units
 # github.com/fsnotify/fsnotify v1.4.7
 github.com/fsnotify/fsnotify
 # github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
 ## explicit
-github.com/fullsailor/pkcs7
 # github.com/ghodss/yaml v1.0.0
 github.com/ghodss/yaml
-# github.com/go-openapi/analysis v0.19.10
-github.com/go-openapi/analysis
-github.com/go-openapi/analysis/internal
 # github.com/go-openapi/errors v0.19.6
 ## explicit
-github.com/go-openapi/errors
-# github.com/go-openapi/jsonpointer v0.19.3
-github.com/go-openapi/jsonpointer
-# github.com/go-openapi/jsonreference v0.19.3
-github.com/go-openapi/jsonreference
 # github.com/go-openapi/loads v0.19.5
 ## explicit
-github.com/go-openapi/loads
 # github.com/go-openapi/runtime v0.19.20
 ## explicit
-github.com/go-openapi/runtime
-github.com/go-openapi/runtime/client
-github.com/go-openapi/runtime/flagext
-github.com/go-openapi/runtime/logger
-github.com/go-openapi/runtime/middleware
-github.com/go-openapi/runtime/middleware/denco
-github.com/go-openapi/runtime/middleware/header
-github.com/go-openapi/runtime/middleware/untyped
-github.com/go-openapi/runtime/security
 # github.com/go-openapi/spec v0.19.8
 ## explicit
-github.com/go-openapi/spec
 # github.com/go-openapi/strfmt v0.19.5
 ## explicit
-github.com/go-openapi/strfmt
 # github.com/go-openapi/swag v0.19.9
 ## explicit
-github.com/go-openapi/swag
-# github.com/go-openapi/validate v0.19.10
-github.com/go-openapi/validate
-# github.com/go-stack/stack v1.8.0
-github.com/go-stack/stack
 # github.com/gogo/protobuf v1.3.1
 github.com/gogo/protobuf/proto
 # github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
@@ -110,7 +76,6 @@ github.com/inconshreveable/mousetrap
 github.com/infobloxopen/atlas-app-toolkit/rpc/resource
 # github.com/jessevdk/go-flags v1.4.0
 ## explicit
-github.com/jessevdk/go-flags
 # github.com/keepeye/logrus-filename v0.0.0-20190711075016-ce01a4391dd1
 ## explicit
 github.com/keepeye/logrus-filename
@@ -118,10 +83,6 @@ github.com/keepeye/logrus-filename
 github.com/konsorten/go-windows-terminal-sequences
 # github.com/magiconair/properties v1.8.1
 github.com/magiconair/properties
-# github.com/mailru/easyjson v0.7.1
-github.com/mailru/easyjson/buffer
-github.com/mailru/easyjson/jlexer
-github.com/mailru/easyjson/jwriter
 # github.com/miekg/pkcs11 v1.0.3-0.20190429190417-a667d056470f
 github.com/miekg/pkcs11
 # github.com/mitchellh/go-homedir v1.1.0
@@ -161,14 +122,6 @@ github.com/spf13/viper
 github.com/subosito/gotenv
 # github.com/thales-e-security/pool v0.0.1
 github.com/thales-e-security/pool
-# go.mongodb.org/mongo-driver v1.3.4
-go.mongodb.org/mongo-driver/bson
-go.mongodb.org/mongo-driver/bson/bsoncodec
-go.mongodb.org/mongo-driver/bson/bsonoptions
-go.mongodb.org/mongo-driver/bson/bsonrw
-go.mongodb.org/mongo-driver/bson/bsontype
-go.mongodb.org/mongo-driver/bson/primitive
-go.mongodb.org/mongo-driver/x/bsonx/bsoncore
 # golang.org/x/net v0.0.0-20200602114024-627f9648deb9
 ## explicit
 golang.org/x/net/http/httpguts
@@ -176,7 +129,6 @@ golang.org/x/net/http2
 golang.org/x/net/http2/hpack
 golang.org/x/net/idna
 golang.org/x/net/internal/timeseries
-golang.org/x/net/netutil
 golang.org/x/net/trace
 # golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 ## explicit
@@ -188,7 +140,6 @@ golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
-golang.org/x/text/width
 # golang.org/x/tools v0.0.0-20200626171337-aa94e735be7f
 ## explicit
 golang.org/x/tools/cmd/cover

@@ -120,12 +120,12 @@ func NewAesGcmCryptorFromJwk(jwk jose.Jwk, required []jose.KeyOps) (Authenticate
 }
 
 // NewAesGcmCryptor create a new instance of an AesGCmCryptor from the supplied parameters.
-func NewAesGcmCryptor(aead cipher.AEAD, rng io.Reader, kid string, alg jose.Alg, opeartions []jose.KeyOps) (AuthenticatedEncryptionKey, error) {
+func NewAesGcmCryptor(aead cipher.AEAD, rng io.Reader, kid string, alg jose.Alg, operations []jose.KeyOps) (AuthenticatedEncryptionKey, error) {
 	return &AesGcmCryptor{
 		kid:  kid,
 		alg:  alg,
 		aead: aead,
 		rng:  rng,
-		opts: opeartions,
+		opts: operations,
 	}, nil
 }
