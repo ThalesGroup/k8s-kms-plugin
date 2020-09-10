@@ -194,7 +194,7 @@ func runTest() error {
 	logrus.Info("Test 5 AuthenticatedEncrypt ")
 	var aeResp *istio.AuthenticatedEncryptResponse
 	if aeResp, err = ic.AuthenticatedEncrypt(ictx, &istio.AuthenticatedEncryptRequest{
-		KekKid: string(genKEKResp.KekKid),
+		KekKid: genKEKResp.KekKid,
 		Plaintext: []byte("Hello World"),
 		Aad: defaultAAD,
 	}); err != nil {
@@ -209,7 +209,7 @@ func runTest() error {
 	logrus.Info("Test 6 AuthenticatedDecrypt ")
 	var adResp *istio.AuthenticatedDecryptResponse
 	if adResp, err = ic.AuthenticatedDecrypt(ictx, &istio.AuthenticatedDecryptRequest{
-		KekKid:       string(genKEKResp.KekKid),
+		KekKid:       genKEKResp.KekKid,
 		EncryptedDekBlob:  genDEKResp.EncryptedDekBlob,
 		Ciphertext:   aeResp.Ciphertext,
 		Aad:          defaultAAD,

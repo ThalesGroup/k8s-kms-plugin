@@ -585,7 +585,9 @@ type AuthenticatedEncryptRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	KekKid           string `protobuf:"bytes,1,opt,name=kek_kid,json=kekKid,proto3" json:"kek_kid,omitempty"`                                 // Generated out of band or via GenerateKEK
+	KekKid []byte `protobuf:"bytes,1,opt,name=kek_kid,json=kekKid,proto3" json:"kek_kid,omitempty"`
+		// Generated out of band or via GenerateKEK
+
 	EncryptedDekBlob []byte `protobuf:"bytes,2,opt,name=encrypted_dek_blob,json=encryptedDekBlob,proto3" json:"encrypted_dek_blob,omitempty"` // Encrypted DEK payload wrapped by the KEK
 	Plaintext        []byte `protobuf:"bytes,3,opt,name=plaintext,proto3" json:"plaintext,omitempty"`
 	Aad              []byte `protobuf:"bytes,4,opt,name=aad,proto3" json:"aad,omitempty"`
@@ -623,11 +625,11 @@ func (*AuthenticatedEncryptRequest) Descriptor() ([]byte, []int) {
 	return file_apis_istio_v1_messages_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *AuthenticatedEncryptRequest) GetKekKid() string {
+func (x *AuthenticatedEncryptRequest) GetKekKid() []byte {
 	if x != nil {
 		return x.KekKid
 	}
-	return ""
+	return nil
 }
 
 func (x *AuthenticatedEncryptRequest) GetEncryptedDekBlob() []byte {
@@ -705,7 +707,7 @@ type AuthenticatedDecryptRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	KekKid           string `protobuf:"bytes,1,opt,name=kek_kid,json=kekKid,proto3" json:"kek_kid,omitempty"`
+	KekKid           []byte `protobuf:"bytes,1,opt,name=kek_kid,json=kekKid,proto3" json:"kek_kid,omitempty"`
 	EncryptedDekBlob []byte `protobuf:"bytes,2,opt,name=encrypted_dek_blob,json=encryptedDekBlob,proto3" json:"encrypted_dek_blob,omitempty"`
 	Ciphertext       []byte `protobuf:"bytes,3,opt,name=ciphertext,proto3" json:"ciphertext,omitempty"`
 	Aad              []byte `protobuf:"bytes,4,opt,name=aad,proto3" json:"aad,omitempty"`
@@ -743,11 +745,11 @@ func (*AuthenticatedDecryptRequest) Descriptor() ([]byte, []int) {
 	return file_apis_istio_v1_messages_proto_rawDescGZIP(), []int{10}
 }
 
-func (x *AuthenticatedDecryptRequest) GetKekKid() string {
+func (x *AuthenticatedDecryptRequest) GetKekKid() []byte {
 	if x != nil {
 		return x.KekKid
 	}
-	return ""
+	return nil
 }
 
 func (x *AuthenticatedDecryptRequest) GetEncryptedDekBlob() []byte {
