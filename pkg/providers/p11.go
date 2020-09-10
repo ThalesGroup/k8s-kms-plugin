@@ -173,7 +173,7 @@ type P11 struct {
 
 func (p *P11) AuthenticatedEncrypt(ctx context.Context, request *istio.AuthenticatedEncryptRequest) (resp *istio.AuthenticatedEncryptResponse, err error) {
 	var encryptor gose.JweEncryptor
-	if encryptor = p.encryptors[request.KekKid]; encryptor == nil {
+	if encryptor = p.encryptors[string(request.KekKid)]; encryptor == nil {
 		if encryptor, _, err = loadKEKbyID(p.ctx, []byte(request.KekKid), []byte(defaultKEKlabel)); err != nil {
 			return
 		}
@@ -190,7 +190,7 @@ func (p *P11) AuthenticatedEncrypt(ctx context.Context, request *istio.Authentic
 
 func (p *P11) AuthenticatedDecrypt(ctx context.Context, request *istio.AuthenticatedDecryptRequest) (resp *istio.AuthenticatedDecryptResponse, err error) {
 	var decryptor gose.JweDecryptor
-	if decryptor = p.decryptors[request.KekKid]; decryptor == nil {
+	if decryptor = p.decryptors[string(request.KekKid)]; decryptor == nil {
 		if _, decryptor, err = loadKEKbyID(p.ctx, []byte(request.KekKid), []byte(defaultKEKlabel)); err != nil {
 			return
 		}
