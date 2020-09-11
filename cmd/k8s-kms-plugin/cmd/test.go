@@ -195,6 +195,7 @@ func runTest() error {
 	var aeResp *istio.AuthenticatedEncryptResponse
 	if aeResp, err = ic.AuthenticatedEncrypt(ictx, &istio.AuthenticatedEncryptRequest{
 		KekKid: genKEKResp.KekKid,
+		EncryptedDekBlob: genDEKResp.EncryptedDekBlob,
 		Plaintext: []byte("Hello World"),
 		Aad: defaultAAD,
 	}); err != nil {

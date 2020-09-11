@@ -172,16 +172,42 @@ type P11 struct {
 }
 
 func (p *P11) AuthenticatedEncrypt(ctx context.Context, request *istio.AuthenticatedEncryptRequest) (resp *istio.AuthenticatedEncryptResponse, err error) {
-	var encryptor gose.JweEncryptor
-	if encryptor = p.encryptors[string(request.KekKid)]; encryptor == nil {
-		if encryptor, _, err = loadKEKbyID(p.ctx, []byte(request.KekKid), []byte(defaultKEKlabel)); err != nil {
+	var kekDecryptor gose.JweDecryptor
+	if kekDecryptor = p.decryptors[string(request.KekKid)]; nil == kekDecryptor {
+		if _, kekDecryptor, err = loadKEKbyID(p.ctx, request.KekKid, defaultKEKlabel); nil != err {
 			return
 		}
 	}
-	resp = &istio.AuthenticatedEncryptResponse{
+
+	var dekDecrypted []byte
+	var aadFromWrappedDek []byte
+	dekDecrypted, aadFromWrappedDek, err = kekDecryptor.Decrypt(string(request.EncryptedDekBlob))
+	if nil != err {
+		return
 	}
+
+	// Should be nil
+	if nil != aadFromWrappedDek {
+		return
+	}
+
+	var loadedDek jose.Jwk
+	loadedDek, err = gose.LoadJwk(bytes.NewReader(dekDecrypted), []jose.KeyOps{jose.KeyOpsEncrypt})
+	if nil != err {
+		return
+	}
+
+	var dekAead gose.AuthenticatedEncryptionKey
+	if dekAead, err = gose.NewAesGcmCryptorFromJwk(loadedDek, []jose.KeyOps{jose.KeyOpsEncrypt}); nil != err {
+		return
+	}
+
+	var dekAeadEncryptor gose.JweEncryptor
+	dekAeadEncryptor = gose.NewJweDirectEncryptorImpl(dekAead)
+
+	resp = &istio.AuthenticatedEncryptResponse{}
 	var ct string
-	if ct, err = encryptor.Encrypt(request.Plaintext, request.Aad); err != nil {
+	if ct, err = dekAeadEncryptor.Encrypt(request.Plaintext, request.Aad); err != nil {
 		return
 	}
 	resp.Ciphertext = []byte(ct)
@@ -189,14 +215,41 @@ func (p *P11) AuthenticatedEncrypt(ctx context.Context, request *istio.Authentic
 }
 
 func (p *P11) AuthenticatedDecrypt(ctx context.Context, request *istio.AuthenticatedDecryptRequest) (resp *istio.AuthenticatedDecryptResponse, err error) {
-	var decryptor gose.JweDecryptor
-	if decryptor = p.decryptors[string(request.KekKid)]; decryptor == nil {
-		if _, decryptor, err = loadKEKbyID(p.ctx, []byte(request.KekKid), []byte(defaultKEKlabel)); err != nil {
+	var kekDecryptor gose.JweDecryptor
+	if kekDecryptor = p.decryptors[string(request.KekKid)]; kekDecryptor == nil {
+		if _, kekDecryptor, err = loadKEKbyID(p.ctx, request.KekKid, defaultKEKlabel); err != nil {
 			return
 		}
 	}
+
+	var dekDecrypted []byte
+	var aadFromWrappedDek []byte
+	dekDecrypted, aadFromWrappedDek, err = kekDecryptor.Decrypt(string(request.EncryptedDekBlob))
+	if nil != err {
+		return
+	}
+
+	// Should be nil
+	if nil != aadFromWrappedDek {
+		return
+	}
+
+	var loadedDek jose.Jwk
+	loadedDek, err = gose.LoadJwk(bytes.NewReader(dekDecrypted), []jose.KeyOps{jose.KeyOpsDecrypt})
+	if nil != err {
+		return
+	}
+
+	var dekAead gose.AuthenticatedEncryptionKey
+	if dekAead, err = gose.NewAesGcmCryptorFromJwk(loadedDek, []jose.KeyOps{jose.KeyOpsDecrypt}); nil != err {
+		return
+	}
+
+	var dekAeadDecryptor gose.JweDecryptor
+	dekAeadDecryptor = gose.NewJweDirectDecryptorImpl([]gose.AuthenticatedEncryptionKey{dekAead})
+
 	var pt, aad []byte
-	if pt, aad, err = decryptor.Decrypt(string(request.Ciphertext)); err != nil {
+	if pt, aad, err = dekAeadDecryptor.Decrypt(string(request.Ciphertext)); err != nil {
 		return
 	}
 	if !reflect.DeepEqual(aad, request.Aad) {
