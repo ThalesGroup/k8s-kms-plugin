@@ -26,6 +26,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -64,6 +65,9 @@ var serveCmd = &cobra.Command{
 
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 
+		if a := os.Getenv("SOCKET"); a != "" {
+			socketPath = a
+		}
 		if a := os.Getenv("P11_LIB"); a != "" {
 			p11lib = a
 		}
@@ -75,8 +79,19 @@ var serveCmd = &cobra.Command{
 				return
 			}
 		}
-		if a := os.Getenv("P11_PIN"); a != "" {
+
+		if a := os.Getenv("P11_PIN_FILE"); a != "" {
+			var p11pinBytes []byte
+			p11pinBytes, err = ioutil.ReadFile(a)
+			if err != nil {
+				logrus.Error(err)
+				return
+			}
+			p11pin = string(p11pinBytes)
+			logrus.Infof("Loaded P11 PIN from file: %v", a)
+		} else if a := os.Getenv("P11_PIN"); a != "" {
 			p11pin = a
+			logrus.Info("Loaded P11 PIN from ENV variable. Never use this in production!")
 		}
 		g := new(errgroup.Group)
 		grpcAddr := fmt.Sprintf("%v:%d", host, grpcPort)
@@ -97,7 +112,7 @@ var serveCmd = &cobra.Command{
 			// Istiod runs with uid and gid 1337, but the plugin runs with uid 0 and
 			// gid 1337.  Change the socket permissions so the group has read/write
 			// access to the socket.
-			os.Chmod(socketPath, 0775);
+			os.Chmod(socketPath, 0775)
 			g.Go(func() error { return grpcServe(grpcUNIX) })
 			logrus.Infof("KMS Plugin Listening on : %v\n", socketPath)
 

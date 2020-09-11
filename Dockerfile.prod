@@ -1,0 +1,33 @@
+## Build stage
+FROM goboring/golang:1.14.6b4 as build
+WORKDIR /app
+ADD go.mod /app/go.mod
+ADD go.sum /app/go.sum
+ADD tools.go /app/pkg/tools.go
+ADD vendor /app/vendor
+ADD pkg /app/pkg
+ADD apis /app/apis
+ADD cmd/ /app/cmd/
+
+ENV GOOS linux
+ENV GOARCH amd64
+ENV CGO_ENABLED 1
+ENV GOFLAGS -mod=vendor
+RUN go build -o k8s-kms-plugin ./cmd/k8s-kms-plugin
+
+
+## Prod Server
+FROM goboring/golang:1.14.6b4 as prodserver
+WORKDIR /
+COPY --from=build /app/k8s-kms-plugin /k8s-kms-plugin
+
+RUN mkdir -p /onprem/config
+RUN mkdir -p /onprem/lib
+RUN mkdir -p /onprem/plugins
+COPY files/Chrystoki.conf /onprem/config/Chrystoki.conf
+COPY files/openssl.cnf /onprem/config/openssl.cnf
+COPY files/libCryptoki2.so /onprem/lib/libCryptoki2.so
+COPY files/libdpod.plugin /onprem/plugins/libdpod.plugin
+
+ENTRYPOINT ["/k8s-kms-plugin", "serve"]
+
