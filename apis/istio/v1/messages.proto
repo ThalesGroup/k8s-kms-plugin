@@ -112,3 +112,13 @@ message AuthenticatedDecryptRequest {
 message AuthenticatedDecryptResponse {
   bytes plaintext = 1;
 }
+
+// VerifyCertChainRequest
+message VerifyCertChainRequest {
+  repeated bytes certificates = 1;
+}
+
+// VerifyCertChainResponse
+message VerifyCertChainResponse {
+  bool successful_verification = 1;
+}

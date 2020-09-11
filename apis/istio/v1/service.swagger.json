@@ -125,6 +125,16 @@
           "title": "Intermediate CA Signing KeyPair in plaintext in PEM Format"
         }
       }
+    },
+    "v1VerifyCertChainResponse": {
+      "type": "object",
+      "properties": {
+        "successful_verification": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      },
+      "title": "VerifyCertChainResponse"
     }
   }
 }

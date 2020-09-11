@@ -20,4 +20,6 @@ service KeyManagementService {
   rpc AuthenticatedEncrypt(AuthenticatedEncryptRequest) returns (AuthenticatedEncryptResponse);
   // AuthenticatedDecrypt returns a payload decrypted from the previously invoke AE
   rpc AuthenticatedDecrypt(AuthenticatedDecryptRequest) returns (AuthenticatedDecryptResponse);
+  // VerifyCertChain returns a boolean indicating successful verification of a certificate chain (currently needs to be self-contained)
+  rpc VerifyCertChain(VerifyCertChainRequest) returns (VerifyCertChainResponse);
 }

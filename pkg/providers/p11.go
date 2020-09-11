@@ -210,6 +210,7 @@ func (p *P11) AuthenticatedEncrypt(ctx context.Context, request *istio.Authentic
 	if ct, err = dekAeadEncryptor.Encrypt(request.Plaintext, request.Aad); err != nil {
 		return
 	}
+
 	resp.Ciphertext = []byte(ct)
 	return
 }
@@ -369,6 +370,58 @@ func (p *P11) GenerateKEK(ctx context.Context, request *istio.GenerateKEKRequest
 	resp = &istio.GenerateKEKResponse{
 		KekKid: request.KekKid,
 	}
+	return
+
+}
+
+// VerifyCertChain verifies a provided cert-chain (currently self-contained)
+func(p *P11) VerifyCertChain(ctx context.Context, request *istio.VerifyCertChainRequest) (resp *istio.VerifyCertChainResponse, err error) {
+	if nil == request {
+		return nil, status.Error(codes.InvalidArgument, "no request sent")
+	}
+
+	// Todo - move the CA cert into HSM. Currently needs to accompany the target cert
+	// Todo - currently assumes the cert chain is of length 2, with the first being the target cert and the second being the root CA cert
+
+	if nil == request.Certificates {
+		err = fmt.Errorf("no certificates provided")
+		return
+	}
+
+	if 2 != len(request.Certificates) {
+		err = fmt.Errorf("test VerifyCertChain currently needs a target cert and a root cert")
+		return
+	}
+
+
+	var parsedTargetCert *x509.Certificate
+	parsedTargetCert, err = x509.ParseCertificate(request.Certificates[0])
+	if nil != err {
+		return
+	}
+
+	var verifyOpts = x509.VerifyOptions{
+		Roots: x509.NewCertPool(),
+	}
+
+	var parsedRootCaCertificate *x509.Certificate
+	parsedRootCaCertificate, err = x509.ParseCertificate(request.Certificates[1])
+	if nil != err {
+		return
+	}
+
+	verifyOpts.Roots.AddCert(parsedRootCaCertificate)
+
+	resp = &istio.VerifyCertChainResponse{}
+
+	_, verifyErr := parsedTargetCert.Verify(verifyOpts)
+	if nil != verifyErr {
+		err = verifyErr
+	} else {
+		resp.SuccessfulVerification = true
+	}
+
+
 	return
 
 }
