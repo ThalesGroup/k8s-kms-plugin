@@ -19,7 +19,11 @@ import (
 	"context"
 	"github.com/spf13/cobra"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
+	"io/ioutil"
 )
+
+var caCertPem []byte
+var caCertPath string
 
 // importCaCmd represents the importCa command
 var importCaCmd = &cobra.Command{
@@ -36,6 +40,9 @@ var importCaCmd = &cobra.Command{
 		}
 		defer icancel()
 
+		if caCertPem, err = ioutil.ReadFile(caCertPath); err != nil {
+			return
+		}
 		req := &istio.ImportCACertRequest{
 			KekKid:     nil,
 			CaCertBlob: nil,
@@ -59,5 +66,6 @@ func init() {
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// importCaCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	importCaCmd.Flags().StringVar(&caCertPath, "cert-file", "", "Cert File ")
+	importCaCmd.MarkFlagRequired("cert-file")
 }
