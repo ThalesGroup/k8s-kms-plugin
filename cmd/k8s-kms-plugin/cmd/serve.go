@@ -47,7 +47,7 @@ var (
 	serverTLSCert string
 	serverTLSKey  string
 	kekKeyId      string
-	estKeyId      string
+	caKeyId      string
 	keyName       string
 	p11lib        string
 	p11slot       int

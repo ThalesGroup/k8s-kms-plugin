@@ -28,7 +28,8 @@ import (
 )
 
 var (
-	defaultKEKlabel = []byte("k8s-kms-plugin-kek")
+	defaultKEKlabel    = []byte("k8s-kms-plugin-kek")
+	defaultRootCAlabel = []byte("k8s-kms-plugin-root-ca")
 )
 
 var (
@@ -161,60 +162,32 @@ func loadKEKbyID(ctx *crypto11.Context, identity, label []byte, ) (encryptor gos
 	return
 }
 
+func randomSerial() (serial *big.Int) {
+	serial, _ = rand.Int(rand.Reader, big.NewInt(20000))
+	return
+}
+
 type P11 struct {
-	//keyId     []byte
+	kid        []byte
+	cid        []byte
 	config     *crypto11.Config
 	ctx        *crypto11.Context
 	encryptors map[string]gose.JweEncryptor
 	decryptors map[string]gose.JweDecryptor
 	createKey  bool
 }
-// ImportCACert
-func (p *P11) ImportCACert(ctx context.Context, request *istio.ImportCACertRequest) (resp *istio.ImportCACertResponse, err error) {
 
-	return
-}
+func NewP11(config *crypto11.Config, createKey bool) (p *P11, err error) {
 
-func (p *P11) AuthenticatedEncrypt(ctx context.Context, request *istio.AuthenticatedEncryptRequest) (resp *istio.AuthenticatedEncryptResponse, err error) {
-	var kekDecryptor gose.JweDecryptor
-	if kekDecryptor = p.decryptors[string(request.KekKid)]; nil == kekDecryptor {
-		if _, kekDecryptor, err = loadKEKbyID(p.ctx, request.KekKid, defaultKEKlabel); nil != err {
-			return
-		}
+	p = &P11{
+		config:    config,
+		createKey: createKey,
 	}
-
-	var dekDecrypted []byte
-	var aadFromWrappedDek []byte
-	dekDecrypted, aadFromWrappedDek, err = kekDecryptor.Decrypt(string(request.EncryptedDekBlob))
-	if nil != err {
+	// Bootstrap the Pkcs11 device or die
+	if p.ctx, err = crypto11.Configure(p.config); err != nil {
+		logrus.Error(err)
 		return
 	}
-
-	// Should be nil
-	if nil != aadFromWrappedDek {
-		return
-	}
-
-	var loadedDek jose.Jwk
-	loadedDek, err = gose.LoadJwk(bytes.NewReader(dekDecrypted), []jose.KeyOps{jose.KeyOpsEncrypt})
-	if nil != err {
-		return
-	}
-
-	var dekAead gose.AuthenticatedEncryptionKey
-	if dekAead, err = gose.NewAesGcmCryptorFromJwk(loadedDek, []jose.KeyOps{jose.KeyOpsEncrypt}); nil != err {
-		return
-	}
-
-	var dekAeadEncryptor gose.JweEncryptor
-	dekAeadEncryptor = gose.NewJweDirectEncryptorImpl(dekAead)
-
-	resp = &istio.AuthenticatedEncryptResponse{}
-	var ct string
-	if ct, err = dekAeadEncryptor.Encrypt(request.Plaintext, request.Aad); err != nil {
-		return
-	}
-	resp.Ciphertext = []byte(ct)
 	return
 }
 
@@ -267,17 +240,46 @@ func (p *P11) AuthenticatedDecrypt(ctx context.Context, request *istio.Authentic
 	return
 }
 
-func NewP11(config *crypto11.Config, createKey bool) (p *P11, err error) {
-
-	p = &P11{
-		config:    config,
-		createKey: createKey,
+func (p *P11) AuthenticatedEncrypt(ctx context.Context, request *istio.AuthenticatedEncryptRequest) (resp *istio.AuthenticatedEncryptResponse, err error) {
+	var kekDecryptor gose.JweDecryptor
+	if kekDecryptor = p.decryptors[string(request.KekKid)]; nil == kekDecryptor {
+		if _, kekDecryptor, err = loadKEKbyID(p.ctx, request.KekKid, defaultKEKlabel); nil != err {
+			return
+		}
 	}
-	// Bootstrap the Pkcs11 device or die
-	if p.ctx, err = crypto11.Configure(p.config); err != nil {
-		logrus.Error(err)
+
+	var dekDecrypted []byte
+	var aadFromWrappedDek []byte
+	dekDecrypted, aadFromWrappedDek, err = kekDecryptor.Decrypt(string(request.EncryptedDekBlob))
+	if nil != err {
 		return
 	}
+
+	// Should be nil
+	if nil != aadFromWrappedDek {
+		return
+	}
+
+	var loadedDek jose.Jwk
+	loadedDek, err = gose.LoadJwk(bytes.NewReader(dekDecrypted), []jose.KeyOps{jose.KeyOpsEncrypt})
+	if nil != err {
+		return
+	}
+
+	var dekAead gose.AuthenticatedEncryptionKey
+	if dekAead, err = gose.NewAesGcmCryptorFromJwk(loadedDek, []jose.KeyOps{jose.KeyOpsEncrypt}); nil != err {
+		return
+	}
+
+	var dekAeadEncryptor gose.JweEncryptor
+	dekAeadEncryptor = gose.NewJweDirectEncryptorImpl(dekAead)
+
+	resp = &istio.AuthenticatedEncryptResponse{}
+	var ct string
+	if ct, err = dekAeadEncryptor.Encrypt(request.Plaintext, request.Aad); err != nil {
+		return
+	}
+	resp.Ciphertext = []byte(ct)
 	return
 }
 
@@ -324,10 +326,6 @@ func (p *P11) Encrypt(ctx context.Context, req *k8s.EncryptRequest) (resp *k8s.E
 	resp = &k8s.EncryptResponse{
 		Cipher: []byte(out),
 	}
-	return
-}
-func randomSerial() (serial *big.Int) {
-	serial, _ = rand.Int(rand.Reader, big.NewInt(20000))
 	return
 }
 
@@ -414,6 +412,26 @@ func (p *P11) GenerateSKey(ctx context.Context, request *istio.GenerateSKeyReque
 	}
 	resp = &istio.GenerateSKeyResponse{}
 	resp.EncryptedSkeyBlob = []byte(wrappedSKey)
+	return
+}
+
+// ImportCACert inserts the Root CA cert chain
+func (p *P11) ImportCACert(ctx context.Context, request *istio.ImportCACertRequest) (resp *istio.ImportCACertResponse, err error) {
+	resp = &istio.ImportCACertResponse{
+		Success: false,
+	}
+	var pp *pem.Block
+	if pp, _ = pem.Decode(request.CaCertBlob); err != nil {
+		return
+	}
+	var cert *x509.Certificate
+	if cert, err = x509.ParseCertificate(pp.Bytes); err != nil {
+		return
+	}
+	if err = p.ctx.ImportCertificateWithLabel(p.kid, []byte(cert.Subject.String()), cert); err != nil {
+		return
+	}
+	resp.Success = true
 	return
 }
 

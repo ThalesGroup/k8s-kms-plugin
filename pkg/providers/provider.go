@@ -17,7 +17,10 @@ var (
 	ErrNoSuchKey = errors.New("no such key")
 	ErrNoSuchCert = errors.New("no such cert")
 )
-
+type Config struct {
+	CaKid []byte
+	KekKid []byte
+}
 type Provider interface {
 	k8s.KeyManagementServiceServer
 	istio.KeyManagementServiceServer
