@@ -106,6 +106,16 @@
         }
       }
     },
+    "v1ImportCACertResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      },
+      "title": "ImportCACertResponse"
+    },
     "v1KeyKind": {
       "type": "string",
       "enum": [

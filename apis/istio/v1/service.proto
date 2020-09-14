@@ -20,4 +20,6 @@ service KeyManagementService {
   rpc AuthenticatedEncrypt(AuthenticatedEncryptRequest) returns (AuthenticatedEncryptResponse);
   // AuthenticatedDecrypt returns a payload decrypted from the previously invoke AE
   rpc AuthenticatedDecrypt(AuthenticatedDecryptRequest) returns (AuthenticatedDecryptResponse);
+  // ImportCACert imports the supplied CA Cert as the Offline Root CA Cert Chain
+  rpc ImportCACert(ImportCACertRequest) returns (ImportCACertResponse);
 }

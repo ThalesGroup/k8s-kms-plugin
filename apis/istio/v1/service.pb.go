@@ -39,7 +39,7 @@ var file_apis_istio_v1_service_proto_rawDesc = []byte{
 	0x69, 0x73, 0x74, 0x69, 0x6f, 0x2f, 0x76, 0x31, 0x2f, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65,
 	0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x1f, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2f,
 	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2f, 0x74, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61,
-	0x6d, 0x70, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x32, 0xe8, 0x05, 0x0a, 0x14, 0x4b, 0x65, 0x79,
+	0x6d, 0x70, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x32, 0xdb, 0x06, 0x0a, 0x14, 0x4b, 0x65, 0x79,
 	0x4d, 0x61, 0x6e, 0x61, 0x67, 0x65, 0x6d, 0x65, 0x6e, 0x74, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63,
 	0x65, 0x12, 0x6e, 0x0a, 0x0b, 0x47, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x4b, 0x45, 0x4b,
 	0x12, 0x2e, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e,
@@ -86,11 +86,18 @@ var file_apis_istio_v1_service_proto_rawDesc = []byte{
 	0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x69, 0x73,
 	0x74, 0x69, 0x6f, 0x2e, 0x76, 0x31, 0x2e, 0x41, 0x75, 0x74, 0x68, 0x65, 0x6e, 0x74, 0x69, 0x63,
 	0x61, 0x74, 0x65, 0x64, 0x44, 0x65, 0x63, 0x72, 0x79, 0x70, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f,
-	0x6e, 0x73, 0x65, 0x42, 0x3c, 0x5a, 0x3a, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f,
-	0x6d, 0x2f, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2d, 0x69, 0x6f, 0x2f, 0x6b,
-	0x38, 0x73, 0x2d, 0x6b, 0x6d, 0x73, 0x2d, 0x70, 0x6c, 0x75, 0x67, 0x69, 0x6e, 0x2f, 0x61, 0x70,
-	0x69, 0x73, 0x2f, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2f, 0x76, 0x31, 0x3b, 0x69, 0x73, 0x74, 0x69,
-	0x6f, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x6e, 0x73, 0x65, 0x12, 0x71, 0x0a, 0x0c, 0x49, 0x6d, 0x70, 0x6f, 0x72, 0x74, 0x43, 0x41, 0x43,
+	0x65, 0x72, 0x74, 0x12, 0x2f, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2e,
+	0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2e, 0x76, 0x31,
+	0x2e, 0x49, 0x6d, 0x70, 0x6f, 0x72, 0x74, 0x43, 0x41, 0x43, 0x65, 0x72, 0x74, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x1a, 0x30, 0x2e, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c,
+	0x2e, 0x69, 0x6f, 0x2e, 0x65, 0x6b, 0x6d, 0x73, 0x2e, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2e, 0x76,
+	0x31, 0x2e, 0x49, 0x6d, 0x70, 0x6f, 0x72, 0x74, 0x43, 0x41, 0x43, 0x65, 0x72, 0x74, 0x52, 0x65,
+	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42, 0x3c, 0x5a, 0x3a, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62,
+	0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x68, 0x61, 0x6c, 0x65, 0x73, 0x63, 0x70, 0x6c, 0x2d, 0x69,
+	0x6f, 0x2f, 0x6b, 0x38, 0x73, 0x2d, 0x6b, 0x6d, 0x73, 0x2d, 0x70, 0x6c, 0x75, 0x67, 0x69, 0x6e,
+	0x2f, 0x61, 0x70, 0x69, 0x73, 0x2f, 0x69, 0x73, 0x74, 0x69, 0x6f, 0x2f, 0x76, 0x31, 0x3b, 0x69,
+	0x73, 0x74, 0x69, 0x6f, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var file_apis_istio_v1_service_proto_goTypes = []interface{}{
@@ -100,12 +107,14 @@ var file_apis_istio_v1_service_proto_goTypes = []interface{}{
 	(*LoadSKeyRequest)(nil),              // 3: thalescpl.io.ekms.istio.v1.LoadSKeyRequest
 	(*AuthenticatedEncryptRequest)(nil),  // 4: thalescpl.io.ekms.istio.v1.AuthenticatedEncryptRequest
 	(*AuthenticatedDecryptRequest)(nil),  // 5: thalescpl.io.ekms.istio.v1.AuthenticatedDecryptRequest
-	(*GenerateKEKResponse)(nil),          // 6: thalescpl.io.ekms.istio.v1.GenerateKEKResponse
-	(*GenerateDEKResponse)(nil),          // 7: thalescpl.io.ekms.istio.v1.GenerateDEKResponse
-	(*GenerateSKeyResponse)(nil),         // 8: thalescpl.io.ekms.istio.v1.GenerateSKeyResponse
-	(*LoadSKeyResponse)(nil),             // 9: thalescpl.io.ekms.istio.v1.LoadSKeyResponse
-	(*AuthenticatedEncryptResponse)(nil), // 10: thalescpl.io.ekms.istio.v1.AuthenticatedEncryptResponse
-	(*AuthenticatedDecryptResponse)(nil), // 11: thalescpl.io.ekms.istio.v1.AuthenticatedDecryptResponse
+	(*ImportCACertRequest)(nil),          // 6: thalescpl.io.ekms.istio.v1.ImportCACertRequest
+	(*GenerateKEKResponse)(nil),          // 7: thalescpl.io.ekms.istio.v1.GenerateKEKResponse
+	(*GenerateDEKResponse)(nil),          // 8: thalescpl.io.ekms.istio.v1.GenerateDEKResponse
+	(*GenerateSKeyResponse)(nil),         // 9: thalescpl.io.ekms.istio.v1.GenerateSKeyResponse
+	(*LoadSKeyResponse)(nil),             // 10: thalescpl.io.ekms.istio.v1.LoadSKeyResponse
+	(*AuthenticatedEncryptResponse)(nil), // 11: thalescpl.io.ekms.istio.v1.AuthenticatedEncryptResponse
+	(*AuthenticatedDecryptResponse)(nil), // 12: thalescpl.io.ekms.istio.v1.AuthenticatedDecryptResponse
+	(*ImportCACertResponse)(nil),         // 13: thalescpl.io.ekms.istio.v1.ImportCACertResponse
 }
 var file_apis_istio_v1_service_proto_depIdxs = []int32{
 	0,  // 0: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateKEK:input_type -> thalescpl.io.ekms.istio.v1.GenerateKEKRequest
@@ -114,14 +123,16 @@ var file_apis_istio_v1_service_proto_depIdxs = []int32{
 	3,  // 3: thalescpl.io.ekms.istio.v1.KeyManagementService.LoadSKey:input_type -> thalescpl.io.ekms.istio.v1.LoadSKeyRequest
 	4,  // 4: thalescpl.io.ekms.istio.v1.KeyManagementService.AuthenticatedEncrypt:input_type -> thalescpl.io.ekms.istio.v1.AuthenticatedEncryptRequest
 	5,  // 5: thalescpl.io.ekms.istio.v1.KeyManagementService.AuthenticatedDecrypt:input_type -> thalescpl.io.ekms.istio.v1.AuthenticatedDecryptRequest
-	6,  // 6: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateKEK:output_type -> thalescpl.io.ekms.istio.v1.GenerateKEKResponse
-	7,  // 7: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateDEK:output_type -> thalescpl.io.ekms.istio.v1.GenerateDEKResponse
-	8,  // 8: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateSKey:output_type -> thalescpl.io.ekms.istio.v1.GenerateSKeyResponse
-	9,  // 9: thalescpl.io.ekms.istio.v1.KeyManagementService.LoadSKey:output_type -> thalescpl.io.ekms.istio.v1.LoadSKeyResponse
-	10, // 10: thalescpl.io.ekms.istio.v1.KeyManagementService.AuthenticatedEncrypt:output_type -> thalescpl.io.ekms.istio.v1.AuthenticatedEncryptResponse
-	11, // 11: thalescpl.io.ekms.istio.v1.KeyManagementService.AuthenticatedDecrypt:output_type -> thalescpl.io.ekms.istio.v1.AuthenticatedDecryptResponse
-	6,  // [6:12] is the sub-list for method output_type
-	0,  // [0:6] is the sub-list for method input_type
+	6,  // 6: thalescpl.io.ekms.istio.v1.KeyManagementService.ImportCACert:input_type -> thalescpl.io.ekms.istio.v1.ImportCACertRequest
+	7,  // 7: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateKEK:output_type -> thalescpl.io.ekms.istio.v1.GenerateKEKResponse
+	8,  // 8: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateDEK:output_type -> thalescpl.io.ekms.istio.v1.GenerateDEKResponse
+	9,  // 9: thalescpl.io.ekms.istio.v1.KeyManagementService.GenerateSKey:output_type -> thalescpl.io.ekms.istio.v1.GenerateSKeyResponse
+	10, // 10: thalescpl.io.ekms.istio.v1.KeyManagementService.LoadSKey:output_type -> thalescpl.io.ekms.istio.v1.LoadSKeyResponse
+	11, // 11: thalescpl.io.ekms.istio.v1.KeyManagementService.AuthenticatedEncrypt:output_type -> thalescpl.io.ekms.istio.v1.AuthenticatedEncryptResponse
+	12, // 12: thalescpl.io.ekms.istio.v1.KeyManagementService.AuthenticatedDecrypt:output_type -> thalescpl.io.ekms.istio.v1.AuthenticatedDecryptResponse
+	13, // 13: thalescpl.io.ekms.istio.v1.KeyManagementService.ImportCACert:output_type -> thalescpl.io.ekms.istio.v1.ImportCACertResponse
+	7,  // [7:14] is the sub-list for method output_type
+	0,  // [0:7] is the sub-list for method input_type
 	0,  // [0:0] is the sub-list for extension type_name
 	0,  // [0:0] is the sub-list for extension extendee
 	0,  // [0:0] is the sub-list for field type_name
@@ -176,6 +187,8 @@ type KeyManagementServiceClient interface {
 	AuthenticatedEncrypt(ctx context.Context, in *AuthenticatedEncryptRequest, opts ...grpc.CallOption) (*AuthenticatedEncryptResponse, error)
 	// AuthenticatedDecrypt returns a payload decrypted from the previously invoke AE
 	AuthenticatedDecrypt(ctx context.Context, in *AuthenticatedDecryptRequest, opts ...grpc.CallOption) (*AuthenticatedDecryptResponse, error)
+	// ImportCACert imports the supplied CA Cert as the Offline Root CA Cert Chain
+	ImportCACert(ctx context.Context, in *ImportCACertRequest, opts ...grpc.CallOption) (*ImportCACertResponse, error)
 }
 
 type keyManagementServiceClient struct {
@@ -240,6 +253,15 @@ func (c *keyManagementServiceClient) AuthenticatedDecrypt(ctx context.Context, i
 	return out, nil
 }
 
+func (c *keyManagementServiceClient) ImportCACert(ctx context.Context, in *ImportCACertRequest, opts ...grpc.CallOption) (*ImportCACertResponse, error) {
+	out := new(ImportCACertResponse)
+	err := c.cc.Invoke(ctx, "/thalescpl.io.ekms.istio.v1.KeyManagementService/ImportCACert", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // KeyManagementServiceServer is the server API for KeyManagementService service.
 type KeyManagementServiceServer interface {
 	// GenerateKEK returns the KID of the GeneratedKEK if allowed/successful
@@ -254,6 +276,8 @@ type KeyManagementServiceServer interface {
 	AuthenticatedEncrypt(context.Context, *AuthenticatedEncryptRequest) (*AuthenticatedEncryptResponse, error)
 	// AuthenticatedDecrypt returns a payload decrypted from the previously invoke AE
 	AuthenticatedDecrypt(context.Context, *AuthenticatedDecryptRequest) (*AuthenticatedDecryptResponse, error)
+	// ImportCACert imports the supplied CA Cert as the Offline Root CA Cert Chain
+	ImportCACert(context.Context, *ImportCACertRequest) (*ImportCACertResponse, error)
 }
 
 // UnimplementedKeyManagementServiceServer can be embedded to have forward compatible implementations.
@@ -277,6 +301,9 @@ func (*UnimplementedKeyManagementServiceServer) AuthenticatedEncrypt(context.Con
 }
 func (*UnimplementedKeyManagementServiceServer) AuthenticatedDecrypt(context.Context, *AuthenticatedDecryptRequest) (*AuthenticatedDecryptResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AuthenticatedDecrypt not implemented")
+}
+func (*UnimplementedKeyManagementServiceServer) ImportCACert(context.Context, *ImportCACertRequest) (*ImportCACertResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ImportCACert not implemented")
 }
 
 func RegisterKeyManagementServiceServer(s *grpc.Server, srv KeyManagementServiceServer) {
@@ -391,6 +418,24 @@ func _KeyManagementService_AuthenticatedDecrypt_Handler(srv interface{}, ctx con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _KeyManagementService_ImportCACert_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ImportCACertRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KeyManagementServiceServer).ImportCACert(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/thalescpl.io.ekms.istio.v1.KeyManagementService/ImportCACert",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KeyManagementServiceServer).ImportCACert(ctx, req.(*ImportCACertRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _KeyManagementService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "thalescpl.io.ekms.istio.v1.KeyManagementService",
 	HandlerType: (*KeyManagementServiceServer)(nil),
@@ -418,6 +463,10 @@ var _KeyManagementService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AuthenticatedDecrypt",
 			Handler:    _KeyManagementService_AuthenticatedDecrypt_Handler,
+		},
+		{
+			MethodName: "ImportCACert",
+			Handler:    _KeyManagementService_ImportCACert_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

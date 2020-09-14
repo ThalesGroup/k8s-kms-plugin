@@ -94,7 +94,6 @@ func generateKEK(ctx *crypto11.Context, identity, label []byte, alg jose.Alg) (k
 	return
 }
 
-
 func generateSKey(ctx *crypto11.Context, request *istio.GenerateSKeyRequest, dekEncryptor gose.JweEncryptor) (wrappedSKey []byte, err error) {
 	var rng io.Reader
 	if rng, err = ctx.NewRandomReader(); err != nil {
@@ -169,6 +168,11 @@ type P11 struct {
 	encryptors map[string]gose.JweEncryptor
 	decryptors map[string]gose.JweDecryptor
 	createKey  bool
+}
+// ImportCACert
+func (p *P11) ImportCACert(ctx context.Context, request *istio.ImportCACertRequest) (resp *istio.ImportCACertResponse, err error) {
+
+	return
 }
 
 func (p *P11) AuthenticatedEncrypt(ctx context.Context, request *istio.AuthenticatedEncryptRequest) (resp *istio.AuthenticatedEncryptResponse, err error) {
@@ -404,7 +408,6 @@ func (p *P11) GenerateSKey(ctx context.Context, request *istio.GenerateSKeyReque
 	}
 	dekEncryptor := gose.NewJweDirectEncryptorImpl(aead)
 
-
 	var wrappedSKey []byte
 	if wrappedSKey, err = generateSKey(p.ctx, request, dekEncryptor); err != nil {
 		return
@@ -444,7 +447,6 @@ func (p *P11) LoadSKey(ctx context.Context, request *istio.LoadSKeyRequest) (res
 	resp = &istio.LoadSKeyResponse{
 		PlaintextSkey: nil,
 	}
-
 
 	// Return the clear sKey in PEM format or bust
 	if resp.PlaintextSkey, _, err = dekDecryptor.Decrypt(string(request.EncryptedSkeyBlob)); err != nil {
