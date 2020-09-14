@@ -112,3 +112,14 @@ message AuthenticatedDecryptRequest {
 message AuthenticatedDecryptResponse {
   bytes plaintext = 1;
 }
+
+// ImportCACertRequest
+message ImportCACertRequest {
+  bytes kek_kid = 1;
+  bytes ca_cert_blob = 2;
+}
+
+// ImportCACertResponse
+message ImportCACertResponse {
+  bool success = 1;
+}

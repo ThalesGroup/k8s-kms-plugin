@@ -48,7 +48,7 @@ var (
 	serverTLSCert string
 	serverTLSKey  string
 	kekKeyId      string
-	estKeyId      string
+	caKeyId      string
 	keyName       string
 	p11lib        string
 	p11slot       int
@@ -141,14 +141,9 @@ func init() {
 	serveCmd.Flags().StringVar(&serverTLSCert, "tls-certificate", "certs/tls.crt", "TLS server cert")
 	// Here you will define your flags and configuration settings.
 
-	serveCmd.Flags().StringVar(&kekKeyId, "kms-kid", "a37807cd-6d1a-4d75-813a-e120f30176f7", "Key ID for KMS KEK")
-	serveCmd.Flags().StringVar(&p11lib, "p11-lib", "", "Path to p11 library/client")
-	serveCmd.Flags().StringVar(&p11label, "p11-label", "", "P11 token label")
-	serveCmd.Flags().IntVar(&p11slot, "p11-slot", 0, "P11 token slot")
-	serveCmd.Flags().StringVar(&p11pin, "p11-pin", "", "P11 Pin")
-	serveCmd.Flags().StringVar(&keyName, "p11-key-label", "k8s-kek", "Key Label to use for encrypt/decrypt")
-	serveCmd.Flags().StringVarP(&nativePath, "native-path", "p", ".keys", "Path to key store for native provider(Files only)")
-	serveCmd.Flags().BoolVar(&createKey, "auto-create", true, "Auto create the keys if needed")
+
+
+
 	serveCmd.Flags().BoolVar(&allowAny, "allow-any", false, "Allow any device (accepts all ids/secrets)")
 
 }

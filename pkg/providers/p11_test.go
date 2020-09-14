@@ -2,15 +2,22 @@ package providers
 
 import (
 	"context"
+	"crypto"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"github.com/ThalesIgnite/crypto11"
 	"github.com/ThalesIgnite/gose"
 	"github.com/ThalesIgnite/gose/jose"
 	"github.com/google/uuid"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
+	"io"
 	"os"
 	"reflect"
 	"testing"
+	"time"
 )
 
 var (
@@ -19,28 +26,17 @@ var (
 	testConfig          *crypto11.Config
 	testCtx             *crypto11.Context
 	testEncryptedBlob   string
-
-
-	testDecryptor      map[string]gose.JweDecryptor
-	testEncryptor      map[string]gose.JweEncryptor
-	testKid []byte
-	testPlainMessage   []byte
-	testWrappedDEK     []byte
-	testWrappedSKey    []byte
+	testCert            *x509.Certificate
+	testCertPem         []byte
+	testDecryptor       map[string]gose.JweDecryptor
+	testEncryptor       map[string]gose.JweEncryptor
+	testKid             []byte
+	testCid             []byte
+	testPlainMessage    []byte
+	testWrappedDEK      []byte
+	testWrappedSKey     []byte
 )
 
-func init() {
-	testConfig = &crypto11.Config{
-		Path:       os.Getenv("P11_LIBRARY"),
-		TokenLabel: os.Getenv("P11_TOKEN"),
-		Pin:        os.Getenv("P11_PIN"),
-	}
-	var err error
-	if testCtx, err = crypto11.Configure(testConfig); err != nil {
-		panic(err)
-	}
-
-}
 func TestP11_Encrypt(t *testing.T) {
 	td := setupSoftHSMTestCase(t)
 	defer td(t)
@@ -118,7 +114,6 @@ func TestP11_Encrypt(t *testing.T) {
 		})
 	}
 }
-
 func TestP11_GenerateDEK(t *testing.T) {
 	td := setupSoftHSMTestCase(t)
 	defer td(t)
@@ -248,6 +243,76 @@ func TestP11_GenerateSKey(t *testing.T) {
 	}
 }
 
+func TestP11_ImportCACert(t *testing.T) {
+	td := setupSoftHSMTestCase(t)
+	defer td(t)
+	type fields struct {
+		kid        []byte
+		cid        []byte
+		config     *crypto11.Config
+		ctx        *crypto11.Context
+		encryptors map[string]gose.JweEncryptor
+		decryptors map[string]gose.JweDecryptor
+		createKey  bool
+	}
+	type args struct {
+		ctx     context.Context
+		request *istio.ImportCACertRequest
+	}
+	tests := []struct {
+		name     string
+		fields   fields
+		args     args
+		wantResp *istio.ImportCACertResponse
+		wantErr  bool
+	}{
+		{
+			name: "OK",
+			fields: fields{
+				kid:        testKid,
+				cid:        testCid,
+				config:     testConfig,
+				ctx:        testCtx,
+				encryptors: testEncryptor,
+				decryptors: nil,
+				createKey:  false,
+			},
+			args: args{
+				ctx: context.Background(),
+				request: &istio.ImportCACertRequest{
+					KekKid:     nil,
+					CaCertBlob: testCertPem,
+				},
+			},
+			wantResp: &istio.ImportCACertResponse{
+				Success: true,
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &P11{
+				kid:        tt.fields.kid,
+				cid:        tt.fields.cid,
+				config:     tt.fields.config,
+				ctx:        tt.fields.ctx,
+				encryptors: tt.fields.encryptors,
+				decryptors: tt.fields.decryptors,
+				createKey:  tt.fields.createKey,
+			}
+			gotResp, err := p.ImportCACert(tt.args.ctx, tt.args.request)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ImportCACert() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(gotResp, tt.wantResp) {
+				t.Errorf("ImportCACert() gotResp = %v, want %v", gotResp, tt.wantResp)
+			}
+		})
+	}
+}
+
 func TestP11_LoadDEK(t *testing.T) {
 	td := setupSoftHSMTestCase(t)
 	defer td(t)
@@ -284,7 +349,7 @@ func TestP11_LoadDEK(t *testing.T) {
 				ctx: context.Background(),
 				request: &istio.LoadSKeyRequest{
 
-					EncryptedDekBlob: testWrappedDEK,
+					EncryptedDekBlob:  testWrappedDEK,
 					EncryptedSkeyBlob: testWrappedSKey,
 				},
 			},
@@ -313,21 +378,41 @@ func TestP11_LoadDEK(t *testing.T) {
 	}
 }
 
-func setupSoftHSMTestCase(t testing.TB) func(t testing.TB) {
-	testuuid, err := uuid.NewRandom()
-	if err != nil {
-		t.Fatal(err)
+func init() {
+	testConfig = &crypto11.Config{
+		Path:       os.Getenv("P11_LIBRARY"),
+		TokenLabel: os.Getenv("P11_TOKEN"),
+		Pin:        os.Getenv("P11_PIN"),
 	}
-	testKid, err = testuuid.MarshalText()
-	if err != nil {
-		t.Fatal(err)
+	var err error
+	if testCtx, err = crypto11.Configure(testConfig); err != nil {
+		panic(err)
 	}
 
+}
+
+func setupSoftHSMTestCase(t testing.TB) func(t testing.TB) {
+	testKuuid, err := uuid.NewRandom()
+	var testCuuid uuid.UUID
+	if err != nil {
+		t.Fatal(err)
+	}
+	testKid, err = testKuuid.MarshalText()
+	if err != nil {
+		t.Fatal(err)
+	}
+	testCuuid, err = uuid.NewRandom()
+	if err != nil {
+		t.Fatal(err)
+	}
+	testCid, err = testCuuid.MarshalText()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if os.Getenv("P11_LIBRARY") == "" {
 		t.Skip("No P11_LIBRARY provided, skipping")
 	}
 	// Allow the MasterKey to be created if missing to be created
-
 	gen := &gose.AuthenticatedEncryptionKeyGenerator{}
 	var taead gose.AuthenticatedEncryptionKey
 
@@ -348,6 +433,42 @@ func setupSoftHSMTestCase(t testing.TB) func(t testing.TB) {
 	if testWrappedDEK, err = generateDEK(testCtx, testEncryptor[string(testKid)]); err != nil {
 		t.Fatal(err)
 	}
+	templateCA := &x509.Certificate{
+		SerialNumber: randomSerial(),
+		Subject: pkix.Name{
+			CommonName:   "Test CA",
+			Organization: []string{"Thales"},
+			Country:      []string{"US"},
+			Province:     []string{"OR"},
+			Locality:     []string{"Portland"},
+		},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().AddDate(10, 0, 0),
+		IsCA:                  true,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		BasicConstraintsValid: true,
+	}
+	var rng io.Reader
+	if rng, err = testCtx.NewRandomReader(); err != nil {
+		t.Fatal(err)
+	}
+	var k crypto.Signer
+	if k, err = testCtx.FindKeyPair(testKid, []byte(defaultKEKlabel)); err != nil {
+		t.Fatal(err)
+	}
+	if k, err = rsa.GenerateKey(rng, 2048); err != nil {
+		t.Fatal(err)
+	}
+	var caBytes []byte
+	if caBytes, err = x509.CreateCertificate(rng, templateCA, templateCA, k.Public(), k); err != nil {
+		t.Fatal(err)
+	}
+	testCertPem = pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: caBytes,
+	})
+	testCert = templateCA
 
 	return func(t testing.TB) {
 		// teardown goes here as needed

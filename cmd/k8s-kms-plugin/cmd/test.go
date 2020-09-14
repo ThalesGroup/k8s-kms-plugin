@@ -16,8 +16,10 @@ limitations under the License.
 package cmd
 
 import (
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/pem"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -33,29 +35,42 @@ var loop bool
 var maxLoops int
 var loopTime, timeout time.Duration
 var defaultAAD = []byte("this is clear but can't change...")
-//var fakeCSR = &x509.CertificateRequest{
-//	Raw:                      nil,
-//	RawTBSCertificateRequest: nil,
-//	RawSubjectPublicKeyInfo:  nil,
-//	RawSubject:               nil,
-//	Version:                  0,
-//	Signature:                nil,
-//	SignatureAlgorithm:       0,
-//	PublicKeyAlgorithm:       0,
-//	PublicKey:                nil,
-//	Subject:                  pkix.Name{},
-//	Attributes:               nil,
-//	Extensions:               nil,
-//	ExtraExtensions:          nil,
-//	DNSNames:                 nil,
-//	EmailAddresses:           nil,
-//	IPAddresses:              nil,
-//	URIs:                     nil,
-//}
-//var fakeCSRBytes []byte
-//func init() {
-//	fakeCSRBytes, _ = x509.CreateCertificateRequest(rand.Reader, fakeCSR, nil)
-//}
+var fakeCSR = &x509.CertificateRequest{
+	Raw:                      nil,
+	RawTBSCertificateRequest: nil,
+	RawSubjectPublicKeyInfo:  nil,
+	RawSubject:               nil,
+	Version:                  0,
+	Signature:                nil,
+	SignatureAlgorithm:       0,
+	PublicKeyAlgorithm:       0,
+	PublicKey:                nil,
+	Subject:                  pkix.Name{
+		Country:            nil,
+		Organization:       nil,
+		OrganizationalUnit: nil,
+		Locality:           nil,
+		Province:           nil,
+		StreetAddress:      nil,
+		PostalCode:         nil,
+		SerialNumber:       "",
+		CommonName:         "",
+		Names:              nil,
+		ExtraNames:         nil,
+	},
+	Attributes:               nil,
+	Extensions:               nil,
+	ExtraExtensions:          nil,
+	DNSNames:                 nil,
+	EmailAddresses:           nil,
+	IPAddresses:              nil,
+	URIs:                     nil,
+}
+var fakeCSRBytes []byte
+func init() {
+	fakeCSRBytes, _ = x509.CreateCertificateRequest(rand.Reader, fakeCSR, nil)
+}
+
 // testCmd represents the test command
 var testCmd = &cobra.Command{
 	Use:   "test",
@@ -220,6 +235,25 @@ func runTest() error {
 	}
 
 	logrus.Infof("Test 6 Returned AuthenticatedDecrypt: %s", adResp.Plaintext)
+
+	/*
+		AuthenticatedEncrypt
+	*/
+	logrus.Info("Test 7 ImportCACert ")
+	
+	// generate a test file containing a selfsigned cert
+	
+	var icResp *istio.ImportCACertResponse
+	if icResp, err = ic.ImportCACert(ictx, &istio.ImportCACertRequest{
+		KekKid:       genKEKResp.KekKid,
+		CaCertBlob:  []byte(""),
+	}); err != nil {
+		logrus.Fatal(err)
+		return err
+	}
+
+	logrus.Infof("Test 7 Returned ImportCACert: %b", icResp.Success)
+
 	return nil
 }
 
