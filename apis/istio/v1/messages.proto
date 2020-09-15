@@ -123,3 +123,13 @@ message ImportCACertRequest {
 message ImportCACertResponse {
   bool success = 1;
 }
+
+// VerifyCertChainRequest
+message VerifyCertChainRequest {
+  repeated bytes certificates = 1;
+}
+
+// VerifyCertChainResponse
+message VerifyCertChainResponse {
+  bool successful_verification = 1;
+}

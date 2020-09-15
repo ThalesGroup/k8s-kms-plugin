@@ -22,4 +22,6 @@ service KeyManagementService {
   rpc AuthenticatedDecrypt(AuthenticatedDecryptRequest) returns (AuthenticatedDecryptResponse);
   // ImportCACert imports the supplied CA Cert as the Offline Root CA Cert Chain
   rpc ImportCACert(ImportCACertRequest) returns (ImportCACertResponse);
+  // VerifyCertChain returns a boolean indicating successful verification of a certificate chain (currently needs to be self-contained)
+  rpc VerifyCertChain(VerifyCertChainRequest) returns (VerifyCertChainResponse);
 }
