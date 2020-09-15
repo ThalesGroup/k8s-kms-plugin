@@ -421,17 +421,24 @@ func (p *P11) ImportCACert(ctx context.Context, request *istio.ImportCACertReque
 		Success: false,
 	}
 	var pp *pem.Block
-	if pp, _ = pem.Decode(request.CaCertBlob); err != nil {
+	if pp, _ = pem.Decode(request.CaCertBlob); pp == nil {
+		err = fmt.Errorf("unable to decode provided cert blob")
 		return
 	}
 	var cert *x509.Certificate
 	if cert, err = x509.ParseCertificate(pp.Bytes); err != nil {
 		return
 	}
+
+	// RF: setting p.kid to request.KekKid so we can recall the kid later for retrieving the cert
+	p.kid = request.KekKid
+
+	// RF: Todo - are we using cert.subject.string or the default label here? If we use cert.subject.string we don't currently have any way of recalling this later on when using to verify
 	if err = p.ctx.ImportCertificateWithLabel(p.kid, []byte(cert.Subject.String()), cert); err != nil {
 		return
 	}
 	resp.Success = true
+
 	return
 }
 
@@ -501,4 +508,58 @@ func (p *P11) genKekKid() (kid []byte, err error) {
 type keyGenerationParameters struct {
 	size   int
 	cipher *crypto11.SymmetricCipher
+}
+
+
+// VerifyCertChain verifies a provided cert-chain (currently self-contained)
+func(p *P11) VerifyCertChain(ctx context.Context, request *istio.VerifyCertChainRequest) (resp *istio.VerifyCertChainResponse, err error) {
+	if nil == request {
+		return nil, status.Error(codes.InvalidArgument, "no request sent")
+	}
+
+	if nil == request.Certificates {
+		err = fmt.Errorf("no certificates provided")
+		return
+	}
+
+	if 1 != len(request.Certificates) {
+		err = fmt.Errorf("test VerifyCertChain currently needs a target cert")
+		return
+	}
+
+
+	var parsedTargetCert *x509.Certificate
+	parsedTargetCert, err = x509.ParseCertificate(request.Certificates[0])
+	if nil != err {
+		return
+	}
+
+	var verifyOpts = x509.VerifyOptions{
+		Roots: x509.NewCertPool(),
+	}
+
+	if nil == p.kid {
+		err = fmt.Errorf("no loaded CA cert for verification")
+		return
+	}
+	// Todo - do we want to record the label/serial during import too?
+	var retrievedRootCert *x509.Certificate
+	if retrievedRootCert, err = p.ctx.FindCertificate(p.kid, nil, nil); nil != err {
+		return
+	}
+
+	verifyOpts.Roots.AddCert(retrievedRootCert)
+
+	resp = &istio.VerifyCertChainResponse{}
+
+	_, verifyErr := parsedTargetCert.Verify(verifyOpts)
+	if nil != verifyErr {
+		err = verifyErr
+	} else {
+		resp.SuccessfulVerification = true
+	}
+
+
+	return
+
 }

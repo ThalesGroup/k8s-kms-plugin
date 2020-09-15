@@ -20,6 +20,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 )
 
 var caCertPem []byte
@@ -44,8 +46,8 @@ var importCaCmd = &cobra.Command{
 			return
 		}
 		req := &istio.ImportCACertRequest{
-			KekKid:     nil,
-			CaCertBlob: nil,
+			KekKid:     []byte(kekKeyId),
+			CaCertBlob: caCertPem,
 		}
 		if _, err = ic.ImportCACert(ictx, req); err != nil {
 			return
@@ -68,4 +70,7 @@ func init() {
 	// is called directly, e.g.:
 	importCaCmd.Flags().StringVar(&caCertPath, "cert-file", "", "Cert File ")
 	importCaCmd.MarkFlagRequired("cert-file")
+	importCaCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), "run.sock"), "Unix Socket")
+	importCaCmd.MarkFlagRequired("socket")
+
 }
