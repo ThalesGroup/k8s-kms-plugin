@@ -421,14 +421,16 @@ func (p *P11) ImportCACert(ctx context.Context, request *istio.ImportCACertReque
 		Success: false,
 	}
 	var pp *pem.Block
-	if pp, _ = pem.Decode(request.CaCertBlob); err != nil {
+	if pp, _ = pem.Decode(request.CaCertBlob); pp == nil {
+		err = fmt.Errorf("unable to decode provided cert blob")
 		return
 	}
 	var cert *x509.Certificate
 	if cert, err = x509.ParseCertificate(pp.Bytes); err != nil {
 		return
 	}
-	if err = p.ctx.ImportCertificateWithLabel(p.kid, []byte(cert.Subject.String()), cert); err != nil {
+	// RF: changed p.kid to request.KekKid
+	if err = p.ctx.ImportCertificateWithLabel(request.KekKid, []byte(cert.Subject.String()), cert); err != nil {
 		return
 	}
 	resp.Success = true

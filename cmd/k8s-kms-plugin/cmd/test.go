@@ -67,6 +67,9 @@ var fakeCSR = &x509.CertificateRequest{
 	URIs:                     nil,
 }
 var fakeCSRBytes []byte
+
+const dummyCaCert = "-----BEGIN CERTIFICATE-----\n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\n4uSkCQ==\n-----END CERTIFICATE-----\n"
+
 func init() {
 	fakeCSRBytes, _ = x509.CreateCertificateRequest(rand.Reader, fakeCSR, nil)
 }
@@ -236,23 +239,29 @@ func runTest() error {
 
 	logrus.Infof("Test 6 Returned AuthenticatedDecrypt: %s", adResp.Plaintext)
 
-	/*
-		AuthenticatedEncrypt
-	*/
+
 	logrus.Info("Test 7 ImportCACert ")
 	
-	// generate a test file containing a selfsigned cert
-	
+
 	var icResp *istio.ImportCACertResponse
 	if icResp, err = ic.ImportCACert(ictx, &istio.ImportCACertRequest{
 		KekKid:       genKEKResp.KekKid,
-		CaCertBlob:  []byte(""),
+		CaCertBlob:  []byte(dummyCaCert),
 	}); err != nil {
 		logrus.Fatal(err)
 		return err
 	}
 
-	logrus.Infof("Test 7 Returned ImportCACert: %b", icResp.Success)
+	logrus.Infof("Test 7 Returned ImportCACert: %v", icResp.Success)
+
+
+	
+
+
+
+	/*
+		AuthenticatedDecrypt
+	*/
 
 	return nil
 }
