@@ -433,6 +433,7 @@ func (p *P11) ImportCACert(ctx context.Context, request *istio.ImportCACertReque
 	// RF: setting p.kid to request.KekKid so we can recall the kid later for retrieving the cert
 	p.kid = request.KekKid
 
+	// RF: Todo - are we using cert.subject.string or the default label here? If we use cert.subject.string we don't currently have any way of recalling this later on when using to verify
 	if err = p.ctx.ImportCertificateWithLabel(p.kid, []byte(cert.Subject.String()), cert); err != nil {
 		return
 	}
