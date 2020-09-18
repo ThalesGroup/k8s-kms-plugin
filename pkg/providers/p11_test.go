@@ -67,6 +67,7 @@ func TestP11_Encrypt(t *testing.T) {
 				ctx:        testCtx,
 				keyId:      []byte("afdjaklfjdaskl"),
 				keyLabel:   []byte(defaultKEKlabel),
+
 				encryptors: testEncryptor,
 				decryptors: testDecryptor,
 				createKey:  true,
@@ -280,7 +281,7 @@ func TestP11_ImportCACert(t *testing.T) {
 			args: args{
 				ctx: context.Background(),
 				request: &istio.ImportCACertRequest{
-					KekKid:     nil,
+					CaId:       testCid,
 					CaCertBlob: testCertPem,
 				},
 			},
