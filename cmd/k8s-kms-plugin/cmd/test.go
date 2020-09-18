@@ -308,7 +308,7 @@ func runTest() error {
 
 	var icResp *istio.ImportCACertResponse
 	if icResp, err = ic.ImportCACert(ictx, &istio.ImportCACertRequest{
-		KekKid:       genKEKResp.KekKid,
+		CaId:       genKEKResp.KekKid,
 		CaCertBlob:  []byte(dummyCaCert),
 	}); err != nil {
 		logrus.Fatal(err)
