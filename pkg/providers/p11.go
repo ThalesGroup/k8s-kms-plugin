@@ -431,10 +431,10 @@ func (p *P11) ImportCACert(ctx context.Context, request *istio.ImportCACertReque
 	}
 
 	// RF: setting p.kid to request.KekKid so we can recall the kid later for retrieving the cert
-	p.kid = request.KekKid
+	p.cid = request.CaId
 
 	// RF: Todo - are we using cert.subject.string or the default label here? If we use cert.subject.string we don't currently have any way of recalling this later on when using to verify
-	if err = p.ctx.ImportCertificateWithLabel(p.kid, []byte(cert.Subject.String()), cert); err != nil {
+	if err = p.ctx.ImportCertificateWithLabel(p.cid, []byte(cert.Subject.String()), cert); err != nil {
 		return
 	}
 	resp.Success = true
@@ -488,28 +488,6 @@ func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.
 	return h, err
 }
 
-func (p *P11) Version(ctx context.Context, request *v1.VersionRequest) (*v1.VersionResponse, error) {
-	panic("implement me")
-}
-
-func (p *P11) genKekKid() (kid []byte, err error) {
-	var u uuid.UUID
-	u, err = uuid.NewRandom()
-	if err != nil {
-		return
-	}
-	kid, err = u.MarshalText()
-	if err != nil {
-		return
-	}
-	return
-}
-
-type keyGenerationParameters struct {
-	size   int
-	cipher *crypto11.SymmetricCipher
-}
-
 // VerifyCertChain verifies a provided cert-chain (currently self-contained)
 func (p *P11) VerifyCertChain(ctx context.Context, request *istio.VerifyCertChainRequest) (resp *istio.VerifyCertChainResponse, err error) {
 	defer func() {
@@ -541,13 +519,13 @@ func (p *P11) VerifyCertChain(ctx context.Context, request *istio.VerifyCertChai
 		Roots: x509.NewCertPool(),
 	}
 
-	if nil == p.kid {
+	if nil == p.cid {
 		err = fmt.Errorf("no loaded CA cert for verification")
 		return
 	}
 	// Todo - do we want to record the label/serial during import too?
 	var retrievedRootCert *x509.Certificate
-	if retrievedRootCert, err = p.ctx.FindCertificate(p.kid, nil, nil); nil != err {
+	if retrievedRootCert, err = p.ctx.FindCertificate(p.cid, nil, nil); nil != err {
 		return
 	}
 
@@ -564,4 +542,26 @@ func (p *P11) VerifyCertChain(ctx context.Context, request *istio.VerifyCertChai
 
 	return
 
+}
+
+func (p *P11) Version(ctx context.Context, request *v1.VersionRequest) (*v1.VersionResponse, error) {
+	panic("implement me")
+}
+
+func (p *P11) genKekKid() (kid []byte, err error) {
+	var u uuid.UUID
+	u, err = uuid.NewRandom()
+	if err != nil {
+		return
+	}
+	kid, err = u.MarshalText()
+	if err != nil {
+		return
+	}
+	return
+}
+
+type keyGenerationParameters struct {
+	size   int
+	cipher *crypto11.SymmetricCipher
 }
