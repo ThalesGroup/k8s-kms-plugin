@@ -115,7 +115,7 @@ message AuthenticatedDecryptResponse {
 
 // ImportCACertRequest
 message ImportCACertRequest {
-  bytes kek_kid = 1;
+  bytes ca_id = 1;
   bytes ca_cert_blob = 2;
 }
 

@@ -510,9 +510,13 @@ type keyGenerationParameters struct {
 	cipher *crypto11.SymmetricCipher
 }
 
-
 // VerifyCertChain verifies a provided cert-chain (currently self-contained)
-func(p *P11) VerifyCertChain(ctx context.Context, request *istio.VerifyCertChainRequest) (resp *istio.VerifyCertChainResponse, err error) {
+func (p *P11) VerifyCertChain(ctx context.Context, request *istio.VerifyCertChainRequest) (resp *istio.VerifyCertChainResponse, err error) {
+	defer func() {
+		if err != nil {
+			logrus.Errorf("Error in VerifyCertChain: %v", err)
+		}
+	}()
 	if nil == request {
 		return nil, status.Error(codes.InvalidArgument, "no request sent")
 	}
@@ -526,7 +530,6 @@ func(p *P11) VerifyCertChain(ctx context.Context, request *istio.VerifyCertChain
 		err = fmt.Errorf("test VerifyCertChain currently needs a target cert")
 		return
 	}
-
 
 	var parsedTargetCert *x509.Certificate
 	parsedTargetCert, err = x509.ParseCertificate(request.Certificates[0])
@@ -558,7 +561,6 @@ func(p *P11) VerifyCertChain(ctx context.Context, request *istio.VerifyCertChain
 	} else {
 		resp.SuccessfulVerification = true
 	}
-
 
 	return
 

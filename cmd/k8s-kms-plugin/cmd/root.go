@@ -29,6 +29,7 @@ import (
 	"github.com/keepeye/logrus-filename"
 	"github.com/mitchellh/go-homedir"
 	"github.com/sirupsen/logrus"
+	"strconv"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -70,6 +71,9 @@ func Execute() {
 	filenameHook := filename.NewHook()
 	filenameHook.Field = "line"
 	logrus.AddHook(filenameHook)
+	if debug {
+		logrus.SetLevel(logrus.DebugLevel)
+	}
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -90,8 +94,8 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&logOutput, "output", "text", "Log output format... text or json supported")
 	// Provider
 	rootCmd.PersistentFlags().StringVar(&provider, "provider", "p11", "Provider")
-	rootCmd.PersistentFlags().StringVar(&kekKeyId, "kms-kid", "a37807cd-6d1a-4d75-813a-e120f30176f7", "Key ID for KMS KEK")
-	rootCmd.PersistentFlags().StringVar(&caKeyId, "ca-kid", "1c3d30d5-dfa8-4167-a9f9-2c768464181b", "Key ID for CA Cert record")
+	rootCmd.PersistentFlags().StringVar(&kekKeyId, "kek-id", LookupEnvOrString("kek-id", "a37807cd-6d1a-4d75-813a-e120f30176f7"), "Key ID for KMS KEK")
+	rootCmd.PersistentFlags().StringVar(&caId, "ca-id", LookupEnvOrString("ca-id", "1c3d30d5-dfa8-4167-a9f9-2c768464181b"), "Cert ID for CA Cert record")
 	rootCmd.PersistentFlags().StringVar(&p11lib, "p11-lib", "", "Path to p11 library/client")
 	rootCmd.PersistentFlags().StringVar(&p11label, "p11-label", "", "P11 token label")
 	rootCmd.PersistentFlags().IntVar(&p11slot, "p11-slot", 0, "P11 token slot")
@@ -129,4 +133,31 @@ func initConfig() {
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
 	}
+}
+
+func LookupEnvOrString(key string, defaultVal string) string {
+	if val, ok := os.LookupEnv(key); ok {
+		return val
+	}
+	return defaultVal
+}
+func LookupEnvOrBool(key string, defaultVal bool) bool {
+	if val, ok := os.LookupEnv(key); ok {
+		v, err := strconv.ParseBool(val)
+		if err != nil {
+			return false
+		}
+		return v
+	}
+	return defaultVal
+}
+func LookupEnvOrInt(key string, defaultVal int) int {
+	if val, ok := os.LookupEnv(key); ok {
+		v, err := strconv.Atoi(val)
+		if err != nil {
+			logrus.Info(err)
+		}
+		return v
+	}
+	return defaultVal
 }
