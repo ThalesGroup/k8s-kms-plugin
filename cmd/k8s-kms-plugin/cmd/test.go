@@ -130,9 +130,13 @@ func runTest() error {
 	}
 
 	// Generate a random UUID for request
-	var kekUuid uuid.UUID
-	var kekKid []byte
+	var kekUuid, caUuid uuid.UUID
+	var kekKid, caKid []byte
 	kekUuid, err = uuid.NewRandom()
+	if err != nil {
+		return err
+	}
+	caUuid, err = uuid.NewRandom()
 	if err != nil {
 		return err
 	}
@@ -140,7 +144,10 @@ func runTest() error {
 	if err != nil {
 		return err
 	}
-
+	caKid, err = caUuid.MarshalText()
+	if err != nil {
+		return err
+	}
 	/*
 		GenerateDEK
 	*/
@@ -308,7 +315,7 @@ func runTest() error {
 
 	var icResp *istio.ImportCACertResponse
 	if icResp, err = ic.ImportCACert(ictx, &istio.ImportCACertRequest{
-		CaId:       genKEKResp.KekKid,
+		CaId:       caKid,
 		CaCertBlob:  []byte(dummyCaCert),
 	}); err != nil {
 		logrus.Fatal(err)
