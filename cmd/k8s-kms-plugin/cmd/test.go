@@ -226,13 +226,6 @@ func runTest() error {
 	logrus.Infof("Test 4 Returned LoadedSKey in PEM Format: %v", out)
 	skey.Public()
 
-
-
-
-
-
-
-
 	// Generate a dummy istiod intermediate CA CSR from this
 	var csrTemplate = &x509.CertificateRequest{
 		Subject: pkix.Name{
@@ -251,23 +244,6 @@ func runTest() error {
 		logrus.Fatal(err)
 		return err
 	}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 	/*
 		AuthenticatedEncrypt
@@ -311,7 +287,6 @@ func runTest() error {
 
 
 	logrus.Info("Test 7 ImportCACert ")
-	
 
 	var icResp *istio.ImportCACertResponse
 	if icResp, err = ic.ImportCACert(ictx, &istio.ImportCACertRequest{
@@ -329,7 +304,7 @@ func runTest() error {
 	*/
 	logrus.Info("Test 7 VerifyCertChain")
 
-    var signedCert []byte
+	var signedCert []byte
 	signedCert, err = dummyCaCertSigner(adResp.Plaintext)
 	if nil != err {
 		logrus.Fatalf("error signing cert by dummy CA")
