@@ -131,7 +131,7 @@ var nativePath string
 
 func init() {
 	rootCmd.AddCommand(serveCmd)
-	serveCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), "run.sock"), "Unix Socket")
+	serveCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket")
 
 	//
 	serveCmd.Flags().BoolVar(&enableTCP, "enable-server", false, "Enable TLS based server")
