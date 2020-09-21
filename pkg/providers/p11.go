@@ -132,7 +132,7 @@ func generateSKey(ctx *crypto11.Context, request *istio.GenerateSKeyRequest, dek
 	return
 }
 
-func loadKEKbyID(ctx *crypto11.Context, identity, label []byte, ) (encryptor gose.JweEncryptor, decryptor gose.JweDecryptor, err error) {
+func loadKEKbyID(ctx *crypto11.Context, identity, label []byte) (encryptor gose.JweEncryptor, decryptor gose.JweDecryptor, err error) {
 
 	var rng io.Reader
 	var aek gose.AuthenticatedEncryptionKey
@@ -544,8 +544,13 @@ func (p *P11) VerifyCertChain(ctx context.Context, request *istio.VerifyCertChai
 
 }
 
-func (p *P11) Version(ctx context.Context, request *v1.VersionRequest) (*v1.VersionResponse, error) {
-	panic("implement me")
+func (p *P11) Version(ctx context.Context, request *v1.VersionRequest) (versionResponse *v1.VersionResponse, err error) {
+	versionResponse = &v1.VersionResponse{
+		Version:        "v1beta1",
+		RuntimeName:    "Thales k8s KMS plugin",
+		RuntimeVersion: "v0.5.0",
+	}
+	return
 }
 
 func (p *P11) genKekKid() (kid []byte, err error) {
