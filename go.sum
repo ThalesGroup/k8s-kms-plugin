@@ -32,8 +32,8 @@ github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 h1:d+Bc7a5rLufV
 github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578/go.mod h1:uGdkoq3SwY9Y+13GIhn11/XLaGBb4BfwItxLd5jeuXE=
 github.com/ThalesIgnite/crypto11 v1.2.2-0.20200914201345-96d290a4c939 h1:hAJZxRTkWAd4oDc8geOLlUzs9BpDjmyz10CQW7H4vjs=
 github.com/ThalesIgnite/crypto11 v1.2.2-0.20200914201345-96d290a4c939/go.mod h1:OAKSBmyenSmQxB8AAtEsyIpU5ou/vuRAbLm6aiyDDhU=
-github.com/ThalesIgnite/gose v0.8.2-0.20200921223723-257b0a7b486e h1:MfDmbMlELBf8Q2LspyDeHGC8DKd8cmVgkQnfnZ04Lx4=
-github.com/ThalesIgnite/gose v0.8.2-0.20200921223723-257b0a7b486e/go.mod h1:uVskBWnyrdw+kzat8OwS3CZPIrqzIKy9+1g6rSe8ltM=
+github.com/ThalesIgnite/gose v0.8.2 h1:rVBMZdT68hr9cudKKGkNXLnnP8tziAU57jUQQEFLQIk=
+github.com/ThalesIgnite/gose v0.8.2/go.mod h1:uVskBWnyrdw+kzat8OwS3CZPIrqzIKy9+1g6rSe8ltM=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=

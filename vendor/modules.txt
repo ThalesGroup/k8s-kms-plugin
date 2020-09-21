@@ -1,7 +1,7 @@
 # github.com/ThalesIgnite/crypto11 v1.2.2-0.20200914201345-96d290a4c939
 ## explicit
 github.com/ThalesIgnite/crypto11
-# github.com/ThalesIgnite/gose v0.8.2-0.20200921223723-257b0a7b486e
+# github.com/ThalesIgnite/gose v0.8.2
 ## explicit
 github.com/ThalesIgnite/gose
 github.com/ThalesIgnite/gose/jose
@@ -183,6 +183,7 @@ google.golang.org/grpc/stats
 google.golang.org/grpc/status
 google.golang.org/grpc/tap
 # google.golang.org/protobuf v1.25.0
+## explicit
 google.golang.org/protobuf/cmd/protoc-gen-go/internal_gengo
 google.golang.org/protobuf/compiler/protogen
 google.golang.org/protobuf/encoding/protojson
