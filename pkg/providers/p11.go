@@ -548,7 +548,7 @@ func (p *P11) Version(ctx context.Context, request *v1.VersionRequest) (versionR
 	versionResponse = &v1.VersionResponse{
 		Version:        "v1beta1",
 		RuntimeName:    "Thales k8s KMS plugin",
-		RuntimeVersion: "",
+		RuntimeVersion: "v0.5.0",
 	}
 	return
 }
