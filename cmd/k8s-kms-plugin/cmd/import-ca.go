@@ -17,23 +17,24 @@ package cmd
 
 import (
 	"context"
-	"github.com/spf13/cobra"
-	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"time"
+
+	"github.com/spf13/cobra"
+	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
 )
 
 var caCertPem []byte
 var caCertPath string
 
-// importCaCmd represents the importCa command
+// importCaCmd represents the import-ca command
 var importCaCmd = &cobra.Command{
 	Use:   "import-ca",
-	Short: "A brief description of your command",
+	Short: "Import CA certificate",
 
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
-		//
 		var ictx context.Context
 		var icancel context.CancelFunc
 		var ic istio.KeyManagementServiceClient
@@ -53,24 +54,14 @@ var importCaCmd = &cobra.Command{
 			return
 		}
 		return
-
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(importCaCmd)
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// importCaCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	importCaCmd.Flags().StringVar(&caCertPath, "cert-file", "", "Cert File ")
+	importCaCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket")
+	importCaCmd.Flags().DurationVar(&timeout, "timeout", 10*time.Second, "Timeout Duration")
+	importCaCmd.Flags().StringVarP(&caCertPath, "cert-file", "f", "", "Certificate File")
 	importCaCmd.MarkFlagRequired("cert-file")
-	importCaCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), "run.sock"), "Unix Socket")
-	importCaCmd.MarkFlagRequired("socket")
-
 }
