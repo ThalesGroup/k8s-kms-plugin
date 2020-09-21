@@ -11,8 +11,10 @@ import (
 	"github.com/ThalesIgnite/gose"
 	"github.com/ThalesIgnite/gose/jose"
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
+	v1 "github.com/thalescpl-io/k8s-kms-plugin/apis/kms/v1"
 	"io"
 	"os"
 	"reflect"
@@ -63,10 +65,10 @@ func TestP11_Encrypt(t *testing.T) {
 		{
 			name: "Happy Path - create default",
 			fields: fields{
-				config:     testConfig,
-				ctx:        testCtx,
-				keyId:      []byte("afdjaklfjdaskl"),
-				keyLabel:   []byte(defaultKEKlabel),
+				config:   testConfig,
+				ctx:      testCtx,
+				keyId:    []byte("afdjaklfjdaskl"),
+				keyLabel: []byte(defaultKEKlabel),
 
 				encryptors: testEncryptor,
 				decryptors: testDecryptor,
@@ -242,6 +244,19 @@ func TestP11_GenerateSKey(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestP11_Version(t *testing.T) {
+	p := &P11{}
+
+	versionResp, versionErr := p.Version(context.Background(), &v1.VersionRequest{})
+
+	require.NoError(t, versionErr)
+
+	const expectedVersion = "v1beta1"
+
+	require.Equal(t, expectedVersion, versionResp.Version)
+
 }
 
 func TestP11_ImportCACert(t *testing.T) {
