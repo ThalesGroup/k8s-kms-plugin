@@ -163,7 +163,6 @@ func grpcServe(gl net.Listener) (err error) {
 		} else {
 			config.SlotNumber = &p11slot
 		}
-		logrus.Info(*config)
 		if p, err = providers.NewP11(config, createKey); err != nil {
 			return
 		}
