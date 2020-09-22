@@ -17,7 +17,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
-	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
+	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1beta1"
 	v1 "github.com/thalescpl-io/k8s-kms-plugin/apis/kms/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
