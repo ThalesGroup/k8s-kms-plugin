@@ -507,15 +507,15 @@ func (p *P11) VerifyCertChain(ctx context.Context, request *istio.VerifyCertChai
 	var parsedTargetCert *x509.Certificate
 
 	/*
-	Regardless of the length of the supplied chain, we need to try and turn this into a valid chain, with the head of
-	the chain being something we pull from the HSM
-	The length of the chain must be at least 2 when we're done
+		Regardless of the length of the supplied chain, we need to try and turn this into a valid chain, with the head of
+		the chain being something we pull from the HSM
+		The length of the chain must be at least 2 when we're done
 	*/
 
 	var retrievedRootCert *x509.Certificate
 
 	var verifyOpts = x509.VerifyOptions{
-		Roots: x509.NewCertPool(),
+		Roots:         x509.NewCertPool(),
 		Intermediates: x509.NewCertPool(),
 	}
 
@@ -544,10 +544,10 @@ func (p *P11) VerifyCertChain(ctx context.Context, request *istio.VerifyCertChai
 	default:
 		{
 
-		    /*
-		      We try to verify the chain as supplied - if this verifies we then look at the returned chain root and see
-		      if matches our existing root cert
-		     */
+			/*
+			   We try to verify the chain as supplied - if this verifies we then look at the returned chain root and see
+			   if matches our existing root cert
+			*/
 			var parsedFirstCert *x509.Certificate
 
 			if parsedFirstCert, err = x509.ParseCertificate(request.Certificates[0]); nil != err {
@@ -562,13 +562,13 @@ func (p *P11) VerifyCertChain(ctx context.Context, request *istio.VerifyCertChai
 			}
 
 			var preliminaryVerifyOpts = x509.VerifyOptions{
-				Roots: x509.NewCertPool(),
+				Roots:         x509.NewCertPool(),
 				Intermediates: x509.NewCertPool(),
 			}
 			preliminaryVerifyOpts.Roots.AddCert(parsedFirstCert)
 
 			// And add any supplied intermediate certs
-			for i := 1; i < len(request.Certificates) - 1; i++ {
+			for i := 1; i < len(request.Certificates)-1; i++ {
 
 				var parsedAdditionalIntermediateCert *x509.Certificate
 				if parsedAdditionalIntermediateCert, err = x509.ParseCertificate(request.Certificates[i]); nil != err {
@@ -581,17 +581,17 @@ func (p *P11) VerifyCertChain(ctx context.Context, request *istio.VerifyCertChai
 			var parsedChains [][]*x509.Certificate
 			if parsedChains, err = parsedTargetCert.Verify(preliminaryVerifyOpts); nil != err {
 				logrus.Errorf("supplied chain does not verify")
-                return
+				return
 			} else {
 
 				/*
-				Here we examine the verified chains, as yet ignoring our CA certs.
-				If the verified chain root matches our CA cert, all is good
+					Here we examine the verified chains, as yet ignoring our CA certs.
+					If the verified chain root matches our CA cert, all is good
 
-				If not, we treat it as an intermediate cert and proceed to a verification which takes this into account
+					If not, we treat it as an intermediate cert and proceed to a verification which takes this into account
 
-				For now, we should only have a single chain, so crash out if there's more than one
-				 */
+					For now, we should only have a single chain, so crash out if there's more than one
+				*/
 				if 1 != len(parsedChains) {
 					err = fmt.Errorf("unhandled: multiple verification chains")
 					return
@@ -603,25 +603,24 @@ func (p *P11) VerifyCertChain(ctx context.Context, request *istio.VerifyCertChai
 				}
 
 				/*
-				Here, if the preliminary verification root matches our HSM-stored root, we add to verifyOpts.Roots
-				Else, we haven't seen this before, so add to verifyOpts.Intermediates
-				 */
-                if !retrievedRootCert.Equal(parsedChains[0][len(parsedChains[0]) - 1]) {
-                    verifyOpts.Intermediates.AddCert(parsedChains[0][len(parsedChains[0]) - 1])
-                    // And add our HSM-sourced CA cert as a root
-                    verifyOpts.Roots.AddCert(retrievedRootCert)
+					Here, if the preliminary verification root matches our HSM-stored root, we add to verifyOpts.Roots
+					Else, we haven't seen this before, so add to verifyOpts.Intermediates
+				*/
+				if !retrievedRootCert.Equal(parsedChains[0][len(parsedChains[0])-1]) {
+					verifyOpts.Intermediates.AddCert(parsedChains[0][len(parsedChains[0])-1])
+					// And add our HSM-sourced CA cert as a root
+					verifyOpts.Roots.AddCert(retrievedRootCert)
 				} else {
-					verifyOpts.Roots.AddCert(parsedChains[0][len(parsedChains[0]) - 1])
+					verifyOpts.Roots.AddCert(parsedChains[0][len(parsedChains[0])-1])
 				}
 
 			}
 
-
 			/*
-			And add any more possible intermediates (these are treated as being any certificates which are not the
-			first or the last)
-			 */
-			for i := 1; i < len(request.Certificates) - 1; i++ {
+				And add any more possible intermediates (these are treated as being any certificates which are not the
+				first or the last)
+			*/
+			for i := 1; i < len(request.Certificates)-1; i++ {
 
 				var parsedAdditionalIntermediateCert *x509.Certificate
 				if parsedAdditionalIntermediateCert, err = x509.ParseCertificate(request.Certificates[i]); nil != err {
@@ -633,8 +632,6 @@ func (p *P11) VerifyCertChain(ctx context.Context, request *istio.VerifyCertChai
 
 		}
 	}
-
-
 
 	resp = &istio.VerifyCertChainResponse{}
 
