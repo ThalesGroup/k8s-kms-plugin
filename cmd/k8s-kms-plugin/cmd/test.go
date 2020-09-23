@@ -43,8 +43,11 @@ var loopTime, timeout time.Duration
 
 
 const dummyCaCert = "-----BEGIN CERTIFICATE-----\nMIIGADCCA7SgAwIBAgIQAzUe9pVQo20RU9LSiRiDkDBBBgkqhkiG9w0BAQowNKAP\nMA0GCWCGSAFlAwQCAQUAoRwwGgYJKoZIhvcNAQEIMA0GCWCGSAFlAwQCAQUAogMC\nASAwLTEQMA4GA1UEChMHQWNtZSBDbzEZMBcGA1UEAxMQdGVzdC5leGFtcGxlLmNv\nbTAeFw0yMDA5MTUxMDEwNTlaFw0zMDA5MTMxMDEwNTlaMC0xEDAOBgNVBAoTB0Fj\nbWUgQ28xGTAXBgNVBAMTEHRlc3QuZXhhbXBsZS5jb20wggIiMA0GCSqGSIb3DQEB\nAQUAA4ICDwAwggIKAoICAQCuaGKyDvJ0ebW/9Kq7fltuLZhWQJb613EcHc2eV7ht\nejffCYklRJeKONhkozroxsb5y0ETvlWRiBDVBj0Zq0dyHY781N/QJZcBons0cRXV\nYNBd4nUaJ//FufzI1mbSXohpSaV1hkoQ2uTqB4B7yUWaiM1nIx1snzdXJSGhVYxy\nRhdTHMNd/z8ut+dwRojFIiU7S5NXaCc9LL9LryXy1N+VZo6sHK6NZQu27ryE7wv1\nh+bvG6TsfIsmfcv94ghX94olxY/+h38sDrX3LboKt3j8Tktg3amnwuKENYnvTOMZ\nkHkofj6k8kx+lCzJLDi2hCcq3r3ZPoT146mU5v3nwGF0zPSN3+GertuI9rmSvUy+\ngeD5QeWczUgADaALMVBTQY+wEBNhzyWa6O/l/yPErW2epFSibHIyz+97Nlen9CaF\nKBAUhRYVJIaUOCPmCK5VW4ghadF8zflUsgo5s/himfs9CWF12yAEYS1MjhyTTmAa\n0/DymJ0M8kaTuVUoQW6rrPGAzVRQEBeeVa3OJY6mPvOq0XosYGXtROSq9DMPGwcy\no9OlXhw6uD/rBPxNC8cqDZviM3QHKoN4lGatgfuSrowIU5Bi1yzgMxKdouY78OEI\nThtQTw2XxdoUy+Vr0XlQg9gAJqP0mq1O8fu7zjhua9k8Pdm6B0fxGsBa0Yz4MMQn\nIwIDAQABo4GzMIGwMA4GA1UdDwEB/wQEAwICBDAdBgNVHSUEFjAUBggrBgEFBQcD\nAQYIKwYBBQUHAwIwDwYDVR0TAQH/BAUwAwEB/zANBgNVHQ4EBgQEAQIDBDBfBggr\nBgEFBQcBAQRTMFEwIwYIKwYBBQUHMAGGF2h0dHA6Ly9vY3NwLmV4YW1wbGUuY29t\nMCoGCCsGAQUFBzAChh5odHRwOi8vY3J0LmV4YW1wbGUuY29tL2NhMS5jcnQwQQYJ\nKoZIhvcNAQEKMDSgDzANBglghkgBZQMEAgEFAKEcMBoGCSqGSIb3DQEBCDANBglg\nhkgBZQMEAgEFAKIDAgEgA4ICAQCfFnc0Cajm48LiDw2NxSsNMCGCT/uju6KJG3O8\naXG6rEorDJs3uWCdyn6PhzyhqEdPGiBfJVJnmY9OfF8wWx3zXVAxstOp1RIrA3yI\nfIZAMoTsAYYKXH9gMda9wcPMFOFKrjbmDJKk8c3WwXth5NIeqqQPGTTh0ovHVc8Q\nHDSZo3lyBEmUDjrF2qu0VGn4m2kuxFl8lPUAu8lUR2+KLj6XStqhDd6gXCa2/quZ\nSROFRccS5bPEwJh7l1QSqhwHjS0oKU0sIGq6+VPq2TKUcf4F1zaw4dOKqhBbm+o1\nN7K49deaQH3Zb40jR7f2Rw+s86MM1ujS8tu98yRcu8+KPq1vb1fOQlG/UnOAtYd7\n8kej0ot/QYb7NxDqxNqW2vePbkUoOHV9TtRNQDV0hQooWB/GzZGWUrILDRugDwH+\nX7XNzC5ov1TbRpXkvmpBkY80oBFb9P4bCtUb2dmcdxM7KM5dnoHOQ8Fb7aSWcstE\nSOI2qbSnl2/uigjWLayWpn6k1OTszsLQTxAcezNLL6cTI+eWb3oC0KoAP458FtNH\nb/W8F2WNIxCjD9ydVU2JFPRSy1FfAQFhNMPwyIoT4AZ46G/u4gNu/AIPERfCUqdG\nQWUMsGgTs6NVDmo5YeasplU5uYyEvqPnUhZFsxNSPu/wmDiIcjrtIeEym7Dq4MiG\neOMvxQ==\n-----END CERTIFICATE-----"
-const dummyBadCaCert = "-----BEGIN CERTIFICATE-----\nMIIGATCCA7WgAwIBAgIRANy0I4OT3O+R6Y3BUlhgXhkwQQYJKoZIhvcNAQEKMDSg\nDzANBglghkgBZQMEAgEFAKEcMBoGCSqGSIb3DQEBCDANBglghkgBZQMEAgEFAKID\nAgEgMC0xEDAOBgNVBAoTB0FjbWUgQ28xGTAXBgNVBAMTEHRlc3QuZXhhbXBsZS5j\nb20wHhcNMjAwOTExMTkxODI3WhcNMjAwOTEyMTkxODI3WjAtMRAwDgYDVQQKEwdB\nY21lIENvMRkwFwYDVQQDExB0ZXN0LmV4YW1wbGUuY29tMIICIjANBgkqhkiG9w0B\nAQEFAAOCAg8AMIICCgKCAgEA1KsY+0Wd2Rc935wryRepbNoANYfkTr432yt+av4M\nyE0q9nFlsTQ63qE2mvx5mM4FxvUs3myqHUBhbHOglWf2IR+tpFn2ItluZDyp1HwM\nVQblULKWf+Ky+oIuWu/jBgi5ES6tBQtv0T2BEZBxyg/nQYmf0pygWGzIPoW3ECyd\nFGjawE1uLHUy47XhfIw6awFax+DAYf7F5AXrj2MBxGk8RGzmWAOv0KjSXNmYpURK\nUKm/q01EeuFu25oNSVKpwZu7+LnmEjn8Yb0uUlN02jSQKu3JYc/jazrcwRKHmY1f\nNV+w4KSnwxFcnk/KNOd6kstGzWUA+cblVUvZgb6evJerkNpSyn6RXba/0voRprsu\nbvorzpahuOslLWP01Y9An+Ez1ooEgBvc1+HfgkkuDHyw577MjQQEioA4gMv5v68M\n3dbYuJP2anTGa8I0v8vx2rrgp+hcfBiI1ubV3AHcnwyQuhrEJZ2qKGDawvqylfGV\ny2Pl6kmvBH5Zo0ZwLgKIhbpOFX8vlz/fv9IFx9osgjSiRrc/b/pi+96vmLJj/+x0\nzoHOOAWXf7Ie3WOFK0dtUbYk8tlzVpIVooSMUad2+jYo5vK/OPKrdRd0s1m0yZ+Y\nk5jWcrqUnTGSLe+Ya/8LggNcRI3ckAMVuOAs+5tBbmlo8gQj6M5y+wNzGY346vL6\nc+MCAwEAAaOBszCBsDAOBgNVHQ8BAf8EBAMCAgQwHQYDVR0lBBYwFAYIKwYBBQUH\nAwEGCCsGAQUFBwMCMA8GA1UdEwEB/wQFMAMBAf8wDQYDVR0OBAYEBAECAwQwXwYI\nKwYBBQUHAQEEUzBRMCMGCCsGAQUFBzABhhdodHRwOi8vb2NzcC5leGFtcGxlLmNv\nbTAqBggrBgEFBQcwAoYeaHR0cDovL2NydC5leGFtcGxlLmNvbS9jYTEuY3J0MEEG\nCSqGSIb3DQEBCjA0oA8wDQYJYIZIAWUDBAIBBQChHDAaBgkqhkiG9w0BAQgwDQYJ\nYIZIAWUDBAIBBQCiAwIBIAOCAgEAJcHy0FcU9ytz0ZdF5VRSftNooSG6KA/vfHD3\nkxGkYjbqBTmANwCJzuKxqAq3zT1Zql/s9wnlBq7yHNCY0D3F8NuHV6G4t1PRgL0r\nwzv3/45Rt2Le2tjv9EucsBnnWSb0yT7baoD4KTH08fzIe98fa9B1uO+4ANgFphwF\ndp5CHpf/HuAxY9n26dgLlkmQbFOh1MOls7krn8Cu5vlTZ3EXSYAQrase4EUAiPx1\nvCXXXpkQaU7RQ67ina0NMqiQenZBGP2iZbIpqTtXJipGN9l6/TUkQlSW3hB4K1lw\ng/kC6kQFnRZufw46/vE5a31Sc8LTmflyhFiaD1VIfLhyCQ3EEOaFj0Ly+gAO7ypJ\n+HHiayRor9X8dWflpQUcTpeL9lnf/9ZBPdO7+aFeWxrjGVGGPgpsIXFi2jOtFK+k\nopx8u1dhJd5AIYDaQSTkBfXRmlesltS5HP6xsZKDEBlGa00hKelel6O+GmpqdjKz\nndt1x6vnjTnjiTEvabBuut6vWnWSzxTarQ/hN6gICJPT7bY71uAnQUtIMccM2MLB\nFWT5cWNHqgnoSJucYPaxvedH28wQsJ2H/lkTx+pdkvL6Pj5Cn49g8O+3T662itJm\niyLs7vvL4X9PDAdzBPETC44+dq/VYe0Y4rKj6oqqlmmMunTVo7jbDOZjwnYZKdYT\nPJhSoqY=\n-----END CERTIFICATE-----"
+const dummyIntermediateCaCert = "-----BEGIN CERTIFICATE-----\nMIIGDzCCA8OgAwIBAgIQDVAZahWkOfdgwjPDptX6RzBBBgkqhkiG9w0BAQowNKAP\nMA0GCWCGSAFlAwQCAQUAoRwwGgYJKoZIhvcNAQEIMA0GCWCGSAFlAwQCAQUAogMC\nASAwLTEQMA4GA1UEChMHQWNtZSBDbzEZMBcGA1UEAxMQdGVzdC5leGFtcGxlLmNv\nbTAeFw0yMDA5MjMxMzE1MDRaFw0yMDA5MjMxNDE1MDRaMCsxDjAMBgNVBAoTBWlz\ndGlvMRkwFwYDVQQDExB0ZXN0LmV4YW1wbGUuY29tMIICIjANBgkqhkiG9w0BAQEF\nAAOCAg8AMIICCgKCAgEAuFPWfIzgD6k0hTr8UkztPggDjHRQ1b2Du4KTKRhC91Kh\nw67mR57fw/8LtMisEW6BttvWFPeU1JaHJ0Mkxx9SxQFSCReU9C70imHGSEuWYt6p\n5ud6Cb7gMdenaMGsIl/5a9JS2DIiLM7tiXJqmSr5KjQ6XF5Ol5O+OUWHNkegC8gL\nScBZyVgPJsWXRwrjyO/5+i07zWPgEvB682EqrIaCwJjd6Vhk/iOcR2/dpcNZtA3d\nOkZPIz8c2RlZPTTv+U4AyGp0m715HFF5G5QjIdRyAi847esK2sz+6VONx/S+1iTF\nJS5du8C1IeCA9kfnds3WoFsixF8/HN/TZfBMpfi9/CRRem6dE70tENYSk5RPz8Vk\nUE1aVg3J3IesouV60qwy3znzHhTwQ010Abc2gl68hrODBK3bIPso5pYFzeu14GFd\nvIeF2dvOod0YtcDE///dLYyZDZe+OdFT+hDaV5F/qW1oobTFRjZihl1OmikE/pTl\nMfBFY1IjcCTq91LgFknbp6Y9v49daehnj4qHJHVAWrPWWy18VYtxDy5FGIDKyq6u\nSAmpqqwISqIHWhODvZMpduVdRYGqIyadH322Sjuf9ncBRZ491VYFqhhEtL2HQgY8\n9j8f/su2EzO0kR89YtLZyRtQS2JGS5qc/0IyqpQXNbWJK9KN6Q+GjcyASufMUH0C\nAwEAAaOBxDCBwTAOBgNVHQ8BAf8EBAMCAgQwHQYDVR0lBBYwFAYIKwYBBQUHAwEG\nCCsGAQUFBwMCMA8GA1UdEwEB/wQFMAMBAf8wDQYDVR0OBAYEBAECAwQwDwYDVR0j\nBAgwBoAEAQIDBDBfBggrBgEFBQcBAQRTMFEwIwYIKwYBBQUHMAGGF2h0dHA6Ly9v\nY3NwLmV4YW1wbGUuY29tMCoGCCsGAQUFBzAChh5odHRwOi8vY3J0LmV4YW1wbGUu\nY29tL2NhMS5jcnQwQQYJKoZIhvcNAQEKMDSgDzANBglghkgBZQMEAgEFAKEcMBoG\nCSqGSIb3DQEBCDANBglghkgBZQMEAgEFAKIDAgEgA4ICAQCgv+NsLV6KTzbY/ylE\nSYZ1e+yKi5Hs/DaPd6eD3xB1RuFkTLnMAtcUgpk36MsQf9tLlhgjcxWGqjDP3mA9\nBTOkoyN1Fja76WJgg4HeniGUioSuXNJNm4Nstku9e/AP4Rky7bgoDoDkTysqgRpK\niGSac3plM0ssYeZoofLMHewPkD5xutdJoHXlW8myh1jLWV0oVbCXlEiRgSJZnY92\nBJiPsKCPx4QENNH2c4/InJCHWV1gC2gpRWNeNsJYSBUtiC/ZtTstPc6PMOYzH8bA\nuILmQ+sy/zfQ6ZA0P95Lvv/lv5pMftoJ56tFqL3IVwoyDTUgs/6zxltEi7FdgN4M\nB3DumrzgygeyFPLsjQGuBKEoIvzctmfYszl3c9rfqSxY9iaXD1iNtDaYCKGkCn5F\n0up3mN5R2NcALJIir6mxYwz5RmxvAOT5FsI0V15+PTSJTT1y4pBTn6g9tcJYTung\nf01UuDc4sksNtH0tTlNYK6LcIDXOM7OxKAh4ec/o7y9yO5lYzwvtkFIWFyfhY1bM\nEiS1SJB3sWt8RqaQPlkmSb1NcmMYvV/YQb/fOffZadDrJLYk9Utuoh72lCEnS8el\nSb4UUnp2URim+eem/JHldnwHxcaNMFttpnTYtxTHLZvD3sMrVQtPFj14tvIaYGU5\nus+/yTTJe7DIquTifVRp15AtQA==\n-----END CERTIFICATE-----"
+const dummyBadCaCert = "-----BEGIN CERTIFICATE-----\n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\n-----END CERTIFICATE-----"
+const dummyBadCaPrivKey = "-----BEGIN RSA PRIVATE KEY-----\n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\n-----END RSA PRIVATE KEY-----"
 const dummyCaPrivKey = "-----BEGIN PRIVATE KEY-----\n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\n-----END PRIVATE KEY-----\n"
+const dummyIntermediateCaPrivateKey = "-----BEGIN RSA PRIVATE KEY-----\n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\n-----END RSA PRIVATE KEY-----"
 
 func hashCsrTemplate(hashF hash.Hash, csrTemplate *x509.CertificateRequest) (digest []byte, err error) {
 
@@ -302,10 +305,10 @@ func runTest() error {
 	/*
 	   VerifyCertChain - take the CA-signed cert and hand over to verify the chain (chain not provided - currently assumes there's no intermediate and we only need the CA cert in the HSM to verify)
 	*/
-	logrus.Info("Test 7 VerifyCertChain")
+	logrus.Info("Test 8 VerifyCertChain (only target cert)")
 
 	var signedCert []byte
-	signedCert, err = dummyCaCertSigner(adResp.Plaintext)
+	signedCert, err = dummyCaCertSigner(adResp.Plaintext, dummyCaCert, dummyCaPrivKey)
 	if nil != err {
 		logrus.Fatalf("error signing cert by dummy CA")
 		return err
@@ -330,6 +333,139 @@ func runTest() error {
 
 
 
+
+	/*
+	   VerifyCertChain - provides the target cert and the root cert (which matches one already in the HSM)
+	*/
+
+	logrus.Info("Test 9 VerifyCertChain (target cert and root cert - check that root cert matches one in the HSM)")
+	chain = nil
+	chain = make([][]byte, 0)
+	// Append the root cert first
+	// TODO - Need to change this so it's PEM throughout
+	chain = append(chain, []byte(dummyCaCert))
+	chain = append(chain, signedCert)
+
+	verifyCertChainReq.Certificates = chain
+
+	if verifyCertChainResp, err = ic.VerifyCertChain(ictx, verifyCertChainReq); nil != err {
+		logrus.Fatal(err)
+		return err
+	}
+
+	if !verifyCertChainResp.SuccessfulVerification {
+		logrus.Fatal("VerifyCertChain returned false")
+		return fmt.Errorf("VerifyCertChain returned false")
+	}
+
+
+
+
+
+
+	/*
+	   VerifyCertChain - provides the target cert and an intermediate cert (which verifies against one already in the HSM)
+	*/
+
+	logrus.Info("Test 10 VerifyCertChain (target cert and intermediate cert)")
+
+	var intermediateForSigningPrivKey *rsa.PrivateKey
+	intermediateForSigningPrivKey, err = rsa.GenerateKey(rand.Reader, 4096)
+
+	var csrIntermediateTemplateForSigning = &x509.CertificateRequest{
+		Subject: pkix.Name{
+			CommonName:   "test.example.com",
+			Organization: []string{"istio"},
+		},
+		PublicKeyAlgorithm: x509.RSA,
+		SignatureAlgorithm: x509.SHA512WithRSA,
+		DNSNames:           []string{"test.example.com"},
+		EmailAddresses:     []string{"gopher@golang.org"},
+		IPAddresses:        []net.IP{net.IPv4(127, 0, 0, 1).To4()},
+	}
+
+	var istioIntermediateCaCSRForEnd []byte
+	if istioIntermediateCaCSRForEnd, err = x509.CreateCertificateRequest(rand.Reader, csrIntermediateTemplateForSigning, intermediateForSigningPrivKey); nil != err {
+		logrus.Fatal(err)
+		return err
+	}
+
+
+	var signedCertByIntermediate []byte
+	signedCertByIntermediate, err = dummyCaCertSigner(istioIntermediateCaCSRForEnd, dummyIntermediateCaCert, dummyIntermediateCaPrivateKey)
+
+
+
+	chain = nil
+	chain = make([][]byte, 0)
+	// Append the intermediate cert first
+	// TODO - Need to change this so it's PEM throughout
+
+	chain = append(chain, []byte(dummyIntermediateCaCert))
+	chain = append(chain, signedCertByIntermediate)
+
+	verifyCertChainReq.Certificates = chain
+
+	if verifyCertChainResp, err = ic.VerifyCertChain(ictx, verifyCertChainReq); nil != err {
+		logrus.Fatal(err)
+		return err
+	}
+
+	if !verifyCertChainResp.SuccessfulVerification {
+		logrus.Fatal("VerifyCertChain returned false")
+		return fmt.Errorf("VerifyCertChain returned false")
+	}
+
+	/*
+	   VerifyCertChain - provides the target cert which fails to verify against any cert in the HSM
+	   We corrupt the signature
+	*/
+
+	logrus.Info("Test 11 VerifyCertChain (only target cert - negative)")
+
+    badCert, _ := x509.ParseCertificate(signedCert)
+	badCert.Signature[42] ^= badCert.Signature[42]
+
+	chain = nil
+	chain = append(chain, badCert.Raw)
+
+	verifyCertChainReq = &istio.VerifyCertChainRequest{
+		Certificates: chain,
+	}
+	verifyCertChainResp = &istio.VerifyCertChainResponse{}
+	if verifyCertChainResp, err = ic.VerifyCertChain(ictx, verifyCertChainReq); nil == err {
+		err = fmt.Errorf("expected error but received none")
+		return err
+	}
+
+	/*
+	   VerifyCertChain - provides the target cert and the root cert (which fails to match the one already in the HSM,
+	   but the provided chain verifies)
+	*/
+
+	logrus.Info("Test 12 VerifyCertChain (target cert and root cert - negative - root cert does not match loaded)")
+
+	chain = nil
+	chain = make([][]byte, 0)
+	// Append the root cert first
+	// TODO - Need to change this so it's PEM throughout
+	chain = append(chain, []byte(dummyBadCaCert))
+
+	var signedCertByBadCa []byte
+	signedCertByBadCa, err = dummyCaCertSigner(adResp.Plaintext, dummyBadCaCert, dummyBadCaPrivKey)
+	if nil != err {
+		logrus.Fatalf("%v", err.Error())
+		return err
+	}
+
+	chain = append(chain, signedCertByBadCa)
+	verifyCertChainReq.Certificates = chain
+
+	if verifyCertChainResp, err = ic.VerifyCertChain(ictx, verifyCertChainReq); nil == err {
+		err = fmt.Errorf("expected error but received none")
+		return err
+	}
+
 	return nil
 }
 
@@ -353,7 +489,7 @@ func init() {
 
 
 
-func dummyCaCertSigner(p10Csr []byte) (signedCert []byte, err error) {
+func dummyCaCertSigner(p10Csr []byte, pemCaCert, pemCaPrivKey string) (signedCert []byte, err error) {
 
 	var reloadedCsr *x509.CertificateRequest
 	reloadedCsr, err = x509.ParseCertificateRequest(p10Csr)
@@ -363,7 +499,7 @@ func dummyCaCertSigner(p10Csr []byte) (signedCert []byte, err error) {
 	}
 
 	var pemCaCertBlock *pem.Block
-	pemCaCertBlock, _ = pem.Decode([]byte(dummyCaCert))
+	pemCaCertBlock, _ = pem.Decode([]byte(pemCaCert))
 	var parsedRootCaCert *x509.Certificate
 	parsedRootCaCert, err = x509.ParseCertificate(pemCaCertBlock.Bytes)
 	if nil != err {
@@ -373,7 +509,7 @@ func dummyCaCertSigner(p10Csr []byte) (signedCert []byte, err error) {
 
 
 	var pemKeyBlock *pem.Block
-	pemKeyBlock, _ = pem.Decode([]byte(dummyCaPrivKey))
+	pemKeyBlock, _ = pem.Decode([]byte(pemCaPrivKey))
 	var parsedCaPrivKey *rsa.PrivateKey
 	parsedCaPrivKey, err = x509.ParsePKCS1PrivateKey(pemKeyBlock.Bytes)
 	if nil != err {

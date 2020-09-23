@@ -88,7 +88,7 @@ func decryptCSR() error {
 func init() {
 	rootCmd.AddCommand(decryptCSRCmd)
 	decryptCSRCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket")
-	decryptCSRCmd.Flags().DurationVar(&timeout, "timeout", 10*time.Second, "Timeout Duration")
+	decryptCSRCmd.Flags().DurationVar(&timeout, "timeout", 30*time.Second, "Timeout Duration")
 	decryptCSRCmd.Flags().StringVarP(&inName, "inName", "f", "", "Input file")
 	decryptCSRCmd.Flags().StringVarP(&outName, "outName", "o", "", "Output file")
 }

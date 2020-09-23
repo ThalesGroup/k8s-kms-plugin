@@ -46,6 +46,6 @@ func generateKEK() error {
 func init() {
 	rootCmd.AddCommand(generateKEKCmd)
 	generateKEKCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket")
-	generateKEKCmd.Flags().DurationVar(&timeout, "timeout", 10*time.Second, "Timeout Duration")
+	generateKEKCmd.Flags().DurationVar(&timeout, "timeout", 30*time.Second, "Timeout Duration")
 	generateKEKCmd.Flags().StringVar(&kekID, "kek-id", "", "KEK ID to request")
 }

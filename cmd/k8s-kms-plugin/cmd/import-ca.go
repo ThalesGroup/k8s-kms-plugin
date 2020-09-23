@@ -61,7 +61,7 @@ func init() {
 	rootCmd.AddCommand(importCaCmd)
 
 	importCaCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket")
-	importCaCmd.Flags().DurationVar(&timeout, "timeout", 10*time.Second, "Timeout Duration")
+	importCaCmd.Flags().DurationVar(&timeout, "timeout", 30*time.Second, "Timeout Duration")
 	importCaCmd.Flags().StringVarP(&caCertPath, "cert-file", "f", "", "Certificate File")
 	importCaCmd.MarkFlagRequired("cert-file")
 }
