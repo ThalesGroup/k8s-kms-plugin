@@ -31,6 +31,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/ThalesIgnite/crypto11"
 	"github.com/sirupsen/logrus"
@@ -87,7 +88,8 @@ var serveCmd = &cobra.Command{
 				logrus.Error(err)
 				return
 			}
-			p11pin = string(p11pinBytes)
+			p11pin = strings.TrimSpace(string(p11pinBytes))
+
 			logrus.Infof("Loaded P11 PIN from file: %v", a)
 		} else if a := os.Getenv("P11_PIN"); a != "" {
 			p11pin = a
@@ -140,9 +142,6 @@ func init() {
 	serveCmd.Flags().StringVar(&serverTLSKey, "tls-key", "certs/tls.key", "TLS server key")
 	serveCmd.Flags().StringVar(&serverTLSCert, "tls-certificate", "certs/tls.crt", "TLS server cert")
 	// Here you will define your flags and configuration settings.
-
-
-
 
 	serveCmd.Flags().BoolVar(&allowAny, "allow-any", false, "Allow any device (accepts all ids/secrets)")
 
