@@ -24,18 +24,22 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
+	"github.com/ThalesIgnite/crypto11"
+	k8s "github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1beta1"
+	"github.com/thalescpl-io/k8s-kms-plugin/pkg/providers"
 	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 )
 
 var (
@@ -146,9 +150,9 @@ func init() {
 }
 
 func grpcServe(gl net.Listener) (err error) {
-	//var p providers.Provider
+	var p providers.Provider
 
-	/*
+
 	switch provider {
 	case "p11", "softhsm":
 		config := &crypto11.Config{
@@ -185,24 +189,23 @@ func grpcServe(gl net.Listener) (err error) {
 		return
 	}
 
-	 */
+
 	// Create a gRPC server to host the services
-	/*
-	serverOptions := []grpc.ServerOption{
-		grpc.UnaryInterceptor(p.UnaryInterceptor),
-	}
-
-	 */
-
-
 
 	serverOptions := []grpc.ServerOption{
+		//grpc.UnaryInterceptor(p.UnaryInterceptor),
 		grpc.UnknownServiceHandler(unknownServiceHandler),
+
 	}
+
+
+
+
 
 	//gs := grpc.NewServer()
 	gs := grpc.NewServer(serverOptions...)
-	reflection.Register(gs)
+	k8s.RegisterKeyManagementServiceServer(gs, p)
+	//reflection.Register(gs)
 	logrus.Infof("Serving on socket: %s", socketPath)
 
 START:
@@ -218,6 +221,7 @@ START:
 }
 
 func unknownServiceHandler(srv interface{}, stream grpc.ServerStream) error {
-	logrus.Infof("unknownServiceHandler called\n")
+	typeOfSrv := reflect.TypeOf(srv)
+	logrus.Infof("unknownServiceHandler called. Type is: %v\n", typeOfSrv)
 	return nil
 }
