@@ -26,6 +26,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
 	"io/ioutil"
 	"net"
 	"os"
@@ -163,7 +164,7 @@ func grpcServe(gl net.Listener) (err error) {
 		} else {
 			config.SlotNumber = &p11slot
 		}
-		if p, err = providers.NewP11(config, createKey); err != nil {
+		if p, err = providers.NewP11(config, createKey, keyName); err != nil {
 			return
 		}
 	case "luna", "dpod":
@@ -177,7 +178,7 @@ func grpcServe(gl net.Listener) (err error) {
 		} else {
 			config.SlotNumber = &p11slot
 		}
-		if p, err = providers.NewP11(config, createKey); err != nil {
+		if p, err = providers.NewP11(config, createKey, keyName); err != nil {
 			return
 		}
 	case "ekms":
@@ -192,6 +193,7 @@ func grpcServe(gl net.Listener) (err error) {
 	}
 
 	gs := grpc.NewServer(serverOptions...)
+	k8s.RegisterKeyManagementServiceServer(gs, p)
 	reflection.Register(gs)
 	istio.RegisterKeyManagementServiceServer(gs, p)
 	logrus.Infof("Serving on socket: %s", socketPath)
