@@ -29,6 +29,7 @@ import (
 	"github.com/ThalesIgnite/crypto11"
 	k8s "github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1beta1"
 	"github.com/thalescpl-io/k8s-kms-plugin/pkg/providers"
+	"google.golang.org/grpc/reflection"
 	"io/ioutil"
 	"net"
 	"os"
@@ -205,7 +206,7 @@ func grpcServe(gl net.Listener) (err error) {
 	//gs := grpc.NewServer()
 	gs := grpc.NewServer(serverOptions...)
 	k8s.RegisterKeyManagementServiceServer(gs, p)
-	//reflection.Register(gs)
+	reflection.Register(gs)
 	logrus.Infof("Serving on socket: %s", socketPath)
 
 START:
