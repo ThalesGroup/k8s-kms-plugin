@@ -79,7 +79,7 @@ func Execute() {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		fmt.Printf("EA: %v\n", err)
 		os.Exit(1)
 	}
 }
@@ -121,7 +121,7 @@ func initConfig() {
 		// Find home directory.
 		home, err := homedir.Dir()
 		if err != nil {
-			fmt.Println(err)
+			fmt.Printf("EB: %v\n", err)
 			os.Exit(1)
 		}
 

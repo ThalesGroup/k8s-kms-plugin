@@ -17,7 +17,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
-	k8sv1 "github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
+	k8sv1 "github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1beta1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -54,7 +54,7 @@ func generateDEK(ctx11 *crypto11.Context, encryptor gose.JweEncryptor) (encrypte
 
 	var rng io.Reader
 	if rng, err = ctx11.NewRandomReader(); err != nil {
-		logrus.Error(err)
+		logrus.Errorf("E1: %v", err)
 		return
 	}
 
@@ -71,7 +71,7 @@ func generateDEK(ctx11 *crypto11.Context, encryptor gose.JweEncryptor) (encrypte
 	// using the AES key as it's payload
 	var encryptedString string
 	if encryptedString, err = encryptor.Encrypt(dekStr, nil); err != nil {
-		logrus.Error(err)
+		logrus.Errorf("E2: %v", err)
 		return
 	}
 	encryptedKeyBlob = []byte(encryptedString)
@@ -184,7 +184,7 @@ func NewP11(config *crypto11.Config, createKey bool) (p *P11, err error) {
 	}
 	// Bootstrap the Pkcs11 device or die
 	if p.ctx, err = crypto11.Configure(p.config); err != nil {
-		logrus.Error(err)
+		logrus.Errorf("E3: %v", err)
 		return
 	}
 	return
@@ -331,7 +331,7 @@ func (p *P11) Encrypt(ctx context.Context, req *k8sv1.EncryptRequest) (resp *k8s
 // GenerateDEK a 256 bit AES DEK Key , Wrapped via JWE with the PKCS11 base KEK
 func (p *P11) GenerateDEK(ctx context.Context, request *istio.GenerateDEKRequest) (resp *istio.GenerateDEKResponse, err error) {
 	if request == nil {
-		logrus.Error(err)
+		logrus.Errorf("E4: %v", err)
 		return nil, status.Error(codes.InvalidArgument, "no request sent")
 	}
 	var encryptor gose.JweEncryptor
@@ -343,7 +343,7 @@ func (p *P11) GenerateDEK(ctx context.Context, request *istio.GenerateDEKRequest
 	var dekBlob []byte
 
 	if dekBlob, err = generateDEK(p.ctx, encryptor); err != nil {
-		logrus.Error(err)
+		logrus.Errorf("E5: %v", err)
 		return
 	}
 	resp = &istio.GenerateDEKResponse{
@@ -357,14 +357,14 @@ func (p *P11) GenerateKEK(ctx context.Context, request *istio.GenerateKEKRequest
 	if request.KekKid == nil {
 		request.KekKid, err = p.genKekKid()
 		if err != nil {
-			logrus.Error(err)
+			logrus.Errorf("E6: %v", err)
 			return
 		}
 	}
 
 	_, err = generateKEK(p.ctx, request.KekKid, []byte(defaultKEKlabel), jose.AlgA256GCM)
 	if err != nil {
-		logrus.Error(err)
+		logrus.Errorf("E7: %v", err)
 		return
 	}
 	resp = &istio.GenerateKEKResponse{
@@ -481,6 +481,7 @@ func (p *P11) LoadSKey(ctx context.Context, request *istio.LoadSKeyRequest) (res
 }
 
 func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	logrus.Infof("in Unary interceptor")
 	var h interface{}
 	var err error
 	h, err = handler(ctx, req)

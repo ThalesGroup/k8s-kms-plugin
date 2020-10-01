@@ -127,7 +127,7 @@ func runTest() error {
 	ictx, icancel, ic, err := istio.GetClientSocket(socketPath, timeout)
 	defer icancel()
 	if err != nil {
-		logrus.Fatal(err)
+		logrus.Fatalf("T1: %v\n", err)
 		return err
 	}
 

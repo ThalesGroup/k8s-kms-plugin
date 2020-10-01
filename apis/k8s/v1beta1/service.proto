@@ -1,27 +1,19 @@
-//
-//Copyright 2018 The Kubernetes Authors.
-//
-//Licensed under the Apache License, Version 2.0 (the "License");
-//you may not use this file except in compliance with the License.
-//You may obtain a copy of the License at
-//
-//    http://www.apache.org/licenses/LICENSE-2.0
-//
-//Unless required by applicable law or agreed to in writing, software
-//distributed under the License is distributed on an "AS IS" BASIS,
-//WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-//See the License for the specific language governing permissions and
-//limitations under the License.
-//
-
 syntax = "proto3";
 
-package thalescpl.io.ekms.k8s.v1;
+package v1beta1;
 
-option go_package = "github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1;k8s";
+option go_package = "github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1beta1;k8s";
 
 import "google/protobuf/timestamp.proto";
-import "protoc-gen-swagger/options/annotations.proto";
+
+service KeyManagementService {
+  // Version returns the runtime name and runtime version of the KMS provider.
+  rpc Version(v1beta1.VersionRequest) returns (VersionResponse);
+  // Execute decryption operation in KMS provider.
+  rpc Decrypt(DecryptRequest) returns (DecryptResponse);
+  // Execute encryption operation in KMS provider.
+  rpc Encrypt(EncryptRequest) returns (EncryptResponse);
+}
 
 message DecryptRequest {
   // Version of the KMS plugin API.
