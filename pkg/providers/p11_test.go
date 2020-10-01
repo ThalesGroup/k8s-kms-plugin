@@ -13,8 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
-	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
-	v1 "github.com/thalescpl-io/k8s-kms-plugin/apis/kms/v1"
+	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1beta1"
 	"io"
 	"os"
 	"reflect"
@@ -38,6 +37,7 @@ var (
 	testWrappedDEK      []byte
 	testWrappedSKey     []byte
 )
+
 
 func TestP11_Encrypt(t *testing.T) {
 	td := setupSoftHSMTestCase(t)
@@ -249,7 +249,7 @@ func TestP11_GenerateSKey(t *testing.T) {
 func TestP11_Version(t *testing.T) {
 	p := &P11{}
 
-	versionResp, versionErr := p.Version(context.Background(), &v1.VersionRequest{})
+	versionResp, versionErr := p.Version(context.Background(), &k8s.VersionRequest{})
 
 	require.NoError(t, versionErr)
 
@@ -407,7 +407,10 @@ func init() {
 
 }
 
+
+
 func setupSoftHSMTestCase(t testing.TB) func(t testing.TB) {
+
 	testKuuid, err := uuid.NewRandom()
 	var testCuuid uuid.UUID
 	if err != nil {

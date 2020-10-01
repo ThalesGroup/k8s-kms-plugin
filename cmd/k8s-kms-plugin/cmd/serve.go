@@ -166,7 +166,7 @@ func grpcServe(gl net.Listener) (err error) {
 		} else {
 			config.SlotNumber = &p11slot
 		}
-		if p, err = providers.NewP11(config, createKey); err != nil {
+		if p, err = providers.NewP11(config, createKey, keyName); err != nil {
 			return
 		}
 	case "luna", "dpod":
@@ -180,7 +180,7 @@ func grpcServe(gl net.Listener) (err error) {
 		} else {
 			config.SlotNumber = &p11slot
 		}
-		if p, err = providers.NewP11(config, createKey); err != nil {
+		if p, err = providers.NewP11(config, createKey, keyName); err != nil {
 			return
 		}
 	case "ekms":
@@ -194,7 +194,7 @@ func grpcServe(gl net.Listener) (err error) {
 	// Create a gRPC server to host the services
 
 	serverOptions := []grpc.ServerOption{
-		//grpc.UnaryInterceptor(p.UnaryInterceptor),
+		grpc.UnaryInterceptor(p.UnaryInterceptor),
 		grpc.UnknownServiceHandler(unknownServiceHandler),
 
 	}
