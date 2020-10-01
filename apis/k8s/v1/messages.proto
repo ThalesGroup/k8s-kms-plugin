@@ -54,3 +54,13 @@ message EncryptResponse {
   // The encrypted data.
   bytes cipher = 1;
 }
+
+message VersionRequest {
+  string version = 1;
+}
+
+message VersionResponse {
+  string version = 1;
+  string runtime_name = 2;
+  string runtime_version = 3;
+}

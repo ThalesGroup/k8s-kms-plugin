@@ -5,12 +5,11 @@ package thalescpl.io.ekms.k8s.v1;
 option go_package = "github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1;k8s";
 
 import "apis/k8s/v1/messages.proto";
-import "apis/kms/v1/messages.proto";
 import "google/protobuf/timestamp.proto";
 
 service KeyManagementService {
   // Version returns the runtime name and runtime version of the KMS provider.
-  rpc Version(thalescpl.io.ekms.kms.v1.VersionRequest) returns (thalescpl.io.ekms.kms.v1.VersionResponse);
+  rpc Version(VersionRequest) returns (VersionResponse);
   // Execute decryption operation in KMS provider.
   rpc Decrypt(DecryptRequest) returns (DecryptResponse);
   // Execute encryption operation in KMS provider.

@@ -114,7 +114,7 @@ var serveCmd = &cobra.Command{
 			// access to the socket.
 			os.Chmod(socketPath, 0775)
 			g.Go(func() error { return grpcServe(grpcUNIX) })
-			logrus.Infof("KMS Plugin Listening on : %v\n", socketPath)
+			logrus.Infof("KMS Plugin now Listening on : %v\n", socketPath)
 
 		}
 

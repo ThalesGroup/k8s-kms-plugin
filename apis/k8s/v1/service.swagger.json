@@ -72,16 +72,13 @@
       "type": "object",
       "properties": {
         "version": {
-          "type": "string",
-          "description": "Version of the KMS plugin API."
+          "type": "string"
         },
         "runtime_name": {
-          "type": "string",
-          "description": "Name of the KMS provider."
+          "type": "string"
         },
         "runtime_version": {
-          "type": "string",
-          "description": "Version of the KMS provider. The string must be semver-compatible."
+          "type": "string"
         }
       }
     }

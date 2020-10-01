@@ -15,15 +15,12 @@ coverage:
 		go tool cover -html=build/coverage.out -o build/coverage.html
 
 ## Dev
-gen: gen-grpc gen-openapi
+gen: gen-grpc
 gen-grpc:
 		@prototool all || true
 		@cp -r generated/github.com/thalescpl-io/k8s-kms-plugin/apis/* apis/
 		@cp -r generated/apis/* apis/
 		@rm -rf generated/
-gen-openapi:
-		@swagger generate server --quiet -m pkg/est/models -s pkg/est/restapi -f apis/kms/v1/est.yaml
-		@swagger generate client --quiet --existing-models=pkg/est/models -c pkg/est/client -f apis/kms/v1/est.yaml
 build:
 		@go build -o k8s-kms-plugin cmd/k8s-kms-plugin/main.go
 run:

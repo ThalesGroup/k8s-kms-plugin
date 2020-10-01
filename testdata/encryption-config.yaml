@@ -5,8 +5,8 @@ resources:
       - secrets
     providers:
       - kms:
-          name:
-          endpoint: unix:///run/kms/kms-socket/.sock
+          name: "thales-kms-provider"
+          endpoint: unix:///var/lib/minikube/certs/.sock
           cachesize: 100
           timeout: 3s
       - identity: {}

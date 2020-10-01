@@ -17,8 +17,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
-	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
-	v1 "github.com/thalescpl-io/k8s-kms-plugin/apis/kms/v1"
+	k8sv1 "github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -293,7 +292,7 @@ func (p *P11) Close() (err error) {
 }
 
 // Symmetric Encryption....
-func (p *P11) Decrypt(ctx context.Context, req *k8s.DecryptRequest) (resp *k8s.DecryptResponse, err error) {
+func (p *P11) Decrypt(ctx context.Context, req *k8sv1.DecryptRequest) (resp *k8sv1.DecryptResponse, err error) {
 	var decryptor gose.JweDecryptor
 	if decryptor = p.decryptors[req.KeyId]; decryptor == nil {
 		if _, decryptor, err = loadKEKbyID(p.ctx, []byte(req.KeyId), []byte(defaultKEKlabel)); err != nil {
@@ -305,13 +304,13 @@ func (p *P11) Decrypt(ctx context.Context, req *k8s.DecryptRequest) (resp *k8s.D
 	if out, _, err = decryptor.Decrypt(string(req.Cipher)); err != nil {
 		return
 	}
-	resp = &k8s.DecryptResponse{
+	resp = &k8sv1.DecryptResponse{
 		Plain: out,
 	}
 	return
 }
 
-func (p *P11) Encrypt(ctx context.Context, req *k8s.EncryptRequest) (resp *k8s.EncryptResponse, err error) {
+func (p *P11) Encrypt(ctx context.Context, req *k8sv1.EncryptRequest) (resp *k8sv1.EncryptResponse, err error) {
 	var encryptor gose.JweEncryptor
 	if encryptor = p.encryptors[req.KeyId]; encryptor == nil {
 		if encryptor, _, err = loadKEKbyID(p.ctx, []byte(req.KeyId), []byte(defaultKEKlabel)); err != nil {
@@ -323,7 +322,7 @@ func (p *P11) Encrypt(ctx context.Context, req *k8s.EncryptRequest) (resp *k8s.E
 	if out, err = encryptor.Encrypt(req.Plain, nil); err != nil {
 		return
 	}
-	resp = &k8s.EncryptResponse{
+	resp = &k8sv1.EncryptResponse{
 		Cipher: []byte(out),
 	}
 	return
@@ -646,8 +645,9 @@ func (p *P11) VerifyCertChain(ctx context.Context, request *istio.VerifyCertChai
 
 }
 
-func (p *P11) Version(ctx context.Context, request *v1.VersionRequest) (versionResponse *v1.VersionResponse, err error) {
-	versionResponse = &v1.VersionResponse{
+func (p *P11) Version(ctx context.Context, request *k8sv1.VersionRequest) (versionResponse *k8sv1.VersionResponse, err error) {
+	fmt.Printf("version called\n")
+	versionResponse = &k8sv1.VersionResponse{
 		Version:        "v1beta1",
 		RuntimeName:    "Thales k8s KMS plugin",
 		RuntimeVersion: "v0.5.0",
