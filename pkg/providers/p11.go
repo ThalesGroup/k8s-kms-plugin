@@ -548,21 +548,27 @@ func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.
 	case *kms.VersionRequest:
 	case *k8s.EncryptRequest:
 		{
-			kekKey, _ := s.ctx.FindKey(nil, []byte(s.k8sDefaultDekLabel))
-			var a *crypto11.Attribute
-			if a, err = s.ctx.GetAttribute(kekKey, crypto11.CkaId); nil != err {
-				return
+		    if "" == (req).(*k8s.EncryptRequest).KeyId && "" == (req).(*k8s.EncryptRequest).KeyringId {
+		    	// Assume we're handling the original API and look up the ID of our default DEK
+				kekKey, _ := s.ctx.FindKey(nil, []byte(s.k8sDefaultDekLabel))
+				var a *crypto11.Attribute
+				if a, err = s.ctx.GetAttribute(kekKey, crypto11.CkaId); nil != err {
+					return
+				}
+				(req).(*k8s.EncryptRequest).KeyId = string(a.Value)
 			}
-			(req).(*k8s.EncryptRequest).KeyId = string(a.Value)
 		}
 	case *k8s.DecryptRequest:
 		{
-			kekKey, _ := s.ctx.FindKey(nil, []byte(s.k8sDefaultDekLabel))
-			var a *crypto11.Attribute
-			if a, err = s.ctx.GetAttribute(kekKey, crypto11.CkaId); nil != err {
-				return
+			if "" == (req).(*k8s.DecryptRequest).KeyId && "" == (req).(*k8s.DecryptRequest).KeyringId {
+				// Assume we're handling the original API and look up the ID of our default DEK
+				kekKey, _ := s.ctx.FindKey(nil, []byte(s.k8sDefaultDekLabel))
+				var a *crypto11.Attribute
+				if a, err = s.ctx.GetAttribute(kekKey, crypto11.CkaId); nil != err {
+					return
+				}
+				(req).(*k8s.DecryptRequest).KeyId = string(a.Value)
 			}
-			(req).(*k8s.DecryptRequest).KeyId = string(a.Value)
 		}
 	default:
 		err = fmt.Errorf("unhandled request type")
