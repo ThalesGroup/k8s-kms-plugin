@@ -1,10 +1,10 @@
 syntax = "proto3";
 
-package thalescpl.io.ekms.k8s.v1;
+package v1beta1;
 
-option go_package = "github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1;k8s";
+option go_package = "github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1beta1;k8s";
 
-import "apis/k8s/v1/messages.proto";
+import "apis/k8s/v1beta1/messages.proto";
 import "apis/kms/v1/messages.proto";
 import "google/protobuf/timestamp.proto";
 

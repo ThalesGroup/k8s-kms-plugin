@@ -17,8 +17,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
-	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
-	v1 "github.com/thalescpl-io/k8s-kms-plugin/apis/kms/v1"
+	k8s "github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1beta1"
+	"github.com/thalescpl-io/k8s-kms-plugin/apis/kms/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -179,7 +179,6 @@ type P11 struct {
 }
 
 func NewP11(config *crypto11.Config, createKey bool, k8sKekLabel string) (p *P11, err error) {
-
 	p = &P11{
 		config:    config,
 		createKey: createKey,
@@ -211,7 +210,6 @@ func NewP11(config *crypto11.Config, createKey bool, k8sKekLabel string) (p *P11
 			}
 		}
 	}
-
 	return
 }
 
@@ -526,10 +524,9 @@ func (p *P11) LoadSKey(ctx context.Context, request *istio.LoadSKeyRequest) (res
 }
 
 func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-
 	switch req.(type) {
-	case *v1.VersionRequest:
-	case k8s.EncryptRequest:
+	case *kms.VersionRequest:
+	case *k8s.EncryptRequest:
 		{
 			kekKey, _ := s.ctx.FindKey(nil, []byte(s.k8sKekLabel))
 			var a *crypto11.Attribute
@@ -538,7 +535,7 @@ func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.
 			}
 			(req).(*k8s.EncryptRequest).KeyId = string(a.Value)
 		}
-	case k8s.DecryptRequest:
+	case *k8s.DecryptRequest:
 		{
 			kekKey, _ := s.ctx.FindKey(nil, []byte(s.k8sKekLabel))
 			var a *crypto11.Attribute
@@ -714,8 +711,8 @@ func (p *P11) VerifyCertChain(ctx context.Context, request *istio.VerifyCertChai
 
 }
 
-func (p *P11) Version(ctx context.Context, request *v1.VersionRequest) (versionResponse *v1.VersionResponse, err error) {
-	versionResponse = &v1.VersionResponse{
+func (p *P11) Version(ctx context.Context, request *kms.VersionRequest) (versionResponse *kms.VersionResponse, err error) {
+	versionResponse = &kms.VersionResponse{
 		Version:        "v1beta1",
 		RuntimeName:    "Thales k8s KMS plugin",
 		RuntimeVersion: "v0.5.0",

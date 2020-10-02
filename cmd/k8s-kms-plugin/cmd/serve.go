@@ -26,17 +26,18 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
+	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
+	k8s "github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1beta1"
 	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 
 	"github.com/ThalesIgnite/crypto11"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
 	"github.com/thalescpl-io/k8s-kms-plugin/pkg/providers"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -190,6 +191,7 @@ func grpcServe(gl net.Listener) (err error) {
 	// Create a gRPC server to host the services
 	serverOptions := []grpc.ServerOption{
 		grpc.UnaryInterceptor(p.UnaryInterceptor),
+		grpc.UnknownServiceHandler(unknownServiceHandler),
 	}
 
 	gs := grpc.NewServer(serverOptions...)
@@ -204,4 +206,10 @@ START:
 		goto START
 	}
 	return
+}
+
+func unknownServiceHandler(srv interface{}, stream grpc.ServerStream) error {
+	typeOfSrv := reflect.TypeOf(srv)
+	logrus.Infof("unknownServiceHandler. Looking for: %v, %v", typeOfSrv, srv)
+	return nil
 }
