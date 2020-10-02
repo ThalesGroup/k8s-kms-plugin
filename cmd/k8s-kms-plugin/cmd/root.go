@@ -44,11 +44,12 @@ var (
 	logOutput  string
 	debug      bool
 )
+
 const (
 	defaultKekId = "a37807cd-6d1a-4d75-813a-e120f30176f7"
-	defaultCaId = "1c3d30d5-dfa8-4167-a9f9-2c768464181b"
-
+	defaultCaId  = "1c3d30d5-dfa8-4167-a9f9-2c768464181b"
 )
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "",
@@ -104,7 +105,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&p11label, "p11-label", "", "P11 token label")
 	rootCmd.PersistentFlags().IntVar(&p11slot, "p11-slot", 0, "P11 token slot")
 	rootCmd.PersistentFlags().StringVar(&p11pin, "p11-pin", "", "P11 Pin")
-	rootCmd.PersistentFlags().StringVar(&keyName, "p11-key-label", "k8s-kek", "Key Label to use for encrypt/decrypt")
+	rootCmd.PersistentFlags().StringVar(&defaultDekKeyName, "p11-key-label", "k8s-dek", "Key Label to use for encrypt/decrypt")
 	rootCmd.PersistentFlags().StringVarP(&nativePath, "native-path", "p", ".keys", "Path to key store for native provider(Files only)")
 	rootCmd.PersistentFlags().BoolVar(&createKey, "auto-create", true, "Auto create the keys if needed")
 	// Cobra also supports local flags, which will only run

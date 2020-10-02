@@ -5,7 +5,7 @@ resources:
       - secrets
     providers:
       - kms:
-          name:
+          name: "thales kms provider"
           endpoint: unix:///run/kms/kms-socket/.sock
           cachesize: 100
           timeout: 3s

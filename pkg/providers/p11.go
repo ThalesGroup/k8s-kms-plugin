@@ -17,8 +17,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
-	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1"
-	v1 "github.com/thalescpl-io/k8s-kms-plugin/apis/kms/v1"
+	k8s "github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1beta1"
+	"github.com/thalescpl-io/k8s-kms-plugin/apis/kms/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -132,7 +132,7 @@ func generateSKey(ctx *crypto11.Context, request *istio.GenerateSKeyRequest, dek
 	return
 }
 
-func loadKEKbyID(ctx *crypto11.Context, identity, label []byte) (encryptor gose.JweEncryptor, decryptor gose.JweDecryptor, err error) {
+func loadKEKbyID(ctx *crypto11.Context, kekIdentity, label []byte) (encryptor gose.JweEncryptor, decryptor gose.JweDecryptor, err error) {
 
 	var rng io.Reader
 	var aek gose.AuthenticatedEncryptionKey
@@ -142,7 +142,7 @@ func loadKEKbyID(ctx *crypto11.Context, identity, label []byte) (encryptor gose.
 	}
 	// get the HSM Key
 	var handle *crypto11.SecretKey
-	if handle, err = ctx.FindKey(identity, label); err != nil {
+	if handle, err = ctx.FindKey(kekIdentity, label); err != nil {
 		return
 	}
 	if handle == nil {
@@ -153,7 +153,7 @@ func loadKEKbyID(ctx *crypto11.Context, identity, label []byte) (encryptor gose.
 	if aead, err = handle.NewGCM(); err != nil {
 		return
 	}
-	if aek, err = gose.NewAesGcmCryptor(aead, rng, string(identity), jose.AlgA256GCM, kekKeyOps); err != nil {
+	if aek, err = gose.NewAesGcmCryptor(aead, rng, string(kekIdentity), jose.AlgA256GCM, kekKeyOps); err != nil {
 		return
 	}
 	decryptor = gose.NewJweDirectDecryptorImpl([]gose.AuthenticatedEncryptionKey{aek})
@@ -168,25 +168,47 @@ func randomSerial() (serial *big.Int) {
 }
 
 type P11 struct {
-	kid        []byte
-	cid        []byte
-	config     *crypto11.Config
-	ctx        *crypto11.Context
-	encryptors map[string]gose.JweEncryptor
-	decryptors map[string]gose.JweDecryptor
-	createKey  bool
+	kid                []byte
+	cid                []byte
+	config             *crypto11.Config
+	ctx                *crypto11.Context
+	encryptors         map[string]gose.JweEncryptor
+	decryptors         map[string]gose.JweDecryptor
+	createKey          bool
+	k8sDefaultDekLabel string
 }
 
-func NewP11(config *crypto11.Config, createKey bool) (p *P11, err error) {
-
+func NewP11(config *crypto11.Config, createKey bool, k8sKekLabel string) (p *P11, err error) {
 	p = &P11{
-		config:    config,
-		createKey: createKey,
+		config:             config,
+		createKey:          createKey,
+		k8sDefaultDekLabel: k8sKekLabel,
 	}
 	// Bootstrap the Pkcs11 device or die
 	if p.ctx, err = crypto11.Configure(p.config); err != nil {
 		logrus.Error(err)
 		return
+	}
+
+	if p.createKey {
+		// Check if the default key exists - if not, create it
+		var foundDefaultDek *crypto11.SecretKey
+		if foundDefaultDek, err = p.ctx.FindKey(nil, []byte(p.k8sDefaultDekLabel)); nil != err {
+			return
+		}
+		if nil == foundDefaultDek {
+			var newDekUUID uuid.UUID
+			if newDekUUID, err = uuid.NewRandom(); nil != err {
+				return
+			}
+			var uuidBytes []byte
+			if uuidBytes, err = newDekUUID.MarshalText(); nil != err {
+				return
+			}
+			if _, err = p.ctx.GenerateSecretKeyWithLabel(uuidBytes, []byte(p.k8sDefaultDekLabel), 256, crypto11.CipherAES); nil != err {
+				return
+			}
+		}
 	}
 	return
 }
@@ -295,14 +317,37 @@ func (p *P11) Close() (err error) {
 // Symmetric Encryption....
 func (p *P11) Decrypt(ctx context.Context, req *k8s.DecryptRequest) (resp *k8s.DecryptResponse, err error) {
 	var decryptor gose.JweDecryptor
+
+	// req.KeyId populated by interceptor
 	if decryptor = p.decryptors[req.KeyId]; decryptor == nil {
-		if _, decryptor, err = loadKEKbyID(p.ctx, []byte(req.KeyId), []byte(defaultKEKlabel)); err != nil {
+		var defaultK8sDekKey *crypto11.SecretKey
+		if defaultK8sDekKey, err = p.ctx.FindKey([]byte(req.KeyId), nil); nil != err {
 			return
 		}
+		var aead cipher.AEAD
+		if aead, err = defaultK8sDekKey.NewGCM(); err != nil {
+			return
+		}
+		var aek gose.AuthenticatedEncryptionKey
+		var rng io.Reader
+		if rng, err = p.ctx.NewRandomReader(); err != nil {
+			logrus.Error(err)
+			return
+		}
+		if aek, err = gose.NewAesGcmCryptor(aead, rng, p.k8sDefaultDekLabel, jose.AlgA256GCM, kekKeyOps); err != nil {
+			return
+		}
+		decryptor = gose.NewJweDirectDecryptorImpl([]gose.AuthenticatedEncryptionKey{aek})
 	}
 
 	var out []byte
-	if out, _, err = decryptor.Decrypt(string(req.Cipher)); err != nil {
+	var aad []byte
+	if out, aad, err = decryptor.Decrypt(string(req.Cipher)); err != nil {
+		return
+	}
+	if nil != aad {
+		// AAD should be nil - if not, needs to be changed in tandem with /Encrypt
+		err = fmt.Errorf("bad AAD")
 		return
 	}
 	resp = &k8s.DecryptResponse{
@@ -313,10 +358,27 @@ func (p *P11) Decrypt(ctx context.Context, req *k8s.DecryptRequest) (resp *k8s.D
 
 func (p *P11) Encrypt(ctx context.Context, req *k8s.EncryptRequest) (resp *k8s.EncryptResponse, err error) {
 	var encryptor gose.JweEncryptor
+
+	// req.KeyId populated by interceptor
 	if encryptor = p.encryptors[req.KeyId]; encryptor == nil {
-		if encryptor, _, err = loadKEKbyID(p.ctx, []byte(req.KeyId), []byte(defaultKEKlabel)); err != nil {
+		var defaultK8sDekKey *crypto11.SecretKey
+		if defaultK8sDekKey, err = p.ctx.FindKey([]byte(req.KeyId), nil); nil != err {
 			return
 		}
+		var aead cipher.AEAD
+		if aead, err = defaultK8sDekKey.NewGCM(); err != nil {
+			return
+		}
+		var aek gose.AuthenticatedEncryptionKey
+		var rng io.Reader
+		if rng, err = p.ctx.NewRandomReader(); err != nil {
+			logrus.Error(err)
+			return
+		}
+		if aek, err = gose.NewAesGcmCryptor(aead, rng, p.k8sDefaultDekLabel, jose.AlgA256GCM, kekKeyOps); err != nil {
+			return
+		}
+		encryptor = gose.NewJweDirectEncryptorImpl(aek)
 	}
 
 	var out string
@@ -481,11 +543,38 @@ func (p *P11) LoadSKey(ctx context.Context, request *istio.LoadSKeyRequest) (res
 	return
 }
 
-func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-	var h interface{}
-	var err error
-	h, err = handler(ctx, req)
-	return h, err
+func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	switch req.(type) {
+	case *kms.VersionRequest:
+	case *k8s.EncryptRequest:
+		{
+		    if "" == (req).(*k8s.EncryptRequest).KeyId && "" == (req).(*k8s.EncryptRequest).KeyringId {
+		    	// Assume we're handling the original API and look up the ID of our default DEK
+				kekKey, _ := s.ctx.FindKey(nil, []byte(s.k8sDefaultDekLabel))
+				var a *crypto11.Attribute
+				if a, err = s.ctx.GetAttribute(kekKey, crypto11.CkaId); nil != err {
+					return
+				}
+				(req).(*k8s.EncryptRequest).KeyId = string(a.Value)
+			}
+		}
+	case *k8s.DecryptRequest:
+		{
+			if "" == (req).(*k8s.DecryptRequest).KeyId && "" == (req).(*k8s.DecryptRequest).KeyringId {
+				// Assume we're handling the original API and look up the ID of our default DEK
+				kekKey, _ := s.ctx.FindKey(nil, []byte(s.k8sDefaultDekLabel))
+				var a *crypto11.Attribute
+				if a, err = s.ctx.GetAttribute(kekKey, crypto11.CkaId); nil != err {
+					return
+				}
+				(req).(*k8s.DecryptRequest).KeyId = string(a.Value)
+			}
+		}
+	default:
+	}
+
+	resp, err = handler(ctx, req)
+	return resp, err
 }
 
 // VerifyCertChain verifies a provided cert-chain (currently self-contained)
@@ -646,8 +735,8 @@ func (p *P11) VerifyCertChain(ctx context.Context, request *istio.VerifyCertChai
 
 }
 
-func (p *P11) Version(ctx context.Context, request *v1.VersionRequest) (versionResponse *v1.VersionResponse, err error) {
-	versionResponse = &v1.VersionResponse{
+func (p *P11) Version(ctx context.Context, request *kms.VersionRequest) (versionResponse *kms.VersionResponse, err error) {
+	versionResponse = &kms.VersionResponse{
 		Version:        "v1beta1",
 		RuntimeName:    "Thales k8s KMS plugin",
 		RuntimeVersion: "v0.5.0",

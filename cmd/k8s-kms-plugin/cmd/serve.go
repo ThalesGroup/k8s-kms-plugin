@@ -26,16 +26,18 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
+	k8s "github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1beta1"
 	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 
 	"github.com/ThalesIgnite/crypto11"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
 	"github.com/thalescpl-io/k8s-kms-plugin/pkg/providers"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -43,19 +45,19 @@ import (
 )
 
 var (
-	provider      string
-	caTLSCert     string
-	serverTLSCert string
-	serverTLSKey  string
-	kekKeyId      string
-	caId          string
-	keyName       string
-	p11lib        string
-	p11slot       int
-	p11label      string
-	p11pin        string
-	createKey     bool
-	allowAny      bool
+	provider          string
+	caTLSCert         string
+	serverTLSCert     string
+	serverTLSKey      string
+	kekKeyId          string
+	caId              string
+	defaultDekKeyName string
+	p11lib            string
+	p11slot           int
+	p11label          string
+	p11pin            string
+	createKey         bool
+	allowAny          bool
 )
 
 // serveCmd represents the serve command
@@ -141,9 +143,6 @@ func init() {
 	serveCmd.Flags().StringVar(&serverTLSCert, "tls-certificate", "certs/tls.crt", "TLS server cert")
 	// Here you will define your flags and configuration settings.
 
-
-
-
 	serveCmd.Flags().BoolVar(&allowAny, "allow-any", false, "Allow any device (accepts all ids/secrets)")
 
 }
@@ -163,7 +162,7 @@ func grpcServe(gl net.Listener) (err error) {
 		} else {
 			config.SlotNumber = &p11slot
 		}
-		if p, err = providers.NewP11(config, createKey); err != nil {
+		if p, err = providers.NewP11(config, createKey, defaultDekKeyName); err != nil {
 			return
 		}
 	case "luna", "dpod":
@@ -177,7 +176,7 @@ func grpcServe(gl net.Listener) (err error) {
 		} else {
 			config.SlotNumber = &p11slot
 		}
-		if p, err = providers.NewP11(config, createKey); err != nil {
+		if p, err = providers.NewP11(config, createKey, defaultDekKeyName); err != nil {
 			return
 		}
 	case "ekms":
@@ -189,9 +188,11 @@ func grpcServe(gl net.Listener) (err error) {
 	// Create a gRPC server to host the services
 	serverOptions := []grpc.ServerOption{
 		grpc.UnaryInterceptor(p.UnaryInterceptor),
+		grpc.UnknownServiceHandler(unknownServiceHandler),
 	}
 
 	gs := grpc.NewServer(serverOptions...)
+	k8s.RegisterKeyManagementServiceServer(gs, p)
 	reflection.Register(gs)
 	istio.RegisterKeyManagementServiceServer(gs, p)
 	logrus.Infof("Serving on socket: %s", socketPath)
@@ -202,4 +203,10 @@ START:
 		goto START
 	}
 	return
+}
+
+func unknownServiceHandler(srv interface{}, stream grpc.ServerStream) error {
+	typeOfSrv := reflect.TypeOf(srv)
+	logrus.Infof("unknownServiceHandler. Looking for: %v, %v", typeOfSrv, srv)
+	return nil
 }
