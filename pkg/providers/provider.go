@@ -10,15 +10,15 @@ import (
 )
 
 var (
-
-	kekKeyOps = []jose.KeyOps{jose.KeyOpsDecrypt, jose.KeyOpsEncrypt}
-	dekKeyOps = []jose.KeyOps{jose.KeyOpsDecrypt, jose.KeyOpsEncrypt}
+	kekKeyOps     = []jose.KeyOps{jose.KeyOpsDecrypt, jose.KeyOpsEncrypt}
+	dekKeyOps     = []jose.KeyOps{jose.KeyOpsDecrypt, jose.KeyOpsEncrypt}
 	sKeyKeyOps    = []jose.KeyOps{jose.KeyOpsSign, jose.KeyOpsVerify}
-	ErrNoSuchKey = errors.New("no such key")
+	ErrNoSuchKey  = errors.New("no such key")
 	ErrNoSuchCert = errors.New("no such cert")
 )
+
 type Config struct {
-	CaKid []byte
+	CaKid  []byte
 	KekKid []byte
 }
 type Provider interface {

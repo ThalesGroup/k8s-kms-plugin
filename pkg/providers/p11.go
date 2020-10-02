@@ -192,17 +192,17 @@ func NewP11(config *crypto11.Config, createKey bool, k8sKekLabel string) (p *P11
 
 	if p.createKey {
 		// Check if the default key exists - if not, create it
-		var foundKekKey *crypto11.SecretKey
-		if foundKekKey, err = p.ctx.FindKey(nil, []byte(p.k8sDefaultDekLabel)); nil != err {
+		var foundDefaultDek *crypto11.SecretKey
+		if foundDefaultDek, err = p.ctx.FindKey(nil, []byte(p.k8sDefaultDekLabel)); nil != err {
 			return
 		}
-		if nil == foundKekKey {
-			var newKekUUID uuid.UUID
-			if newKekUUID, err = uuid.NewRandom(); nil != err {
+		if nil == foundDefaultDek {
+			var newDekUUID uuid.UUID
+			if newDekUUID, err = uuid.NewRandom(); nil != err {
 				return
 			}
 			var uuidBytes []byte
-			if uuidBytes, err = newKekUUID.MarshalText(); nil != err {
+			if uuidBytes, err = newDekUUID.MarshalText(); nil != err {
 				return
 			}
 			if _, err = p.ctx.GenerateSecretKeyWithLabel(uuidBytes, []byte(p.k8sDefaultDekLabel), 256, crypto11.CipherAES); nil != err {
