@@ -25,7 +25,10 @@ RUN go build -o k8s-kms-plugin ./cmd/k8s-kms-plugin
 
 ### Plugin Server
 FROM ubuntu:20.04 as base-server
-RUN apt-get update && apt-get install -y softhsm curl openssl libssl-dev && rm -rf /var/lib/apt/lists/
+RUN apt-get update && \
+		apt-get install -y softhsm curl openssl libcap2 && \
+		apt-get clean && \
+		rm -rf /var/lib/apt/lists/*
 
 ## Runtime Server
 FROM base-server as kms-server
