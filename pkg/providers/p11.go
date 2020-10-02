@@ -571,8 +571,6 @@ func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.
 			}
 		}
 	default:
-		err = fmt.Errorf("unhandled request type")
-		return
 	}
 
 	resp, err = handler(ctx, req)
