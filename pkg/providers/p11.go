@@ -353,7 +353,6 @@ func (p *P11) Decrypt(ctx context.Context, req *k8s.DecryptRequest) (resp *k8s.D
 	resp = &k8s.DecryptResponse{
 		Plain: out,
 	}
-	logrus.Infof("returning plain = %v", string(resp.Plain))
 	return
 }
 
