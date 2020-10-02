@@ -45,19 +45,19 @@ import (
 )
 
 var (
-	provider      string
-	caTLSCert     string
-	serverTLSCert string
-	serverTLSKey  string
-	kekKeyId      string
-	caId          string
-	keyName       string
-	p11lib        string
-	p11slot       int
-	p11label      string
-	p11pin        string
-	createKey     bool
-	allowAny      bool
+	provider          string
+	caTLSCert         string
+	serverTLSCert     string
+	serverTLSKey      string
+	kekKeyId          string
+	caId              string
+	defaultDekKeyName string
+	p11lib            string
+	p11slot           int
+	p11label          string
+	p11pin            string
+	createKey         bool
+	allowAny          bool
 )
 
 // serveCmd represents the serve command
@@ -165,7 +165,7 @@ func grpcServe(gl net.Listener) (err error) {
 		} else {
 			config.SlotNumber = &p11slot
 		}
-		if p, err = providers.NewP11(config, createKey, keyName); err != nil {
+		if p, err = providers.NewP11(config, createKey, defaultDekKeyName); err != nil {
 			return
 		}
 	case "luna", "dpod":
@@ -179,7 +179,7 @@ func grpcServe(gl net.Listener) (err error) {
 		} else {
 			config.SlotNumber = &p11slot
 		}
-		if p, err = providers.NewP11(config, createKey, keyName); err != nil {
+		if p, err = providers.NewP11(config, createKey, defaultDekKeyName); err != nil {
 			return
 		}
 	case "ekms":

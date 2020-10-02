@@ -104,7 +104,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&p11label, "p11-label", "", "P11 token label")
 	rootCmd.PersistentFlags().IntVar(&p11slot, "p11-slot", 0, "P11 token slot")
 	rootCmd.PersistentFlags().StringVar(&p11pin, "p11-pin", "", "P11 Pin")
-	rootCmd.PersistentFlags().StringVar(&keyName, "p11-key-label", "k8s-kek", "Key Label to use for encrypt/decrypt")
+	rootCmd.PersistentFlags().StringVar(&defaultDekKeyName, "p11-key-label", "k8s-kek", "Key Label to use for encrypt/decrypt")
 	rootCmd.PersistentFlags().StringVarP(&nativePath, "native-path", "p", ".keys", "Path to key store for native provider(Files only)")
 	rootCmd.PersistentFlags().BoolVar(&createKey, "auto-create", true, "Auto create the keys if needed")
 	// Cobra also supports local flags, which will only run
