@@ -89,7 +89,8 @@ var serveCmd = &cobra.Command{
 				logrus.Error(err)
 				return
 			}
-			p11pin = string(p11pinBytes)
+			p11pin = strings.TrimSpace(string(p11pinBytes))
+
 			logrus.Infof("Loaded P11 PIN from file: %v", a)
 		} else if a := os.Getenv("P11_PIN"); a != "" {
 			p11pin = a
