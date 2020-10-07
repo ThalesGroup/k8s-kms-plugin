@@ -34,6 +34,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/ThalesIgnite/crypto11"
 	"github.com/sirupsen/logrus"
