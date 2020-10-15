@@ -54,6 +54,7 @@ func NewVerificationKey(jwk jose.Jwk) (VerificationKey, error) {
 			result.key.N = v.N.Int()
 			result.key.E = int(v.E.Int().Int64())
 			result.jwk = jwk
+			result.jwk.SetOps(ops)
 			return &result, nil
 		}
 		return nil, ErrUnsupportedKeyType

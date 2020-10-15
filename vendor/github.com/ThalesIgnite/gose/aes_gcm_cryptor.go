@@ -86,14 +86,20 @@ func (cryptor *AesGcmCryptor) Seal(operation jose.KeyOps, nonce, plaintext, aad 
 		err = ErrInvalidOperations
 		return
 	}
-	if len(nonce) != cryptor.aead.NonceSize() {
+	// If a nil nonce provided, this is interpreted as the encryptor providing the nonce
+	if nil != nonce && len(nonce) != cryptor.aead.NonceSize() {
 		err = ErrInvalidNonce
 		return
 	}
 	sz := cryptor.aead.Overhead() + len(plaintext)
+	// If a nil nonce provided, allocate extra capacity for the nonce to be returned
+	if nil == nonce {
+		sz += cryptor.aead.NonceSize()
+	}
 	dst := make([]byte, 0, sz)
 	dst = cryptor.aead.Seal(dst, nonce, plaintext, aad)
 	ciphertext = dst[:len(plaintext)]
+	// If the HSM is supplying the IV appended to the end, we return this contained in the tag and extract later
 	tag = dst[len(plaintext):]
 	return
 }
