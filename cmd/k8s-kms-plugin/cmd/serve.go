@@ -33,6 +33,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"strconv"
 
 	"github.com/ThalesIgnite/crypto11"
@@ -156,7 +157,7 @@ func grpcServe(gl net.Listener) (err error) {
 		config := &crypto11.Config{
 			Path:            p11lib,
 			Pin:             p11pin,
-			UseGCMIVFromHSM: true,
+			UseGCMIVFromHSM: false,
 		}
 		if p11label != "" {
 			config.TokenLabel = p11label
@@ -171,6 +172,10 @@ func grpcServe(gl net.Listener) (err error) {
 			Path:            p11lib,
 			Pin:             p11pin,
 			UseGCMIVFromHSM: true,
+			GCMIVFromHSMControl: crypto11.GCMIVFromHSMConfig{
+				SupplyIvForHSMGCMEncrypt: false,
+				SupplyIvForHSMGCMDecrypt: true,
+			},
 		}
 		if p11label != "" {
 			config.TokenLabel = p11label

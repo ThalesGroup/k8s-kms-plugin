@@ -35,14 +35,19 @@ var (
 
 // JweDirectEncryptionEncryptorImpl implementation of JweDirectEncryptionEncryptor interface.
 type JweDirectEncryptionEncryptorImpl struct {
-	key AuthenticatedEncryptionKey
+	key        AuthenticatedEncryptionKey
+	externalIV bool
 }
 
 // Encrypt encrypt and authenticate the given plaintext and AAD returning a compact JWE.
 func (encryptor *JweDirectEncryptionEncryptorImpl) Encrypt(plaintext, aad []byte) (string, error) {
-	nonce, err := encryptor.key.GenerateNonce()
-	if err != nil {
-		return "", err
+	var nonce []byte
+	var err error
+	if !encryptor.externalIV {
+		nonce, err = encryptor.key.GenerateNonce()
+		if err != nil {
+			return "", err
+		}
 	}
 
 	var blob *jose.Blob
@@ -60,7 +65,7 @@ func (encryptor *JweDirectEncryptionEncryptorImpl) Encrypt(plaintext, aad []byte
 				Alg: jose.AlgDir,
 				Kid: encryptor.key.Kid(),
 			},
-			Enc:                   algToEncMap[encryptor.key.Algorithm()],
+			Enc: algToEncMap[encryptor.key.Algorithm()],
 			JweCustomHeaderFields: customHeaderFields,
 		},
 		EncryptedKey: []byte{},
@@ -74,12 +79,25 @@ func (encryptor *JweDirectEncryptionEncryptorImpl) Encrypt(plaintext, aad []byte
 	if jwe.Ciphertext, jwe.Tag, err = encryptor.key.Seal(jose.KeyOpsEncrypt, jwe.Iv, jwe.Plaintext, jwe.MarshalledHeader); err != nil {
 		return "", err
 	}
+	if encryptor.externalIV {
+		/*
+			If using an externally-generated IV this will have been returned in the tag field
+			So we trim the tag field and update the IV field
+		*/
+		var throwawayNonceToGetLength []byte
+		if throwawayNonceToGetLength, err = encryptor.key.GenerateNonce(); nil != err {
+			return "", err
+		}
+		jwe.Iv = jwe.Tag[len(jwe.Tag)-len(throwawayNonceToGetLength):]
+		jwe.Tag = jwe.Tag[:len(jwe.Tag)-len(throwawayNonceToGetLength)]
+	}
 	return jwe.Marshal(), nil
 }
 
 // NewJweDirectEncryptorImpl construct an instance of a JweDirectEncryptionEncryptorImpl.
-func NewJweDirectEncryptorImpl(key AuthenticatedEncryptionKey) *JweDirectEncryptionEncryptorImpl {
+func NewJweDirectEncryptorImpl(key AuthenticatedEncryptionKey, externalIV bool) *JweDirectEncryptionEncryptorImpl {
 	return &JweDirectEncryptionEncryptorImpl{
-		key: key,
+		key:        key,
+		externalIV: externalIV,
 	}
 }
