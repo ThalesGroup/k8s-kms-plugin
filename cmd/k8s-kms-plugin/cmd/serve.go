@@ -35,6 +35,7 @@ import (
 	"reflect"
 	"strings"
 	"strconv"
+	"strings"
 
 	"github.com/ThalesIgnite/crypto11"
 	"github.com/sirupsen/logrus"
