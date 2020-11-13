@@ -15,6 +15,7 @@ import (
 	"github.com/ThalesIgnite/gose"
 	"github.com/ThalesIgnite/gose/jose"
 	"github.com/google/uuid"
+	"github.com/miekg/pkcs11"
 	"github.com/sirupsen/logrus"
 	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
 	k8s "github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1beta1"
@@ -132,7 +133,26 @@ func generateSKey(ctx *crypto11.Context, request *istio.GenerateSKeyRequest, dek
 	return
 }
 
+// IsPKCS11AuthenticationError returns true
+// if further attempts to log in will risk causing the
+// device to be locked.
+func IsPKCS11AuthenticationError(err error) bool {
+	if err == nil {
+		return false
+	}
 
+	pkErr, ok := errors.Unwrap(err).(pkcs11.Error)
+	if !ok {
+		return false
+	}
+
+	switch pkErr {
+	case pkcs11.CKR_PIN_INCORRECT:
+		return true
+	default:
+		return false
+	}
+}
 
 func randomSerial() (serial *big.Int) {
 	serial, _ = rand.Int(rand.Reader, big.NewInt(20000))
@@ -550,8 +570,8 @@ func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.
 	case *kms.VersionRequest:
 	case *k8s.EncryptRequest:
 		{
-		    if "" == (req).(*k8s.EncryptRequest).KeyId && "" == (req).(*k8s.EncryptRequest).KeyringId {
-		    	// Assume we're handling the original API and look up the ID of our default DEK
+			if "" == (req).(*k8s.EncryptRequest).KeyId && "" == (req).(*k8s.EncryptRequest).KeyringId {
+				// Assume we're handling the original API and look up the ID of our default DEK
 				kekKey, _ := s.ctx.FindKey(nil, []byte(s.k8sDefaultDekLabel))
 				var a *crypto11.Attribute
 				if a, err = s.ctx.GetAttribute(kekKey, crypto11.CkaId); nil != err {
