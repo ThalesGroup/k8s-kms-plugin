@@ -43,15 +43,12 @@ func GetClientTCP(host string, port int64, timeout time.Duration) (ctx context.C
 	c = NewKeyManagementServiceClient(conn)
 	return
 }
+
 func GetClientSocket(socket string, timeout time.Duration) (ctx context.Context, cancel context.CancelFunc, c KeyManagementServiceClient, err error) {
 	// Get Client
 	options := []grpc.DialOption{grpc.WithInsecure()}
 	var conn *grpc.ClientConn
-	u := &url.URL{
-		Scheme: "unix",
-		Path:   socket,
-	}
-	if conn, err = grpc.Dial(u.String(), options...); err != nil {
+	if conn, err = grpc.Dial("unix:"+socket, options...); err != nil {
 		return
 	}
 
