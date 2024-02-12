@@ -1,0 +1,33 @@
+name : Generate SBOM
+on:
+    workflow_run:
+      workflows: ["Build Binary"]
+      types: [completed]
+      branches-ignore: ["main"]
+      
+          
+jobs:
+    build: 
+        name: Generate SBOM
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v3
+            - name: syft-scan-CycloneDx
+              uses: anchore/sbom-action@v0
+              with:
+                format: cyclonedx-json
+                artifact-name: syft-sbom.Cyclonedx
+            - name: syft-scan-SPDX
+              uses: anchore/sbom-action@v0
+              with:
+                  artifact-name: syft-sbom.SPDX
+            - name: scan-dependencies
+              uses: advanced-security/sbom-generator-action@v0.0.1
+              id: sbom
+              env: 
+                  GITHUB_TOKEN: ${{ github.token }}
+            - name: upload-github-SBOM
+              uses: actions/upload-artifact@v3.1.0
+              with: 
+               path: ${{steps.sbom.outputs.fileName }}
+               name: "github_actions-sbom.SPDX"
