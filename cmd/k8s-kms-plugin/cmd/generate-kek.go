@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"time"
 
+	istio "github.com/ThalesGroup/k8s-kms-plugin/apis/istio/v1"
 	"github.com/spf13/cobra"
-	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
 )
 
 var (

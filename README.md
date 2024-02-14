@@ -10,15 +10,45 @@ This service is designed for kubernetes clusters that are using version 1.10.0 o
 
 https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/
 
-So for development purposes, you'll want a cluster that can be configured to use a KMS gRPC endpoint on your APIServer nodes. 
+So for development purposes, you'll want a cluster that can be configured to use a KMS gRPC endpoint on your APIServer nodes.
 
-Locally you should install [skaffold.dev](https://skaffold.dev) tooling as well as Cloud Code in your favorite IDE to leverage the skaffold.yaml file in this repo.
+To serve the k8s-kms-plugin for encryption operations from Kubernetes, you will need at least one AES key in a PKCS11 provider.
 
-## Quick Start for testing
+## KMS provider for SoftHsm V2
 
-- Get a k8s cluster to deploy the `k8s-kms-plugin`
-- Install skaffold.dev  [skaffold.dev](https://skaffold.dev) 
-- Running `skaffold dev` or `make dev` should put the  stack into a local deployment pipeline of the plugin being tested as a KMS gRPC server.
+In this mode, we recommend to run the k8s-kms-plugin with the GCM algorithm.  
+It provides a better design for authenticated encryption operations :
+
+```sh
+# debian
+export MODULE="/usr/lib/softhsm/libsofthsm2.so"
+# redhat
+export MODULE="/usr/lib64/pkcs11/libsofthsm2.so"
+# serve
+k8s-kms-plugin serve \
+  --provider p11 --p11-lib $MODULE --p11-key-label mykey --p11-label mylabel --p11-pin mypin --enable-server
+```
+
+## KMS provider for TPM2 PKCS11
+
+You must know that AES GCM is not supported by the TPM v2 specifications.
+In this mode, we recommend to run the k8s-kms-plugin with the CBC-then-HMAC algorithm. 
+You must provide an HMAC key alongside the AES key for encryption :
+
+```sh
+# debian
+export MODULE="/usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1"
+# redhat
+export MODULE="/usr/lib64/pkcs11/libtpm2_pkcs11.so"
+# serve
+k8s-kms-plugin serve \
+  --provider p11 --p11-lib $MODULE --p11-key-label cbc0 --p11-hmac-label hmac0 --p11-label mylabel --p11-pin mypin --algorithm aes-cbc --enable-server
+```
+
+## Quick Start
+
+Read the [QUICKSTART.md](QUICKSTART.md).
+
 ## Deployment scenarios
 
 This plugin is designed to be deployed in 2 configurations
@@ -42,5 +72,25 @@ The `Makefile` contains commands for easy execution:
 - `make dev` - loads project into your kubernetes cluster (minikube or GKE will work just fine), and continously builds and deploys as you develop.
 - `make build` - builds the standalone `k8s-kms-plugin` binary
 
+## Debug Environment
 
-NOTE:  Currently the standalone plugin just waits for the 
+For a remote debug, build the plugin with debug mode :
+
+```sh
+go get github.com/go-delve/delve/cmd/dlv
+make build-debug
+```
+
+It will generate a binary `k8s-kms-plugin` that can be used with Delve for debug purpose.  
+Do not use this binary in a production environment.
+
+## Vulnerability check
+
+```sh
+$ govulncheck ./...
+Scanning your code and 288 packages across 34 dependent modules for known vulnerabilities...
+
+No vulnerabilities found.
+```
+
+

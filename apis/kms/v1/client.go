@@ -31,7 +31,6 @@ import (
 	"time"
 )
 
-
 func GetClientTCP(host string, port int64, timeout time.Duration) (ctx context.Context, cancel context.CancelFunc, c KMSPluginServiceClient, err error) {
 	// Get Client
 	options := []grpc.DialOption{grpc.WithInsecure()}

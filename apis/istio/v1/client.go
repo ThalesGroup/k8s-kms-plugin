@@ -27,7 +27,6 @@ import (
 	"context"
 	"fmt"
 	"google.golang.org/grpc"
-	"net/url"
 	"time"
 )
 
