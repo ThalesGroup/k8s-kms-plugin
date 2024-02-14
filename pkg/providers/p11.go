@@ -11,18 +11,19 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"github.com/ThalesIgnite/crypto11"
-	"github.com/ThalesIgnite/gose"
-	"github.com/ThalesIgnite/gose/jose"
+	"github.com/ThalesGroup/crypto11"
+	"github.com/ThalesGroup/gose"
+	"github.com/ThalesGroup/gose/jose"
+	"github.com/ThalesGroup/k8s-kms-plugin/apis/istio/v1"
+	k8s "github.com/ThalesGroup/k8s-kms-plugin/apis/k8s/v1beta1"
+	"github.com/ThalesGroup/k8s-kms-plugin/apis/kms/v1"
 	"github.com/google/uuid"
 	"github.com/miekg/pkcs11"
 	"github.com/sirupsen/logrus"
-	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
-	k8s "github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1beta1"
-	"github.com/thalescpl-io/k8s-kms-plugin/apis/kms/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"hash"
 	"io"
 	"math/big"
 	"reflect"
@@ -82,7 +83,7 @@ func generateDEK(ctx11 *crypto11.Context, encryptor gose.JweEncryptor) (encrypte
 }
 
 // generateKEK an KEK
-func generateKEK(ctx *crypto11.Context, identity, label []byte, alg jose.Alg) (key gose.AuthenticatedEncryptionKey, err error) {
+func generateKEK(ctx *crypto11.Context, identity, label []byte, alg jose.Alg) (key gose.AeadEncryptionKey, err error) {
 	params, supported := algToKeyGenParams[alg]
 	if !supported {
 		err = fmt.Errorf("algorithm %v is not supported", alg)
@@ -168,13 +169,17 @@ type P11 struct {
 	decryptors         map[string]gose.JweDecryptor
 	createKey          bool
 	k8sDefaultDekLabel string
+	k8sHmacKeyLabel    string
+	algorithm          jose.Alg
 }
 
-func NewP11(config *crypto11.Config, createKey bool, k8sKekLabel string) (p *P11, err error) {
+func NewP11(config *crypto11.Config, createKey bool, k8sKekLabel string, hmacKeyLabel string, algorithm jose.Alg) (p *P11, err error) {
 	p = &P11{
 		config:             config,
 		createKey:          createKey,
 		k8sDefaultDekLabel: k8sKekLabel,
+		k8sHmacKeyLabel:    hmacKeyLabel,
+		algorithm:          algorithm,
 	}
 	// Bootstrap the Pkcs11 device or die
 	if p.ctx, err = crypto11.Configure(p.config); err != nil {
@@ -231,13 +236,13 @@ func (p *P11) AuthenticatedDecrypt(ctx context.Context, request *istio.Authentic
 		return
 	}
 
-	var dekAead gose.AuthenticatedEncryptionKey
+	var dekAead gose.AeadEncryptionKey
 	if dekAead, err = gose.NewAesGcmCryptorFromJwk(loadedDek, []jose.KeyOps{jose.KeyOpsDecrypt}); nil != err {
 		return
 	}
 
 	var dekAeadDecryptor gose.JweDecryptor
-	dekAeadDecryptor = gose.NewJweDirectDecryptorImpl([]gose.AuthenticatedEncryptionKey{dekAead})
+	dekAeadDecryptor = gose.NewJweDirectDecryptorAeadImpl([]gose.AeadEncryptionKey{dekAead})
 
 	var pt, aad []byte
 	if pt, aad, err = dekAeadDecryptor.Decrypt(string(request.Ciphertext)); err != nil {
@@ -257,7 +262,7 @@ func (p *P11) AuthenticatedDecrypt(ctx context.Context, request *istio.Authentic
 func (p *P11) loadKEKbyID(ctx *crypto11.Context, kekIdentity, label []byte) (encryptor gose.JweEncryptor, decryptor gose.JweDecryptor, err error) {
 
 	var rng io.Reader
-	var aek gose.AuthenticatedEncryptionKey
+	var aek gose.AeadEncryptionKey
 
 	if rng, err = ctx.NewRandomReader(); err != nil {
 		return
@@ -278,8 +283,8 @@ func (p *P11) loadKEKbyID(ctx *crypto11.Context, kekIdentity, label []byte) (enc
 	if aek, err = gose.NewAesGcmCryptor(aead, rng, string(kekIdentity), jose.AlgA256GCM, kekKeyOps); err != nil {
 		return
 	}
-	decryptor = gose.NewJweDirectDecryptorImpl([]gose.AuthenticatedEncryptionKey{aek})
-	encryptor = gose.NewJweDirectEncryptorImpl(aek, p.config.UseGCMIVFromHSM)
+	decryptor = gose.NewJweDirectDecryptorAeadImpl([]gose.AeadEncryptionKey{aek})
+	encryptor = gose.NewJweDirectEncryptorAead(aek, p.config.UseGCMIVFromHSM)
 
 	return
 }
@@ -310,13 +315,13 @@ func (p *P11) AuthenticatedEncrypt(ctx context.Context, request *istio.Authentic
 		return
 	}
 
-	var dekAead gose.AuthenticatedEncryptionKey
+	var dekAead gose.AeadEncryptionKey
 	if dekAead, err = gose.NewAesGcmCryptorFromJwk(loadedDek, []jose.KeyOps{jose.KeyOpsEncrypt}); nil != err {
 		return
 	}
 
 	var dekAeadEncryptor gose.JweEncryptor
-	dekAeadEncryptor = gose.NewJweDirectEncryptorImpl(dekAead, false)
+	dekAeadEncryptor = gose.NewJweDirectEncryptorAead(dekAead, false)
 
 	resp = &istio.AuthenticatedEncryptResponse{}
 	var ct string
@@ -327,7 +332,7 @@ func (p *P11) AuthenticatedEncrypt(ctx context.Context, request *istio.Authentic
 	return
 }
 
-//Close the key manager
+// Close the key manager
 func (p *P11) Close() (err error) {
 	p.encryptors = nil
 	p.decryptors = nil
@@ -336,30 +341,78 @@ func (p *P11) Close() (err error) {
 	return
 }
 
-// Symmetric Encryption....
+func (p *P11) makeAeadKey(rng io.Reader, kek *crypto11.SecretKey) (aek gose.AeadEncryptionKey, err error) {
+	var aead cipher.AEAD
+	if aead, err = kek.NewGCM(); err != nil {
+		return nil, fmt.Errorf("error while creating new gcm cipher: %v", err)
+	}
+	if aek, err = gose.NewAesGcmCryptor(aead, rng, p.k8sDefaultDekLabel, jose.AlgA256GCM, kekKeyOps); err != nil {
+		return nil, fmt.Errorf("error while creating aead key: %v", err)
+	}
+	return
+}
+
+func getIVFromDecryptRequest(req *k8s.DecryptRequest) (iv []byte, err error) {
+	var jwe jose.JweRfc7516Compact
+	if err = jwe.Unmarshal(string(req.Cipher)); err != nil {
+		return nil, fmt.Errorf("error unmarshalling the jwe: %v", err)
+	}
+	return jwe.InitializationVector, nil
+}
+
+// Symmetric decryption....
 func (p *P11) Decrypt(ctx context.Context, req *k8s.DecryptRequest) (resp *k8s.DecryptResponse, err error) {
 	var decryptor gose.JweDecryptor
 
 	// req.KeyId populated by interceptor
 	if decryptor = p.decryptors[req.KeyId]; decryptor == nil {
-		var defaultK8sDekKey *crypto11.SecretKey
-		if defaultK8sDekKey, err = p.ctx.FindKey([]byte(req.KeyId), nil); nil != err {
-			return
-		}
-		var aead cipher.AEAD
-		if aead, err = defaultK8sDekKey.NewGCM(); err != nil {
-			return
-		}
-		var aek gose.AuthenticatedEncryptionKey
+		// Random source from the HSM (pkcs11 context)
 		var rng io.Reader
 		if rng, err = p.ctx.NewRandomReader(); err != nil {
 			logrus.Error(err)
 			return
 		}
-		if aek, err = gose.NewAesGcmCryptor(aead, rng, p.k8sDefaultDekLabel, jose.AlgA256GCM, kekKeyOps); err != nil {
+		// get kek by id
+		var kek *crypto11.SecretKey
+		if kek, err = p.ctx.FindKey([]byte(req.KeyId), nil); nil != err {
 			return
 		}
-		decryptor = gose.NewJweDirectDecryptorImpl([]gose.AuthenticatedEncryptionKey{aek})
+		switch p.algorithm {
+		case jose.AlgA256GCM:
+			var aek gose.AeadEncryptionKey
+			if aek, err = p.makeAeadKey(rng, kek); err != nil {
+				return
+			}
+			decryptor = gose.NewJweDirectDecryptorAeadImpl([]gose.AeadEncryptionKey{aek})
+		case jose.AlgA256CBC:
+			// for decryption, we have to retrieve the iv from the jwe
+			var iv []byte
+			if iv, err = getIVFromDecryptRequest(req); err != nil {
+				return nil, err
+			}
+			// Initialize the CBC key for decryption
+			var blockMode crypto11.BlockModeCloser
+			if blockMode, err = kek.NewCBCDecrypterCloser(iv); err != nil {
+				return nil, fmt.Errorf("error initializing block cipher: %v", err)
+			}
+
+			cbcKey := gose.NewAesCbcCryptor(blockMode, string(p.kid), jose.AlgA256CBC)
+			// Initialize the hmac key for authentication
+			var hmacp11Key *crypto11.SecretKey
+			if hmacp11Key, err = p.ctx.FindKey(nil, []byte(p.k8sHmacKeyLabel)); err != nil {
+				return nil, fmt.Errorf("error getting hmac key from HSM with label '%s': %v", p.k8sHmacKeyLabel, err)
+			}
+			var hash hash.Hash
+			if hash, err = hmacp11Key.NewHMAC(pkcs11.CKM_SHA256_HMAC, 0); err != nil {
+				return nil, fmt.Errorf("error initializing SHA26 with key '%s': %v", p.k8sHmacKeyLabel, err)
+			}
+			hmacKey := gose.NewHmacShaCryptor(p.k8sHmacKeyLabel, hash)
+			// decryptor
+			decryptor = gose.NewJweDirectDecryptorBlock(cbcKey, hmacKey)
+			// !!! It is very important to finalize each PKCS11 operation
+			defer blockMode.Close()
+		}
+
 	}
 
 	var out []byte
@@ -383,24 +436,54 @@ func (p *P11) Encrypt(ctx context.Context, req *k8s.EncryptRequest) (resp *k8s.E
 
 	// req.KeyId populated by interceptor
 	if encryptor = p.encryptors[req.KeyId]; encryptor == nil {
-		var defaultK8sDekKey *crypto11.SecretKey
-		if defaultK8sDekKey, err = p.ctx.FindKey([]byte(req.KeyId), nil); nil != err {
+		// Find the KEK in the KMS
+		var kek *crypto11.SecretKey
+		if kek, err = p.ctx.FindKey([]byte(req.KeyId), nil); nil != err {
 			return
 		}
-		var aead cipher.AEAD
-		if aead, err = defaultK8sDekKey.NewGCM(); err != nil {
-			return
-		}
-		var aek gose.AuthenticatedEncryptionKey
+		// Random source from the HSM (pkcs11 context)
 		var rng io.Reader
 		if rng, err = p.ctx.NewRandomReader(); err != nil {
 			logrus.Error(err)
 			return
 		}
-		if aek, err = gose.NewAesGcmCryptor(aead, rng, p.k8sDefaultDekLabel, jose.AlgA256GCM, kekKeyOps); err != nil {
-			return
+		// Select algorithm
+		switch p.algorithm {
+		case jose.AlgA256GCM:
+			var aek gose.AeadEncryptionKey
+			if aek, err = p.makeAeadKey(rng, kek); err != nil {
+				return
+			}
+			encryptor = gose.NewJweDirectEncryptorAead(aek, p.config.UseGCMIVFromHSM)
+		case jose.AlgA256CBC:
+			// generate the IV from the KMS, using the kek block size
+			iv := make([]byte, kek.Cipher.BlockSize)
+			if _, err = rng.Read(iv); err != nil {
+				return
+			}
+			// Initialize the CBC key for encryption
+			var blockMode crypto11.BlockModeCloser
+			if blockMode, err = kek.NewCBCEncrypterCloser(iv); err != nil {
+				return nil, fmt.Errorf("error initializing block cipher: %v", err)
+			}
+			cbcKey := gose.NewAesCbcCryptor(blockMode, string(p.kid), jose.AlgA256CBC)
+			// Initialize the hmac key for authentication
+			var hmacp11Key *crypto11.SecretKey
+			if hmacp11Key, err = p.ctx.FindKey(nil, []byte(p.k8sHmacKeyLabel)); err != nil {
+				return nil, fmt.Errorf("error getting hmac key from HSM with label '%s': %v", p.k8sHmacKeyLabel, err)
+			}
+			var hash hash.Hash
+			if hash, err = hmacp11Key.NewHMAC(pkcs11.CKM_SHA256_HMAC, 0); err != nil {
+				return nil, fmt.Errorf("error initializing SHA256 with key '%s': %v", p.k8sHmacKeyLabel, err)
+			}
+			hmacKey := gose.NewHmacShaCryptor(p.k8sHmacKeyLabel, hash)
+			// encryptor
+			encryptor = gose.NewJweDirectEncryptorBlock(cbcKey, hmacKey, iv)
+			// !!! It is very important to finalize each PKCS11 operation
+			defer blockMode.Close()
+		default:
+			print("not supported")
 		}
-		encryptor = gose.NewJweDirectEncryptorImpl(aek, p.config.UseGCMIVFromHSM)
 	}
 
 	var out string
@@ -484,11 +567,11 @@ func (p *P11) GenerateSKey(ctx context.Context, request *istio.GenerateSKeyReque
 		return
 	}
 
-	var aead gose.AuthenticatedEncryptionKey
+	var aead gose.AeadEncryptionKey
 	if aead, err = gose.NewAesGcmCryptorFromJwk(jwk, kekKeyOps); err != nil {
 		return
 	}
-	dekEncryptor := gose.NewJweDirectEncryptorImpl(aead, false)
+	dekEncryptor := gose.NewJweDirectEncryptorAead(aead, false)
 
 	var wrappedSKey []byte
 	if wrappedSKey, err = generateSKey(p.ctx, request, dekEncryptor); err != nil {
@@ -548,11 +631,11 @@ func (p *P11) LoadSKey(ctx context.Context, request *istio.LoadSKeyRequest) (res
 		return
 	}
 
-	var aead gose.AuthenticatedEncryptionKey
+	var aead gose.AeadEncryptionKey
 	if aead, err = gose.NewAesGcmCryptorFromJwk(jwk, kekKeyOps); err != nil {
 		return
 	}
-	dekDecryptor := gose.NewJweDirectDecryptorImpl([]gose.AuthenticatedEncryptionKey{aead})
+	dekDecryptor := gose.NewJweDirectDecryptorAeadImpl([]gose.AeadEncryptionKey{aead})
 	resp = &istio.LoadSKeyResponse{
 		PlaintextSkey: nil,
 	}

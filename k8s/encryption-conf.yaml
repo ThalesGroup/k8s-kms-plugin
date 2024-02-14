@@ -1,0 +1,13 @@
+---
+apiVersion: apiserver.config.k8s.io/v1
+kind: EncryptionConfiguration
+resources:
+  - resources:
+      - secrets
+    providers:
+      - kms:
+          name: kms-server
+          endpoint: unix:///run/user/1000/k8s-kms-plugin.sock
+          cachesize: -1
+          timeout: 10s
+      - identity: {}

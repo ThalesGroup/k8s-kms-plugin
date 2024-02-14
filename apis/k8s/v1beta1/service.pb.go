@@ -10,7 +10,7 @@ import (
 	context "context"
 	proto "github.com/golang/protobuf/proto"
 	_ "github.com/golang/protobuf/ptypes/timestamp"
-	v1 "github.com/thalescpl-io/k8s-kms-plugin/apis/kms/v1"
+	v1 "github.com/ThalesGroup/k8s-kms-plugin/apis/kms/v1"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"

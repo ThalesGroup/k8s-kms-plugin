@@ -3,23 +3,26 @@ package providers
 import (
 	"context"
 	"crypto"
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"github.com/ThalesIgnite/crypto11"
-	"github.com/ThalesIgnite/gose"
-	"github.com/ThalesIgnite/gose/jose"
+	"github.com/ThalesGroup/crypto11"
+	"github.com/ThalesGroup/gose"
+	"github.com/ThalesGroup/gose/jose"
+	"github.com/ThalesGroup/k8s-kms-plugin/apis/istio/v1"
+	v1 "github.com/ThalesGroup/k8s-kms-plugin/apis/kms/v1"
 	"github.com/google/uuid"
+	"github.com/miekg/pkcs11"
 	"github.com/stretchr/testify/require"
-	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
-	"github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1beta1"
-	v1 "github.com/thalescpl-io/k8s-kms-plugin/apis/kms/v1"
 	"io"
 	"os"
 	"reflect"
 	"testing"
 	"time"
+
+	k8s "github.com/ThalesGroup/k8s-kms-plugin/apis/k8s/v1beta1"
 )
 
 var (
@@ -37,56 +40,157 @@ var (
 	testPlainMessage    []byte
 	testWrappedDEK      []byte
 	testWrappedSKey     []byte
+	testAlgorithm       jose.Alg
 )
 
-func TestP11_Encrypt(t *testing.T) {
-	td := setupSoftHSMTestCase(t)
-	defer td(t)
-	type fields struct {
-		keyId      []byte
-		keyLabel   []byte
-		config     *crypto11.Config
-		ctx        *crypto11.Context
-		encryptors map[string]gose.JweEncryptor
-		decryptors map[string]gose.JweDecryptor
-		createKey  bool
-	}
-	type args struct {
-		ctx context.Context
-		req *k8s.EncryptRequest
-	}
-	tests := []struct {
-		name     string
-		fields   fields
-		args     args
-		wantResp *k8s.EncryptResponse
-		wantErr  bool
-	}{
-		{
-			name: "Happy Path - create default",
-			fields: fields{
-				config:   testConfig,
-				ctx:      testCtx,
-				keyId:    []byte("afdjaklfjdaskl"),
-				keyLabel: []byte(defaultKEKlabel),
+type testCaseFields struct {
+	keyId      []byte
+	keyLabel   []byte
+	config     *crypto11.Config
+	ctx        *crypto11.Context
+	encryptors map[string]gose.JweEncryptor
+	decryptors map[string]gose.JweDecryptor
+	createKey  bool
+	algorithm  jose.Alg
+}
 
-				encryptors: testEncryptor,
-				decryptors: testDecryptor,
-				createKey:  true,
-			},
-			args: args{
-				ctx: context.Background(),
-				req: &k8s.EncryptRequest{
-					Version: "1",
-					Plain:   testPlainMessage,
-				},
-			},
-			wantResp: &k8s.EncryptResponse{
-				Cipher: []byte(testEncryptedBlob),
-			},
-			wantErr: false,
+type testCaseArgs struct {
+	ctx context.Context
+	req *k8s.EncryptRequest
+}
+
+type testCase struct {
+	name     string
+	fields   testCaseFields
+	args     testCaseArgs
+	wantResp *k8s.EncryptResponse
+	wantErr  bool
+}
+
+var (
+	test1 = testCase{
+		name: "Happy Path - create default",
+		fields: testCaseFields{
+			config:   testConfig,
+			ctx:      testCtx,
+			keyId:    []byte("afdjaklfjdaskl"),
+			keyLabel: []byte(defaultKEKlabel),
+
+			encryptors: testEncryptor,
+			decryptors: testDecryptor,
+			createKey:  true,
 		},
+		args: testCaseArgs{
+			ctx: context.Background(),
+			req: &k8s.EncryptRequest{
+				Version: "1",
+				Plain:   testPlainMessage,
+			},
+		},
+		wantResp: &k8s.EncryptResponse{
+			Cipher: []byte(testEncryptedBlob),
+		},
+		wantErr: false,
 	}
+
+	test2 = testCase{
+		name: "Test Encrypt then Hmac with AES CBC + SHA 256",
+		fields: testCaseFields{
+			keyId:      []byte("123456789"),
+			keyLabel:   []byte("aes0"),
+			config:     testConfig,
+			ctx:        testCtx,
+			encryptors: testEncryptor,
+			decryptors: testDecryptor,
+			createKey:  false,
+			algorithm:  testAlgorithm,
+		},
+		args: testCaseArgs{
+			ctx: context.Background(),
+			req: &k8s.EncryptRequest{
+				Version: "1",
+				Plain:   testPlainMessage,
+			},
+		},
+		wantResp: &k8s.EncryptResponse{
+			Cipher: []byte(testEncryptedBlob),
+		},
+		wantErr: false,
+	}
+)
+
+func makeTestCases(t testing.TB) (tests []testCase, td func(testing.TB)) {
+	tpm := os.Getenv("P11_MODE") == "tpm"
+	if tpm {
+		setupTpm2Pkcs11TestCase(t)
+		tests = []testCase{
+			{
+				name: "Test Encrypt then Hmac with AES CBC + SHA 256",
+				fields: testCaseFields{
+					keyId:      testKid,
+					keyLabel:   []byte("aes0"),
+					config:     testConfig,
+					ctx:        testCtx,
+					encryptors: testEncryptor,
+					decryptors: testDecryptor,
+					createKey:  false,
+					algorithm:  testAlgorithm,
+				},
+				args: testCaseArgs{
+					ctx: context.Background(),
+					req: &k8s.EncryptRequest{
+						Version: "1",
+						Plain:   []byte("I only wish that ordinary people had an unlimited capacity for doing harm; then they might have an unlimited power for doing good."),
+						KeyId:   string(testKid),
+					},
+				},
+				wantResp: &k8s.EncryptResponse{
+
+					Cipher: []byte(testEncryptedBlob),
+				},
+				wantErr: false,
+			},
+		}
+	} else {
+		td = setupSoftHSMTestCase(t)
+		tests = []testCase{
+			{
+				name: "Happy Path - create default",
+				fields: testCaseFields{
+					config:   testConfig,
+					ctx:      testCtx,
+					keyId:    []byte("afdjaklfjdaskl"),
+					keyLabel: []byte(defaultKEKlabel),
+
+					encryptors: testEncryptor,
+					decryptors: testDecryptor,
+					createKey:  true,
+				},
+				args: testCaseArgs{
+					ctx: context.Background(),
+					req: &k8s.EncryptRequest{
+						Version: "1",
+						Plain:   testPlainMessage,
+					},
+				},
+				wantResp: &k8s.EncryptResponse{
+					Cipher: []byte(testEncryptedBlob),
+				},
+				wantErr: false,
+			},
+		}
+	}
+
+	return tests, td
+}
+
+func TestP11_Encrypt(t *testing.T) {
+	var tests []testCase
+	var td func(testing.TB)
+	if tests, td = makeTestCases(t); td != nil {
+		defer td(t)
+	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &P11{
@@ -95,6 +199,7 @@ func TestP11_Encrypt(t *testing.T) {
 				encryptors: tt.fields.encryptors,
 				decryptors: tt.fields.decryptors,
 				createKey:  tt.fields.createKey,
+				algorithm:  tt.fields.algorithm,
 			}
 			gotResp, err := p.Encrypt(tt.args.ctx, tt.args.req)
 			if (err != nil) != tt.wantErr {
@@ -102,9 +207,12 @@ func TestP11_Encrypt(t *testing.T) {
 				return
 			}
 
+			// TODO handle the keyID for the decrypt request too
 			var gotClearResp *k8s.DecryptResponse
 			if gotClearResp, err = p.Decrypt(context.Background(), &k8s.DecryptRequest{
-				Cipher: gotResp.Cipher,
+				Cipher:  gotResp.Cipher,
+				Version: "1",
+				KeyId:   string(tt.fields.keyId),
 			}); err != nil {
 				t.Errorf("Unable to decrypt the payload... danger!!!")
 				return
@@ -117,6 +225,7 @@ func TestP11_Encrypt(t *testing.T) {
 		})
 	}
 }
+
 func TestP11_GenerateDEK(t *testing.T) {
 	td := setupSoftHSMTestCase(t)
 	defer td(t)
@@ -407,6 +516,49 @@ func init() {
 
 }
 
+func setupTpm2Pkcs11TestCase(t testing.TB) {
+	var err error
+	// the lib pkcs11 for tpm2 does not support hte C_GenerateKey function
+	// You must provide the key label to retrieve them
+	secretKeyLabel := os.Getenv("PKCS11_SECRET_KEY_LABEL")
+	hmacKeyLabel := os.Getenv("PKCS11_HMAC_KEY_LABEL")
+	testPlainMessage = []byte("I only wish that ordinary people had an unlimited capacity for doing harm; then they might have an unlimited power for doing good.")
+	testAlgorithm = jose.AlgA256CBC
+
+	secretKey, err := testCtx.FindKey(nil, []byte(secretKeyLabel))
+	require.NoError(t, err)
+
+	att, err := testCtx.GetAttribute(secretKey, crypto11.CkaId)
+	testKid = att.Value
+
+	iv := make([]byte, secretKey.Cipher.BlockSize)
+	_, err = rand.Read(iv)
+	require.NoError(t, err)
+
+	hmacKey, err := testCtx.FindKey(nil, []byte(hmacKeyLabel))
+	require.NoError(t, err)
+	hash, err := hmacKey.NewHMAC(pkcs11.CKM_SHA256_HMAC, 0)
+	require.NoError(t, err)
+	shaKey := gose.NewHmacShaCryptor("testHmacKid", hash)
+
+	blockModeEncrypter, err := secretKey.NewCBCEncrypterCloser(iv)
+	require.NoError(t, err)
+	cbcKeyEnc := gose.NewAesCbcCryptor(blockModeEncrypter, string(testKid), testAlgorithm)
+	testKid = []byte(cbcKeyEnc.Kid())
+
+	blockModeDecrypter, err := secretKey.NewCBCDecrypterCloser(iv)
+	require.NoError(t, err)
+	cbcKeyDec := gose.NewAesCbcCryptor(blockModeDecrypter, string(testKid), testAlgorithm)
+
+	testEncryptor = map[string]gose.JweEncryptor{}
+	testEncryptor[secretKeyLabel] = gose.NewJweDirectEncryptorBlock(cbcKeyEnc, shaKey, iv)
+	testEncryptedBlob, err = testEncryptor[secretKeyLabel].Encrypt(testPlainMessage, nil)
+
+	testDecryptor = map[string]gose.JweDecryptor{}
+	testDecryptor[secretKeyLabel] = gose.NewJweDirectDecryptorBlock(cbcKeyDec, shaKey)
+
+}
+
 func setupSoftHSMTestCase(t testing.TB) func(t testing.TB) {
 	testKuuid, err := uuid.NewRandom()
 	var testCuuid uuid.UUID
@@ -430,7 +582,7 @@ func setupSoftHSMTestCase(t testing.TB) func(t testing.TB) {
 	}
 	// Allow the MasterKey to be created if missing to be created
 	gen := &gose.AuthenticatedEncryptionKeyGenerator{}
-	var taead gose.AuthenticatedEncryptionKey
+	var taead gose.AeadEncryptionKey
 
 	taead, testAESKeyJWK, err = gen.Generate(jose.AlgA256GCM, kekKeyOps)
 	if testAESKeyJWKString, err = gose.JwkToString(testAESKeyJWK); err != nil {
@@ -438,10 +590,10 @@ func setupSoftHSMTestCase(t testing.TB) func(t testing.TB) {
 	}
 	testPlainMessage = []byte("Hello World, I'm a DEK, Secret, or something sensitive")
 	testEncryptor = map[string]gose.JweEncryptor{}
-	testEncryptor[string(testKid)] = gose.NewJweDirectEncryptorImpl(taead)
+	testEncryptor[string(testKid)] = gose.NewJweDirectEncryptorAead(taead, false)
 	testDecryptor = map[string]gose.JweDecryptor{}
-	testDecryptor[string(testKid)] = gose.NewJweDirectDecryptorImpl([]gose.AuthenticatedEncryptionKey{taead})
-	testEncryptedBlob, err = gose.NewJweDirectEncryptorImpl(taead).Encrypt(testPlainMessage, nil)
+	testDecryptor[string(testKid)] = gose.NewJweDirectDecryptorAeadImpl([]gose.AeadEncryptionKey{taead})
+	testEncryptedBlob, err = gose.NewJweDirectEncryptorAead(taead, false).Encrypt(testPlainMessage, nil)
 	// Create the default key just so we can do some practical encrypt decrypting without having to mock..
 	if _, err = generateKEK(testCtx, testKid, []byte(defaultKEKlabel), jose.AlgA256GCM); err != nil {
 		t.Fatal(err)
