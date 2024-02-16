@@ -33,12 +33,7 @@ gen-openapi:
 		@swagger generate server --quiet -m pkg/est/models -s pkg/est/restapi -f apis/kms/v1/est.yaml
 		@swagger generate client --quiet --existing-models=pkg/est/models -c pkg/est/client -f apis/kms/v1/est.yaml
 build:
-		echo $(COMMITLONG)
-		echo $(COMMITSHORT)
-		echo $(GOVERSION)
-		echo $(BUILDATE)
-		echo $(PLATFORM)
-
+	
 		@go build $(GOLDFLAGS) -o k8s-kms-plugin cmd/k8s-kms-plugin/main.go
 run:
 		@go run cmd/k8s-kms-plugin/main.go serve --disable-socket --enable-server --p11-lib /usr/local/lib/softhsm/libsofthsm2.so --p11-pin $(P11_PIN) --p11-label $(P11_TOKEN)

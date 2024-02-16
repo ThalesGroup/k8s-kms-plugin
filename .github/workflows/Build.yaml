@@ -3,8 +3,8 @@ on:
     push:
       
 jobs:
-    build: 
-        name: Build Plugin
+    buildX64: 
+        name: Build Plugin on AMDx86
         runs-on: ubuntu-latest
         
         steps:
@@ -14,7 +14,7 @@ jobs:
               with:
                 go-version: '1.21'
             #Build the k8s-kms-plugin in the runner environment.
-            - name: build-binary
+            - name: build-binary on AMD
               run: |
                go mod tidy
                go mod vendor
@@ -23,5 +23,5 @@ jobs:
             - name: upload-artifact
               uses: actions/upload-artifact@v4
               with:
-                name: k8s-kms-plugin
-                path: k8s-kms-plugin
+                name: k8s-kms-plugin-x64
+                path: k8s-kms-plugin 

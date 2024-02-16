@@ -54,7 +54,7 @@ func splitVersion() (major, minor string) {
 
 }
 func validateInputs() {
-	if OutputFormat != "" && OutputFormat != "Json" && OutputFormat != "Yaml" {
+	if OutputFormat != "" && OutputFormat != "json" && OutputFormat != "yaml" {
 		OutputFormat = ""
 	}
 }
@@ -98,9 +98,9 @@ func CreateYamlVersion() []byte {
 }
 
 func generateOutput() {
-	if OutputFormat == "Json" {
+	if OutputFormat == "json" {
 		fmt.Println(string(CreateJsonVersion()))
-	} else if OutputFormat == "Yaml" {
+	} else if OutputFormat == "yaml" {
 		fmt.Println(string(CreateYamlVersion()))
 	} else {
 		fmt.Println(RawGitVersion)
@@ -124,7 +124,7 @@ var versionCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(versionCmd)
-	versionCmd.Flags().StringVar(&OutputFormat, "output", "", "'Json' or 'Yaml'")
+	versionCmd.Flags().StringVarP(&OutputFormat, "output", "o", "json", "'json' or 'yaml'")
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command

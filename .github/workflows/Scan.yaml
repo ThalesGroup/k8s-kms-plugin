@@ -3,31 +3,23 @@ on:
   workflow_run:
     workflows: ["Build Plugin"]
     types: [completed]
-
       
 jobs:
     build: 
         name: Scan Dependencies
         runs-on: ubuntu-latest
+        
         steps:
-            - uses: actions/checkout@v3
+            - uses: actions/checkout@v4clear
             #Use the scanner Syft to generate a SPDX format's SBOM of the code.
             - name: syft-scan-CycloneDx
               uses: anchore/sbom-action@v0
               with:
                 format: cyclonedx-json
-                artifact-name: syft-sbom.Cyclonedx
+                artifact-name: syft-sbom.Cyclonedx.json
             #Use the scanner Syft to generate a CycloneDX format's SBOM of the code.
             - name: syft-scan-SPDX
               uses: anchore/sbom-action@v0
               with:
-                artifact-name: syft-sbom.SPDX
-            #Generate a Release if the branch has a tag. The release contains the different format SBOM and the k8s-kms-plugin.
-            - name: Release
-              uses: softprops/action-gh-release@v1
-              if: startsWith(github.ref, 'refs/tags/')
-              with:
-                files: |
-                    syft-sbom.SPDX
-                    syft-sbom.Cyclonedx
-                    k8s-kms-plugin
+                artifact-name: syft-sbom.SPDX.json
+           
