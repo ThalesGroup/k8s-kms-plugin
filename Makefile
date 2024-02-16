@@ -5,7 +5,10 @@ all: build
 VERSION ?= $(shell git describe --tags)
 COMMITLONG ?=$(shell git rev-parse HEAD)
 COMMITSHORT ?= $(shell git rev-parse HEAD | cut -c 1-8)
-GOLDFLAGS=-ldflags="-X 'github.com/ThalesGroup/k8s-kms-plugin/cmd/k8s-kms-plugin/cmd.RawGitVersion=$(VERSION)'-X 'github.com/ThalesGroup/k8s-kms-plugin/cmd/k8s-kms-plugin/cmd.CommitVersionShaLong=$(COMMITLONG)' -X 'github.com/ThalesGroup/k8s-kms-plugin/cmd/k8s-kms-plugin/cmd.CommitVersionShaShort=$(COMMITSHORT)'"
+GOVERSION ?= $(shell go version)
+PLATFORM  ?= $(shell uname -i )
+BUILDDATE ?= $(shell date)
+GOLDFLAGS=-ldflags="-X 'github.com/ThalesGroup/k8s-kms-plugin/cmd/k8s-kms-plugin/cmd.RawGitVersion=$(VERSION)'-X 'github.com/ThalesGroup/k8s-kms-plugin/cmd/k8s-kms-plugin/cmd.CommitVersionIdLong=$(COMMITLONG)' -X 'github.com/ThalesGroup/k8s-kms-plugin/cmd/k8s-kms-plugin/cmd.CommitVersionIdShort=$(COMMITSHORT)'-X 'github.com/ThalesGroup/k8s-kms-plugin/cmd/k8s-kms-plugin/cmd.GoVersion=$(GOVERSION)'-X 'github.com/ThalesGroup/k8s-kms-plugin/cmd/k8s-kms-plugin/cmd.BuildPlatform=$(PLATFORM)'-X 'github.com/ThalesGroup/k8s-kms-plugin/cmd/k8s-kms-plugin/cmd.BuildDate=$(BUILDDATE)'"
 
 SECRETNAME=gcr-json-key
 P11_TOKEN=ajak
@@ -32,7 +35,10 @@ gen-openapi:
 build:
 		echo $(COMMITLONG)
 		echo $(COMMITSHORT)
-		echo $(VERSION)
+		echo $(GOVERSION)
+		echo $(BUILDATE)
+		echo $(PLATFORM)
+
 		@go build $(GOLDFLAGS) -o k8s-kms-plugin cmd/k8s-kms-plugin/main.go
 run:
 		@go run cmd/k8s-kms-plugin/main.go serve --disable-socket --enable-server --p11-lib /usr/local/lib/softhsm/libsofthsm2.so --p11-pin $(P11_PIN) --p11-label $(P11_TOKEN)
