@@ -16,6 +16,7 @@ jobs:
               if: startsWith(github.ref, 'refs/tags/')
               with:
                 files: |
-                    syft-sbom.SPDX.json
-                    syft-sbom.Cyclonedx.json
-                    k8s-kms-plugin
+                    syft-sbom.SPDX${{ github.ref_name }}.json
+                    syft-sbom.Cyclonedx${{ github.ref_name }}.json
+                    k8s-kms-plugin${{ github.ref_name }}
+                    k8s-kms${{ github.ref_name }}.deb

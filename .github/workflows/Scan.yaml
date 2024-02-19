@@ -16,10 +16,10 @@ jobs:
               uses: anchore/sbom-action@v0
               with:
                 format: cyclonedx-json
-                artifact-name: syft-sbom.Cyclonedx.json
+                artifact-name: syft-sbom.Cyclonedx${{ github.ref_name }}.json
             #Use the scanner Syft to generate a CycloneDX format's SBOM of the code.
             - name: syft-scan-SPDX
               uses: anchore/sbom-action@v0
               with:
-                artifact-name: syft-sbom.SPDX.json
+                artifact-name: syft-sbom.SPDX${{ github.ref_name }}.json
            
