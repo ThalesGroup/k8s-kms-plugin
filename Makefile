@@ -4,7 +4,7 @@ all: build
 
 VERSION ?= $(shell git describe --tags)
 COMMITLONG ?=$(shell git rev-parse HEAD)
-COMMITSHORT ?= $(shell git rev-parse HEAD | cut -c 1-8)
+COMMITSHORT ?= $(shell git rev-parse --short HEAD)
 GOVERSION ?= $(shell go version)
 PLATFORM  ?= $(shell uname -i )
 BUILDDATE ?= $(shell date)
