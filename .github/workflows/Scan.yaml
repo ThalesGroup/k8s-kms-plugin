@@ -1,4 +1,4 @@
-name : Scan Dependencies
+name : Scan Dependencies & SBOM
 on:
   workflow_run:
     workflows: ["Build Plugin"]

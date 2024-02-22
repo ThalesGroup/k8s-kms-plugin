@@ -1,4 +1,4 @@
-name : Create Release
+name : Create a Github Release
 on:
   workflow_run:
     workflows: ["Scan Dependencies"]
