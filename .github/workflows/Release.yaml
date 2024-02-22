@@ -1,14 +1,15 @@
-name : Create a Github Release
+name: Create a Github Release
+
 on:
   workflow_run:
     workflows: ["Scan Dependencies"]
     types: [completed]
-      
+
 jobs:
-    build: 
+    build:
         name: Create Release
         runs-on: ubuntu-latest
-        
+
         steps:
             - uses: actions/checkout@v4clear
             - name: Release

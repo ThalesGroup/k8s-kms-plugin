@@ -1,14 +1,15 @@
-name : Scan Dependencies
+name: Scan Dependencies
+
 on:
   workflow_run:
     workflows: ["Build k8s-kms-plugin"]
     types: [completed]
-      
+
 jobs:
-    build: 
+    build:
         name: Scan Dependencies
         runs-on: ubuntu-latest
-        
+
         steps:
             - uses: actions/checkout@v4clear
             # Use the scanner Syft to generate a SPDX format's SBOM of the code.
@@ -22,4 +23,3 @@ jobs:
               uses: anchore/sbom-action@v0
               with:
                 artifact-name: syft-sbom.SPDX.json
-           

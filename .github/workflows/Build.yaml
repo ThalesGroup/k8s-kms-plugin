@@ -1,10 +1,10 @@
-name : Build k8s-kms-plugin
+name: Build k8s-kms-plugin
+
 on:
     push:
-      
-      
+
 jobs:
-    buildX64: 
+    buildX64:
         name: Build the k8s-kms-plugin for x86-64 amd64 architecture
         runs-on: ubuntu-latest
         if: startsWith(github.ref, 'refs/tags/')
@@ -16,7 +16,7 @@ jobs:
                 go-version: '1.21'
             #Build the k8s-kms-plugin in the runner environment.
             - name: Go build k8s-kms-plugin binary on x86-64 amd64 architecture
-              
+
               run: |
                # Building plugin
 
@@ -45,4 +45,3 @@ jobs:
               with:
                 name: k8s-kms-plugin-deb
                 path: k8s-kms.deb
-               
