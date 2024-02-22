@@ -11,13 +11,13 @@ jobs:
         
         steps:
             - uses: actions/checkout@v4clear
-            #Use the scanner Syft to generate a SPDX format's SBOM of the code.
+            # Use the scanner Syft to generate a SPDX format's SBOM of the code.
             - name: syft-scan-CycloneDx
               uses: anchore/sbom-action@v0
               with:
                 format: cyclonedx-json
-                artifact-name: syft-sbom.Cyclonedx.json
-            #Use the scanner Syft to generate a CycloneDX format's SBOM of the code.
+                artifact-name: syft-sbom.CycloneDX.json
+            # Use the scanner Syft to generate a CycloneDX format's SBOM of the code.
             - name: syft-scan-SPDX
               uses: anchore/sbom-action@v0
               with:
