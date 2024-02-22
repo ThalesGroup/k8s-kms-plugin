@@ -19,5 +19,5 @@ jobs:
         with:
           files: |
             syft-sbom.SPDX.json
-            syft-sbom.Cyclonedx.json
+            syft-sbom.CycloneDX.json
             k8s-kms-plugin
