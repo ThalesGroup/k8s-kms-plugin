@@ -8,12 +8,13 @@ on:
       - completed
 
 jobs:
-  build:
+  on-success:
     name: Scan Dependencies
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - uses: actions/checkout@v4clear
-      - name: syft-scan-CycloneDx
+      - name: syft-scan-CycloneDX
         uses: anchore/sbom-action@v0
         with:
           format: cyclonedx-json
