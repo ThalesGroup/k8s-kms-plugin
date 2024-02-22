@@ -15,7 +15,7 @@ jobs:
               with:
                 go-version: '1.21'
             #Build the k8s-kms-plugin in the runner environment.
-            - name: build-binary on AMD
+            - name: Go build k8s-kms-plugin binary on x86-64 amd64 architecture
               
               run: |
                # Building plugin
@@ -24,13 +24,13 @@ jobs:
                go mod vendor
                make build
 
-               #Creating Debian Package
+               # Creating Debian Package
 
                mkdir -p k8s-kms/usr/bin
                mkdir -p k8s-kms/usr/lib/k8s-kms-plugin
                cp k8s-kms-plugin k8s-kms/usr/bin/k8s-kms-plugin
                chmod +x k8s-kms/usr/bin/k8s-kms-plugin
-               mkdir -p .k8s-kms/DEBIAN
+               mkdir -p k8s-kms/DEBIAN
                touch k8s-kms/DEBIAN/control
                echo -e "Package: k8s-kms-plugin\nDescription: k8-kms-plugin package\nMaintainer: ${{github.repository_owner}}\nVersion: ${{ github.ref}}\nArchitecture: amd64 " > k8s-kms/DEBIAN/control
                dpkg --build k8s-kms
