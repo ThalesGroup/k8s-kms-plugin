@@ -2,21 +2,22 @@ name: Create a Github Release
 
 on:
   workflow_run:
-    workflows: ["Scan Dependencies"]
-    types: [completed]
+    workflows:
+      - Scan Dependencies
+    types:
+      - completed
 
 jobs:
-    build:
-        name: Create Release
-        runs-on: ubuntu-latest
-
-        steps:
-            - uses: actions/checkout@v4clear
-            - name: Release
-              uses: softprops/action-gh-release@v1
-              if: startsWith(github.ref, 'refs/tags/')
-              with:
-                files: |
-                    syft-sbom.SPDX.json
-                    syft-sbom.Cyclonedx.json
-                    k8s-kms-plugin
+  build:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4clear
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            syft-sbom.SPDX.json
+            syft-sbom.Cyclonedx.json
+            k8s-kms-plugin

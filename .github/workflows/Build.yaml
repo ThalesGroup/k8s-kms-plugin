@@ -1,47 +1,44 @@
 name: Build k8s-kms-plugin
 
 on:
-    push:
+  push:
 
 jobs:
-    buildX64:
-        name: Build the k8s-kms-plugin for x86-64 amd64 architecture
-        runs-on: ubuntu-latest
-        if: startsWith(github.ref, 'refs/tags/')
-        steps:
-            - uses: actions/checkout@v4
-            #Change the go version of the runner.
-            - uses : actions/setup-go@v5
-              with:
-                go-version: '1.21'
-            #Build the k8s-kms-plugin in the runner environment.
-            - name: Go build k8s-kms-plugin binary on x86-64 amd64 architecture
+  buildX64:
+    name: Build the k8s-kms-plugin for x86-64 amd64 architecture
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@v4
+      # Change the go version of the runner.
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+      # Build the k8s-kms-plugin in the runner environment.
+      - name: Go build k8s-kms-plugin binary on x86-64 amd64 architecture
+        run: |
+          # Building plugin
+          go mod tidy
+          go mod vendor
+          make build
 
-              run: |
-               # Building plugin
-
-               go mod tidy
-               go mod vendor
-               make build
-
-               # Creating Debian Package
-
-               mkdir -p k8s-kms/usr/bin
-               mkdir -p k8s-kms/usr/lib/k8s-kms-plugin
-               cp k8s-kms-plugin k8s-kms/usr/bin/k8s-kms-plugin
-               chmod +x k8s-kms/usr/bin/k8s-kms-plugin
-               mkdir -p k8s-kms/DEBIAN
-               touch k8s-kms/DEBIAN/control
-               echo -e "Package: k8s-kms-plugin\nDescription: k8-kms-plugin package\nMaintainer: ${{github.repository_owner}}\nVersion: ${{github.ref_name}}\nArchitecture: amd64 " > k8s-kms/DEBIAN/control
-               dpkg --build k8s-kms
-               ls
-            # Upload k8s-kms-plugin into the artifacts depository of github.
-            - name: upload-artifact
-              uses: actions/upload-artifact@v4
-              with:
-                name: k8s-kms-plugin-x64
-                path: k8s-kms-plugin
-            - uses: actions/upload-artifact@v4
-              with:
-                name: k8s-kms-plugin-deb
-                path: k8s-kms.deb
+          # Creating Debian Package
+          mkdir -p k8s-kms/usr/bin
+          mkdir -p k8s-kms/usr/lib/k8s-kms-plugin
+          cp k8s-kms-plugin k8s-kms/usr/bin/k8s-kms-plugin
+          chmod +x k8s-kms/usr/bin/k8s-kms-plugin
+          mkdir -p k8s-kms/DEBIAN
+          touch k8s-kms/DEBIAN/control
+          echo -e "Package: k8s-kms-plugin\nDescription: k8-kms-plugin package\nMaintainer: ${{github.repository_owner}}\nVersion: ${{github.ref_name}}\nArchitecture: amd64 " > k8s-kms/DEBIAN/control
+          dpkg --build k8s-kms
+          ls
+      # Upload k8s-kms-plugin into the artifacts depository of github.
+      - name: upload-artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: k8s-kms-plugin-x64
+          path: k8s-kms-plugin
+      - uses: actions/upload-artifact@v4
+        with:
+          name: k8s-kms-plugin-deb
+          path: k8s-kms.deb
