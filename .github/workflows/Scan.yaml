@@ -1,7 +1,7 @@
-name : Scan Dependencies & SBOM
+name : Scan Dependencies
 on:
   workflow_run:
-    workflows: ["Build Plugin"]
+    workflows: ["Build k8s-kms-plugin"]
     types: [completed]
       
 jobs:
