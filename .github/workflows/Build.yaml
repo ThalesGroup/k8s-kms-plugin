@@ -5,7 +5,7 @@ on:
       
 jobs:
     buildX64: 
-        name: Build Plugin on AMDx86
+        name: Build the k8s-kms-plugin for x86-64 amd64 architecture
         runs-on: ubuntu-latest
         if: startsWith(github.ref, 'refs/tags/')
         steps:
