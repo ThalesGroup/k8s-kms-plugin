@@ -32,10 +32,10 @@ jobs:
                chmod +x k8s-kms/usr/bin/k8s-kms-plugin
                mkdir -p k8s-kms/DEBIAN
                touch k8s-kms/DEBIAN/control
-               echo -e "Package: k8s-kms-plugin\nDescription: k8-kms-plugin package\nMaintainer: ${{github.repository_owner}}\nVersion: ${{ github.ref}}\nArchitecture: amd64 " > k8s-kms/DEBIAN/control
+               echo -e "Package: k8s-kms-plugin\nDescription: k8-kms-plugin package\nMaintainer: ${{github.repository_owner}}\nVersion: ${{github.ref_name}}\nArchitecture: amd64 " > k8s-kms/DEBIAN/control
                dpkg --build k8s-kms
                ls
-            #Upload k8s-kms-plugin into the artifacts depository of github.
+            # Upload k8s-kms-plugin into the artifacts depository of github.
             - name: upload-artifact
               uses: actions/upload-artifact@v4
               with:
