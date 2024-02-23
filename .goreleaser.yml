@@ -2,7 +2,7 @@ project_name: k8s-kms-plugin
 
 env:
   - GO111MODULE=on
-  - CGO_ENABLED=0
+  - CGO_ENABLED=1
   - DOCKER_CLI_EXPERIMENTAL=enabled
   - COSIGN_YES=true
   - LATEST_TAG=,latest
@@ -10,6 +10,7 @@ env:
 # Prevents parallel builds from stepping on each others toes downloading modules
 before:
   hooks:
+    - go get github.com/ThalesGroup/crypto11
     - go mod tidy
     - go mod download
 
