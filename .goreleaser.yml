@@ -12,6 +12,7 @@ before:
   hooks:
     - go mod tidy
     - go mod download
+    - go get github.com/ThalesGroup/crypto11
 
 
 
