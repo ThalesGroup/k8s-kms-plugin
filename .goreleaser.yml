@@ -12,7 +12,7 @@ before:
   hooks:
     - go mod tidy
     - go mod download
-    - go get github.com/ThalesGroup/crypto11
+
 
 
 
@@ -31,8 +31,6 @@ builds:
       - linux
     goarch:
       - amd64
-      - arm64
-      - arm
      
     ldflags:
       - "{{ .Env.LDFLAGS }}"
