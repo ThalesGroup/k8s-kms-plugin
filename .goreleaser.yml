@@ -11,6 +11,7 @@ env:
 before:
   hooks:
     - go mod tidy
+    - go mod download
 
 
 
