@@ -8,7 +8,7 @@ COMMITSHORT ?= $(shell git rev-parse HEAD | cut -c 1-8)
 GOVERSION ?= $(shell go version)
 PLATFORM  ?= $(shell uname -i )
 BUILDDATE ?= $(shell date -Is)
-GOLDFLAGS=-ldflags="-X 'github.com/ThalesGroup/k8s-kms-plugin/cmd/k8s-kms-plugin/cmd.RawGitVersion=$(VERSION)'-X 'github.com/ThalesGroup/k8s-kms-plugin/cmd/k8s-kms-plugin/cmd.CommitVersionIdLong=$(COMMITLONG)' -X 'github.com/ThalesGroup/k8s-kms-plugin/cmd/k8s-kms-plugin/cmd.CommitVersionIdShort=$(COMMITSHORT)'-X 'github.com/ThalesGroup/k8s-kms-plugin/cmd/k8s-kms-plugin/cmd.GoVersion=$(GOVERSION)'-X 'github.com/ThalesGroup/k8s-kms-plugin/cmd/k8s-kms-plugin/cmd.BuildPlatform=$(PLATFORM)'-X 'github.com/ThalesGroup/k8s-kms-plugin/cmd/k8s-kms-plugin/cmd.BuildDate=$(BUILDDATE)'"
+GOLDFLAGS=-ldflags="-X github.com/ThalesGroup/k8s-kms-plugin/cmd/k8s-kms-plugin/cmd.RawGitVersion=$(VERSION) -X github.com/ThalesGroup/k8s-kms-plugin/cmd/k8s-kms-plugin/cmd.CommitVersionIdLong=$(COMMITLONG) -X github.com/ThalesGroup/k8s-kms-plugin/cmd/k8s-kms-plugin/cmd.CommitVersionIdShort=$(COMMITSHORT) -X github.com/ThalesGroup/k8s-kms-plugin/cmd/k8s-kms-plugin/cmd.GoVersion=$(GOVERSION) -X github.com/ThalesGroup/k8s-kms-plugin/cmd/k8s-kms-plugin/cmd.BuildPlatform=$(PLATFORM) -X github.com/ThalesGroup/k8s-kms-plugin/cmd/k8s-kms-plugin/cmd.BuildDate=$(BUILDDATE)"
 
 SECRETNAME=gcr-json-key
 P11_TOKEN=ajak
