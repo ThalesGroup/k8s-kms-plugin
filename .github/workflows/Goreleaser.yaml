@@ -28,4 +28,5 @@ jobs:
         run: |
          go install github.com/goreleaser/goreleaser@latest
          make release
-          
+        env:
+            GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"  
