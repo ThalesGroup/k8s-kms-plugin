@@ -59,5 +59,5 @@ deploy:
 		@gcloud endpoints services deploy --format json "./apis/api-service.yaml" "./apis/istio/v1/v1.pb"  > "./deployed.json"
 
 release: 
-	export GITHUB_TOKEN=$(GITHUB_TOKEN)
+	export GITHUB_TOKEN=""
 	LDFLAGS=$(GOLDFLAGS) goreleaser release --clean
