@@ -2,7 +2,7 @@ project_name: k8s-kms-plugin
 
 env:
   - GO111MODULE=on
-  - CGO_ENABLED=1
+  - CGO_ENABLED=0
   - DOCKER_CLI_EXPERIMENTAL=enabled
   - COSIGN_YES=true
   - LATEST_TAG=,latest
