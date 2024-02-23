@@ -1,0 +1,56 @@
+project_name: k8s-kms-plugin
+
+env:
+  - GO111MODULE=on
+  - CGO_ENABLED=1
+  - DOCKER_CLI_EXPERIMENTAL=enabled
+  - COSIGN_YES=true
+  - LATEST_TAG=,latest
+
+# Prevents parallel builds from stepping on each others toes downloading modules
+before:
+  hooks:
+    - go mod tidy
+
+
+gomod:
+  proxy: true
+
+sboms:
+  - artifacts: binary
+
+builds:
+  - id: linux
+    binary: k8s-kms-plugin-linux-{{ .Arch }}
+    no_unique_dist_dir: true
+    main: k8s-kms-plugin cmd/k8s-kms-plugin/main.go
+    
+    mod_timestamp: '{{ .CommitTimestamp }}'
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+      - arm
+     
+    ldflags:
+      - "{{ .Env.LDFLAGS }}"
+    env:
+      - CGO_ENABLED=0
+
+archives:
+  -format: binary
+   name_template: "{{ .Binary }}" 
+
+snapshot:
+  name_template: SNAPSHOT-{{ .ShortCommit }}
+
+
+release:
+  
+  github:
+    owner: ThalesGroup
+    name: k8s-kms-plugin
+  footer: |
+    ### Thanks to all contributors!
+

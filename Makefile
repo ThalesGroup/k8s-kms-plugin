@@ -57,3 +57,6 @@ p11tool-delete:
 
 deploy:
 		@gcloud endpoints services deploy --format json "./apis/api-service.yaml" "./apis/istio/v1/v1.pb"  > "./deployed.json"
+
+release: 
+	LDFLAGS=$(GOLDFLAGS) goreleaser release --rm-dist
