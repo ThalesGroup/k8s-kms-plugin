@@ -13,8 +13,7 @@ before:
     - go mod tidy
 
 
-gomod:
-  proxy: true
+
 
 sboms:
   - artifacts: binary
