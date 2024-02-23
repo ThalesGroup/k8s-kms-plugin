@@ -22,7 +22,7 @@ builds:
   - id: linux
     binary: k8s-kms-plugin-linux-{{ .Arch }}
     no_unique_dist_dir: true
-    main: k8s-kms-plugin cmd/k8s-kms-plugin/main.go
+    main: ./cmd/k8s-kms-plugin/main.go
     
     mod_timestamp: '{{ .CommitTimestamp }}'
     goos:
