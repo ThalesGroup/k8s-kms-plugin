@@ -26,5 +26,6 @@ jobs:
 
       - name: Run GoReleaser
         run: |
-          make release
+         go install github.com/goreleaser/goreleaser@latest
+         make release
           
