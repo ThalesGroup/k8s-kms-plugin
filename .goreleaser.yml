@@ -10,7 +10,6 @@ env:
 # Prevents parallel builds from stepping on each others toes downloading modules
 before:
   hooks:
-    - go get github.com/ThalesGroup/crypto11
     - go mod tidy
     - go mod download
 
