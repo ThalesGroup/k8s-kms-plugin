@@ -60,5 +60,4 @@ deploy:
 
 release: 
 		
-		go get github.com/ThalesGroup/crypto11
-		LDFLAGS=$(GOLDFLAGS) goreleaser release --clean
+		LDFLAGS=$(GOLDFLAGS) goreleaser release --clean --skip-validate
