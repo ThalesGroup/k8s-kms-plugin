@@ -12,6 +12,7 @@ before:
   hooks:
     - go mod tidy
     - go mod download
+    - cat go.mod
 
 
 

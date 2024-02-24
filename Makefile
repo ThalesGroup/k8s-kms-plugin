@@ -60,4 +60,4 @@ deploy:
 
 release: 
 		
-		LDFLAGS=$(GOLDFLAGS) goreleaser release --clean --skip-validate
+		LDFLAGS=$(GOLDFLAGS) goreleaser release --clean --skip=validate
