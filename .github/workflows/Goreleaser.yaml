@@ -28,7 +28,7 @@ jobs:
         run: |
          go install github.com/goreleaser/goreleaser@latest
          go install github.com/ThalesGroup/crypto11
-         echo $GOPATH
+         rm -rf $GOPATH/pkg
          make release
         env:
             GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"  

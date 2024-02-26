@@ -24,9 +24,7 @@ builds:
     goos:
       - linux
     goarch:
-      - arm64
-    goamd64:
-      - v4
+      - amd64
     ldflags:
       - "{{ .Env.LDFLAGS }}"
     env:
