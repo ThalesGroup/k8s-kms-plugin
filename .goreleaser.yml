@@ -44,6 +44,7 @@ release:
   github:
     owner: louison7777
     name: k8s-kms-plugin
+  replace_existing_draft: true
   footer: |
     ### Thanks to all contributors!
 

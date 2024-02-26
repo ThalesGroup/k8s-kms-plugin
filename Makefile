@@ -60,4 +60,4 @@ deploy:
 
 release: 
 		
-		LDFLAGS=$(LDFLAGS) goreleaser release --clean
+		LDFLAGS=$(LDFLAGS) goreleaser release --clean --verbose
