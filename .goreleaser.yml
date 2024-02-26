@@ -42,7 +42,7 @@ snapshot:
 release:
   
   github:
-    owner: ThalesGroup
+    owner: louison7777
     name: k8s-kms-plugin
   footer: |
     ### Thanks to all contributors!
