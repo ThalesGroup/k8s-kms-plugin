@@ -25,9 +25,10 @@ builds:
       - linux
     goarch:
       - amd64
-    
+    ldflags:
+      - "{{ .Env.LDFLAGS }}"
     env:
-      - CGO_ENABLED=0
+      - CGO_ENABLED=1
 
 archives:
   - format: binary
