@@ -42,7 +42,7 @@ snapshot:
 release:
   
   github:
-    owner: louison7777
+    owner: louison77
     name: k8s-kms-plugin
   replace_existing_draft: true
   footer: |
