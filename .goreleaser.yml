@@ -17,7 +17,7 @@ sboms:
 # Build the k8s-kms-plugin in differents architecture
 builds:
   - id: linux
-    binary: k8s-kms-plugin-linux-{{ .Arch }}
+    binary: k8s-kms-plugin-linux-{{ .Arch }}_{{ .Version }}
     no_unique_dist_dir: true
     main: ./cmd/k8s-kms-plugin/main.go
     
@@ -28,12 +28,34 @@ builds:
       - amd64
     ldflags:
       - "{{ .Env.LDFLAGS }}"
+nfpms:
+  - id: k8s-kms-plugin
+    package_name: k8s-kms-plugin
+    file_name_template:  "{{ .ConventionalFileName }}"
+    license: "Apache License 2.0"
+    maintainer: ThalesGroup
+    builds:
+      - linux
+    formats:
+        - apk
+        - deb
+        - rpm
+    contents:
+        - src: /usr/bin/k8s-kms-plugin-linux-{{ .Arch }}_{{ .Version }}
+          dst: /usr/bin/k8s-kms-plugin
+          type: "symlink"
+
 
 # Define caracteristics of binary artifacts
 archives:
   - format: binary
     name_template: "{{ .Binary }}" 
     allow_different_binary_count: true
+# create metadata file
+metadata:
+  
+  mod_timestamp: "{{ .CommitTimestamp }}"
+
 
 # Checksum caracteristics
 checksum:
@@ -41,20 +63,50 @@ checksum:
 # Snapshot caracteristics
 snapshot:
   name_template: SNAPSHOT-{{ .ShortCommit }}
+
 # Sign the artifacts
 signs:
-  - cmd: cosign
+  - id : k8s-kms-plugin-keyless
+    cmd: cosign
     env:
       - COSIGN_EXPERIMENTAL=1
-    certificate: "${artifact}.pem"
+    signature : "${artifact}-keyless.sig"
+    certificate: "${artifact}-keyless.pem"
     args:
       - sign-blob
       - "--output-certificate=${certificate}"
       - "--output-signature=${signature}"
       - "-y"
-      - "${artifact}"
-      
+      - "${artifact}"   
+    artifacts: binary
+    output: true
+  - id : checksum-keyless
+    cmd: cosign
+    env:
+      - COSIGN_EXPERIMENTAL=1
+    signature : "${artifact}-keyless.sig"
+    certificate: "${artifact}-keyless.pem"
+    args:
+      - sign-blob
+      - "--output-certificate=${certificate}"
+      - "--output-signature=${signature}"
+      - "-y"
+      - "${artifact}"   
     artifacts: checksum
+    output: true
+  - id : package-keyless
+    cmd: cosign
+    env:
+      - COSIGN_EXPERIMENTAL=1
+    signature : "${artifact}-keyless.sig"
+    certificate: "${artifact}-keyless.pem"
+    args:
+      - sign-blob
+      - "--output-certificate=${certificate}"
+      - "--output-signature=${signature}"
+      - "-y"
+      - "${artifact}" 
+    artifacts: package
     output: true
 
 # Create a release 
