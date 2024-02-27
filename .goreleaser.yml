@@ -13,7 +13,14 @@ before:
 
 # Generate SBOM for all artifacts
 sboms:
-  - artifacts: binary
+  - id: binary sbom
+    artifacts: binary
+    documents:
+      - "${artifact}.spdx.sbom"
+  - id: package sbom
+    artifacts: package
+    documents:
+      - "${artifact}.spdx.sbom"
 # Build the k8s-kms-plugin in differents architecture
 builds:
   - id: linux
@@ -48,7 +55,16 @@ nfpms:
 
 # Define caracteristics of binary artifacts
 archives:
-  - format: binary
+  - id: binary
+    format: binary
+    name_template: "{{ .Binary }}" 
+    allow_different_binary_count: true
+  - id: zip
+    format: zip
+    name_template: "{{ .Binary }}" 
+    allow_different_binary_count: true
+  - id: tar
+    format: tar.gz
     name_template: "{{ .Binary }}" 
     allow_different_binary_count: true
 # create metadata file
