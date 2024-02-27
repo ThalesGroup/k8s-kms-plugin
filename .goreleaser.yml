@@ -51,7 +51,9 @@ signs:
       - sign-blob
       - "--output-certificate=${certificate}"
       - "--output-signature=${signature}"
+      - "-y"
       - "${artifact}"
+      
     artifacts: checksum
     output: true
 
