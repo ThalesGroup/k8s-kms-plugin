@@ -44,6 +44,7 @@ snapshot:
 # Sign the artifacts
 signs:
   - signature: "${artifact}.sig"
+    args: ["--output", "${signature}", "${artifact}", "{{ .ProjectName }}"]
     artifacts: all
     certificate: "${artifact}-keyless.pem"
 
