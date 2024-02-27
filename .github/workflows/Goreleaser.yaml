@@ -22,7 +22,10 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: stable
-
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.3.0
+      - name: Check install!
+        run: cosign version
       - name: Run GoReleaser
         run: |
          go install github.com/goreleaser/goreleaser@latest

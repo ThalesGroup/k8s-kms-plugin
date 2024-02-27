@@ -43,10 +43,17 @@ snapshot:
   name_template: SNAPSHOT-{{ .ShortCommit }}
 # Sign the artifacts
 signs:
-  - signature: "${artifact}.sig"
-    args: ["--output", "${signature}", "${artifact}", "{{ .ProjectName }}"]
-    artifacts: all
-    certificate: "${artifact}-keyless.pem"
+  - cmd: cosign
+    env:
+      - COSIGN_EXPERIMENTAL=1
+    certificate: "${artifact}.pem"
+    args:
+      - sign-blob
+      - "--output-certificate=${certificate}"
+      - "--output-signature=${signature}"
+      - "${artifact}"
+    artifacts: checksum
+    output: true
 
 # Create a release 
 release:
