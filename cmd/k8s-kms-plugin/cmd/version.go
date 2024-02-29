@@ -6,8 +6,8 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 
+	"github.com/coreos/go-semver/semver"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -23,8 +23,8 @@ var (
 )
 
 type JsonVersion struct {
-	Major         string `json:"major"`
-	Minor         string `json:"minor"`
+	Major         int64  `json:"major"`
+	Minor         int64  `json:"minor"`
 	Version       string `json:"version"`
 	CommitIdLong  string `json:"commitIdLong"`
 	CommitIdShort string `json:"commitIdShort"`
@@ -33,8 +33,8 @@ type JsonVersion struct {
 	Platorm       string `json:"plaform"`
 }
 type YamlVersion struct {
-	Major         string `yaml:"major"`
-	Minor         string `yaml:"minor"`
+	Major         int64  `yaml:"major"`
+	Minor         int64  `yaml:"minor"`
 	Version       string `yaml:"version"`
 	CommitIdLong  string `yaml:"commitIdLong"`
 	CommitIdShort string `yaml:"commitIdShort"`
@@ -43,26 +43,17 @@ type YamlVersion struct {
 	Platorm       string `yaml:"plaform"`
 }
 
-func splitVersion() (major, minor string) {
-	if len(RawGitVersion) != 0 {
-		versionArray := strings.Split(RawGitVersion[1:], ".")
-
-		return versionArray[0], versionArray[1]
-	} else {
-		return "", ""
-	}
-
-}
 func validateInputs() {
 	if OutputFormat != "" && OutputFormat != "json" && OutputFormat != "yaml" {
 		OutputFormat = ""
 	}
 }
 func CreateJsonVersion() []byte {
-	major, minor := splitVersion()
+	version := semver.New(RawGitVersion)
+
 	jsonFormat := &JsonVersion{
-		Major:         major,
-		Minor:         minor,
+		Major:         version.Major,
+		Minor:         version.Minor,
 		Version:       RawGitVersion,
 		CommitIdLong:  CommitVersionIdLong,
 		CommitIdShort: CommitVersionIdShort,
@@ -78,10 +69,11 @@ func CreateJsonVersion() []byte {
 	return data
 }
 func CreateYamlVersion() []byte {
-	major, minor := splitVersion()
+	version := semver.New(RawGitVersion)
+
 	yamlFormat := &YamlVersion{
-		Major:         major,
-		Minor:         minor,
+		Major:         version.Major,
+		Minor:         version.Minor,
 		Version:       RawGitVersion,
 		CommitIdLong:  CommitVersionIdLong,
 		CommitIdShort: CommitVersionIdShort,
