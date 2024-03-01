@@ -1,0 +1,21 @@
+# .gitlab-ci.yml
+variables:
+  RUNNER_GENERATE_ARTIFACTS_METADATA: "true"
+
+stages:
+  - release
+# Maybe syft is not installed, so it'll need to add another job or action in teh script section to install syft on the runner 
+# https://goreleaser.com/ci/gitlab/#basic-releasing
+release:
+  stage: release
+  image:
+    name: goreleaser/goreleaser
+    entrypoint: [""]
+  only:
+    - tags
+  variables:
+   
+    GIT_DEPTH: 0
+  script:
+   # GITLAB_TOKEN is needed to create GitLab releases.
+    - make release
