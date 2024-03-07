@@ -61,6 +61,7 @@ require (
 )
 
 require (
+	github.com/coreos/go-semver v0.3.1 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20231106174013-bbf56f31fb17 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231106174013-bbf56f31fb17 // indirect
 )
