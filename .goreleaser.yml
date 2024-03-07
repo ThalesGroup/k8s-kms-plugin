@@ -11,6 +11,12 @@ before:
     - go mod tidy
     - go mod download
 
+
+gitlab_urls:
+  api: "{{ .Env.CI_API_V4_URL }}"
+  download: "{{ .Env.CI_SERVER_URL }}"
+  skip_tls_verify: true
+  use_package_registry: true
 # Generate SBOM for all artifacts
 sboms:
   - id: binary sbom
@@ -21,12 +27,12 @@ sboms:
     artifacts: package
     documents:
       - "${artifact}.spdx.sbom"
-# Build the k8s-kms-plugin in differents architecture
+# Build the binary in differents architecture
 builds:
   - id: linux
-    binary: k8s-kms-plugin-linux-{{ .Arch }}_{{ .Version }}
+    binary: '{{ .ProjectName }}-linux-{{ .Arch }}_{{ .Version }}'
     no_unique_dist_dir: true
-    main: ./cmd/k8s-kms-plugin/main.go
+    main: ./cmd/{{ .ProjectName }}/main.go
     
     mod_timestamp: '{{ .CommitTimestamp }}'
     goos:
@@ -36,8 +42,8 @@ builds:
     ldflags:
       - "{{ .Env.LDFLAGS }}"
 nfpms:
-  - id: k8s-kms-plugin
-    package_name: k8s-kms-plugin
+  - id: '{{ .ProjectName }}'
+    package_name: '{{ .ProjectName }}'
     file_name_template:  "{{ .ConventionalFileName }}"
     license: "Apache License 2.0"
     maintainer: ThalesGroup
@@ -48,8 +54,8 @@ nfpms:
         - deb
         - rpm
     contents:
-        - src: /usr/bin/k8s-kms-plugin-linux-{{ .Arch }}_{{ .Version }}
-          dst: /usr/bin/k8s-kms-plugin
+        - src: /usr/bin/{{ .ProjectName }}-linux-{{ .Arch }}_{{ .Version }}
+          dst: /usr/bin/{{ .ProjectName }}
           type: "symlink"
 
 
@@ -82,7 +88,7 @@ snapshot:
 
 # Sign the artifacts
 signs:
-  - id : k8s-kms-plugin-keyless
+  - id : '{{ .ProjectName }}-keyless'
     cmd: cosign
     env:
       - COSIGN_EXPERIMENTAL=1
@@ -128,10 +134,15 @@ signs:
 
 # Create a release 
 release:
-  github:
-    owner: louison77
-    name: k8s-kms-plugin
+  draft: true
   replace_existing_draft: true
+  make_latest: true
+  github:
+    owner: "{{ .Env.GITHUB_REPOSITORY_OWNER }}"
+    name: '{{ .ProjectName }}'
+  gitlab:
+    owner: ""
+    name: "{{ .Env.CI_PROJECT_PATH }}"
   footer: |
     ### Thanks to all contributors!
 
