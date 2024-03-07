@@ -93,4 +93,40 @@ Scanning your code and 288 packages across 34 dependent modules for known vulner
 No vulnerabilities found.
 ```
 
+## Signing artifacts
 
+During the release workflow, certificates and signatures of artifacts are generated.
+They are signed by a tool named cosign using a keyless mode.
+It required an authentication by clicking in links present in logs.
+
+![Screenshot of one example of logs containing three authentication links generating tokens](docs/images/AuthLinksCosign.png)
+
+Once you click on one, you can submit a verification code that will redirect you to three types of authentication. Then click on Github authentication.
+
+ ![Screenshot of the interface for submitting a code](docs/images/CodeSubmit.png)
+
+Do these actions for every authentication links and the signatures and the certificates will be generated with the artifacts in the release.
+
+## Verifying the authenticity of an artifact
+
+You need to downloads 3 files : [ _**[file.txt]**_, _**[file].pem**_, _**[file].sig**_]
+
+If you don't have, install cosign by typing the commands below :
+
+  ```bash
+  curl -O -L "https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64"
+  sudo mv cosign-linux-amd64 /usr/local/bin/cosign
+  sudo chmod +x /usr/local/bin/cosign
+  ```
+
+For a verification with cosign installed and pay attention to modify the name of the files :
+
+  ```bash
+  COSIGN_EXPERIMENTAL=1 cosign verify-blob --cert [file]-keyless.pem --signature [file]-keyless.sig --certificate-oidc-issuer "https://github.com/login/oauth" --certificate-identity [ Mail adress of the owner of the repo ] [file]
+  ```
+
+Or using Podman without installing cosign :
+
+```bash
+podman run --rm -it gcr.io/projectsigstore/cosign:v1.13.0 COSIGN_EXPERIMENTAL=1 cosign verify-blob --cert [file]-keyless.pem --signature [file]-keyless.sig --certificate-oidc-issuer "https://github.com/login/oauth" --certificate-identity [ Mail adress of the owner of the repo ] [file]
+```
