@@ -23,10 +23,20 @@ sboms:
     artifacts: binary
     documents:
       - "${artifact}.spdx.sbom"
+  - id: CycloneDX sbom
+    artifacts: binary
+    documents:
+      - "${artifact}.cyclonedx-json.sbom"
+    args: ["$artifact", "--output", "cyclonedx-json","--file","$document"]
   - id: package sbom
     artifacts: package
     documents:
       - "${artifact}.spdx.sbom"
+  - id: package CycloneDX sbom
+    artifacts: package
+    documents:
+      - "${artifact}.cyclonedx-json.sbom"
+    args: ["$artifact", "--output", "cyclonedx-json", "--file","$document"]
 # Build the binary in differents architecture
 builds:
   - id: linux
