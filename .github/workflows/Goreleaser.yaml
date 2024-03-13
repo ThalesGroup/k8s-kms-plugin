@@ -13,6 +13,8 @@ on:
 jobs:
   goreleaser:
     runs-on: ubuntu-latest
+    env: 
+      WORKSPACE: ${{github.workspace}}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,6 +31,7 @@ jobs:
          go install github.com/goreleaser/goreleaser@latest
          go install github.com/ThalesGroup/crypto11
          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+         curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.49.1
          make release
         env:
             GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"  
