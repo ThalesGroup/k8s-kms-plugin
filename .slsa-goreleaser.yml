@@ -1,0 +1,23 @@
+# Version for this file.
+version: 1
+
+# (Optional) List of env variables used during compilation.
+env:
+  - GO111MODULE=on
+  - CGO_ENABLED=1
+
+flags:
+  - -trimpath
+
+# (Optional) Flags for the compiler.
+goos: linux
+goarch: amd64
+binary: k8s-kms-plugin-linux-{{ .Arch }}_{{ .Env.CGOVERSION }}
+main: ./cmd/k8s-kms-plugin/main.go
+# ldflags:
+#   - "-X github.com/ThalesGroup/k8s-kms-plugin/cmd/k8s-kms-plugin/cmd.RawGitVersion={{ .Env.CGOVERSION }}"
+#   - "-X github.com/ThalesGroup/k8s-kms-plugin/cmd/k8s-kms-plugin/cmd.CommitVersionIdLong={{ .Env.GOCOMMITLONG }}"
+#   - "-X github.com/ThalesGroup/k8s-kms-plugin/cmd/k8s-kms-plugin/cmd.CommitVersionIdShort={{ .Env.GOCOMMITSHORT }}"
+#   - "-X github.com/ThalesGroup/k8s-kms-plugin/cmd/k8s-kms-plugin/cmd.GoVersion={{ .Env.GOVERSION }}"
+#   - "-X github.com/ThalesGroup/k8s-kms-plugin/cmd/k8s-kms-plugin/cmd.BuildPlatform={{ .Env.GOPLATFORM }}"
+#   # - "-X github.com/ThalesGroup/k8s-kms-plugin/cmd/k8s-kms-plugin/cmd.BuildDate={{ .Env.GOCOMMITDATE }}"

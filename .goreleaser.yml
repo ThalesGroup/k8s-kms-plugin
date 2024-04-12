@@ -48,6 +48,7 @@ builds:
       - amd64
     ldflags:
       - "{{ .Env.LDFLAGS }}"
+     
 nfpms:
   - id: '{{ .ProjectName }}'
     package_name: '{{ .ProjectName }}'
@@ -156,8 +157,8 @@ signs:
 # Create a release 
 release:
   draft: true
-  replace_existing_draft: true
   make_latest: true
+  mode: append
   github:
     owner: "{{ .Env.GITHUB_REPOSITORY_OWNER }}"
     name: '{{ .ProjectName }}'
