@@ -17,26 +17,10 @@ gitlab_urls:
   download: "{{ .Env.CI_SERVER_URL }}"
   skip_tls_verify: true
   use_package_registry: true
-# Generate SBOM for all artifacts
-sboms:
-  - id: binary sbom
-    artifacts: binary
-    documents:
-      - "${artifact}.spdx.sbom"
-  - id: CycloneDX sbom
-    artifacts: binary
-    documents:
-      - "${artifact}.cyclonedx-json.sbom"
-    args: ["$artifact", "--output", "cyclonedx-json","--file","$document"]
-  - id: trivy sbom
-    artifacts: binary
-    cmd: trivy
-    documents:
-      - "${artifact}.cyclonedx-vex.sbom"
-    args: ["fs","--format","cyclonedx","--scanners","vuln","--output","$document","{{ .Env.WORKSPACE }}"]
+
 # Build the binary in differents architecture
 builds:
-  - id: linux
+  - id: k8s-kms-plugin
     binary: '{{ .ProjectName }}-linux-{{ .Arch }}_{{ .Version }}'
     no_unique_dist_dir: true
     main: ./cmd/{{ .ProjectName }}/main.go
@@ -48,7 +32,21 @@ builds:
       - amd64
     ldflags:
       - "{{ .Env.LDFLAGS }}"
-     
+kos:
+  - repository: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/{{ .ProjectName }}
+    tags:
+      - "{{.Tag}}"
+      - "{{ if not .Prerelease }}latest{{ end }}"
+    main: ./cmd/k8s-kms-plugin
+    bare: true
+    preserve_import_paths: false
+    sbom: cyclonedx
+    platforms:
+      - linux/amd64
+    flags:
+      - -trimpath
+    env:
+       - CGO_ENABLED=1 #Mandatory for crypto11 pkg
 nfpms:
   - id: '{{ .ProjectName }}'
     package_name: '{{ .ProjectName }}'
@@ -56,7 +54,7 @@ nfpms:
     license: "Apache License 2.0"
     maintainer: ThalesGroup
     builds:
-      - linux
+      - k8s-kms-plugin
     formats:
         - apk
         - deb
@@ -93,6 +91,24 @@ checksum:
 # Snapshot caracteristics
 snapshot:
   name_template: SNAPSHOT-{{ .ShortCommit }}
+
+#Generate SBOM for all artifacts
+sboms:
+  - id: binary sbom
+    artifacts: binary
+    documents:
+      - "${artifact}.spdx.sbom"
+  - id: CycloneDX sbom
+    artifacts: binary
+    documents:
+      - "${artifact}.cyclonedx-json.sbom"
+    args: ["$artifact", "--output", "cyclonedx-json","--file","$document"]
+  - id: trivy sbom
+    artifacts: binary
+    cmd: trivy
+    documents:
+      - "${artifact}.cyclonedx-vex.sbom"
+    args: ["fs","--format","cyclonedx","--scanners","vuln","--output","$document","{{ .Env.WORKSPACE }}"]
 
 # Sign the artifacts
 signs:
@@ -156,9 +172,9 @@ signs:
 
 # Create a release 
 release:
-  draft: true
+  # draft: true
   make_latest: true
-  mode: append
+  # mode: append
   github:
     owner: "{{ .Env.GITHUB_REPOSITORY_OWNER }}"
     name: '{{ .ProjectName }}'

@@ -61,3 +61,6 @@ deploy:
 release: 
 		
 		LDFLAGS=$(LDFLAGS) goreleaser release --clean 
+get-ldflags:
+ 	
+		@echo $(LDFLAGS)

@@ -10,87 +10,171 @@ on:
 
 
 jobs:
-  args:
-    runs-on: ubuntu-latest
-    outputs:
-      commit-short: ${{ steps.ldflags.outputs.commit-short }}
-      commit-long: ${{ steps.ldflags.outputs.commit-long }}
-      version: ${{ steps.ldflags.outputs.version }}
-      build-date: ${{ steps.ldflags.outputs.build-date }}
-      go-version: ${{ steps.ldflags.outputs.go-version }}
-      platform: ${{ steps.ldflags.outputs.paltform }}
-    steps:
-      - id: checkout
-        uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # tag=v2.3.4
-        with:
-          fetch-depth: 0
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: 1.21.6
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@v3.3.0
-      - id: ldflags
-        run: |
-          go install github.com/goreleaser/goreleaser@latest
-          go install github.com/ThalesGroup/crypto11
+
+    goreleaser:
+      runs-on: ubuntu-latest
+      env: 
+         WORKSPACE: ${{github.workspace}}
+      outputs:
+        hashes: ${{ steps.binary.outputs.hashes }}
+        image: ${{ steps.image.outputs.name }}
+        digest: ${{ steps.image.outputs.digest }}
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+          with:
+               fetch-depth: 0
+        - name: Set up Go
+          uses: actions/setup-go@v5
+        - name: 'Login to GitHub Container Registry'
+          uses: docker/login-action@v1
+          with:
+            registry: ghcr.io
+            username: ${{github.actor}}
+            password: ${{secrets.GITHUB_TOKEN}}
+        - name: Set up Ko
+          uses: ko-build/setup-ko@v0.6
+        - name: Install Cosign
+          uses: sigstore/cosign-installer@v3.3.0
+        - name: Get LDFLAGS
+          id: get_ldlflags
+          run : |
+           echo "ldflags= $(make get-ldflags)" >> "$GITHUB_OUTPUT"
+           
+           go install github.com/ThalesGroup/crypto11
+           curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+           curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.49.1
+        - name: Run GoReleaser
+          uses: goreleaser/goreleaser-action@v5
+          id: goreleaser 
+          with:
+            distribution: goreleaser 
+            version: latest
+            args: release 
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            LDFLAGS: ${{steps.get_ldlflags.outputs.ldflags}}
+        - name: Generate binary hashes
+          id: binary
+          env:
+            ARTIFACTS: "${{ steps.goreleaser.outputs.artifacts }}"
+          run: |
+              set -euo pipefail
+    
+              checksum_file=$(echo "$ARTIFACTS" | jq -r '.[] | select (.type=="Checksum") | .path')
+              echo "hashes=$(cat $checksum_file | base64 -w0)" >> "$GITHUB_OUTPUT"
+    
+        - name: Image digest
+          id: image
+          env:
+            ARTIFACTS: "${{ steps.goreleaser.outputs.artifacts }}"
+          run: |
+              set -euo pipefail
+              image_and_digest=$(echo "$ARTIFACTS" | jq -r '.[] | select (.type=="Docker Manifest") | .path')
+              image=$(echo "${image_and_digest}" | cut -d'@' -f1 | cut -d':' -f1)
+              digest=$(echo "${image_and_digest}" | cut -d'@' -f2)
+              echo "name=$image" >> "$GITHUB_OUTPUT"
+              echo "digest=$digest" >> "$GITHUB_OUTPUT"
+    binary-provenance:
+      needs: [goreleaser]
+      permissions:
+        actions: read # To read the workflow path.
+        id-token: write # To sign the provenance.
+        contents: write # To add assets to a release.
+      uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v1.10.0
+      with:
+        base64-subjects: "${{ needs.goreleaser.outputs.hashes }}"
+        upload-assets: true 
+      
+    image-provenance:
+      needs: [goreleaser]
+      permissions:
+        actions: read
+        id-token: write
+        packages: write
+      uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v1.10.0
+      with:
+        image: ${{ needs.goreleaser.outputs.image }}
+        digest: ${{ needs.goreleaser.outputs.digest }}
+        registry-username: ${{ github.actor }}
+      secrets:
+        registry-password: ${{ secrets.GITHUB_TOKEN }} 
+
+
+  # args:
+  #   runs-on: ubuntu-latest
+  #   outputs:
+  #     commit-short: ${{ steps.ldflags.outputs.commit-short }}
+  #     commit-long: ${{ steps.ldflags.outputs.commit-long }}
+  #     version: ${{ steps.ldflags.outputs.version }}
+  #     build-date: ${{ steps.ldflags.outputs.build-date }}
+  #     go-version: ${{ steps.ldflags.outputs.go-version }}
+  #     platform: ${{ steps.ldflags.outputs.paltform }}
+  #   steps:
+  #     - id: checkout
+  #       uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # tag=v2.3.4
+  #       with:
+  #         fetch-depth: 0
+  #     - name: Set up Go
+  #       uses: actions/setup-go@v5
+  #       with:
+  #         go-version: 1.21.6
+  #     - name: Install Cosign
+  #       uses: sigstore/cosign-installer@v3.3.0
+  #     - id: ldflags
+  #       run: |
+  #         go install github.com/goreleaser/goreleaser@latest
+  #         go install github.com/ThalesGroup/crypto11
           
-          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
-          curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.49.1
-          echo "commit-short=$(echo ${{github.sha}} | cut -c 1-8)" >> "$GITHUB_OUTPUT"
-          echo "commit-long=${{github.sha}}">> "$GITHUB_OUTPUT"
-          echo "go-version=$(go version)" >> "$GITHUB_OUTPUT"    
-          echo "platform=$(uname -oi)" >> "$GITHUB_OUTPUT"
-          echo "version=$(git describe --tags )" >> "$GITHUB_OUTPUT"
-          echo "build-date=$(date -Is)" >> "$GITHUB_OUTPUT"
+  #         curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+  #         curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.49.1
+  #         echo "commit-short=$(echo ${{github.sha}} | cut -c 1-8)" >> "$GITHUB_OUTPUT"
+  #         echo "commit-long=${{github.sha}}">> "$GITHUB_OUTPUT"
+  #         echo "go-version=$(go version)" >> "$GITHUB_OUTPUT"    
+  #         echo "platform=$(uname -oi)" >> "$GITHUB_OUTPUT"
+  #         echo "version=$(git describe --tags )" >> "$GITHUB_OUTPUT"
+  #         echo "build-date=$(date -Is)" >> "$GITHUB_OUTPUT"
 
-  # go mod tidy
-          # go mod download
-          # go mod vendor
-          # go env -w GO111MODULE=on
-  build:
-    permissions:
-      id-token: write # To sign the provenance.
-      contents: write # To upload assets to release.
-      actions: read # To read the workflow path.
-    needs: args
-    uses: slsa-framework/slsa-github-generator/.github/workflows/builder_go_slsa3.yml@v1.10.0
-    with:
-      go-version: 1.21.6
-      config-file: .slsa-goreleaser.yml
-      # Optional: only needed if using ldflags.
-      evaluated-envs: "GOCOMMITLONG:${{needs.args.outputs.commit-long}}, GOCOMMITSHORT:${{needs.args.outputs.commit-short}}, CGOVERSION:${{needs.args.outputs.version}}, GOPLATFORM:${{needs.args.outputs.platform}}, GOVERSION:${{needs.args.outputs.go-version}}"
-      draft-release: true 
-  goreleaser-build:
-    runs-on: ubuntu-latest
-    env: 
-      WORKSPACE: ${{github.workspace}}
-    needs: build
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: 1.21.6
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@v3.3.0
-      - name: Run GoReleaser
-        run: |
-         go install github.com/goreleaser/goreleaser@latest
-         go install github.com/ThalesGroup/crypto11
-         curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
-         curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.49.1
-         make release
-        env:
-            GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"  
+  # build:
+  #   permissions:
+  #     id-token: write # To sign the provenance.
+  #     contents: write # To upload assets to release.
+  #     actions: read # To read the workflow path.
+  #   needs: args
+  #   uses: slsa-framework/slsa-github-generator/.github/workflows/builder_go_slsa3.yml@v1.10.0
+  #   with:
+  #     go-version: 1.21.6
+  #     config-file: .slsa-goreleaser.yml
+  #     # Optional: only needed if using ldflags.
+  #     evaluated-envs: "GOCOMMITLONG:${{needs.args.outputs.commit-long}}, GOCOMMITSHORT:${{needs.args.outputs.commit-short}}, CGOVERSION:${{needs.args.outputs.version}}, GOPLATFORM:${{needs.args.outputs.platform}}, GOVERSION:${{needs.args.outputs.go-version}}"
+  #     draft-release: true 
+  # goreleaser-build:
+  #   runs-on: ubuntu-latest
+  #   env: 
+  #     WORKSPACE: ${{github.workspace}}
+  #   needs: build
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
+  #     - name: Set up Go
+  #       uses: actions/setup-go@v5
+  #       with:
+  #         go-version: 1.21.6
+  #     - name: Install Cosign
+  #       uses: sigstore/cosign-installer@v3.3.0
+  #     - name: Run GoReleaser
+  #       run: |
+  #        go install github.com/goreleaser/goreleaser@latest
+  #        go install github.com/ThalesGroup/crypto11
+  #        curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+  #        curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.49.1
+  #        make release
+  #       env:
+  #           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"  
 
-            # go install github.com/goreleaser/goreleaser@latest
-            # go install github.com/ThalesGroup/crypto11
-            # curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
-            # curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.49.1
+
   # , GOCOMMITDATE:${{needs.args.outputs.build-date}}
   # ko-build-release:
   #   runs-on: ubuntu-latest
