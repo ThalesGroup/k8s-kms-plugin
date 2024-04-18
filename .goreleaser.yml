@@ -11,14 +11,14 @@ before:
     - go mod tidy
     - go mod download
 
-
+# Define GITLAB parameters o publish release on gitlab
 gitlab_urls:
   api: "{{ .Env.CI_API_V4_URL }}"
   download: "{{ .Env.CI_SERVER_URL }}"
   skip_tls_verify: true
   use_package_registry: true
 
-# Build the binary in differents architecture
+# Build the binary for different architectures
 builds:
   - id: k8s-kms-plugin
     binary: '{{ .ProjectName }}-linux-{{ .Arch }}_{{ .Version }}'
@@ -32,6 +32,9 @@ builds:
       - amd64
     ldflags:
       - "{{ .Env.LDFLAGS }}"
+
+# Use ko-build to publish container image to a specific registry
+# It is possible to define platforms
 kos:
   - repository: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/{{ .ProjectName }}
     tags:
@@ -46,7 +49,9 @@ kos:
     flags:
       - -trimpath
     env:
-       - CGO_ENABLED=1 #Mandatory for crypto11 pkg
+       - CGO_ENABLED=1 # Mandatory for crypto11 pkg or go libraries using C compilator
+
+# Generate different type of packages from binary(ies) generated in build section: apk, deb, rpm 
 nfpms:
   - id: '{{ .ProjectName }}'
     package_name: '{{ .ProjectName }}'
@@ -54,7 +59,7 @@ nfpms:
     license: "Apache License 2.0"
     maintainer: ThalesGroup
     builds:
-      - k8s-kms-plugin
+      - k8s-kms-plugin # need to use the same id that the build id 
     formats:
         - apk
         - deb
@@ -66,6 +71,7 @@ nfpms:
 
 
 # Define caracteristics of binary artifacts
+# Generate zip and tar archives from binary(ies) generated in the build section
 archives:
   - id: binary
     format: binary
@@ -92,7 +98,11 @@ checksum:
 snapshot:
   name_template: SNAPSHOT-{{ .ShortCommit }}
 
-#Generate SBOM for all artifacts
+# Generate SBOM for all artifacts
+# SPDX generate with syft (default scanner)
+# CycloneDX generate with trivy
+# CycloneDX "Vex" contains also informations on vulnerabilities
+# It is possible to change the scanner and the command
 sboms:
   - id: binary sbom
     artifacts: binary
@@ -111,6 +121,7 @@ sboms:
     args: ["fs","--format","cyclonedx","--scanners","vuln","--output","$document","{{ .Env.WORKSPACE }}"]
 
 # Sign the artifacts
+# Use the command cosign in keyless mode to sign the different kind of artifacts: binary, checksum, package, sbom
 signs:
   - id : '{{ .ProjectName }}-keyless'
     cmd: cosign
@@ -172,9 +183,8 @@ signs:
 
 # Create a release 
 release:
-  # draft: true
+  # draft: true # Used to publish a draft on github
   make_latest: true
-  # mode: append
   github:
     owner: "{{ .Env.GITHUB_REPOSITORY_OWNER }}"
     name: '{{ .ProjectName }}'
