@@ -42,7 +42,7 @@ jobs:
           uses: ko-build/setup-ko@v0.6
         # Install cosign to sign artfacts with goreleaser 
         - name: Install Cosign
-          uses: sigstore/cosign-installer@v3.3.0
+          uses: sigstore/cosign-installer@v3.5.0
         # Get LDFLAGS with a makefile command
         - name: Get LDFLAGS
           id: get_ldlflags # need to define id to pass the variable to other steps
@@ -91,6 +91,14 @@ jobs:
               digest=$(echo "${image_and_digest}" | cut -d'@' -f2)
               echo "name=$image" >> "$GITHUB_OUTPUT"
               echo "digest=$digest" >> "$GITHUB_OUTPUT"
+        # Sign image with cosign sign command
+        - name: Generate Image Signature
+          env:
+            #COSIGN_REPOSITORY: ghcr.io/${{github.owner}}/signatures # need to use this variable for having a dfiferent signature repository 
+            IMAGE: ${{ steps.image.outputs.name }}@${{ steps.image.outputs.digest }}
+          run : |
+            cosign sign --yes \
+            ${{ env.IMAGE }}
     # Job generating provenance for blobs artifacts requiring checksum hash in base64 format
     # upload-assets is set to true to add in-toto attestation to the release
     binary-provenance:
