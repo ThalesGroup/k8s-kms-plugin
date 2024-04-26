@@ -4,7 +4,7 @@ variables:
 
 stages:
   - release
-# Maybe syft is not installed, so it'll need to add another job or action in teh script section to install syft on the runner 
+# Maybe syft is not installed, so it'll need to add another job or action in the script section to install syft on the runner 
 # https://goreleaser.com/ci/gitlab/#basic-releasing
 release:
   stage: release

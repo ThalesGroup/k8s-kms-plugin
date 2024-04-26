@@ -15,90 +15,26 @@ jobs:
       env: 
          WORKSPACE: ${{github.workspace}}
       # Define job outputs from steps outputs
-      # It is 
+      # It is
       outputs:
-        hashes: ${{ steps.binary.outputs.hashes }}
-        image: ${{ steps.image.outputs.name }}
-        digest: ${{ steps.image.outputs.digest }}
+        hashes: ${{ steps.publish-artifacts.outputs.hashes }}
+        image: ${{ steps.publish-artifacts.outputs.name }}
+        digest: ${{ steps.publish-artifacts.outputs.digest }}
       steps:
         - name: Checkout
           uses: actions/checkout@v4
           with:
-               fetch-depth: 0
-        # Install go with specific version
-        - name: Set up Go
-          uses: actions/setup-go@v5
+                fetch-depth: 0      
+        - name: Publish Artifacts
+          id : publish-artifacts
+          uses: ./.github/actions/publish-release
           with:
-            go-version: 1.21.6 # same version than the one in the go.mod or in the .go-version 
-        # Register to ghcr.io container Registry
-        - name: 'Login to GitHub Container Registry'
-          uses: docker/login-action@v1
-          with:
+            go-version: 1.21.6
+            github_token : ${{ secrets.GITHUB_TOKEN }}
             registry: ghcr.io
-            username: ${{github.actor}}
-            password: ${{secrets.GITHUB_TOKEN}}
-        # Install ko to publish container images
-        - name: Set up Ko
-          uses: ko-build/setup-ko@v0.6
-        # Install cosign to sign artfacts with goreleaser 
-        - name: Install Cosign
-          uses: sigstore/cosign-installer@v3.5.0
-        # Get LDFLAGS with a makefile command
-        - name: Get LDFLAGS
-          id: get_ldlflags # need to define id to pass the variable to other steps
-          run : |
-           echo "ldflags= $(make get-ldflags)" >> "$GITHUB_OUTPUT"
-        # Install other dependencies like scanners and go librairies
-        - name : Install dependencies
-          run : |
-            go install github.com/ThalesGroup/crypto11
-            curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
-            curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.49.1
-        # Run command goreleaser release based on .goreleaser.yml
-        # LDFLAGS are passed thanks to the steps.job_id.outputs.variable_name variable
-        - name: Run GoReleaser
-          uses: goreleaser/goreleaser-action@v5
-          id: goreleaser 
-          with:
-            distribution: goreleaser 
-            version: latest
-            args: release 
-          env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-            LDFLAGS: ${{steps.get_ldlflags.outputs.ldflags}}
-        # Get artifacts from goreleaser's step outputs to generate cheksums file abse64 hashes
-        # Provenance generator action needs to have a base64 hash for generating blobs provenance
-        # The hash is passed as an output of goreleaser job
-        - name: Generate binary hashes
-          id: binary
-          env:
-            ARTIFACTS: "${{ steps.goreleaser.outputs.artifacts }}"
-          run: |
-              set -euo pipefail
-    
-              checksum_file=$(echo "$ARTIFACTS" | jq -r '.[] | select (.type=="Checksum") | .path')
-              echo "hashes=$(cat $checksum_file | base64 -w0)" >> "$GITHUB_OUTPUT"
-        # Get artifacts from the goreleaser's step outputs to retrieve Docker Manifest containing the image and its digest
-        # Image Provenance generator action needs to have the image name and a digest for generating provenance and publish it to the container registry
-        - name: Image digest
-          id: image
-          env:
-            ARTIFACTS: "${{ steps.goreleaser.outputs.artifacts }}"
-          run: |
-              set -euo pipefail
-              image_and_digest=$(echo "$ARTIFACTS" | jq -r '.[] | select (.type=="Docker Manifest") | .path')
-              image=$(echo "${image_and_digest}" | cut -d'@' -f1 | cut -d':' -f1)
-              digest=$(echo "${image_and_digest}" | cut -d'@' -f2)
-              echo "name=$image" >> "$GITHUB_OUTPUT"
-              echo "digest=$digest" >> "$GITHUB_OUTPUT"
-        # Sign image with cosign sign command
-        - name: Generate Image Signature
-          env:
-            #COSIGN_REPOSITORY: ghcr.io/${{github.owner}}/signatures # need to use this variable for having a dfiferent signature repository 
-            IMAGE: ${{ steps.image.outputs.name }}@${{ steps.image.outputs.digest }}
-          run : |
-            cosign sign --yes \
-            ${{ env.IMAGE }}
+            registry_username: ${{ github.actor }}
+            registry_password: ${{ secrets.GITHUB_TOKEN }}
+          
     # Job generating provenance for blobs artifacts requiring checksum hash in base64 format
     # upload-assets is set to true to add in-toto attestation to the release
     binary-provenance:
