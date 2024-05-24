@@ -60,9 +60,9 @@ coordination with k8s provisioning tools.
 ## Development Environment
 
 `k8s` houses some sample client and server deployments for e2e testing until such time as this plugin is 100% network functional,
- and we can move it to a CICD pattern, as we'll have many actors to coordinate. 
+ and we can move it to a CICD pattern, as we'll have many actors to coordinate.
 
-All apis are defined in the `/apis` dir, and as we iterate on the spec docs, one must then run `make gen` and refactor 
+All apis are defined in the `/apis` dir, and as we iterate on the spec docs, one must then run `make gen` and refactor
 until the 2 stacks come up
 
 Both EST and KMS-Plugin binaries are in the `/cmd` dir
@@ -129,4 +129,17 @@ Or using Podman without installing cosign :
 
 ```bash
 podman run --rm -it gcr.io/projectsigstore/cosign:v1.13.0 COSIGN_EXPERIMENTAL=1 cosign verify-blob --cert [file]-keyless.pem --signature [file]-keyless.sig --certificate-oidc-issuer "https://github.com/login/oauth" --certificate-identity [ Mail adress of the owner of the repo ] [file]
+```
+
+## Verifying the SLSA attestation of a container
+
+The image's attestation of provenance has been issued by a specific oidc-issuer that is 'https://token.actions.githubusercontent.com' in this repository.
+In the next command example, it is required to replace digest by the digest of the image that needs to be verified and the owner of the repo.
+
+```bash
+cosign verify-attestation --type slsaprovenance \
+      --certificate-identity-regexp="https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@refs/tags/*" \
+      --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
+      ghcr.io/OWNER/k8s-kms-plugin@digest | jq .payload -r | base64 --decode | jq
+
 ```
