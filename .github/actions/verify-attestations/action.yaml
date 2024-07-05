@@ -1,0 +1,43 @@
+name: Verify SLSA attestations
+
+description: Use slsa-verifier to verify provenance attestations 
+
+inputs:
+  go-version:
+    required: true
+    description: go version to install on the runner
+  github_token: 
+    required : true
+    description: github token used for the release
+  image:
+    required: true
+    description: Image to verify.
+  tag: 
+    required : false
+    description : Version of the software. 
+
+
+runs: 
+  using: composite
+  steps:
+    # Install go with specific version
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ inputs.go-version }} # same version than the one in the go.mod or in the .go-version
+
+    # Install other dependencies like scanners and go librairies
+    - shell: bash 
+      name : Install dependencies
+      run : |
+        go install github.com/slsa-framework/slsa-verifier/v2/cli/slsa-verifier@v2.5.1
+    # ghcr.io/ianlewis/actions-test:v0.0.86@sha256:70205a915e3288e71b48e794e4789bf28ae4c0660c4ce340f2c48ed356b68d35
+    - shell: bash 
+      name: verify image provenance
+      id: image-provenance
+        
+      run: |
+          slsa-verifier verify-image ${{ inputs.image }} \
+          --source-uri  github.com/${{github.repository}} \
+          --builder-id https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@refs/tags/v1.10.0
+  
