@@ -1,5 +1,5 @@
 /*
- * // Copyright 2020 Thales DIS CPL Inc
+ * // Copyright 2024 Thales Group 2020 Thales DIS CPL Inc
  * //
  * // Permission is hereby granted, free of charge, to any person obtaining
  * // a copy of this software and associated documentation files (the
@@ -23,7 +23,7 @@
 
 package main
 
-import "github.com/thalescpl-io/k8s-kms-plugin/cmd/k8s-kms-plugin/cmd"
+import "github.com/ThalesGroup/k8s-kms-plugin/cmd/k8s-kms-plugin/cmd"
 
 func main() {
 	cmd.Execute()

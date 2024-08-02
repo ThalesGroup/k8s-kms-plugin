@@ -1,5 +1,5 @@
 /*
- * // Copyright 2020 Thales DIS CPL Inc
+ * // Copyright 2024 Thales Group 2020 Thales DIS CPL Inc
  * //
  * // Permission is hereby granted, free of charge, to any person obtaining
  * // a copy of this software and associated documentation files (the
@@ -23,9 +23,15 @@
 
 package cmd
 
+// TODO replace github imports for :
+//   - gose
+//   - crypto11
 import (
 	"errors"
 	"fmt"
+	"github.com/ThalesGroup/crypto11"
+	"github.com/ThalesGroup/gose"
+	"github.com/ThalesGroup/gose/jose"
 	"io/ioutil"
 	"net"
 	"os"
@@ -35,13 +41,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
-	k8s "github.com/thalescpl-io/k8s-kms-plugin/apis/k8s/v1beta1"
+	istio "github.com/ThalesGroup/k8s-kms-plugin/apis/istio/v1"
+	k8s "github.com/ThalesGroup/k8s-kms-plugin/apis/k8s/v1beta1"
 
-	"github.com/ThalesIgnite/crypto11"
+	"github.com/ThalesGroup/k8s-kms-plugin/pkg/providers"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/thalescpl-io/k8s-kms-plugin/pkg/providers"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -55,6 +60,7 @@ var (
 	kekKeyId          string
 	caId              string
 	defaultDekKeyName string
+	hmacKeyName       string
 	p11lib            string
 	p11slot           int
 	p11label          string
@@ -64,7 +70,30 @@ var (
 	nativePath        string
 	enableTCP         bool
 	disableSocket     bool
+	algorithm         string
 )
+
+// Algorithm supports user input for configuration
+type Algorithm struct {
+	slug string
+}
+
+var (
+	UNKNOWNALG = Algorithm{""}
+	AESGCM     = Algorithm{"aes-gcm"}
+	AESCBC     = Algorithm{"aes-cbc"}
+)
+
+func algFromString(s string) (jose.Alg, error) {
+	switch s {
+	case AESGCM.slug:
+		return jose.AlgA256GCM, nil
+	case AESCBC.slug:
+		return jose.AlgA256CBC, nil
+	default:
+		return "", gose.ErrInvalidAlgorithm
+	}
+}
 
 // serveCmd represents the serve command
 var serveCmd = &cobra.Command{
@@ -162,26 +191,29 @@ func init() {
 	serveCmd.Flags().StringVar(&serverTLSCert, "tls-certificate", "certs/tls.crt", "TLS server cert")
 
 	serveCmd.Flags().BoolVar(&allowAny, "allow-any", false, "Allow any device (accepts all ids/secrets)")
+
+	serveCmd.Flags().StringVar(&algorithm, "algorithm", "aes-gcm", "Set the algorithm for encryption/decryption (accepts: aes-gcm, aes-cbc)")
 }
 
 func initProvider() (p providers.Provider, err error) {
+	// init the algorithm to use in the kms from user input
+	alg, err := algFromString(algorithm)
+	if err != nil {
+		return
+	}
+
+	// init the provider config from user input
+	config := &crypto11.Config{}
 	switch provider {
 	case "p11", "softhsm":
-		config := &crypto11.Config{
+		config = &crypto11.Config{
 			Path:            p11lib,
 			Pin:             p11pin,
 			UseGCMIVFromHSM: false,
 		}
-		if p11label != "" {
-			config.TokenLabel = p11label
-		} else {
-			config.SlotNumber = &p11slot
-		}
-		if p, err = providers.NewP11(config, createKey, defaultDekKeyName); err != nil {
-			return
-		}
+
 	case "luna", "dpod":
-		config := &crypto11.Config{
+		config = &crypto11.Config{
 			Path:            p11lib,
 			Pin:             p11pin,
 			UseGCMIVFromHSM: true,
@@ -190,16 +222,18 @@ func initProvider() (p providers.Provider, err error) {
 				SupplyIvForHSMGCMDecrypt: true,
 			},
 		}
-		if p11label != "" {
-			config.TokenLabel = p11label
-		} else {
-			config.SlotNumber = &p11slot
-		}
-		if p, err = providers.NewP11(config, createKey, defaultDekKeyName); err != nil {
-			return
-		}
 	default:
 		err = errors.New("unknown provider")
+		return
+	}
+
+	if p11label != "" {
+		config.TokenLabel = p11label
+	} else {
+		config.SlotNumber = &p11slot
+	}
+	// init the provider
+	if p, err = providers.NewP11(config, createKey, defaultDekKeyName, hmacKeyName, alg); err != nil {
 		return
 	}
 	return

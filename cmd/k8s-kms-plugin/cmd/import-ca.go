@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,8 +22,8 @@ import (
 	"path/filepath"
 	"time"
 
+	istio "github.com/ThalesGroup/k8s-kms-plugin/apis/istio/v1"
 	"github.com/spf13/cobra"
-	"github.com/thalescpl-io/k8s-kms-plugin/apis/istio/v1"
 )
 
 var caCertPem []byte
@@ -47,7 +47,7 @@ var importCaCmd = &cobra.Command{
 			return
 		}
 		req := &istio.ImportCACertRequest{
-			CaId:     []byte(caId),
+			CaId:       []byte(caId),
 			CaCertBlob: caCertPem,
 		}
 		if _, err = ic.ImportCACert(ictx, req); err != nil {

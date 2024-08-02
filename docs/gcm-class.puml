@@ -1,0 +1,106 @@
+@startuml
+
+package k8s-kms-plugin {
+interface Service
+Service : \*EncryptResponse Encrypt(Context, *EncryptRequest)
+Service : \*DecryptResponse Decrypt(Context, *DecryptRequest)
+
+struct P11
+P11 : []byte kid
+P11 : []byte cid
+P11 : \*crypto11.Config config
+P11 : \*crypto11.Context ctx
+P11 : map[string]gose.JweEncryptor encryptors
+P11 : map[string]gose.JweDecryptor decryptors
+P11 : bool createKey
+P11 : string k8sDefaultDekLabel
+P11 : string k8sHmacKeyLabel
+P11 : jose.Alg algorithm
+P11 : \*EncryptResponse Encrypt(Context, *EncryptRequest)
+P11 : \*DecryptResponse Decrypt(Context, *DecryptRequest)
+
+note right of P11::algorithm
+define which type of encryptor (cbc, gcm) will be called
+end note
+
+Service <|-- P11
+}
+
+package crypto11 {
+
+package "built-in crypto.cipher" {
+
+interface AEAD
+AEAD :  []byte Seal(dst, nonce, plaintext, additionalData []byte)
+AEAD :  []byte 	Open(dst, nonce, ciphertext, additionalData []byte)
+}
+
+struct GenericAead
+GenericAead : \*SecretKey key
+GenericAead : int overhead
+GenericAead : int nonceSize
+GenericAead : func() makeMech
+GenericAead : AEAD NewGCM()
+GenericAead : []byte Seal(dst, nonce, plaintext, additionalData []byte)
+GenericAead : []byte Open(dst, nonce, ciphertext, additionalData []byte)
+
+AEAD <|-- GenericAead
+}
+
+package gose {
+
+interface AeadEncryptionKey
+AeadEncryptionKey : (ciphertext, tag []byte) Seal(operation jose.KeyOps, nonce, plaintext, aad []byte)
+AeadEncryptionKey : []byte Open(operation jose.KeyOps, nonce, ciphertext, aad, tag []byte)
+
+interface JweEncryptor
+JweEncryptor : string Encrypt(plaintext, aad []byte)
+
+interface JweDecryptor
+JweDecryptor : (plaintext, aad []byte) Decrypt(jwe string)
+
+struct AesGcmCryptor
+AesGcmCryptor : string kid
+AesGcmCryptor : alg  jose.Alg
+AesGcmCryptor : aead cipher.AEAD
+AesGcmCryptor : []jose.KeyOps opts
+AesGcmCryptor : io.Reader rng
+AesGcmCryptor : AeadEncryptionKey NewAesGcmCryptor(aead cipher.AEAD, rng io.Reader, kid string, alg jose.Alg, operations []jose.KeyOps)
+AesGcmCryptor : (ciphertext, tag []byte) Seal(operation jose.KeyOps, nonce, plaintext, aad []byte)
+AesGcmCryptor : []byte Open(operation jose.KeyOps, nonce, ciphertext, aad, tag []byte)
+
+struct JweDirectEncryptorAead
+JweDirectEncryptorAead : AeadEncryptionKey key
+JweDirectEncryptorAead : bool externalIV
+JweDirectEncryptorAead : \*JweDirectEncryptorAead NewJweDirectEncryptorAead(key AeadEncryptionKey, externalIV bool)
+JweDirectEncryptorAead : (string, error) Encrypt(plaintext, aad []byte)
+
+struct JweDirectDecryptorAeadImpl
+JweDirectDecryptorAeadImpl : map[string]AeadEncryptionKey keystore
+JweDirectDecryptorAeadImpl : \*JweDirectDecryptorAeadImpl NewJweDirectDecryptorAeadImpl(keys []AeadEncryptionKey)
+JweDirectDecryptorAeadImpl : (plaintext, aad []byte, err error) Decrypt(marshalledJwe string)
+
+AeadEncryptionKey <|-- AesGcmCryptor
+JweEncryptor <|-- JweDirectEncryptorAead
+JweDecryptor <|-- JweDirectDecryptorAeadImpl
+
+note "AesGcmCryptor wraps a AEAD" as N1
+AesGcmCryptor .. N1
+N1 .. AEAD
+
+note "JweDirectEncryptorAead wraps a AeadEncryptionKey" as N2
+JweDirectEncryptorAead .. N2
+N2 .. AeadEncryptionKey
+
+note "JweDirectDecryptorAeadImpl wraps a AeadEncryptionKey" as N3
+JweDirectDecryptorAeadImpl .. N3
+N3 .. AeadEncryptionKey
+
+}
+
+note "If the algorithm is GCM, P11 calls Encrypt() and Decrypt()\nfrom the JWE direct encryptors for AEAD ciphers" as N4
+gose <.. N4
+N4 .. P11
+
+
+@enduml

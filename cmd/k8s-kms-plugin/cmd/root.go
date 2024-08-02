@@ -1,5 +1,5 @@
 /*
- * // Copyright 2020 Thales DIS CPL Inc
+ * // Copyright 2024 Thales Group 2020 Thales DIS CPL Inc
  * //
  * // Permission is hereby granted, free of charge, to any person obtaining
  * // a copy of this software and associated documentation files (the
@@ -106,11 +106,9 @@ func init() {
 	rootCmd.PersistentFlags().IntVar(&p11slot, "p11-slot", 0, "P11 token slot")
 	rootCmd.PersistentFlags().StringVar(&p11pin, "p11-pin", "", "P11 Pin")
 	rootCmd.PersistentFlags().StringVar(&defaultDekKeyName, "p11-key-label", "k8s-dek", "Key Label to use for encrypt/decrypt")
+	rootCmd.PersistentFlags().StringVar(&hmacKeyName, "p11-hmac-label", "k8s-hmac", "Key Label to use for sha based verifications")
 	rootCmd.PersistentFlags().StringVarP(&nativePath, "native-path", "p", ".keys", "Path to key store for native provider(Files only)")
-	rootCmd.PersistentFlags().BoolVar(&createKey, "auto-create", true, "Auto create the keys if needed")
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rootCmd.PersistentFlags().BoolVar(&createKey, "auto-create", false, "Auto create the keys if needed")
 }
 
 // initConfig reads in config file and ENV variables if set.
