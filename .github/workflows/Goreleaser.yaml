@@ -61,3 +61,24 @@ jobs:
         registry-username: ${{ github.actor }}
       secrets:
         registry-password: ${{ secrets.GITHUB_TOKEN }} 
+    verify-provenance:
+      needs: [goreleaser, binary-provenance,image-provenance]
+      runs-on: ubuntu-latest
+      env: 
+         WORKSPACE: ${{github.workspace}}
+      permissions:
+        actions: read
+        id-token: write
+        packages: write
+      steps:
+          - name: Checkout
+            uses: actions/checkout@v4
+            with:
+                  fetch-depth: 0      
+          - name: Verify provenance attestations
+            id : slsa-verifier
+            uses: ./.github/actions/verify-attestations
+            with:
+              go-version: 1.21.6
+              github_token : ${{ secrets.GITHUB_TOKEN }}
+              image: ${{needs.goreleaser.outputs.image}}@${{needs.goreleaser.outputs.digest}} 
