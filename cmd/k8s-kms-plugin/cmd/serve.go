@@ -29,9 +29,6 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"github.com/ThalesGroup/crypto11"
-	"github.com/ThalesGroup/gose"
-	"github.com/ThalesGroup/gose/jose"
 	"io/ioutil"
 	"net"
 	"os"
@@ -40,6 +37,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/ThalesGroup/crypto11"
+	"github.com/ThalesGroup/gose"
+	"github.com/ThalesGroup/gose/jose"
 
 	istio "github.com/ThalesGroup/k8s-kms-plugin/apis/istio/v1"
 	k8s "github.com/ThalesGroup/k8s-kms-plugin/apis/k8s/v1beta1"
@@ -82,6 +83,7 @@ var (
 	UNKNOWNALG = Algorithm{""}
 	AESGCM     = Algorithm{"aes-gcm"}
 	AESCBC     = Algorithm{"aes-cbc"}
+	RSAOAEP    = Algorithm{"rsa-oaep"}
 )
 
 func algFromString(s string) (jose.Alg, error) {
@@ -90,6 +92,8 @@ func algFromString(s string) (jose.Alg, error) {
 		return jose.AlgA256GCM, nil
 	case AESCBC.slug:
 		return jose.AlgA256CBC, nil
+	case RSAOAEP.slug:
+		return jose.AlgRSAOAEP, nil
 	default:
 		return "", gose.ErrInvalidAlgorithm
 	}
@@ -134,8 +138,8 @@ var serveCmd = &cobra.Command{
 
 		p, err = initProvider()
 		if err != nil && providers.IsPKCS11AuthenticationError(err) {
-			logrus.Errorf("got pkcs11 error: %v, further retries may cause the token to be erased.")
-			logrus.Errorf("sleeping forever.....")
+			logrus.WithError(err).Error("PKCS11 authentication error detected. Further retries may cause the token to be erased.")
+			logrus.Warn("Process will now sleep indefinitely to prevent further damage...")
 			time.Sleep(8760 * time.Hour)
 		}
 

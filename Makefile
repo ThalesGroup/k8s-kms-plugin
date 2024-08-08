@@ -1,11 +1,32 @@
-.PHONY: all lint build coverage dev  gen
+# Copyright 2024 Thales
+.PHONY: all lint build coverage dev gen
 
 all: build
 
-SECRETNAME=gcr-json-key
+# Project name
+PROJECT_NAME := k8s-kms-plugin
+GO_MODULE_NAME := "github.com/ThalesGroup/$(PROJECT_NAME)"
+
+# Useful variables for build metadata
+VERSION ?= $(shell git describe --tags --always)
+COMMIT_LONG ?= $(shell git rev-parse HEAD)
+COMMIT_SHORT ?= $(shell git rev-parse --short=8 HEAD)
+COMMIT_TIMESTAMP := $(shell git show -s --format=%cI HEAD)
+GO_VERSION ?= $(shell go version)
+BUILD_PLATFORM  ?= $(shell uname -m)
+BUILD_DATE ?= $(shell date -u --iso-8601=seconds)
+LDFLAGS = "-X '$(GO_MODULE_NAME)/pkg/version.RawGitDescribe=$(VERSION)' -X '$(GO_MODULE_NAME)/pkg/version.GitCommitIdLong=$(COMMIT_LONG)' -X '$(GO_MODULE_NAME)/pkg/version.GitCommitIdShort=$(COMMIT_SHORT)' -X '$(GO_MODULE_NAME)/pkg/version.GoVersion=$(GO_VERSION)' -X '$(GO_MODULE_NAME)/pkg/version.BuildPlatform=$(BUILD_PLATFORM)' -X '$(GO_MODULE_NAME)/pkg/version.BuildDate=$(BUILD_DATE)' -X '$(GO_MODULE_NAME)/pkg/version.GitCommitTimestamp=$(COMMIT_TIMESTAMP)'"
+GO_LDFLAGS = -ldflags=$(LDFLAGS)
+BINARY_NAME = $(PROJECT_NAME)
+
+# For dev
+SECRET_NAME=gcr-json-key
 P11_TOKEN=ajak
 P11_PIN=password
 ## Pipeline
+
+# Go parameters
+CGO_ENABLED := "1"
 
 lint:
 		@golangci-lint run
@@ -26,7 +47,7 @@ gen-openapi:
 		@swagger generate client --quiet --existing-models=pkg/est/models -c pkg/est/client -f apis/kms/v1/est.yaml
 build:
 		@go version
-		@go build -o k8s-kms-plugin cmd/k8s-kms-plugin/main.go
+		@go build $(GO_LDFLAGS) -o k8s-kms-plugin cmd/k8s-kms-plugin/main.go
 build-debug:
 		@go version
 		@go build -gcflags="all=-N -l" -o k8s-kms-plugin cmd/k8s-kms-plugin/main.go
@@ -54,3 +75,10 @@ p11tool-delete:
 
 deploy:
 		@gcloud endpoints services deploy --format json "./apis/api-service.yaml" "./apis/istio/v1/v1.pb"  > "./deployed.json"
+
+release: 
+		@echo "Makefile: Running goreleaser release --clean fro project $(PROJECT_NAME)"
+		LDFLAGS=$(LDFLAGS) goreleaser release --clean --skip sign,validate,ko
+get-ldflags:
+ 	
+		@echo $(LDFLAGS)
