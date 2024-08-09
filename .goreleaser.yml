@@ -1,0 +1,199 @@
+project_name: k8s-kms-plugin
+
+env:
+  - GO111MODULE=on
+  - CGO_ENABLED=1
+  - LATEST_TAG=,latest
+
+# Prevents parallel builds from stepping on each others toes downloading modules
+before:
+  hooks:
+    - go mod tidy
+    - go mod download
+
+# Define GITLAB parameters o publish release on gitlab
+gitlab_urls:
+  api: "{{ .Env.CI_API_V4_URL }}"
+  download: "{{ .Env.CI_SERVER_URL }}"
+  skip_tls_verify: true
+  use_package_registry: true
+
+# Build the binary for different architectures
+builds:
+  - id: k8s-kms-plugin
+    binary: '{{ .ProjectName }}-linux-{{ .Arch }}_{{ .Version }}'
+    no_unique_dist_dir: true
+    main: ./cmd/{{ .ProjectName }}/main.go
+    
+    mod_timestamp: '{{ .CommitTimestamp }}'
+    goos:
+      - linux
+    goarch:
+      - amd64
+    ldflags:
+      - "{{ .Env.LDFLAGS }}"
+
+# Use ko-build to publish container image to a specific registry
+# It is possible to define platforms
+kos:
+  - repository: ghcr.io/{{ .Env.GITHUB_REPOSITORY }}
+    tags:
+      - "{{.Tag}}"
+      - "{{ if not .Prerelease }}latest{{ end }}"
+    main: ./cmd/k8s-kms-plugin
+    base_image: "cgr.dev/chainguard/glibc-dynamic:latest"
+    bare: true
+    preserve_import_paths: false
+    sbom: cyclonedx
+    platforms:
+      - linux/amd64
+    flags:
+      - -trimpath
+    ldflags:
+      - "{{ .Env.LDFLAGS }}"
+    env:
+       - CGO_ENABLED=1 # Mandatory for crypto11 pkg or go libraries using C compilator
+
+# Generate different type of packages from binary(ies) generated in build section: apk, deb, rpm 
+nfpms:
+  - id: '{{ .ProjectName }}'
+    package_name: '{{ .ProjectName }}'
+    file_name_template:  "{{ .ConventionalFileName }}"
+    license: "Apache License 2.0"
+    maintainer: ThalesGroup
+    builds:
+      - k8s-kms-plugin # need to use the same id that the build id 
+    formats:
+        - apk
+        - deb
+        - rpm
+    contents:
+        - src: /usr/bin/{{ .ProjectName }}-linux-{{ .Arch }}_{{ .Version }}
+          dst: /usr/bin/{{ .ProjectName }}
+          type: "symlink"
+
+
+# Define caracteristics of binary artifacts
+# Generate zip and tar archives from binary(ies) generated in the build section
+archives:
+  - id: binary
+    format: binary
+    name_template: "{{ .Binary }}" 
+    allow_different_binary_count: true
+  - id: zip
+    format: zip
+    name_template: "{{ .Binary }}" 
+    allow_different_binary_count: true
+  - id: tar
+    format: tar.gz
+    name_template: "{{ .Binary }}" 
+    allow_different_binary_count: true
+# create metadata file
+metadata:
+  
+  mod_timestamp: "{{ .CommitTimestamp }}"
+
+
+# Checksum caracteristics
+checksum:
+  name_template: "{{ .ProjectName }}_checksums.txt"
+# Snapshot caracteristics
+snapshot:
+  name_template: SNAPSHOT-{{ .ShortCommit }}
+
+# Generate SBOM for all artifacts
+# SPDX generate with syft (default scanner)
+# CycloneDX generate with trivy
+# CycloneDX "Vex" contains also informations on vulnerabilities
+# It is possible to change the scanner and the command
+sboms:
+  - id: binary sbom
+    artifacts: binary
+    documents:
+      - "${artifact}.spdx.sbom"
+  - id: CycloneDX sbom
+    artifacts: binary
+    documents:
+      - "${artifact}.cyclonedx-json.sbom"
+    args: ["$artifact", "--output", "cyclonedx-json","--file","$document"]
+  - id: trivy sbom
+    artifacts: binary
+    cmd: trivy
+    documents:
+      - "${artifact}.cyclonedx-vex.sbom"
+    args: ["fs","--format","cyclonedx","--scanners","vuln","--output","$document","{{ .Env.WORKSPACE }}"]
+
+# Sign the artifacts
+# Use the command cosign in keyless mode to sign the different kind of artifacts: binary, checksum, package, sbom
+signs:
+  - id : '{{ .ProjectName }}-keyless'
+    cmd: cosign
+    env:
+      - COSIGN_EXPERIMENTAL=1
+    signature : "${artifact}-keyless.sig"
+    certificate: "${artifact}-keyless.pem"
+    args:
+      - sign-blob
+      - "--output-certificate=${certificate}"
+      - "--output-signature=${signature}"
+      - "-y"
+      - "${artifact}"   
+    artifacts: binary
+    output: true
+  - id : checksum-keyless
+    cmd: cosign
+    env:
+      - COSIGN_EXPERIMENTAL=1
+    signature : "${artifact}-keyless.sig"
+    certificate: "${artifact}-keyless.pem"
+    args:
+      - sign-blob
+      - "--output-certificate=${certificate}"
+      - "--output-signature=${signature}"
+      - "-y"
+      - "${artifact}"   
+    artifacts: checksum
+    output: true
+  - id : package-keyless
+    cmd: cosign
+    env:
+      - COSIGN_EXPERIMENTAL=1
+    signature : "${artifact}-keyless.sig"
+    certificate: "${artifact}-keyless.pem"
+    args:
+      - sign-blob
+      - "--output-certificate=${certificate}"
+      - "--output-signature=${signature}"
+      - "-y"
+      - "${artifact}" 
+    artifacts: package
+    output: true
+  - id : 'sbom-keyless'
+    cmd: cosign
+    env:
+      - COSIGN_EXPERIMENTAL=1
+    signature : "${artifact}-keyless.sig"
+    certificate: "${artifact}-keyless.pem"
+    args:
+      - sign-blob
+      - "--output-certificate=${certificate}"
+      - "--output-signature=${signature}"
+      - "-y"
+      - "${artifact}"
+    artifacts: sbom
+    output: true
+  
+
+# Create a release 
+release:
+  # draft: true # Used to publish a draft on github
+  make_latest: true
+  github:
+    owner: "{{ .Env.GITHUB_REPOSITORY_OWNER }}"
+    name: '{{ .ProjectName }}'
+  gitlab:
+    owner: ""
+    name: "{{ .Env.CI_PROJECT_PATH }}"
+  footer: |
+    ### Thanks to all contributors!
+

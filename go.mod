@@ -52,12 +52,13 @@ require (
 	google.golang.org/genproto v0.0.0-20231106174013-bbf56f31fb17 // indirect
 	gopkg.in/ini.v1 v1.51.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
 	github.com/ThalesGroup/crypto11 v1.2.6-0.20240209151343-55d45d454b19
 	github.com/ThalesGroup/gose v0.8.8-0.20240212085359-57890b0e2357
+	github.com/coreos/go-semver v0.3.1
 )
 
 require (
