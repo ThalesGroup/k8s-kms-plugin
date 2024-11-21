@@ -69,8 +69,34 @@ Both EST and KMS-Plugin binaries are in the `/cmd` dir
  
 The `Makefile` contains commands for easy execution:
 - `make gen` - generates all apis into gRPC or OpenAPI Servers and Clients
-- `make dev` - loads project into your kubernetes cluster (minikube or GKE will work just fine), and continously builds and deploys as you develop.
+- `make dev` - loads project into your kubernetes cluster (minikube or GKE will work just fine), and continuously builds and deploys as you develop.
 - `make build` - builds the standalone `k8s-kms-plugin` binary
+
+If you need to build using `crypto11` and `gose` development branches :
+
+1. Push your dev modifications in a dedicated branch in the `crypto11` repo (ex: my-dev-branch)
+2. Go to the `gose` repo and update the *go.mod* file with `crytpo11` dev branch and push the update :
+
+```sh
+# In gose repo
+# in a dev branch
+go switch -c my-dev-branch
+GOPROXY=direct go get -u github.com/IceManGreen/crypto11@my-dev-branch
+go mod tidy
+git add go.mod
+git commit -S -s -m "dev: update gose with crytpo11 dev changes"
+git push
+```
+
+3. Go to the `k8s-kms-plugin` repo and update the *go.mod* file with `crytpo11` and `gose` dev branches, then build :
+
+```sh
+go switch -c my-dev-branch
+GOPROXY=direct go get -u github.com/ThalesGroup/crypto11@my-dev-branch
+GOPROXY=direct go get -u github.com/ThalesGroup/gose@my-dev-branch
+go mod tidy
+make build
+```
 
 ## Debug Environment
 

@@ -1,3 +1,4 @@
+//go:build tools
 // +build tools
 
 package tools
@@ -10,5 +11,5 @@ import (
 	_ "github.com/mitchellh/protoc-gen-go-json"
 	_ "golang.org/x/tools/cmd/cover"
 
-	_ "k8s.io/apiserver/pkg/storage/value/encrypt/envelope/v1beta1"
+	_ "k8s.io/kms/apis/v1beta1"
 )

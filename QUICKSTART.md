@@ -50,7 +50,7 @@ k8s-kms-plugin serve --socket $SOCKET \
   --enable-server
 ```
 
-Start a K3S cluster with the proper KMS configuration in [encryption-conf.yaml](k8s/encryption-conf.yaml) :
+Start a K3S cluster with the proper KMS configuration in [encryption-conf.yaml](deployments/k8s/encryption-conf.yaml) :
 
 ```sh
 curl -sfL https://get.k3s.io | sh -s - \
