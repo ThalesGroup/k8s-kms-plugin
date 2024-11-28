@@ -81,7 +81,7 @@ If you need to build using `crypto11` and `gose` development branches :
 # In gose repo
 # in a dev branch
 go switch -c my-dev-branch
-GOPROXY=direct go get -u github.com/IceManGreen/crypto11@my-dev-branch
+GOPROXY=direct go get -u github.com/ThalesGroup/crypto11@my-dev-branch
 go mod tidy
 git add go.mod
 git commit -S -s -m "dev: update gose with crytpo11 dev changes"

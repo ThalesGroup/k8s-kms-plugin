@@ -1,14 +1,24 @@
 # GUIDE
 
-## ContainerfileSofthsm
+## Goreleaser
 
-## Build
+This image is used to build the k8s-kms-plugin binary, with a common build environment.
+
+```sh
+podman build -f ContainerfileGoreleaser -t localhost/thales-k8s-kms-plugin-build-goreleaser
+```
+
+## Softhsm
+
+`thales-softhsm` is a rootless container to test the k8s-kms-plugin with SoftHSM. 
+
+### Build
 
 ```sh
 podman build -f ContainerfileSofthsm -t localhost/thales-softhsm
 ```
 
-## Run
+### Run
 
 ```sh
 podman run -it --name thales-softhsm localhost/thales-softhsm bash
@@ -26,35 +36,32 @@ MODULE="/usr/lib/softhsm/libsofthsm2.so"
 STORE=""
 AESKEYLABEL="aes0"
 HMACKEYLABEL="hmac0"
-
-# check token slots
-pkcs11-tool --module $MODULE --list-token-slots
-> Available slots:
-> Slot 0 (0x264ae282): SoftHSM slot ID 0x264ae282
->   token label        : mylabel
->   token manufacturer : SoftHSM project
->   token model        : SoftHSM v2
->   token flags        : login required, rng, token initialized, PIN initialized, other flags=0x20
->   hardware version   : 2.6
->   firmware version   : 2.6
->   serial num         : 2e4e4036264ae282
->   pin min/max        : 4/255
+RSAKEYLABEL="rsa0"
 
 # list keys
 pkcs11-tool --module $MODULE --token-label ${TOKENLABEL} --pin ${PIN} -O
-> Secret Key Object; AES length 16
-> warning: PKCS11 function C_GetAttributeValue(VALUE) failed: rv = CKR_ATTRIBUTE_SENSITIVE (0x11)
-> 
->   label:      aes0
->   Usage:      encrypt, decrypt, verify, wrap, unwrap
->   Access:     never extractable, local
-> Private Key Object; RSA 
->   label:      rsa0
->   Usage:      decrypt, sign, unwrap
->   Access:     sensitive, always sensitive, never extractable, local
-> Public Key Object; RSA 4096 bits
->   label:      rsa0
->   Usage:      encrypt, verify, wrap
->   Access:     local
+```
 
+## Software TPM
+
+`thales-swtpm` is a privileged container to test the k8s-kms-plugin with Software TPM v2.
+Root mode is required because the daemon of tpm2-abrmd need to access to the host's systemd processes. 
+
+### Build
+
+```sh
+sudo podman build -f ContainerfileSwtpm -t localhost/thales-swtpm
+```
+
+### Run
+
+```sh
+sudo podman run --privileged -it --name thales-swtpm localhost/thales-swtpm bash
+```
+
+Inside the container :
+
+```sh
+# list keys
+pkcs11-tool --module $MODULE --token-label ${TOKENLABEL} --pin ${PIN} -O 2> /dev/null
 ```

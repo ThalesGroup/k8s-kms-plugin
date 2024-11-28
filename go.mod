@@ -17,7 +17,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	golang.org/x/sync v0.9.0
 	golang.org/x/tools v0.27.0 // indirect
 	google.golang.org/grpc v1.68.0
@@ -42,7 +42,7 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/thales-e-security/pool v0.0.2 // indirect
 	golang.org/x/net v0.31.0 // indirect
-	golang.org/x/sys v0.27.0 // indirect
+	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/text v0.20.0 // indirect
 	golang.org/x/tools/cmd/cover v0.1.0-deprecated
 	gopkg.in/ini.v1 v1.67.0 // indirect
@@ -51,8 +51,8 @@ require (
 )
 
 require (
-	github.com/ThalesGroup/crypto11 v1.2.6-0.20241126085713-b55d0b81549a
-	github.com/ThalesGroup/gose v0.8.8-0.20241127151757-24ccfd6b3bb3
+	github.com/ThalesGroup/crypto11 v1.2.6-0.20250121102421-842e7b3e5ff9
+	github.com/ThalesGroup/gose v0.8.8-0.20250123094915-b49bb4f106d7
 	k8s.io/kms v0.31.3
 )
 

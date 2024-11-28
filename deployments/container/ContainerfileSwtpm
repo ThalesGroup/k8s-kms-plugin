@@ -1,0 +1,151 @@
+# Copyright 2024 Thales
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#  https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+#==============================================================================#
+# This container image is based on the GoLang Debian officical image and
+# and embarks Goreleaser "github.com/goreleaser/goreleaser" and GCC for both
+# linux/amd64 (x86_64) and linux/arm64 (aarch64).
+#==============================================================================#
+
+# Set Go & tools versions. Be carreful when upgrading these versions, make sure
+# to keep them in sync with the version golang
+ARG GOLANG_VERSION=1.23.0
+
+# Set Debian version name (e.g. bookworm)
+ARG DEBIAN_VERSION=bookworm
+
+# Builder image's registry
+# A Debian Bookworm based GoLang image is chosen over "docker.io/goreleaser/goreleaser" Alpine based
+# goreleaser official image (https://hub.docker.com/r/goreleaser/goreleaser),
+# because debian uses glibc and Alpine uses libc musl.
+ARG BUILDER_IMAGE_REGISTRY=docker.io/library
+ARG BUILDER_IMAGE_NAME=golang
+ARG BUILDER_IMAGE_TAG=${GOLANG_VERSION}-${DEBIAN_VERSION}
+
+# For OCI labels
+ARG BASE_REGISTRY=${BUILDER_IMAGE_REGISTRY}
+ARG BASE_IMAGE=${BUILDER_IMAGE_NAME}
+ARG BASE_IMAGE_TAG=${BUILDER_IMAGE_TAG}
+
+#==============================================================================#
+# Go Debian image with support for both linux/amd64 and linux/arm64
+#==============================================================================#
+FROM ${BUILDER_IMAGE_REGISTRY}/${BUILDER_IMAGE_NAME}:${BUILDER_IMAGE_TAG} AS builder-base
+
+RUN apt-get update
+
+# VTPM dependencies for debian
+RUN apt install -y \
+    build-essential \
+    procps \
+    git \
+    tpm2-abrmd libtpm2-pkcs11-1 libtpm2-pkcs11-tools libtss2-tcti-tabrmd0 \
+    automake autoconf libtool make gcc libc-dev \
+    dh-autoreconf libssl-dev \
+    libtasn1-6-dev pkg-config \
+    net-tools iproute2 libjson-glib-dev \
+    libgnutls28-dev expect gawk socat \
+    libseccomp-dev make \
+    gnutls-bin libfuse-dev \
+    dbus opensc
+#    && rm -rf /var/lib/apt/lists/*
+
+# install libtpms
+RUN cd $HOME && \
+    git clone https://github.com/stefanberger/libtpms.git && \
+    cd libtpms && \
+    ./autogen.sh --with-tpm2 --with-openssl --prefix=/usr && \
+    make -j$(nproc) && \
+    make install
+
+# install software tpm
+RUN cd $HOME && \
+    git clone https://github.com/stefanberger/swtpm.git && \
+    cd swtpm && \
+    ./autogen.sh --with-gnutls --with-cuse --prefix=/usr && \
+    make -j$(nproc) && \
+    make install
+
+#==============================================================================#
+# Final softhsm builder image for building thales-softhsm
+#==============================================================================#
+FROM builder-base as thales-softhsm
+
+# SoftHSM variables
+ARG SOPIN="mysopin"
+ARG PIN="mypin"
+ARG TOKENLABEL="mylabel"
+ARG TOKENSLOT=0
+ARG MODULE="/usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1"
+ARG SWTPMDIR="${HOME}/tpm2"
+ARG SWTPMSTATEDIR="${SWTPMDIR}/tpmstate"
+ARG SWTPMRUNDIR="/run/vtpm2"
+ARG SWTPMRUNFILE="${SWTPMRUNDIR}/swtpm.run"
+ARG SWTPMPIDFILE="${SWTPMRUNDIR}/swtpm.pid"
+ARG SWTPMLOGFILE="${SWTPMRUNDIR}/swtpm.log"
+ARG SWTPMABRMDRUNFILE="${SWTPMRUNDIR}/tpm2-abrmd.run"
+ARG SWTPMABRMDPIDFILE="${SWTPMRUNDIR}/tpm2-abrmd.pid"
+ARG SWTPMLOGLEVEL=5
+ARG SWTPMDATAPORT=3333
+ARG SWTPMCTRLPORT=3334
+ARG AESKEYLABEL="aes0"
+ARG HMACKEYLABEL="hmac0"
+ARG RSAKEYLABEL="rsa0"
+
+# tpm2 launch scripts
+COPY scripts/swtpm.sh ${HOME}
+COPY scripts/tpm2-abrmd.sh ${HOME}
+COPY scripts/tpm2-provisioning.sh ${HOME}
+
+# swtpm user and env
+# This is necesseary for the k8s-kms-plugin user
+RUN printf "export SOPIN=${SOPIN}\nexport PIN=${PIN}\nexport TOKENLABEL=${TOKENLABEL}\nexport TOKENSLOT=${TOKENSLOT}\nexport MODULE=${MODULE}\nexport SWTPMDIR=${SWTPMDIR}\nexport SWTPMSTATEDIR=${SWTPMSTATEDIR}\nexport SWTPMRUNDIR=${SWTPMRUNDIR}\nexport SWTPMRUNFILE=${SWTPMRUNFILE}\nexport SWTPMPIDFILE=${SWTPMPIDFILE}\nexport SWTPMLOGFILE=${SWTPMLOGFILE}\nexport SWTPMABRMDRUNFILE=${SWTPMABRMDRUNFILE}\nexport SWTPMABRMDPIDFILE=${SWTPMABRMDPIDFILE}\nexport SWTPMLOGLEVEL=${SWTPMLOGLEVEL}\nexport SWTPMDATAPORT=${SWTPMDATAPORT}\nexport SWTPMCTRLPORT=${SWTPMCTRLPORT}\nexport AESKEYLABEL=${AESKEYLABEL}\nexport HMACKEYLABEL=${HMACKEYLABEL}\nexport RSAKEYLABEL=${RSAKEYLABEL}\nexport TPM2_PKCS11_STORE=${SWTPMDIR}" >> ${HOME}/.bashrc
+
+CMD [ "${HOME}/swtpm.sh" ]
+CMD [ "${HOME}/tpm2-abrmd.sh" ]
+ENTRYPOINT ["/bin/bash", "-s"]
+
+
+# See https://github.com/opencontainers/image-spec/blob/main/annotations.md
+#ARG LABEL_CREATED=""
+#ARG LABEL_AUTHOR="Thales Open Source <oss@thalesgroup.com>"
+#ARG LABEL_URL="https://github.com/ThalesGroup/k8s-kms-plugin"
+#ARG LABEL_DOCUMENTATION="https://github.com/ThalesGroup/k8s-kms-plugin"
+#ARG LABEL_SOURCE="https://github.com/ThalesGroup/k8s-kms-plugin"
+#ARG LABEL_VERSION=""
+#ARG LABEL_REVISION=""
+#ARG LABEL_VENDOR="Thales"
+#ARG LABEL_LICENSES="Apache 2.0"
+#ARG LABEL_TITLE="k8s-kms-plugin-softhsm"
+#ARG LABEL_REF_NAME=""
+#ARG LABEL_DESCRIPTION="Container base image for softhsm using glibc on debian. The ENTRYPOINT of this image is /bin/bash."
+#ARG LABEL_BASE_DIGEST=""
+#ARG BASE_REGISTRY
+#ARG BASE_IMAGE
+#ARG BASE_IMAGE_TAG
+#ARG LABEL_BASE_NAME="${BASE_REGISTRY}/${BASE_IMAGE}:${BASE_IMAGE_TAG}"
+#LABEL org.opencontainers.image.created="${LABEL_CREATED}"
+#LABEL org.opencontainers.image.authors="${LABEL_AUTHOR}"
+#LABEL org.opencontainers.image.url="${LABEL_URL}"
+#LABEL org.opencontainers.image.documentation="${LABEL_DOCUMENTATION}"
+#LABEL org.opencontainers.image.source="${LABEL_SOURCE}"
+#LABEL org.opencontainers.image.version="${LABEL_VERSION}"
+#LABEL org.opencontainers.image.revision="${LABEL_REVISION}"
+#LABEL org.opencontainers.image.vendor="${LABEL_VENDOR}"
+#LABEL org.opencontainers.image.licenses="${LABEL_LICENSES}"
+#LABEL org.opencontainers.image.title="${LABEL_TITLE}"
+#LABEL org.opencontainers.image.ref.name="${LABEL_REF_NAME}"
+#LABEL org.opencontainers.image.description="${LABEL_DESCRIPTION}"
+#LABEL org.opencontainers.image.base.digest="${LABEL_BASE_DIGEST}"
+#LABEL org.opencontainers.image.base.name="${LABEL_BASE_NAME}"

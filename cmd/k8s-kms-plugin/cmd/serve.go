@@ -82,6 +82,7 @@ var (
 	UNKNOWNALG = Algorithm{""}
 	AESGCM     = Algorithm{"aes-gcm"}
 	AESCBC     = Algorithm{"aes-cbc"}
+	RSAOAEP    = Algorithm{"rsa-oaep"}
 )
 
 func algFromString(s string) (jose.Alg, error) {
@@ -90,6 +91,8 @@ func algFromString(s string) (jose.Alg, error) {
 		return jose.AlgA256GCM, nil
 	case AESCBC.slug:
 		return jose.AlgA256CBC, nil
+	case RSAOAEP.slug:
+		return jose.AlgRSAOAEP, nil
 	default:
 		return "", gose.ErrInvalidAlgorithm
 	}
