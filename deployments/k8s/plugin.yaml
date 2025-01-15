@@ -28,7 +28,7 @@ spec:
 #        - mountPath: /var/log
 #          name: logs
       env:
-        - name: P11_LIB
+        - name: P11_LIBRARY
 #          value: /usr/lib64/libsofthsm2.so # Centos
           value: /usr/lib/softhsm/libsofthsm2.so # Ubuntu
         - name: P11_TOKEN

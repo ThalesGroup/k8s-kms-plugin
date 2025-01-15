@@ -19,11 +19,10 @@ import (
 	"context"
 	"encoding/pem"
 	"errors"
-	"github.com/spf13/cobra"
-	"io/ioutil"
 	"os"
-	"path/filepath"
 	"time"
+
+	"github.com/spf13/cobra"
 
 	"github.com/ThalesGroup/k8s-kms-plugin/apis/istio/v1"
 )
@@ -45,7 +44,7 @@ var verifyCertCmd = &cobra.Command{
 		}
 		defer icancel()
 
-		if certChainPem, err = ioutil.ReadFile(certChainPath); err != nil {
+		if certChainPem, err = os.ReadFile(certChainPath); err != nil {
 			return
 		}
 
@@ -71,7 +70,6 @@ var verifyCertCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(verifyCertCmd)
 
-	verifyCertCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket")
 	verifyCertCmd.Flags().DurationVar(&timeout, "timeout", 10*time.Second, "Timeout Duration")
 	verifyCertCmd.Flags().StringVarP(&certChainPath, "cert-file", "f", "", "Cert Chain File ")
 	verifyCertCmd.MarkFlagRequired("cert-file")

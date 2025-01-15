@@ -3,6 +3,7 @@ package providers
 import (
 	"context"
 	"errors"
+
 	"github.com/ThalesGroup/gose/jose"
 	"google.golang.org/grpc"
 

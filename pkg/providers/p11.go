@@ -12,6 +12,11 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"hash"
+	"io"
+	"math/big"
+	"reflect"
+
 	"github.com/ThalesGroup/crypto11"
 	"github.com/ThalesGroup/gose"
 	"github.com/ThalesGroup/gose/hsm"
@@ -25,10 +30,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"hash"
-	"io"
-	"math/big"
-	"reflect"
 )
 
 var (

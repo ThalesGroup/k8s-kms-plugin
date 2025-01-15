@@ -4,9 +4,7 @@ import (
 	b64 "encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
-	"path/filepath"
 	"time"
 
 	istio "github.com/ThalesGroup/k8s-kms-plugin/apis/istio/v1"
@@ -34,7 +32,7 @@ var decryptCSRCmd = &cobra.Command{
 }
 
 func decryptCSR() error {
-	csrJson, err := ioutil.ReadFile(inName)
+	csrJson, err := os.ReadFile(inName)
 	if err != nil {
 		return fmt.Errorf("Couldn't open JSON CSR file: %v", err)
 	}
@@ -74,7 +72,7 @@ func decryptCSR() error {
 	fmt.Printf("CSR ID: %v\n", string(csrID))
 
 	if outName != "" {
-		err = ioutil.WriteFile(outName, adResp.Plaintext, 0644)
+		err = os.WriteFile(outName, adResp.Plaintext, 0644)
 		if err != nil {
 			return fmt.Errorf("Couldn't write output file: %v", err)
 		}
@@ -87,7 +85,7 @@ func decryptCSR() error {
 
 func init() {
 	rootCmd.AddCommand(decryptCSRCmd)
-	decryptCSRCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket")
+
 	decryptCSRCmd.Flags().DurationVar(&timeout, "timeout", 30*time.Second, "Timeout Duration")
 	decryptCSRCmd.Flags().StringVarP(&inName, "inName", "f", "", "Input file")
 	decryptCSRCmd.Flags().StringVarP(&outName, "outName", "o", "", "Output file")

@@ -29,12 +29,9 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
-	"path/filepath"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
 
@@ -53,25 +50,15 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
+// cobra serve.go CLI Flags
 var (
-	provider          string
-	caTLSCert         string
-	serverTLSCert     string
-	serverTLSKey      string
-	kekKeyId          string
-	caId              string
-	defaultDekKeyName string
-	hmacKeyName       string
-	p11lib            string
-	p11slot           int
-	p11label          string
-	p11pin            string
-	createKey         bool
-	allowAny          bool
-	nativePath        string
-	enableTCP         bool
-	disableSocket     bool
-	algorithm         string
+	algorithm     string
+	allowAny      bool
+	caTLSCert     string
+	disableSocket bool
+	enableTCP     bool
+	serverTLSCert string
+	serverTLSKey  string
 )
 
 // Algorithm supports user input for configuration
@@ -105,29 +92,10 @@ var serveCmd = &cobra.Command{
 	Short: "Serve KMS",
 
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
-
-		if a := os.Getenv("SOCKET"); a != "" {
-			socketPath = a
-		}
-		if a := os.Getenv("P11_LIB"); a != "" {
-			p11lib = a
-		}
-		if a := os.Getenv("P11_TOKEN"); a != "" {
-			p11label = a
-		}
-
-		if a := os.Getenv("P11_SLOT"); a != "" {
-			if p11slot, err = strconv.Atoi(a); err != nil {
-				return
-			}
-		}
-
-		// Don't panic/exit if we have a PKCS#11 error.
-		// Sleep forever instead.
-		var p providers.Provider
+		// TODO: consider moving this to root CLI or delete this feature
 		if a := os.Getenv("P11_PIN_FILE"); a != "" {
 			var p11pinBytes []byte
-			p11pinBytes, err = ioutil.ReadFile(a)
+			p11pinBytes, err = os.ReadFile(a)
 			if err != nil {
 				logrus.Error(err)
 				return err
@@ -136,6 +104,9 @@ var serveCmd = &cobra.Command{
 			logrus.Infof("Loaded P11 PIN from file: %v", a)
 		}
 
+		// Don't panic/exit if we have a PKCS#11 error.
+		// Sleep forever instead.
+		var p providers.Provider
 		p, err = initProvider()
 		if err != nil && providers.IsPKCS11AuthenticationError(err) {
 			logrus.WithError(err).Error("PKCS11 authentication error detected. Further retries may cause the token to be erased.")
@@ -185,7 +156,6 @@ func init() {
 	rootCmd.AddCommand(serveCmd)
 
 	// unix socket server options
-	serveCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket")
 	serveCmd.Flags().BoolVar(&disableSocket, "disable-socket", false, "Disable socket based server")
 
 	// tcp server options
@@ -210,6 +180,7 @@ func initProvider() (p providers.Provider, err error) {
 	config := &crypto11.Config{}
 	switch provider {
 	case "p11", "softhsm":
+		logrus.Debug("initProvider: case p11 or softhsm")
 		config = &crypto11.Config{
 			Path:            p11lib,
 			Pin:             p11pin,
@@ -217,6 +188,7 @@ func initProvider() (p providers.Provider, err error) {
 		}
 
 	case "luna", "dpod":
+		logrus.Debug("initProvider: case luna HSM or dpod")
 		config = &crypto11.Config{
 			Path:            p11lib,
 			Pin:             p11pin,
@@ -237,13 +209,15 @@ func initProvider() (p providers.Provider, err error) {
 		config.SlotNumber = &p11slot
 	}
 	// init the provider
-	if p, err = providers.NewP11(config, createKey, defaultDekKeyName, hmacKeyName, alg); err != nil {
+	// TODO: See https://github.com/ThalesGroup/k8s-kms-plugin/issues/40#issuecomment-2593267852
+	if p, err = providers.NewP11(config, createKey, dekKeyLabelName, hmacKeyName, alg); err != nil {
 		return
 	}
 	return
 }
 
 func grpcServe(gl net.Listener, p providers.Provider) (err error) {
+	logrus.Debug("grpcServe")
 
 	// Create a gRPC server to host the services
 	serverOptions := []grpc.ServerOption{
@@ -257,6 +231,7 @@ func grpcServe(gl net.Listener, p providers.Provider) (err error) {
 	istio.RegisterKeyManagementServiceServer(gs, p)
 
 	logrus.Infof("Serving on socket: %s", gl.Addr().String())
+	logrus.Debugf("grpcServe. value of grpcPort user input: %d", grpcPort)
 
 START:
 	if err = gs.Serve(gl); err != nil {

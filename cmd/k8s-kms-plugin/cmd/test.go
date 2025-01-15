@@ -24,16 +24,17 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"golang.org/x/sync/errgroup"
 	"hash"
 	"math/big"
 	"net"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 
 	istio "github.com/ThalesGroup/k8s-kms-plugin/apis/istio/v1"
 )
