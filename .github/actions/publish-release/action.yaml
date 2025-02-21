@@ -41,7 +41,7 @@ runs:
         go-version: ${{ inputs.go-version }} # same version than the one in the go.mod or in the .go-version
      # Register to ghcr.io container Registry
     - name: 'Login to GitHub Container Registry'
-      uses: docker/login-action@v1
+      uses: docker/login-action@v3
       with:
         registry: ${{ inputs.registry}}
         username: ${{ inputs.registry_username }}
