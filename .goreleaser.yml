@@ -44,7 +44,6 @@ kos:
     base_image: "cgr.dev/chainguard/glibc-dynamic:latest"
     bare: true
     preserve_import_paths: false
-    sbom: cyclonedx
     platforms:
       - linux/amd64
     flags:
