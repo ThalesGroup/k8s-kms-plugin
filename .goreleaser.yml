@@ -76,16 +76,15 @@ nfpms:
 # Define caracteristics of binary artifacts
 # Generate zip and tar archives from binary(ies) generated in the build section
 archives:
-  - id: binary
-    format: binary
+  - id: binary-uncompressed
+    formats:
+      - binary
     name_template: "{{ .Binary }}" 
     allow_different_binary_count: true
-  - id: zip
-    format: zip
-    name_template: "{{ .Binary }}" 
-    allow_different_binary_count: true
-  - id: tar
-    format: tar.gz
+  - id: binary-compressed-archives
+    formats:
+      - zip
+      - tar.gz
     name_template: "{{ .Binary }}" 
     allow_different_binary_count: true
 # create metadata file
