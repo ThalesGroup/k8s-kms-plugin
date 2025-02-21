@@ -36,7 +36,8 @@ builds:
 # Use ko-build to publish container image to a specific registry
 # It is possible to define platforms
 kos:
-  - repository: ghcr.io/{{ .Env.GITHUB_REPOSITORY }}
+  - repositories: 
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY }}
     tags:
       - "{{.Tag}}"
       - "{{ if not .Prerelease }}latest{{ end }}"
