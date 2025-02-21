@@ -1,3 +1,7 @@
+# .goreleaser.yml
+
+version: 2
+
 project_name: k8s-kms-plugin
 
 env:
@@ -36,7 +40,8 @@ builds:
 # Use ko-build to publish container image to a specific registry
 # It is possible to define platforms
 kos:
-  - repository: ghcr.io/{{ .Env.GITHUB_REPOSITORY }}
+  - repositories: 
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY }}
     tags:
       - "{{.Tag}}"
       - "{{ if not .Prerelease }}latest{{ end }}"
@@ -44,7 +49,6 @@ kos:
     base_image: "cgr.dev/chainguard/glibc-dynamic:latest"
     bare: true
     preserve_import_paths: false
-    sbom: cyclonedx
     platforms:
       - linux/amd64
     flags:
@@ -76,16 +80,15 @@ nfpms:
 # Define caracteristics of binary artifacts
 # Generate zip and tar archives from binary(ies) generated in the build section
 archives:
-  - id: binary
-    format: binary
+  - id: binary-uncompressed
+    formats:
+      - binary
     name_template: "{{ .Binary }}" 
     allow_different_binary_count: true
-  - id: zip
-    format: zip
-    name_template: "{{ .Binary }}" 
-    allow_different_binary_count: true
-  - id: tar
-    format: tar.gz
+  - id: binary-compressed-archives
+    formats:
+      - zip
+      - tar.gz
     name_template: "{{ .Binary }}" 
     allow_different_binary_count: true
 # create metadata file

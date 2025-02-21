@@ -20,7 +20,7 @@
 
 # Set Go & tools versions. Be carreful when upgrading these versions, make sure
 # to keep them in sync with the version golang
-ARG GOLANG_VERSION=1.23.0
+ARG GOLANG_VERSION=1.23.6
 
 # Set Debian version name (e.g. bookworm)
 ARG DEBIAN_VERSION=bookworm

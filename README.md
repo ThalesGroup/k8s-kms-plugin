@@ -30,7 +30,7 @@ export GITHUB_REPOSITORY_OWNER=localfakegithubowner
 ```
 
 ```bash
-podman run -it --rm -v $PWD:/pwd   --workdir /pwd -e LDFLAGS=$LDFLAGS   -e WORKSPACE=$WORKSPACE -e GITHUB_REPOSITORY_OWNER=$GITHUB_REPOSITORY_OWNER  --platform "linux/amd64"  ghcr.io/thalesgroup/goreleaser-glibc-image:golang-1.23.0-bookworm release --clean --snapshot --skip sign,publish,validate,ko,sbom
+podman run -it --rm -v $PWD:/pwd   --workdir /pwd -e LDFLAGS=$LDFLAGS   -e WORKSPACE=$WORKSPACE -e GITHUB_REPOSITORY_OWNER=$GITHUB_REPOSITORY_OWNER  --platform "linux/amd64"  ghcr.io/thalesgroup/goreleaser-glibc-image:golang-1.23.6-bookworm release --clean --snapshot --skip sign,publish,validate,ko,sbom
 ```
 
 ### shell `fish`
@@ -42,7 +42,7 @@ set GITHUB_REPOSITORY_OWNER localfakegithubowner
 ```
 
 ```bash
-podman run -it --rm -v $PWD:/pwd   --workdir /pwd -e LDFLAGS=$LDFLAGS   -e WORKSPACE=$WORKSPACE -e GITHUB_REPOSITORY_OWNER=$GITHUB_REPOSITORY_OWNER  --platform "linux/amd64"  ghcr.io/thalesgroup/goreleaser-glibc-image:golang-1.23.0-bookworm release --clean --snapshot --skip sign,publish,validate,ko,sbom
+podman run -it --rm -v $PWD:/pwd   --workdir /pwd -e LDFLAGS=$LDFLAGS   -e WORKSPACE=$WORKSPACE -e GITHUB_REPOSITORY_OWNER=$GITHUB_REPOSITORY_OWNER  --platform "linux/amd64"  ghcr.io/thalesgroup/goreleaser-glibc-image:golang-1.23.6-bookworm release --clean --snapshot --skip sign,publish,validate,ko,sbom
 ```
 
 ## KMS provider for SoftHsm V2

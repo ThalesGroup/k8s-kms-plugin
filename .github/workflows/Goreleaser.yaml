@@ -29,7 +29,7 @@ jobs:
           id : publish-artifacts
           uses: ./.github/actions/publish-release
           with:
-            go-version: 1.23.0
+            go-version: 1.23.6
             github_token : ${{ secrets.GITHUB_TOKEN }}
             registry: ghcr.io
             registry_username: ${{ github.actor }}
@@ -79,6 +79,6 @@ jobs:
             id : slsa-verifier
             uses: ./.github/actions/verify-attestations
             with:
-              go-version: 1.23.0
+              go-version: 1.23.6
               github_token : ${{ secrets.GITHUB_TOKEN }}
               image: ${{needs.goreleaser.outputs.image}}@${{needs.goreleaser.outputs.digest}} 
