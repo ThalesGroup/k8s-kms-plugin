@@ -67,11 +67,11 @@ runs:
     # Run command goreleaser release based on .goreleaser.yml
     # LDFLAGS are passed thanks to the steps.job_id.outputs.variable_name variable
     - name: Run GoReleaser
-      uses: goreleaser/goreleaser-action@v5
-      id: goreleaser 
+      uses: goreleaser/goreleaser-action@v6
+      id: goreleaser
       with:
         distribution: goreleaser 
-        version: latest
+        version: '~> v2'
         args: release 
       env:
         GITHUB_TOKEN: ${{ inputs.github_token }}
