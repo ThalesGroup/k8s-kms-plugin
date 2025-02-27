@@ -48,8 +48,8 @@ require (
 )
 
 require (
-	github.com/ThalesGroup/crypto11 v1.3.0
-	github.com/ThalesGroup/gose v0.9.1
+	github.com/ThalesGroup/crypto11 v1.4.0
+	github.com/ThalesGroup/gose v0.10.0
 	github.com/hashicorp/go-version v1.7.0
 	k8s.io/kms v0.32.2
 )
@@ -61,6 +61,6 @@ require (
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20250218142911-aa4b98e5adaa // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250219182151-9fdb1cabc7b2 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250219182151-9fdb1cabc7b2 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250224174004-546df14abb99 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250224174004-546df14abb99 // indirect
 )
