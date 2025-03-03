@@ -221,7 +221,7 @@ func initProvider() (p providers.Provider, err error) {
 }
 
 func grpcServe(gl net.Listener, p providers.Provider) (err error) {
-	logrus.Debug("grpcServe")
+	logrus.Trace("grpcServe")
 
 	// Create a gRPC server to host the services
 	serverOptions := []grpc.ServerOption{
@@ -235,7 +235,7 @@ func grpcServe(gl net.Listener, p providers.Provider) (err error) {
 	istio.RegisterKeyManagementServiceServer(gs, p)
 
 	logrus.Infof("Serving on socket: %s", gl.Addr().String())
-	logrus.Debugf("grpcServe. value of grpcPort user input: %d", grpcPort)
+	logrus.Debugf("grpcServe: value of grpcPort user input: %d", grpcPort)
 
 START:
 	if err = gs.Serve(gl); err != nil {
