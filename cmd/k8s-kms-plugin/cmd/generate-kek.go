@@ -27,14 +27,14 @@ func generateKEK() error {
 	ctx, cancel, c, err := istio.GetClientSocket(socketPath, timeout)
 	defer cancel()
 	if err != nil {
-		return fmt.Errorf("Could not open socket: %v", err)
+		return fmt.Errorf("could not open socket: %v", err)
 	}
 
 	genKEKResp, err := c.GenerateKEK(ctx, &istio.GenerateKEKRequest{
 		KekKid: []byte(kekID),
 	})
 	if err != nil {
-		return fmt.Errorf("Generate KEK failed: %v", err)
+		return fmt.Errorf("generate KEK failed: %v", err)
 	}
 	fmt.Println("KEK ID:", string(genKEKResp.KekKid))
 

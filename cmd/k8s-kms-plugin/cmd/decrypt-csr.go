@@ -34,13 +34,13 @@ var decryptCSRCmd = &cobra.Command{
 func decryptCSR() error {
 	csrJson, err := os.ReadFile(inName)
 	if err != nil {
-		return fmt.Errorf("Couldn't open JSON CSR file: %v", err)
+		return fmt.Errorf("couldn't open JSON CSR file: %v", err)
 	}
 
 	var csrSecret CSRSecret
 	err = json.Unmarshal(csrJson, &csrSecret)
 	if err != nil {
-		return fmt.Errorf("Unmarshalling JSON failed: %v", err)
+		return fmt.Errorf("unmarshalling JSON failed: %v", err)
 	}
 
 	kekID, _ := b64.StdEncoding.DecodeString(csrSecret.KekID)
@@ -55,7 +55,7 @@ func decryptCSR() error {
 	ctx, cancel, c, err := istio.GetClientSocket(socketPath, timeout)
 	defer cancel()
 	if err != nil {
-		return fmt.Errorf("Could not open socket: %v", err)
+		return fmt.Errorf("could not open socket: %v", err)
 	}
 
 	var adResp *istio.AuthenticatedDecryptResponse
@@ -65,7 +65,7 @@ func decryptCSR() error {
 		Aad:              csrID,
 		Ciphertext:       encCSR,
 	}); err != nil {
-		return fmt.Errorf("Failed to authenticate and decrypt CSR: %v", err)
+		return fmt.Errorf("failed to authenticate and decrypt CSR: %v", err)
 	}
 
 	fmt.Printf("KEK ID: %v\n", string(kekID))
@@ -74,7 +74,7 @@ func decryptCSR() error {
 	if outName != "" {
 		err = os.WriteFile(outName, adResp.Plaintext, 0644)
 		if err != nil {
-			return fmt.Errorf("Couldn't write output file: %v", err)
+			return fmt.Errorf("couldn't write output file: %v", err)
 		}
 	} else {
 		fmt.Printf("CSR:\n%v\n", string(adResp.Plaintext))
