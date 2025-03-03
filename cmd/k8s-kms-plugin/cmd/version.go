@@ -49,8 +49,6 @@ Examples:
   # JSON string.
   k8s-kms-plugin version -o json --pretty=false`,
 	Run: func(cmd *cobra.Command, args []string) {
-		logrus.Debug("running command: k8s-kms-plugin version")
-
 		// Add logic here to check if flag output is used with JSON or YAML.
 		flagOutputUsed := cmd.Flags().Changed("output")
 		flagPrettyUsed := cmd.Flags().Changed("pretty")
