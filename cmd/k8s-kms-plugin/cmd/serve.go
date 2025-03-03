@@ -41,6 +41,7 @@ import (
 
 	istio "github.com/ThalesGroup/k8s-kms-plugin/apis/istio/v1"
 	k8s "github.com/ThalesGroup/k8s-kms-plugin/apis/k8s/v1beta1"
+	version "github.com/ThalesGroup/k8s-kms-plugin/pkg/version"
 
 	"github.com/ThalesGroup/k8s-kms-plugin/pkg/providers"
 	"github.com/sirupsen/logrus"
@@ -92,6 +93,9 @@ var serveCmd = &cobra.Command{
 	Short: "Serve KMS",
 
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
+		// Show the version of the k8s-kms-plugin and commit ID
+		version.LogrusOutputVersion()
+
 		// TODO: consider moving this to root CLI or delete this feature
 		if a := os.Getenv("P11_PIN_FILE"); a != "" {
 			var p11pinBytes []byte

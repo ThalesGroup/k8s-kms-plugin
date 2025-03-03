@@ -48,7 +48,7 @@ type VersionData struct {
 	Major              uint64 `json:"major"`
 	Minor              uint64 `json:"minor"`
 	Patch              uint64 `json:"patch"`
-	Version            string `json:"version"`
+	Version            string `json:"version"` // raw git describe
 	GitCommitIdLong    string `json:"gitCommitIdLong"`
 	GitCommitIdShort   string `json:"gitCommitIdShort"`
 	GitCommitTimestamp string `json:"gitCommitTimestamp"`
@@ -65,16 +65,6 @@ type VersionData struct {
 // output is not parsable as semantic versioning, it sets the major, minor, and
 // patch fields to 0 and returns an error.
 func getVersionData() (VersionData, error) {
-	logrus.WithFields(logrus.Fields{
-		"raw-git-describe":     RawGitDescribe,
-		"git-commit-id-long":   GitCommitIdLong,
-		"git-commit-id-short":  GitCommitIdShort,
-		"git-commit-timestamp": GitCommitTimestamp,
-		"go-version":           GoVersion,
-		"build-date":           BuildDate,
-		"build-platform":       BuildPlatform,
-	}).Debug("check LDFLAGS values")
-
 	// Initialize VersionData to hold information from git from LDFLAGS
 	versionData := VersionData{
 		Version:            RawGitDescribe,
@@ -150,8 +140,8 @@ func returnYamlVersion() ([]byte, error) {
 	return yamlData, nil
 }
 
-// LogrusOutput logs the version details at startup. For server logging.
-func LogrusOutput() {
+// LogrusOutputVersion logs the version details at server startup. For server logging.
+func LogrusOutputVersion() {
 	versionData, err := getVersionData()
 	if err != nil {
 		logrus.WithError(err).Error("Failed to fetch version data")
@@ -160,11 +150,12 @@ func LogrusOutput() {
 
 	logrus.Infof("k8s-kms-plugin version: %s", versionData.Version)
 	logrus.WithFields(logrus.Fields{
-		"commit":         versionData.GitCommitIdLong,
-		"short-commit":   versionData.GitCommitIdShort,
-		"build-date":     versionData.BuildDate,
-		"build-platform": versionData.BuildPlatform,
-		"go-version":     versionData.GoVersion,
+		"build-date":       versionData.BuildDate,
+		"build-platform":   versionData.BuildPlatform,
+		"commit":           versionData.GitCommitIdLong,
+		"go-version":       versionData.GoVersion,
+		"raw-git-describe": versionData.Version,
+		"short-commit":     versionData.GitCommitIdShort,
 	}).Debug("k8s-kms-plugin version details")
 }
 
