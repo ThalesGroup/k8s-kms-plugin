@@ -794,9 +794,13 @@ func (p *P11) LoadSKey(ctx context.Context, request *istio.LoadSKeyRequest) (res
 func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 	switch req.(type) {
 	case *kms.VersionRequest:
+		{
+			logrus.Trace("UnaryInterceptor kms VersionRequest")
+		}
 		//TODO
 	case *k8s.EncryptRequest:
 		{
+			logrus.Trace("UnaryInterceptor kms EncryptRequest")
 			if "" == (req).(*k8s.EncryptRequest).KeyId && "" == (req).(*k8s.EncryptRequest).KeyringId {
 				// Assume we're handling the original API and look up the ID of our default DEK
 				var a *crypto11.Attribute
@@ -821,6 +825,7 @@ func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.
 		}
 	case *k8s.DecryptRequest:
 		{
+			logrus.Trace("UnaryInterceptor kms DecryptRequest")
 			if "" == (req).(*k8s.DecryptRequest).KeyId && "" == (req).(*k8s.DecryptRequest).KeyringId {
 				// Assume we're handling the original API and look up the ID of our default DEK
 				var a *crypto11.Attribute
@@ -845,6 +850,9 @@ func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.
 		}
 	default:
 		// TODO
+		{
+			logrus.Trace("UnaryInterceptor default")
+		}
 	}
 
 	resp, err = handler(ctx, req)
