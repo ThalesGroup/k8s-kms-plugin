@@ -399,7 +399,7 @@ func (p *P11) Decrypt(ctx context.Context, req *k8s.DecryptRequest) (resp *k8s.D
 		}
 		switch p.algorithm {
 		case jose.AlgA256GCM:
-			logrus.Debugf("p11:Decrypt case %s", jose.AlgA256GCM)
+			logrus.Tracef("p11:Decrypt case %s", jose.AlgA256GCM)
 			var aek gose.AeadEncryptionKey
 			if aek, err = p.makeAeadKey(rng, kek); err != nil {
 				return
@@ -415,7 +415,7 @@ func (p *P11) Decrypt(ctx context.Context, req *k8s.DecryptRequest) (resp *k8s.D
 				return
 			}
 		case jose.AlgA256CBC:
-			logrus.Debugf("p11:Decrypt case %s", jose.AlgA256CBC)
+			logrus.Tracef("p11:Decrypt case %s", jose.AlgA256CBC)
 			// for decryption, we have to retrieve the iv from the jwe
 			var iv []byte
 			if iv, err = getIVFromDecryptRequest(req); err != nil {
@@ -452,7 +452,7 @@ func (p *P11) Decrypt(ctx context.Context, req *k8s.DecryptRequest) (resp *k8s.D
 				return
 			}
 		case jose.AlgRSAOAEP:
-			logrus.Debugf("p11:Decrypt case %s", jose.AlgRSAOAEP)
+			logrus.Tracef("p11:Decrypt case %s", jose.AlgRSAOAEP)
 			// load pkcs11 context
 			var rsaKeyPair crypto11.SignerDecrypter
 			if rsaKeyPair, err = p.ctx.FindRSAKeyPair([]byte(req.KeyId), nil); err != nil {
@@ -509,7 +509,7 @@ func (p *P11) Encrypt(ctx context.Context, req *k8s.EncryptRequest) (resp *k8s.E
 		// Select algorithm
 		switch p.algorithm {
 		case jose.AlgA256GCM:
-			logrus.Debugf("p11:Encrypt case %s", jose.AlgA256GCM)
+			logrus.Tracef("p11:Encrypt case %s", jose.AlgA256GCM)
 			// Find the KEK in the KMS
 			var kek *crypto11.SecretKey
 			if kek, err = p.ctx.FindKey([]byte(req.KeyId), nil); nil != err {
@@ -531,7 +531,7 @@ func (p *P11) Encrypt(ctx context.Context, req *k8s.EncryptRequest) (resp *k8s.E
 				return
 			}
 		case jose.AlgA256CBC:
-			logrus.Debugf("p11:Encrypt case %s", jose.AlgA256CBC)
+			logrus.Tracef("p11:Encrypt case %s", jose.AlgA256CBC)
 			// Find the KEK in the KMS
 			var kek *crypto11.SecretKey
 			if kek, err = p.ctx.FindKey([]byte(req.KeyId), nil); nil != err {
@@ -573,7 +573,7 @@ func (p *P11) Encrypt(ctx context.Context, req *k8s.EncryptRequest) (resp *k8s.E
 				return
 			}
 		case jose.AlgRSAOAEP:
-			logrus.Debugf("p11:Encrypt case %s", jose.AlgRSAOAEP)
+			logrus.Tracef("p11:Encrypt case %s", jose.AlgRSAOAEP)
 			//TODO generate a jwk with the kid of the public key. Ex :
 			//      {"kty":"EC",
 			//         "crv":"P-256",
