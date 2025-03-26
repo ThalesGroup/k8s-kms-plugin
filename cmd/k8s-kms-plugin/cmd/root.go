@@ -153,7 +153,13 @@ func init() {
 	// logging level
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Set logrus.SetLevel to \"debug\". This is equivalent to using --log-level=debug. Do not use this flag at the same time as --log-level. The flag --log-level takes precedence over --debug flag.")
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info", "Set logrus.SetLevel. Logrus has seven logging levels: trace, debug, info, warning, error, fatal and panic. The flag --log-level takes precedence over --debug flag.")
+	rootCmd.RegisterFlagCompletionFunc("log-level", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"trace", "debug", "info", "warning", "error", "fatal", "panic"}, cobra.ShellCompDirectiveNoFileComp
+	})
 	rootCmd.PersistentFlags().StringVar(&logFormat, "log-format", "text", "Logrus log output format... text or json supported")
+	rootCmd.RegisterFlagCompletionFunc("log-format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"text", "json"}, cobra.ShellCompDirectiveNoFileComp
+	})
 	rootCmd.MarkFlagsMutuallyExclusive("log-level", "debug")
 
 	rootCmd.PersistentFlags().StringVar(&host, "host", "0.0.0.0", "Hostname without port")
