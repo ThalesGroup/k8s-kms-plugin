@@ -76,26 +76,20 @@ var rootCmd = &cobra.Command{
 		// TODO: debug flag should be replaced a log-level flag, or a log-level should be added in addition to the debug flag
 		// https://github.com/ThalesGroup/k8s-kms-plugin/issues/46
 		// https://github.com/ThalesGroup/k8s-kms-plugin/issues/47
-		logLevelFlagIsUsed := cmd.Flags().Lookup("log-level").Changed
 		debugFlagIsUsed := cmd.Flags().Lookup("debug").Changed
-		if logLevelFlagIsUsed && debugFlagIsUsed {
-			return errors.New("the flag --log-level cannot be used at the same time as the flag --debug because the flag --log-level takes precedence over --debug flag")
-		}
 
-		if logLevelFlagIsUsed {
+		switch {
+		case debugFlagIsUsed:
+			// harcode that the --debug flags set logrus to debug
+			logrus.SetLevel(logrus.DebugLevel)
+		default:
 			level, err := logrus.ParseLevel(logLevel)
 			if err != nil {
 				return err
 			}
 			logrus.SetLevel(level)
-			logrus.Debugf("logrus log-level is set to: %s", logrus.GetLevel())
-		} else if debugFlagIsUsed {
-			logrus.SetLevel(logrus.DebugLevel)
-			logrus.Debugf("logrus log-level is set to: %s", logrus.GetLevel())
-		} else {
-			logrus.SetLevel(logrus.InfoLevel)
-			logrus.Debugf("logrus log-level is set to: %s", logrus.GetLevel())
 		}
+		logrus.Debugf("logrus log-level is set to: %s", logrus.GetLevel())
 
 		switch logOutput {
 		case "json":
@@ -159,6 +153,7 @@ func init() {
 	// logging level
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Set logrus.SetLevel to \"debug\". This is equivalent to using --log-level=debug. Do not use this flag at the same time as --log-level. The flag --log-level takes precedence over --debug flag.")
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info", "Set logrus.SetLevel. Logrus has seven logging levels: trace, debug, info, warning, error, fatal and panic. The flag --log-level takes precedence over --debug flag.")
+	rootCmd.MarkFlagsMutuallyExclusive("log-level", "debug")
 
 	rootCmd.PersistentFlags().StringVar(&host, "host", "0.0.0.0", "Hostname without port")
 	rootCmd.PersistentFlags().Int64Var(&grpcPort, "port", 31400, "TCP Port for gRPC service")
@@ -176,6 +171,9 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&hmacKeyName, "p11-hmac-label", "k8s-hmac", "Key Label to use for sha based verifications")
 	rootCmd.PersistentFlags().StringVarP(&nativePath, "native-path", "p", ".keys", "Path to key store for native provider(Files only)")
 	rootCmd.PersistentFlags().BoolVar(&createKey, "auto-create", false, "Auto create the keys if needed")
+
+	// validates all the mutuallyExclusive/oneRequired/requiredAsGroup
+	rootCmd.ValidateFlagGroups()
 }
 
 // initConfig reads in config file and ENV variables if set.
