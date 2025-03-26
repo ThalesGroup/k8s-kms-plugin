@@ -47,7 +47,7 @@ var (
 	cfgFile         string
 	debug           bool
 	logLevel        string
-	logOutput       string
+	logFormat       string
 	caId            string
 	createKey       bool
 	dekKeyLabelName string
@@ -91,7 +91,7 @@ var rootCmd = &cobra.Command{
 		}
 		logrus.Debugf("logrus log-level is set to: %s", logrus.GetLevel())
 
-		switch logOutput {
+		switch logFormat {
 		case "json":
 			logrus.SetFormatter(&logrus.JSONFormatter{})
 		case "text":
@@ -102,7 +102,7 @@ var rootCmd = &cobra.Command{
 		default:
 			return errors.New("logrus unknown output format")
 		}
-		logrus.Debugf("logrus output format is set to: %s", logOutput)
+		logrus.Debugf("logrus output format is set to: %s", logFormat)
 
 		// Initialize the value of socketPath
 		// TODO: should SOCKET be called P11_SOCKET to be more consistent with other numbering?
@@ -153,11 +153,11 @@ func init() {
 	// logging level
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Set logrus.SetLevel to \"debug\". This is equivalent to using --log-level=debug. Do not use this flag at the same time as --log-level. The flag --log-level takes precedence over --debug flag.")
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info", "Set logrus.SetLevel. Logrus has seven logging levels: trace, debug, info, warning, error, fatal and panic. The flag --log-level takes precedence over --debug flag.")
+	rootCmd.PersistentFlags().StringVar(&logFormat, "log-format", "text", "Logrus log output format... text or json supported")
 	rootCmd.MarkFlagsMutuallyExclusive("log-level", "debug")
 
 	rootCmd.PersistentFlags().StringVar(&host, "host", "0.0.0.0", "Hostname without port")
 	rootCmd.PersistentFlags().Int64Var(&grpcPort, "port", 31400, "TCP Port for gRPC service")
-	rootCmd.PersistentFlags().StringVar(&logOutput, "output", "text", "Logrus log output format... text or json supported")
 	rootCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Corresponding environment variable: SOCKET")
 	// Provider
 	rootCmd.PersistentFlags().StringVar(&provider, "provider", "p11", "Provider")
