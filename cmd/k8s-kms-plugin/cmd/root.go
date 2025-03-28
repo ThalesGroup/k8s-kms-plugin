@@ -48,7 +48,7 @@ var (
 	cfgFile         string
 	debug           bool
 	logLevel        string
-	logOutput       string
+	logFormat       string
 	caId            string
 	createKey       bool
 	dekKeyLabelName string
@@ -77,23 +77,22 @@ var rootCmd = &cobra.Command{
 		// TODO: debug flag should be replaced a log-level flag, or a log-level should be added in addition to the debug flag
 		// https://github.com/ThalesGroup/k8s-kms-plugin/issues/46
 		// https://github.com/ThalesGroup/k8s-kms-plugin/issues/47
-		logLevelFlagIsUsed := cmd.Flags().Lookup("log-level").Changed
+		debugFlagIsUsed := cmd.Flags().Lookup("debug").Changed
 
-		// Ensure CLI flags override environment variables
-		effectiveLogLevel := logLevel
-		if !logLevelFlagIsUsed {
-			effectiveLogLevel = viper.GetString("log-level")
+		switch {
+		case debugFlagIsUsed:
+			// harcode that the --debug flags set logrus to debug
+			logrus.SetLevel(logrus.DebugLevel)
+		default:
+			level, err := logrus.ParseLevel(logLevel)
+			if err != nil {
+				return err
+			}
+			logrus.SetLevel(level)
 		}
-
-		// Apply the effective log level
-		level, err := logrus.ParseLevel(effectiveLogLevel)
-		if err != nil {
-			return err
-		}
-		logrus.SetLevel(level)
 		logrus.Debugf("logrus log-level is set to: %s", logrus.GetLevel())
 
-		switch logOutput {
+		switch logFormat {
 		case "json":
 			logrus.SetFormatter(&logrus.JSONFormatter{})
 		case "text":
@@ -104,7 +103,7 @@ var rootCmd = &cobra.Command{
 		default:
 			return errors.New("logrus unknown output format")
 		}
-		logrus.Debugf("logrus output format is set to: %s", logOutput)
+		logrus.Debugf("logrus output format is set to: %s", logFormat)
 
 		// Initialize the value of socketPath
 		// TODO: should SOCKET be called P11_SOCKET to be more consistent with other numbering?
@@ -155,15 +154,23 @@ func init() {
 	// logging level
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Set logrus.SetLevel to \"debug\". This is equivalent to using --log-level=debug. Do not use this flag at the same time as --log-level. The flag --log-level takes precedence over --debug flag.")
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info", "Set logrus.SetLevel. Logrus has seven logging levels: trace, debug, info, warning, error, fatal and panic. The flag --log-level takes precedence over --debug flag.")
+	rootCmd.RegisterFlagCompletionFunc("log-level", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"trace", "debug", "info", "warning", "error", "fatal", "panic"}, cobra.ShellCompDirectiveNoFileComp
+	})
+	rootCmd.PersistentFlags().StringVar(&logFormat, "log-format", "text", "Logrus log output format... text or json supported")
+	rootCmd.RegisterFlagCompletionFunc("log-format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"text", "json"}, cobra.ShellCompDirectiveNoFileComp
+	})
 	rootCmd.MarkFlagsMutuallyExclusive("log-level", "debug")
-	rootCmd.ValidateFlagGroups()
 
 	rootCmd.PersistentFlags().StringVar(&host, "host", "0.0.0.0", "Hostname without port")
 	rootCmd.PersistentFlags().Int64Var(&grpcPort, "port", 31400, "TCP Port for gRPC service")
-	rootCmd.PersistentFlags().StringVar(&logOutput, "log-output", "text", "Logrus log output format... text or json supported")
 	rootCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Corresponding environment variable: SOCKET")
 	// Provider
-	rootCmd.PersistentFlags().StringVar(&provider, "provider", "p11", "Provider")
+	rootCmd.PersistentFlags().StringVar(&provider, "provider", "p11", "Provider (accepts: p11, softhsm, luna, dpod)")
+	rootCmd.RegisterFlagCompletionFunc("provider", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"p11", "softhsm", "luna", "dpod"}, cobra.ShellCompDirectiveNoFileComp
+	})
 	rootCmd.PersistentFlags().StringVar(&kekKeyId, "kek-id", defaultKekId, "Key ID for KMS KEK")
 	rootCmd.PersistentFlags().StringVar(&caId, "ca-id", defaultCaId, "Cert ID for CA Cert record")
 	rootCmd.PersistentFlags().StringVar(&p11lib, "p11-lib", "", "Path to p11 library/client. Corresponding environment variable: P11_LIBRARY")

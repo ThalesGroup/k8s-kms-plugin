@@ -70,5 +70,11 @@ func init() {
 	rootCmd.AddCommand(versionCmd)
 	// Here you will define your flags and configuration settings.
 	versionCmd.Flags().StringVarP(&outputFormat, "output", "o", "", "Format of the version output. One of 'yaml' or 'json'.")
-	versionCmd.PersistentFlags().BoolVarP(&prettyPrintVersion, "pretty", "", true, "Activate pretty print output for JSON.")
+	versionCmd.RegisterFlagCompletionFunc("output", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"yaml", "json"}, cobra.ShellCompDirectiveNoFileComp
+	})
+	versionCmd.PersistentFlags().BoolVar(&prettyPrintVersion, "pretty", true, "Activate pretty print output for JSON.")
+	versionCmd.RegisterFlagCompletionFunc("pretty", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"true", "false"}, cobra.ShellCompDirectiveNoFileComp
+	})
 }
