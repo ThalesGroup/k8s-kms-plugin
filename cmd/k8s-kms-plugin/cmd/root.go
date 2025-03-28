@@ -160,7 +160,7 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&host, "host", "0.0.0.0", "Hostname without port")
 	rootCmd.PersistentFlags().Int64Var(&grpcPort, "port", 31400, "TCP Port for gRPC service")
-	rootCmd.PersistentFlags().StringVar(&logOutput, "output", "text", "Logrus log output format... text or json supported")
+	rootCmd.PersistentFlags().StringVar(&logOutput, "log-output", "text", "Logrus log output format... text or json supported")
 	rootCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Corresponding environment variable: SOCKET")
 	// Provider
 	rootCmd.PersistentFlags().StringVar(&provider, "provider", "p11", "Provider")
