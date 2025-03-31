@@ -37,6 +37,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
@@ -207,31 +208,19 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&hmacKeyName, "p11-hmac-label", "k8s-hmac", "Key Label to use for sha based verifications")
 	rootCmd.PersistentFlags().StringVarP(&nativePath, "native-path", "p", ".keys", "Path to key store for native provider(Files only)")
 	rootCmd.PersistentFlags().BoolVar(&createKey, "auto-create", false, "Auto create the keys if needed")
-
-	// Bind flags to Viper environment variables
-	// logs
-	viper.BindPFlag("log-level", rootCmd.PersistentFlags().Lookup("log-level"))
-	viper.BindPFlag("log-format", rootCmd.PersistentFlags().Lookup("log-format"))
 }
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	// Support ENV variables with prefix with viper bound to cobra
-	// Example: A CLI flag like --some-flag becomes KMS_K8S_PLUGIN_SOME_FLAG in environment variables.
-	viper.SetEnvPrefix("KMS_K8S_PLUGIN")
-	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_")) // Converts flags to ENV format
-	viper.AutomaticEnv()                                   // Enables automatic binding
-
-	// Initialize and Load the ViperConfig that are bound to cobra CLI flags
-	if err := viper.Unmarshal(&vprCfg); err != nil {
-		logrus.Fatalf("Failed to load config: %v", err)
-	}
-
-	// use a configuration parsed by viper
-	if cfgFile != "" {
-		logrus.Debugf("Using config file from the flag: %s", cfgFile)
+	// use a configuration file parsed by viper
+	switch envVar, ok := os.LookupEnv("KMS_K8S_PLUGIN_CONFIG"); {
+	case rootCmd.Flags().Lookup("config").Changed && cfgFile != "":
+		logrus.Tracef("Using config file from the flag: %s", cfgFile)
 		viper.SetConfigFile(cfgFile)
-	} else {
+	case ok:
+		logrus.Tracef("Using config file from the environment variable: %s", envVar)
+		viper.SetConfigFile(envVar)
+	default:
 		// TODO: check if this is still relevant to auto search a config file, and check config file default names
 		// Find home directory.
 		home, err := homedir.Dir()
@@ -249,7 +238,33 @@ func initConfig() {
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
 		logrus.Infof("Using config file: %s", viper.ConfigFileUsed())
+	} else {
+		logrus.Fatalf("Failed to read config file: %v", err)
 	}
+
+	// Support ENV variables with prefix with viper bound to cobra
+	// Example: A CLI flag like --some-flag becomes KMS_K8S_PLUGIN_SOME_FLAG in environment variables.
+	viper.SetEnvPrefix("KMS_K8S_PLUGIN")
+	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_")) // Converts flags to ENV format
+	viper.AutomaticEnv()                                   // Enables automatic binding
+
+	logrus.Infof("Before config is Loaded: %+v", vprCfg) // Debugging: Check if log-level is loaded
+
+	// Bind CLI flags to Viper (after reading config file)
+	rootCmd.PersistentFlags().VisitAll(func(f *pflag.Flag) {
+		// Bind only if flag is explicitly set by the user
+		if f.Changed {
+			logrus.Debugf("Binding CLI flag: %s", f.Name)
+			viper.BindPFlag(f.Name, f)
+		}
+	})
+
+	// Initialize and Load the ViperConfig that are bound to cobra CLI flags
+	if err := viper.Unmarshal(&vprCfg); err != nil {
+		logrus.Fatalf("Failed to load config: %v", err)
+	}
+	viper.Debug()
+	logrus.Infof("After config is Loaded: %+v", vprCfg) // Debugging: Check if log-level is loaded
 }
 
 // getValueFromCliFlagOrEnv retrieves the value of a user configuration setting based on the
