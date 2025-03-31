@@ -36,7 +36,6 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
@@ -216,11 +215,15 @@ func initConfig() {
 		viper.SetConfigName(".k8s-kms-plugin")
 	}
 
-	// If a config file is not found, log a fatal error. Otherwise, read it in.
+	// If a config file is not found, log a trace error. Otherwise, read it in.
 	if err := viper.ReadInConfig(); err != nil {
-		logrus.Fatalf("Failed to read config file: %v", err)
-	} else {
-		logrus.Infof("Using config file: %s", viper.ConfigFileUsed())
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			logrus.Trace("No config file found; continue with cobra default values")
+		} else {
+			// Config file was found but another error occurred
+			fmt.Fprintf(os.Stderr, "Error reading config file: %v\n", err)
+			os.Exit(1)
+		}
 	}
 
 	// Support ENV variables with prefix with viper bound to cobra
@@ -229,14 +232,11 @@ func initConfig() {
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_")) // Converts flags to ENV format
 	viper.AutomaticEnv()                                   // Enables automatic binding
 
-	// Bind CLI flags to Viper (after reading config file)
-	rootCmd.PersistentFlags().VisitAll(func(f *pflag.Flag) {
-		// Bind only if flag is explicitly set by the user
-		if f.Changed {
-			logrus.Debugf("Binding CLI flag: %s", f.Name)
-			viper.BindPFlag(f.Name, f)
-		}
-	})
+	// Ensure all flags are bound to Viper after initializing them
+	if err := viper.BindPFlags(rootCmd.PersistentFlags()); err != nil {
+		logrus.Errorf("Error binding flags: %v", err)
+		os.Exit(1)
+	}
 
 	// Initialize and Load the ViperConfig that are bound to cobra CLI flags
 	if err := viper.Unmarshal(&vprCfg); err != nil {
