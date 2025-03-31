@@ -40,32 +40,54 @@ import (
 	"github.com/spf13/viper"
 )
 
-// cobra root CLI flags
+// cobra root CLI flags. They are mostly not used because we use viper that binds the cobra flags
+// to the corresponding environment variables that viper reads.
 var (
-	socketPath      string
-	grpcPort        int64
-	host            string
-	cfgFile         string
-	debug           bool
-	logFormat       string
 	caId            string
+	cfgFile         string
 	createKey       bool
+	debug           bool
 	dekKeyLabelName string
+	grpcPort        int64
 	hmacKeyName     string
+	host            string
 	kekKeyId        string
+	logFormat       string
+	logLevel        string
 	nativePath      string
 	p11label        string
 	p11lib          string
 	p11pin          string
 	p11slot         int
 	provider        string
+	socketPath      string
 )
 
-// viper.GetString env vars values. These values are bound with their corresponding cobra root
-// CLI flags
-var (
-	viperLogLevel = viper.GetString("log-level")
-)
+// ViperConfig defines a struct to hold all the configuration values and use viper.Unmarshal
+// to populate it:
+type ViperConfig struct {
+	CaID         string `mapstructure:"ca-id"`
+	ConfigFile   string `mapstructure:"config"`
+	CreateKey    bool   `mapstructure:"auto-create"`
+	Debug        bool   `mapstructure:"debug"`
+	DekKeyLabel  string `mapstructure:"p11-key-label"`
+	HmacKeyLabel string `mapstructure:"p11-hmac-label"`
+	Host         string `mapstructure:"host"`
+	KekKeyID     string `mapstructure:"kek-id"`
+	LogFormat    string `mapstructure:"log-format"`
+	LogLevel     string `mapstructure:"log-level"`
+	NativePath   string `mapstructure:"native-path"`
+	P11Label     string `mapstructure:"p11-label"`
+	P11Lib       string `mapstructure:"p11-lib"`
+	P11Pin       string `mapstructure:"p11-pin"`
+	P11Slot      int    `mapstructure:"p11-slot"`
+	Port         int64  `mapstructure:"port"`
+	Provider     string `mapstructure:"provider"`
+	SocketPath   string `mapstructure:"socket"`
+}
+
+// Initialize the ViperConfig struct with all the root CLI flags bound to Viper env vars
+var vprCfg ViperConfig
 
 // cobra root CLI flags default value
 const (
@@ -88,7 +110,7 @@ var rootCmd = &cobra.Command{
 			logrus.SetLevel(logrus.DebugLevel)
 		default:
 			// get the log level from viper which is bind to the cobra flag --log-level
-			level, err := logrus.ParseLevel(viperLogLevel)
+			level, err := logrus.ParseLevel(vprCfg.LogLevel)
 			if err != nil {
 				return err
 			}
@@ -96,7 +118,7 @@ var rootCmd = &cobra.Command{
 		}
 		logrus.Debugf("logrus log-level is set to: %s", logrus.GetLevel())
 
-		switch logFormat {
+		switch vprCfg.LogFormat {
 		case "json":
 			logrus.SetFormatter(&logrus.JSONFormatter{})
 		case "text":
@@ -107,7 +129,7 @@ var rootCmd = &cobra.Command{
 		default:
 			return errors.New("logrus unknown output format")
 		}
-		logrus.Debugf("logrus output format is set to: %s", logFormat)
+		logrus.Debugf("logrus output format is set to: %s", vprCfg.LogFormat)
 
 		// Initialize the value of socketPath
 		// TODO: should SOCKET be called P11_SOCKET to be more consistent with other numbering?
@@ -157,7 +179,7 @@ func init() {
 
 	// logging level
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Set logrus.SetLevel to \"debug\". This is equivalent to using --log-level=debug. Flags --log-level and --debug flag are mutually exclusive.")
-	rootCmd.PersistentFlags().StringVar(nil, "log-level", "info", "Set logrus.SetLevel. Possible values: trace, debug, info, warning, error, fatal and panic. Flags --log-level and --debug flag are mutually exclusive. Corresponding env var: KMS_K8S_PLUGIN_LOG_LEVEL.")
+	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info", "Set logrus.SetLevel. Possible values: trace, debug, info, warning, error, fatal and panic. Flags --log-level and --debug flag are mutually exclusive. Corresponding env var: KMS_K8S_PLUGIN_LOG_LEVEL.")
 	rootCmd.RegisterFlagCompletionFunc("log-level", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"trace", "debug", "info", "warning", "error", "fatal", "panic"}, cobra.ShellCompDirectiveNoFileComp
 	})
@@ -194,6 +216,18 @@ func init() {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
+	// Support ENV variables with prefix with viper bound to cobra
+	// Example: A CLI flag like --some-flag becomes KMS_K8S_PLUGIN_SOME_FLAG in environment variables.
+	viper.SetEnvPrefix("KMS_K8S_PLUGIN")
+	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_")) // Converts flags to ENV format
+	viper.AutomaticEnv()                                   // Enables automatic binding
+
+	// Initialize and Load the ViperConfig that are bound to cobra CLI flags
+	if err := viper.Unmarshal(&vprCfg); err != nil {
+		logrus.Fatalf("Failed to load config: %v", err)
+	}
+
+	// use a configuration parsed by viper
 	if cfgFile != "" {
 		logrus.Debugf("Using config file from the flag: %s", cfgFile)
 		viper.SetConfigFile(cfgFile)
@@ -211,12 +245,6 @@ func initConfig() {
 		viper.AddConfigPath(".")
 		viper.SetConfigName(".k8s-kms-plugin")
 	}
-
-	// Support ENV variables with prefix
-	// Example: A CLI flag like --some-flag becomes KMS_K8S_PLUGIN_SOME_FLAG in environment variables.
-	viper.SetEnvPrefix("KMS_K8S_PLUGIN")
-	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_")) // Converts flags to ENV format
-	viper.AutomaticEnv()                                   // Enables automatic binding
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
