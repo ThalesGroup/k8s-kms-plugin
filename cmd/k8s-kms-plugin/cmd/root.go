@@ -102,6 +102,22 @@ var rootCmd = &cobra.Command{
 	Short: "Thales KMS Server for K8S",
 	Long:  "Use this to connect a kubernetes cluster to a PKCS11 TPM or HSM.",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		// Set logs format
+		switch vprCfg.LogFormat {
+		case "json":
+			logrus.SetFormatter(&logrus.JSONFormatter{
+				PrettyPrint: true,
+			})
+		case "text":
+			logrus.SetFormatter(&logrus.TextFormatter{
+				ForceColors:      true,
+				DisableTimestamp: true,
+			})
+		default:
+			return errors.New("logrus unknown output format")
+		}
+		logrus.Debugf("logrus output format is set to: %s", vprCfg.LogFormat)
+
 		// Initialize logrus log level and log format for all cobra commands and subcommands.
 		debugFlagIsUsed := cmd.Flags().Lookup("debug").Changed
 
@@ -118,19 +134,6 @@ var rootCmd = &cobra.Command{
 			logrus.SetLevel(level)
 		}
 		logrus.Debugf("logrus log-level is set to: %s", logrus.GetLevel())
-
-		switch vprCfg.LogFormat {
-		case "json":
-			logrus.SetFormatter(&logrus.JSONFormatter{})
-		case "text":
-			logrus.SetFormatter(&logrus.TextFormatter{
-				ForceColors:      true,
-				DisableTimestamp: true,
-			})
-		default:
-			return errors.New("logrus unknown output format")
-		}
-		logrus.Debugf("logrus output format is set to: %s", vprCfg.LogFormat)
 
 		// Initialize the value of socketPath
 		// TODO: should SOCKET be called P11_SOCKET to be more consistent with other numbering?
@@ -229,17 +232,17 @@ func initConfig() {
 			os.Exit(1)
 		}
 
-		logrus.Debugf("Search config in home directory %s with name \".k8ms\" (without extension).", home)
+		logrus.Tracef("Search config in home directory %s with name \".k8ms\" (without extension).", home)
 		viper.AddConfigPath(home)
 		viper.AddConfigPath(".")
 		viper.SetConfigName(".k8s-kms-plugin")
 	}
 
-	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		logrus.Infof("Using config file: %s", viper.ConfigFileUsed())
-	} else {
+	// If a config file is not found, log a fatal error. Otherwise, read it in.
+	if err := viper.ReadInConfig(); err != nil {
 		logrus.Fatalf("Failed to read config file: %v", err)
+	} else {
+		logrus.Infof("Using config file: %s", viper.ConfigFileUsed())
 	}
 
 	// Support ENV variables with prefix with viper bound to cobra
@@ -247,8 +250,6 @@ func initConfig() {
 	viper.SetEnvPrefix("KMS_K8S_PLUGIN")
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_")) // Converts flags to ENV format
 	viper.AutomaticEnv()                                   // Enables automatic binding
-
-	logrus.Infof("Before config is Loaded: %+v", vprCfg) // Debugging: Check if log-level is loaded
 
 	// Bind CLI flags to Viper (after reading config file)
 	rootCmd.PersistentFlags().VisitAll(func(f *pflag.Flag) {
@@ -263,8 +264,6 @@ func initConfig() {
 	if err := viper.Unmarshal(&vprCfg); err != nil {
 		logrus.Fatalf("Failed to load config: %v", err)
 	}
-	viper.Debug()
-	logrus.Infof("After config is Loaded: %+v", vprCfg) // Debugging: Check if log-level is loaded
 }
 
 // getValueFromCliFlagOrEnv retrieves the value of a user configuration setting based on the
