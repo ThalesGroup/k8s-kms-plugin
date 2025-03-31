@@ -47,7 +47,6 @@ var (
 	host            string
 	cfgFile         string
 	debug           bool
-	logLevel        string
 	logFormat       string
 	caId            string
 	createKey       bool
@@ -60,6 +59,12 @@ var (
 	p11pin          string
 	p11slot         int
 	provider        string
+)
+
+// viper.GetString env vars values. These values are bound with their corresponding cobra root
+// CLI flags
+var (
+	viperLogLevel = viper.GetString("log-level")
 )
 
 // cobra root CLI flags default value
@@ -75,18 +80,15 @@ var rootCmd = &cobra.Command{
 	Long:  "Use this to connect a kubernetes cluster to a PKCS11 TPM or HSM.",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// Initialize logrus log level and log format for all cobra commands and subcommands.
-		// TODO: debug flag should be replaced a log-level flag, or a log-level should be added in addition to the debug flag
-		// https://github.com/ThalesGroup/k8s-kms-plugin/issues/46
-		// https://github.com/ThalesGroup/k8s-kms-plugin/issues/47
 		debugFlagIsUsed := cmd.Flags().Lookup("debug").Changed
-		logLevel := viper.GetString("log-level")
 
 		switch {
 		case debugFlagIsUsed:
-			// harcode that the --debug flags set logrus to debug
+			// harcode that the --debug flags set logrus level to debug
 			logrus.SetLevel(logrus.DebugLevel)
 		default:
-			level, err := logrus.ParseLevel(logLevel)
+			// get the log level from viper which is bind to the cobra flag --log-level
+			level, err := logrus.ParseLevel(viperLogLevel)
 			if err != nil {
 				return err
 			}
@@ -155,11 +157,11 @@ func init() {
 
 	// logging level
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Set logrus.SetLevel to \"debug\". This is equivalent to using --log-level=debug. Flags --log-level and --debug flag are mutually exclusive.")
-	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info", "Set logrus.SetLevel. Possible values: trace, debug, info, warning, error, fatal and panic. Flags --log-level and --debug flag are mutually exclusive. Corresponding env var: KMS_K8S_PLUGIN_LOG_LEVEL.")
+	rootCmd.PersistentFlags().StringVar(nil, "log-level", "info", "Set logrus.SetLevel. Possible values: trace, debug, info, warning, error, fatal and panic. Flags --log-level and --debug flag are mutually exclusive. Corresponding env var: KMS_K8S_PLUGIN_LOG_LEVEL.")
 	rootCmd.RegisterFlagCompletionFunc("log-level", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"trace", "debug", "info", "warning", "error", "fatal", "panic"}, cobra.ShellCompDirectiveNoFileComp
 	})
-	rootCmd.PersistentFlags().StringVar(&logFormat, "log-format", "text", "Logrus log output format. Possible values: text, json")
+	rootCmd.PersistentFlags().StringVar(&logFormat, "log-format", "text", "Logrus log output format. Possible values: text, json. Corresponding env var: KMS_K8S_PLUGIN_LOG_FORMAT")
 	rootCmd.RegisterFlagCompletionFunc("log-format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"text", "json"}, cobra.ShellCompDirectiveNoFileComp
 	})
@@ -185,7 +187,9 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&createKey, "auto-create", false, "Auto create the keys if needed")
 
 	// Bind flags to Viper environment variables
+	// logs
 	viper.BindPFlag("log-level", rootCmd.PersistentFlags().Lookup("log-level"))
+	viper.BindPFlag("log-format", rootCmd.PersistentFlags().Lookup("log-format"))
 }
 
 // initConfig reads in config file and ENV variables if set.
