@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	filename "github.com/keepeye/logrus-filename"
 	"github.com/mitchellh/go-homedir"
@@ -36,7 +37,6 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
@@ -78,13 +78,20 @@ var rootCmd = &cobra.Command{
 		// https://github.com/ThalesGroup/k8s-kms-plugin/issues/46
 		// https://github.com/ThalesGroup/k8s-kms-plugin/issues/47
 		debugFlagIsUsed := cmd.Flags().Lookup("debug").Changed
+		logLevelFlagIsUsed := cmd.Flags().Lookup("log-level").Changed
+
+		// Ensure CLI flags override environment variables
+		effectiveLogLevel := logLevel
+		if !logLevelFlagIsUsed || !debugFlagIsUsed {
+			effectiveLogLevel = viper.GetString("log-level")
+		}
 
 		switch {
 		case debugFlagIsUsed:
 			// harcode that the --debug flags set logrus to debug
 			logrus.SetLevel(logrus.DebugLevel)
 		default:
-			level, err := logrus.ParseLevel(logLevel)
+			level, err := logrus.ParseLevel(effectiveLogLevel)
 			if err != nil {
 				return err
 			}
@@ -182,10 +189,8 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&nativePath, "native-path", "p", ".keys", "Path to key store for native provider(Files only)")
 	rootCmd.PersistentFlags().BoolVar(&createKey, "auto-create", false, "Auto create the keys if needed")
 
-	// Bind flags to Viper
+	// Bind flags to Viper environment variables
 	viper.BindPFlag("log-level", rootCmd.PersistentFlags().Lookup("log-level"))
-	viper.AutomaticEnv() // read in environment variables that match
-	viper.BindEnv("log-level", "KMS_K8S_PLUGIN_LOG_LEVEL")
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -209,22 +214,15 @@ func initConfig() {
 	}
 
 	// Support ENV variables with prefix
+	// Example: A CLI flag like --some-flag becomes KMS_K8S_PLUGIN_SOME_FLAG in environment variables.
 	viper.SetEnvPrefix("KMS_K8S_PLUGIN")
-	//viper.AutomaticEnv() // read in environment variables that match
+	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_")) // Converts flags to ENV format
+	viper.AutomaticEnv() // Enables automatic binding
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
 		logrus.Infof("Using config file: %s", viper.ConfigFileUsed())
 	}
-
-	rootCmd.PersistentFlags().VisitAll(func(f *pflag.Flag) {
-		if viper.IsSet(f.Name) {
-			//rootCmd.Flags().SetAnnotation(f.Name, cobra.BashCompOneRequiredFlag, []string{"false"})
-			rootCmd.PersistentFlags().Set(f.Name, viper.GetString(f.Name))
-		}
-	})
-
-	viper.Debug()
 }
 
 // getValueFromCliFlagOrEnv retrieves the value of a user configuration setting based on the
