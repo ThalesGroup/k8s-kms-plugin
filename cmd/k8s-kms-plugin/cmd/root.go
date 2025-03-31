@@ -27,7 +27,6 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	filename "github.com/keepeye/logrus-filename"
@@ -106,7 +105,7 @@ var rootCmd = &cobra.Command{
 		switch vprCfg.LogFormat {
 		case "json":
 			logrus.SetFormatter(&logrus.JSONFormatter{
-				PrettyPrint: true,
+				PrettyPrint: false,
 			})
 		case "text":
 			logrus.SetFormatter(&logrus.TextFormatter{
@@ -135,26 +134,6 @@ var rootCmd = &cobra.Command{
 		}
 		logrus.Debugf("logrus log-level is set to: %s", logrus.GetLevel())
 
-		// Initialize the value of socketPath
-		// TODO: should SOCKET be called P11_SOCKET to be more consistent with other numbering?
-		getValueFromCliFlagOrEnv(cmd, "socket", "SOCKET", &socketPath)
-
-		// Initialize the value of p11lib
-		getValueFromCliFlagOrEnv(cmd, "p11-lib", "P11_LIBRARY", &p11lib)
-
-		// Initialize the value of p11label
-		getValueFromCliFlagOrEnv(cmd, "p11-label", "P11_TOKEN", &p11label)
-
-		// Initialize the value of p11slot
-		getValueFromCliFlagOrEnv(cmd, "p11-slot", "P11_SLOT", &p11slot)
-
-		// Initialize the value of p11pin
-		getValueFromCliFlagOrEnv(cmd, "p11-pin", "P11_PIN", &p11pin)
-
-		// TODO Choose wether each CLI flag should have a corresponding environment variable or not.
-		// TODO Choose wether the initialization (cli, env var or default value) should be done in the PersistentPreRunE
-		// or if it should be done in a separate function that could be called in the PersistentPreRunE.
-
 		// PersistentPreRunE returns an error or nil
 		return nil
 	},
@@ -182,41 +161,41 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "ConfigFile")
 
 	// logging level
-	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Set logrus.SetLevel to \"debug\". This is equivalent to using --log-level=debug. Flags --log-level and --debug flag are mutually exclusive.")
-	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info", "Set logrus.SetLevel. Possible values: trace, debug, info, warning, error, fatal and panic. Flags --log-level and --debug flag are mutually exclusive. Corresponding env var: KMS_K8S_PLUGIN_LOG_LEVEL.")
+	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Set logrus.SetLevel to \"debug\". This is equivalent to using --log-level=debug. Flags --log-level and --debug flag are mutually exclusive. Corresponding environment variable: K8S_KMS_PLUGIN_DEBUG.")
+	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info", "Set logrus.SetLevel. Possible values: trace, debug, info, warning, error, fatal and panic. Flags --log-level and --debug flag are mutually exclusive. Corresponding environment variable: K8S_KMS_PLUGIN_LOG_LEVEL.")
 	rootCmd.RegisterFlagCompletionFunc("log-level", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"trace", "debug", "info", "warning", "error", "fatal", "panic"}, cobra.ShellCompDirectiveNoFileComp
 	})
-	rootCmd.PersistentFlags().StringVar(&logFormat, "log-format", "text", "Logrus log output format. Possible values: text, json. Corresponding env var: KMS_K8S_PLUGIN_LOG_FORMAT")
+	rootCmd.PersistentFlags().StringVar(&logFormat, "log-format", "text", "Logrus log output format. Possible values: text, json. Corresponding environment variable: K8S_KMS_PLUGIN_LOG_FORMAT")
 	rootCmd.RegisterFlagCompletionFunc("log-format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"text", "json"}, cobra.ShellCompDirectiveNoFileComp
 	})
 	rootCmd.MarkFlagsMutuallyExclusive("log-level", "debug")
 
-	rootCmd.PersistentFlags().StringVar(&host, "host", "0.0.0.0", "Hostname without port")
-	rootCmd.PersistentFlags().Int64Var(&grpcPort, "port", 31400, "TCP Port for gRPC service")
-	rootCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Corresponding environment variable: SOCKET")
+	rootCmd.PersistentFlags().StringVar(&host, "host", "0.0.0.0", "Hostname without port. Corresponding environment variable: K8S_KMS_PLUGIN_HOST.")
+	rootCmd.PersistentFlags().Int64Var(&grpcPort, "port", 31400, "TCP Port for gRPC service. Corresponding environment variable: K8S_KMS_PLUGIN_PORT.")
+	rootCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Corresponding environment variable: K8S_KMS_PLUGIN_SOCKET")
 	// Provider
-	rootCmd.PersistentFlags().StringVar(&provider, "provider", "p11", "Provider (accepts: p11, softhsm, luna, dpod)")
+	rootCmd.PersistentFlags().StringVar(&provider, "provider", "p11", "Provider. Possible values: p11, softhsm, luna, dpod. Corresponding environment variable: K8S_KMS_PLUGIN_PROVIDER.")
 	rootCmd.RegisterFlagCompletionFunc("provider", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"p11", "softhsm", "luna", "dpod"}, cobra.ShellCompDirectiveNoFileComp
 	})
-	rootCmd.PersistentFlags().StringVar(&kekKeyId, "kek-id", defaultKekId, "Key ID for KMS KEK")
-	rootCmd.PersistentFlags().StringVar(&caId, "ca-id", defaultCaId, "Cert ID for CA Cert record")
-	rootCmd.PersistentFlags().StringVar(&p11lib, "p11-lib", "", "Path to p11 library/client. Corresponding environment variable: P11_LIBRARY")
-	rootCmd.PersistentFlags().StringVar(&p11label, "p11-label", "", "P11 token label. Corresponding environment variable: P11_TOKEN")
-	rootCmd.PersistentFlags().IntVar(&p11slot, "p11-slot", 0, "P11 token slot. Corresponding environment variable: P11_SLOT")
-	rootCmd.PersistentFlags().StringVar(&p11pin, "p11-pin", "", "P11 Pin. Corresponding environment variable: P11_PIN")
-	rootCmd.PersistentFlags().StringVar(&dekKeyLabelName, "p11-key-label", "k8s-dek", "Key Label to use for encrypt/decrypt")
-	rootCmd.PersistentFlags().StringVar(&hmacKeyName, "p11-hmac-label", "k8s-hmac", "Key Label to use for sha based verifications")
-	rootCmd.PersistentFlags().StringVarP(&nativePath, "native-path", "p", ".keys", "Path to key store for native provider(Files only)")
-	rootCmd.PersistentFlags().BoolVar(&createKey, "auto-create", false, "Auto create the keys if needed")
+	rootCmd.PersistentFlags().StringVar(&kekKeyId, "kek-id", defaultKekId, "Key ID for KMS KEK. Corresponding environment variable: K8S_KMS_PLUGIN_KEK_ID")
+	rootCmd.PersistentFlags().StringVar(&caId, "ca-id", defaultCaId, "Cert ID for CA Cert record. Corresponding environment variable: K8S_KMS_PLUGIN_CA_ID")
+	rootCmd.PersistentFlags().StringVar(&p11lib, "p11-lib", "", "Path to p11 library/client. Corresponding environment variable: K8S_KMS_PLUGIN_P11_LIBRARY")
+	rootCmd.PersistentFlags().StringVar(&p11label, "p11-label", "", "P11 token label. Corresponding environment variable: K8S_KMS_PLUGIN_P11_TOKEN")
+	rootCmd.PersistentFlags().IntVar(&p11slot, "p11-slot", 0, "P11 token slot. Corresponding environment variable: K8S_KMS_PLUGIN_P11_SLOT")
+	rootCmd.PersistentFlags().StringVar(&p11pin, "p11-pin", "", "P11 Pin. Corresponding environment variable: K8S_KMS_PLUGIN_P11_PIN")
+	rootCmd.PersistentFlags().StringVar(&dekKeyLabelName, "p11-key-label", "k8s-dek", "Key Label to use for encrypt/decrypt. Corresponding environment variable: K8S_KMS_PLUGIN_P11_KEY_LABEL.")
+	rootCmd.PersistentFlags().StringVar(&hmacKeyName, "p11-hmac-label", "k8s-hmac", "Key Label to use for sha based verifications. Corresponding environment variable: K8S_KMS_PLUGIN_P11_HMAC_LABEL.")
+	rootCmd.PersistentFlags().StringVarP(&nativePath, "native-path", "p", ".keys", "Path to key store for native provider(Files only). Corresponding environment variable: K8S_KMS_PLUGIN_NATIVE_PATH.")
+	rootCmd.PersistentFlags().BoolVar(&createKey, "auto-create", false, "Auto create the keys if needed. Corresponding environment variable: K8S_KMS_PLUGIN_AUTO_CREATE.")
 }
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
 	// use a configuration file parsed by viper
-	switch envVar, ok := os.LookupEnv("KMS_K8S_PLUGIN_CONFIG"); {
+	switch envVar, ok := os.LookupEnv("K8S_KMS_PLUGIN_CONFIG"); {
 	case rootCmd.Flags().Lookup("config").Changed && cfgFile != "":
 		logrus.Tracef("Using config file from the flag: %s", cfgFile)
 		viper.SetConfigFile(cfgFile)
@@ -224,7 +203,6 @@ func initConfig() {
 		logrus.Tracef("Using config file from the environment variable: %s", envVar)
 		viper.SetConfigFile(envVar)
 	default:
-		// TODO: check if this is still relevant to auto search a config file, and check config file default names
 		// Find home directory.
 		home, err := homedir.Dir()
 		if err != nil {
@@ -246,8 +224,8 @@ func initConfig() {
 	}
 
 	// Support ENV variables with prefix with viper bound to cobra
-	// Example: A CLI flag like --some-flag becomes KMS_K8S_PLUGIN_SOME_FLAG in environment variables.
-	viper.SetEnvPrefix("KMS_K8S_PLUGIN")
+	// Example: A CLI flag like --some-flag becomes K8S_KMS_PLUGIN_SOME_FLAG in environment variables.
+	viper.SetEnvPrefix("K8S_KMS_PLUGIN")
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_")) // Converts flags to ENV format
 	viper.AutomaticEnv()                                   // Enables automatic binding
 
@@ -263,53 +241,5 @@ func initConfig() {
 	// Initialize and Load the ViperConfig that are bound to cobra CLI flags
 	if err := viper.Unmarshal(&vprCfg); err != nil {
 		logrus.Fatalf("Failed to load config: %v", err)
-	}
-}
-
-// getValueFromCliFlagOrEnv retrieves the value of a user configuration setting based on the
-// priority of sources. It first checks if the cobra CLI flag specified by 'flagName' has been set
-// and used by user. If the CLI flag is set, its value is used by cobra. If the flag is not set, it
-// checks if the environment variable 'envName' is set, using its value if available. If
-// neither the flag nor the environment variable is set, the function exit and do nothing, which
-// means the default cobra flags value is used.
-// cliFlagValueStoreVar is the variable that holds the value of a given cobra flag.
-//
-// getValueFromCliFlagOrEnv supports the following types for cliFlagValueStoreVar: *int and *string
-//
-// example
-// Initialize the value of socketPath. The value from the cobra CLI flag --socket has the
-// priority over the value from the environment variable SOCKET. If the CLI flag is set, the
-// value from the CLI flag is used and the environment variable is ignored. If the CLI flag
-// is not set and if the environment variable is used, the value from the environment
-// variable is used. If neither the CLI flag nor the environment variable is set, the
-// default value is used.
-func getValueFromCliFlagOrEnv(cmd *cobra.Command, cliFlagName string, envVarName string, cliFlagValueStoreVar interface{}) {
-	switch v := cliFlagValueStoreVar.(type) {
-	case *string:
-		if !cmd.Flags().Lookup(cliFlagName).Changed {
-			if a, ok := os.LookupEnv(envVarName); ok {
-				logrus.Debugf("--%s flag is not used. Environment variable %s is set to: %s", cliFlagName, envVarName, a)
-				*v = a
-				return
-			}
-			logrus.Debugf("--%s flag is not used. Environment variable %s is not set. Using default value: %s", cliFlagName, envVarName, *v)
-			return
-		}
-		logrus.Debugf("--%s flag is used. Using value from --%s flag: %s", cliFlagName, cliFlagName, *v)
-	case *int:
-		if !cmd.Flags().Lookup(cliFlagName).Changed {
-			if a, ok := os.LookupEnv(envVarName); ok {
-				if val, err := strconv.Atoi(a); err == nil {
-					logrus.Debugf("--%s flag is not used. Environment variable %s is set to: %d", cliFlagName, envVarName, val)
-					*v = val
-					return
-				}
-			}
-			logrus.Debugf("--%s flag is not used. Environment variable %s is not set. Using default value: %d", cliFlagName, envVarName, *v)
-			return
-		}
-		logrus.Debugf("--%s flag is used. Using value from --%s flag: %d", cliFlagName, cliFlagName, *v)
-	default:
-		logrus.Errorf("Unsupported type for flags %s and environment variable %s", cliFlagName, envVarName)
 	}
 }
