@@ -80,6 +80,23 @@ k8s-kms-plugin serve \
 
 Read the [QUICKSTART.md](QUICKSTART.md).
 
+## Usage
+
+### User Input Priority: CLI > Env Vars > Config File > Default
+
+`k8s-kms-plugin` allows users to configure settings through multiple sources, with the highest priority given to CLI flags, followed by environment variables, and then configuration files. The default settings are used if no other sources provide a value.
+
+Each CLI flag (e.g. `--log-level`) has a corresponding environment variable (e.g. `KMS_K8S_PLUGIN_LOG_LEVEL`) and a config file entry (e.g. `log-level` in YAML/TOML/JSON).
+
+| Priority Order           | Source                              | Example                         |
+|--------------------------|-------------------------------------|---------------------------------|
+| 1️⃣ CLI Flag             | `--log-level debug`                 | Highest priority                |
+| 2️⃣ Environment Variable | `KMS_K8S_PLUGIN_LOG_LEVEL=trace`    | Overrides config file & default |
+| 3️⃣ Config File          | `log-level: warn` in YAML/TOML/JSON | Overrides default               |
+| 4️⃣ Default Value        | `info` (from Cobra)                 | Used if nothing else is set     |
+
+Flags are handled by [Cobra](https://github.com/spf13/cobra), environment variables, and config files are ahhandled by [Viper](https://github.com/spf13/viper).
+
 ## Deployment scenarios
 
 This plugin is designed to be deployed in 2 configurations
