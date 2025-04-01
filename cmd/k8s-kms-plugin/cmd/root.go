@@ -62,9 +62,9 @@ var (
 	socketPath      string
 )
 
-// ViperConfig defines a struct to hold all the configuration values and use viper.Unmarshal
+// ViperFlagsRoot defines a struct to hold all the configuration values and use viper.Unmarshal
 // to populate it:
-type ViperConfig struct {
+type ViperFlagsRoot struct {
 	CaID         string `mapstructure:"ca-id"`
 	ConfigFile   string `mapstructure:"config"`
 	CreateKey    bool   `mapstructure:"auto-create"`
@@ -86,7 +86,7 @@ type ViperConfig struct {
 }
 
 // Initialize the ViperConfig struct with all the root CLI flags bound to Viper env vars
-var vprCfg ViperConfig
+var vprFlgsRoot ViperFlagsRoot
 
 // cobra root CLI flags default value
 const (
@@ -101,7 +101,7 @@ var rootCmd = &cobra.Command{
 	Long:  "Use this to connect a kubernetes cluster to a PKCS11 TPM or HSM.",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// Set logs format
-		switch vprCfg.LogFormat {
+		switch vprFlgsRoot.LogFormat {
 		case "json":
 			logrus.SetFormatter(&logrus.JSONFormatter{
 				PrettyPrint: false,
@@ -114,7 +114,7 @@ var rootCmd = &cobra.Command{
 		default:
 			return errors.New("logrus unknown output format")
 		}
-		logrus.Debugf("logrus output format is set to: %s", vprCfg.LogFormat)
+		logrus.Debugf("logrus output format is set to: %s", vprFlgsRoot.LogFormat)
 
 		// Initialize logrus log level and log format for all cobra commands and subcommands.
 		debugFlagIsUsed := cmd.Flags().Lookup("debug").Changed
@@ -125,7 +125,7 @@ var rootCmd = &cobra.Command{
 			logrus.SetLevel(logrus.DebugLevel)
 		default:
 			// get the log level from viper which is bind to the cobra flag --log-level
-			level, err := logrus.ParseLevel(vprCfg.LogLevel)
+			level, err := logrus.ParseLevel(vprFlgsRoot.LogLevel)
 			if err != nil {
 				return err
 			}
@@ -157,7 +157,7 @@ func init() {
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "ConfigFile")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "turdutr.yaml", "ConfigFile")
 
 	// logging level
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Set logrus.SetLevel to \"debug\". This is equivalent to using --log-level=debug. Flags --log-level and --debug flag are mutually exclusive. Corresponding environment variable: K8S_KMS_PLUGIN_DEBUG.")
@@ -239,7 +239,7 @@ func initConfig() {
 	}
 
 	// Initialize and Load the ViperConfig that are bound to cobra CLI flags
-	if err := viper.Unmarshal(&vprCfg); err != nil {
-		logrus.Fatalf("Failed to load config: %v", err)
+	if err := viper.Unmarshal(&vprFlgsRoot); err != nil {
+		logrus.Fatalf("Failed to load viper config: %v", err)
 	}
 }
