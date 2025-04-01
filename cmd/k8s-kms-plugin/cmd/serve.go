@@ -32,7 +32,6 @@ import (
 	"net"
 	"os"
 	"reflect"
-	"strings"
 	"time"
 
 	"github.com/ThalesGroup/crypto11"
@@ -46,12 +45,14 @@ import (
 	"github.com/ThalesGroup/k8s-kms-plugin/pkg/providers"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
 
-// cobra serve.go CLI Flags
+// cobra serve.go CLI Flags. They are mostly not used because we use viper that binds the cobra flags
+// to the corresponding environment variables that viper reads.
 var (
 	algorithm     string
 	allowAny      bool
@@ -61,6 +62,19 @@ var (
 	serverTLSCert string
 	serverTLSKey  string
 )
+
+type ViperFlagsServe struct {
+	Algorithm     string `mapstructure:"algorithm"`
+	AllowAny      bool   `mapstructure:"allow-any"`
+	caTLSCert     string `mapstructure:"tls-ca"`
+	disableSocket bool   `mapstructure:"disable-socket"`
+	enableTCP     bool   `mapstructure:"enable-server"`
+	serverTLSCert string `mapstructure:"tls-certificate"`
+	serverTLSKey  string `mapstructure:"tls-key"`
+}
+
+// Initialize the ViperConfig struct with all the serve CLI flags bound to Viper env vars
+var vprFlgsServe ViperFlagsServe
 
 // Algorithm supports user input for configuration
 type Algorithm struct {
@@ -95,18 +109,6 @@ var serveCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		// Show the version of the k8s-kms-plugin and commit ID
 		version.LogrusOutputVersion()
-
-		// TODO: consider moving this to root CLI or delete this feature
-		if a := os.Getenv("P11_PIN_FILE"); a != "" {
-			var p11pinBytes []byte
-			p11pinBytes, err = os.ReadFile(a)
-			if err != nil {
-				logrus.Error(err)
-				return err
-			}
-			p11pin = strings.TrimSpace(string(p11pinBytes))
-			logrus.Infof("Loaded P11 PIN from file: %v", a)
-		}
 
 		// Don't panic/exit if we have a PKCS#11 error.
 		// Sleep forever instead.
@@ -160,20 +162,32 @@ func init() {
 	rootCmd.AddCommand(serveCmd)
 
 	// unix socket server options
-	serveCmd.Flags().BoolVar(&disableSocket, "disable-socket", false, "Disable socket based server")
+	serveCmd.Flags().BoolVar(&disableSocket, "disable-socket", false, "Disable socket based server. Corresponding environment variable: K8S_KMS_PLUGIN_DISABLE_SOCKET.")
 
 	// tcp server options
-	serveCmd.Flags().BoolVar(&enableTCP, "enable-server", false, "Enable TLS based server")
-	serveCmd.Flags().StringVar(&caTLSCert, "tls-ca", "certs/ca.crt", "TLS CA cert")
-	serveCmd.Flags().StringVar(&serverTLSKey, "tls-key", "certs/tls.key", "TLS server key")
-	serveCmd.Flags().StringVar(&serverTLSCert, "tls-certificate", "certs/tls.crt", "TLS server cert")
+	serveCmd.Flags().BoolVar(&enableTCP, "enable-server", false, "Enable TLS based server. Corresponding environment variable: K8S_KMS_PLUGIN_ENABLE_SERVER.")
+	serveCmd.Flags().StringVar(&caTLSCert, "tls-ca", "certs/ca.crt", "TLS CA cert. Corresponding environment variable: K8S_KMS_PLUGIN_TLS_CA.")
+	serveCmd.Flags().StringVar(&serverTLSKey, "tls-key", "certs/tls.key", "TLS server key. Corresponding environment variable: K8S_KMS_PLUGIN_TLS_KEY")
+	serveCmd.Flags().StringVar(&serverTLSCert, "tls-certificate", "certs/tls.crt", "TLS server cert. Corresponding environment variable: K8S_KMS_PLUGIN_TLS_CERTIFICATE")
 
-	serveCmd.Flags().BoolVar(&allowAny, "allow-any", false, "Allow any device (accepts all ids/secrets)")
+	serveCmd.Flags().BoolVar(&allowAny, "allow-any", false, "Allow any device (accepts all ids/secrets). Corresponding environment variable: K8S_KMS_PLUGIN_ALLOW_ANY")
 
-	serveCmd.Flags().StringVar(&algorithm, "algorithm", "aes-gcm", "Set the algorithm for encryption/decryption (accepts: aes-gcm, aes-cbc, rsa-oaep)")
+	serveCmd.Flags().StringVar(&algorithm, "algorithm", "aes-gcm", "Set the algorithm for encryption/decryption. Possible values: aes-gcm, aes-cbc, rsa-oaep. Corresponding environment variable: K8S_KMS_PLUGIN_ALGORITHM")
 	serveCmd.RegisterFlagCompletionFunc("algorithm", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"aes-gcm", "aes-cbc", "rsa-oaep"}, cobra.ShellCompDirectiveNoFileComp
 	})
+
+	// Ensure all Cobra flags are bound to Viper after initializing them
+	if err := viper.BindPFlags(serveCmd.Flags()); err != nil {
+		logrus.Errorf("Error binding flags: %v", err)
+		os.Exit(1)
+	}
+
+	// Load the configuration into the struct
+	if err := viper.Unmarshal(&vprFlgsServe); err != nil {
+		logrus.Fatalf("Failed to load viper config: %v", err)
+	}
+
 }
 
 func initProvider() (p providers.Provider, err error) {
