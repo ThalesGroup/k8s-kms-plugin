@@ -232,13 +232,13 @@ func initConfig() {
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_")) // Converts flags to ENV format
 	viper.AutomaticEnv()                                   // Enables automatic binding
 
-	// Ensure all flags are bound to Viper after initializing them
+	// Ensure all Cobra flags are bound to Viper after initializing them
 	if err := viper.BindPFlags(rootCmd.PersistentFlags()); err != nil {
 		logrus.Errorf("Error binding flags: %v", err)
 		os.Exit(1)
 	}
 
-	// Initialize and Load the ViperConfig that are bound to cobra CLI flags
+	// Initialize and Load the ViperConfig that are bound to Cobra CLI flags
 	if err := viper.Unmarshal(&vprFlgsRoot); err != nil {
 		logrus.Fatalf("Failed to load viper config: %v", err)
 	}
