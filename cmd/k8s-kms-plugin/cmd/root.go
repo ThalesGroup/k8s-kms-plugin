@@ -98,7 +98,8 @@ const (
 var rootCmd = &cobra.Command{
 	Use:   "k8s-kms-plugin",
 	Short: "Thales KMS Server for K8S",
-	Long:  "Use this to connect a kubernetes cluster to a PKCS11 TPM or HSM.",
+	Long:  `Use k8s-kms-plugin to connect a kubernetes cluster to a PKCS11 TPM or HSM.
+k8s-kms-plugin prioritizes configuration sources as follows: CLI flags > environment variables > configuration files > default settings.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// Set logs format
 		switch vprFlgsRoot.LogFormat {
