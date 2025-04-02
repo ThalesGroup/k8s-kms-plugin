@@ -1,0 +1,6 @@
+# k8s-kms-plugin configuration file example
+
+version:
+  # Format of the version output. One of 'yaml' or 'json'.
+  output: "json"
+  pretty: "true" # only for JSON output

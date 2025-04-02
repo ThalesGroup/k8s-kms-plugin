@@ -24,11 +24,15 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/ThalesGroup/k8s-kms-plugin/pkg/version"
 	"github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
+	"os"
 )
 
 // CLI options pflags names
@@ -36,6 +40,16 @@ var outputFormat string // One of 'yaml' or 'json'.
 
 // prettyPrintVersion defined by the user with flag --pretty
 var prettyPrintVersion bool
+
+// ViperFlagsVersion defines a struct to hold all the configuration values and use viper.Unmarshal
+// to populate it:
+type ViperFlagsVersion struct {
+	OutputFormat       string `mapstructure:"output"`
+	PrettyPrintVersion bool   `mapstructure:"pretty"`
+}
+
+// Initialize the ViperConfig struct with all the version CLI flags bound to Viper env vars
+var vprFlgsVersion ViperFlagsVersion
 
 // versionCmd represents the version command
 var versionCmd = &cobra.Command{
@@ -49,20 +63,63 @@ Examples:
   # JSON string.
   k8s-kms-plugin version -o json --pretty=false`,
 	Run: func(cmd *cobra.Command, args []string) {
-		// Add logic here to check if flag output is used with JSON or YAML.
-		flagOutputUsed := cmd.Flags().Changed("output")
-		flagPrettyUsed := cmd.Flags().Changed("pretty")
-
-		if flagOutputUsed && !(outputFormat == "yaml" || outputFormat == "json") {
-			logrus.Errorf("Invalid output format: %s. Must be json or yaml.", outputFormat)
+		// Ensure all Cobra flags are bound to Viper
+		if err := viper.BindPFlags(cmd.Flags()); err != nil {
+			logrus.Errorf("Error binding flags: %v", err)
+			os.Exit(1)
 		}
 
-		if flagOutputUsed && flagPrettyUsed && outputFormat == "yaml" {
-			logrus.Error("Flag --pretty must NOT be used when output format is yaml." +
-				" --pretty is only used when output format is json")
+		// Always set env var prefix for consistency
+		viper.SetEnvPrefix("K8S_KMS_PLUGIN")
+		viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
+		viper.AutomaticEnv()
+
+		// Extract "version" config if present
+		vprSubBuf := viper.Sub("version")
+
+		// If config exists, bind its values
+		if vprSubBuf != nil {
+			logrus.Tracef("A 'version' section found in %s", viper.ConfigFileUsed())
+
+			// Apply env vars to sub-Viper instance
+
+			vprSubBuf.SetEnvPrefix("K8S_KMS_PLUGIN")
+			vprSubBuf.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
+			vprSubBuf.AutomaticEnv()
+
+			// Re-bind flags at the sub-Viper level
+			if err := vprSubBuf.BindPFlags(cmd.Flags()); err != nil {
+				logrus.Errorf("Error binding flags: %v", err)
+				os.Exit(1)
+			}
+
+			// Merge config from file + env vars + flags
+			if err := vprSubBuf.Unmarshal(&vprFlgsVersion); err != nil {
+				logrus.WithError(err).Fatal("versionCmd: failed to unmarshal viper config")
+			}
+
+			// Override with environment variables manually
+			if envVal := viper.GetString("output"); envVal != "" {
+				vprFlgsVersion.OutputFormat = envVal
+			}
+			if envVal := viper.GetBool("PRETTY"); envVal {
+				vprFlgsVersion.PrettyPrintVersion = envVal
+			}
+
 		} else {
-			fmt.Fprintln(cmd.OutOrStdout(), version.VersionOutputToString(outputFormat, prettyPrintVersion))
+			logrus.Tracef("No 'version' section found, using root-level Viper settings.")
+
+			// Use root-level Viper config if no sub-config exists
+			if err := viper.Unmarshal(&vprFlgsVersion); err != nil {
+				logrus.WithError(err).Fatal("versionCmd: failed to unmarshal viper config")
+			}
 		}
+
+		// Debug: print the final configuration
+		logrus.Infof("Final Config: %+v", vprFlgsVersion)
+
+		// Output version info
+		fmt.Fprintln(cmd.OutOrStdout(), version.VersionOutputToString(vprFlgsVersion.OutputFormat, vprFlgsVersion.PrettyPrintVersion))
 	},
 }
 
@@ -73,7 +130,7 @@ func init() {
 	versionCmd.RegisterFlagCompletionFunc("output", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"yaml", "json"}, cobra.ShellCompDirectiveNoFileComp
 	})
-	versionCmd.PersistentFlags().BoolVar(&prettyPrintVersion, "pretty", true, "Activate pretty print output for JSON.")
+	versionCmd.Flags().BoolVar(&prettyPrintVersion, "pretty", true, "Activate pretty print output for JSON.")
 	versionCmd.RegisterFlagCompletionFunc("pretty", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"true", "false"}, cobra.ShellCompDirectiveNoFileComp
 	})

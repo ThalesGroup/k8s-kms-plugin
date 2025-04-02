@@ -98,7 +98,7 @@ const (
 var rootCmd = &cobra.Command{
 	Use:   "k8s-kms-plugin",
 	Short: "Thales KMS Server for K8S",
-	Long:  `Use k8s-kms-plugin to connect a kubernetes cluster to a PKCS11 TPM or HSM.
+	Long: `Use k8s-kms-plugin to connect a kubernetes cluster to a PKCS11 TPM or HSM.
 k8s-kms-plugin prioritizes configuration sources as follows: CLI flags > environment variables > configuration files > default settings.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// Set logs format
@@ -153,6 +153,7 @@ func Execute() {
 }
 
 func init() {
+	// Ensure initConfig runs before anything else
 	cobra.OnInitialize(initConfig)
 
 	// Here you will define your flags and configuration settings.
@@ -243,4 +244,7 @@ func initConfig() {
 	if err := viper.Unmarshal(&vprFlgsRoot); err != nil {
 		logrus.Fatalf("Failed to load viper config: %v", err)
 	}
+
+	// Debugging: Show all loaded settings
+	logrus.Tracef("Viper settings: %+v", viper.AllSettings())
 }
