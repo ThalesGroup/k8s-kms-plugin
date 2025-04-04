@@ -21,7 +21,7 @@ kek-id: "my-key"
 ca-id: "my-ca"
 
 p11-lib: "/usr/local/lib/softhsm/libsofthsm2.so"
-p11-label: "my-token"
+p11-label: "my-jechangecettevaleur"
 p11-slot: 0
 p11-pin: "1234" # This is a secret, you set this with an environment variable K8S_KMS_PLUGIN_P11_PIN instead of the configuration file
 
@@ -34,4 +34,9 @@ serve:
   tls-certificate: "certs/tls.crt"
   allow-any: false
   ## algorithm possible values: aes-gcm, aes-cbc, rsa-oaep
-  algorithm: "aes-gcm"
+  algorithm: "rsa-oaep"
+
+version:
+  # Format of the version output. One of 'yaml' or 'json'.
+  output: "json"
+  pretty: true # only for JSON output

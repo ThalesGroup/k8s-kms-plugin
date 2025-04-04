@@ -105,10 +105,14 @@ func algFromString(s string) (jose.Alg, error) {
 var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Serve KMS",
-
+	PreRunE: func(cmd *cobra.Command, args []string) (err error) {
+		return initViperServe(cmd)
+	},
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		// Show the version of the k8s-kms-plugin and commit ID
 		version.LogrusOutputVersion()
+
+		fmt.Printf("versionCmd: Viper settings after read: %+v\n", viper.AllSettings())
 
 		// Don't panic/exit if we have a PKCS#11 error.
 		// Sleep forever instead.
@@ -176,18 +180,6 @@ func init() {
 	serveCmd.RegisterFlagCompletionFunc("algorithm", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"aes-gcm", "aes-cbc", "rsa-oaep"}, cobra.ShellCompDirectiveNoFileComp
 	})
-
-	// Ensure all Cobra flags are bound to Viper after initializing them
-	if err := viper.BindPFlags(serveCmd.Flags()); err != nil {
-		logrus.Errorf("Error binding flags: %v", err)
-		os.Exit(1)
-	}
-
-	// Load the configuration into the struct
-	if err := viper.Unmarshal(&vprFlgsServe); err != nil {
-		logrus.Fatalf("Failed to load viper config: %v", err)
-	}
-
 }
 
 func initProvider() (p providers.Provider, err error) {
@@ -265,5 +257,28 @@ START:
 func unknownServiceHandler(srv interface{}, stream grpc.ServerStream) error {
 	typeOfSrv := reflect.TypeOf(srv)
 	logrus.Infof("unknownServiceHandler. Looking for: %v, %v", typeOfSrv, srv)
+	return nil
+}
+
+func initViperServe(cmd *cobra.Command) error {
+	// Ensure all Cobra flags are bound to Viper after initializing them
+	if err := viper.BindPFlags(cmd.Flags()); err != nil {
+		logrus.Errorf("Error binding flags: %v", err)
+		os.Exit(1)
+		return err
+	}
+
+	// Extract the "serve" subsection before unmarshaling
+	serveViper := viper.Sub("serve")
+	if serveViper == nil {
+		logrus.Warning("No 'serve' section found in the config file")
+	}
+
+	// Load the configuration into the struct
+	if err := viper.Unmarshal(&vprFlgsServe); err != nil {
+		logrus.Fatalf("Failed to load viper config: %v", err)
+		return err
+	}
+
 	return nil
 }

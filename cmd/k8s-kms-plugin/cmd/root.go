@@ -137,6 +137,10 @@ k8s-kms-plugin prioritizes configuration sources as follows: CLI flags > environ
 		// PersistentPreRunE returns an error or nil
 		return nil
 	},
+	Run: func(cmd *cobra.Command, args []string) {
+		logrus.Info("Running k8s-kms-plugin")
+		//logrus.Debugf("k8s-kms-plugin version: %s", logrus.GetLevel())
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
