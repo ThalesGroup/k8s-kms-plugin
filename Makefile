@@ -50,7 +50,7 @@ build:
 		@go build $(GO_LDFLAGS) -o k8s-kms-plugin cmd/k8s-kms-plugin/main.go
 build-debug:
 		@go version
-		@go build -gcflags="all=-N -l" -o k8s-kms-plugin cmd/k8s-kms-plugin/main.go
+		@go build -gcflags="all=-N -l" $(GO_LDFLAGS) -o k8s-kms-plugin cmd/k8s-kms-plugin/main.go
 		$(info use cmd : dlv --listen=:2345 --headless=true --api-version=2 --accept-multiclient exec k8s-kms-plugin)
 		$(info will listen to port 2345)
 run:
