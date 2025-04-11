@@ -200,14 +200,14 @@ func init() {
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
 	// use a configuration file parsed by viper
-	switch envVar, ok := os.LookupEnv("K8S_KMS_PLUGIN_CONFIG"); {
-	case rootCmd.Flags().Lookup("config").Changed && cfgFile != "":
+	if rootCmd.Flags().Lookup("config").Changed && cfgFile != "" {
 		logrus.Tracef("Using config file from the flag: %s", cfgFile)
 		viper.SetConfigFile(cfgFile)
-	case ok:
+	} else if envVar, ok := os.LookupEnv("K8S_KMS_PLUGIN_CONFIG"); ok {
 		logrus.Tracef("Using config file from the environment variable: %s", envVar)
 		viper.SetConfigFile(envVar)
-	default:
+	} else {
+		logrus.Infof("Using config file from default location")
 		// Find home directory.
 		home, err := homedir.Dir()
 		if err != nil {
@@ -215,10 +215,10 @@ func initConfig() {
 			os.Exit(1)
 		}
 
-		logrus.Tracef("Search config in home directory %s with name \".k8ms\" (without extension).", home)
+		viper.SetConfigName("k8s-kms-plugin.conf") // name of config file (viper needs no file extension)
 		viper.AddConfigPath(home)
-		viper.AddConfigPath(".")
-		viper.SetConfigName(".k8s-kms-plugin")
+		viper.AddConfigPath(filepath.Join(home, ".config/k8s-kms-plugin"))
+		//logrus.Infof("default config filename %s", rootCmd.Flags().Lookup("config").DefValue)
 	}
 
 	// If a config file is not found, log a trace error. Otherwise, read it in.
@@ -244,7 +244,7 @@ func initConfig() {
 		os.Exit(1)
 	}
 
-	// Initialize and Load the ViperConfig that are bound to Cobra CLI flags
+	// Initialize and Load the ViperConfig that are bound to root Cobra CLI flags
 	if err := viper.Unmarshal(&vprFlgsRoot); err != nil {
 		logrus.Fatalf("Failed to load viper config: %v", err)
 	}
