@@ -88,21 +88,26 @@ func UnmarshalSubMerged(v *viper.Viper, section string, target any) error {
 // provided cobra command to viper, logging and exiting on error. Then, it attempts
 // to unmarshal the merged configuration data, which includes flag, environment,
 // and default values, into the target. Logs fatal on unmarshalling failure.
-func InitViper(v *viper.Viper, cobraCmd *cobra.Command, target any) {
-	// Bind subcommand-specific cobra flags to viper
-	err := v.BindPFlags(cobraCmd.Flags())
-	if err != nil {
-		logrus.WithField("cobra-cmd", cobraCmd.Use).Errorf("error binding flags: %v", err)
-		os.Exit(1)
-	}
-
+func InitViperSubCmd(v *viper.Viper, cobraCmd *cobra.Command, target any) {
 	// the name of the cobra subcommand is the "section" of the config file
 	// in this situation we suppose the cobra command correspond to a first level command. But if it is a second or third or greater level subcommand, we need the section to represent all the parent name. How can we get the fulle path to root command ?
 	var path []string
 	for cmd := cobraCmd; cmd != nil && cmd.HasParent(); cmd = cmd.Parent() {
 		path = append([]string{cmd.Name()}, path...)
 	}
-	section := strings.Join(path, ".")
+	section := strings.Join(path, ".") // for parsing the config file
+
+	// modify viper env prefix with the current cobra subcommand name
+	envPrefixSubCmd := strings.ToUpper(strings.Join(path, "_"))
+	envPrefixSubCmd = strings.ReplaceAll(envPrefixSubCmd, "-", "_")
+	v.SetEnvPrefix(strings.Join([]string{v.GetEnvPrefix(), envPrefixSubCmd}, "_"))
+
+	// Bind subcommand-specific cobra flags to viper
+	err := v.BindPFlags(cobraCmd.Flags())
+	if err != nil {
+		logrus.WithField("cobra-cmd", cobraCmd.Use).Errorf("error binding flags: %v", err)
+		os.Exit(1)
+	}
 
 	err = UnmarshalSubMerged(v, section, &target)
 	if err != nil {

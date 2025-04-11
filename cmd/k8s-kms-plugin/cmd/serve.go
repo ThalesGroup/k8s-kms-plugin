@@ -106,7 +106,7 @@ var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Serve KMS",
 	PreRun: func(cmd *cobra.Command, args []string) {
-		InitViper(viper.GetViper(), cmd, &vprFlgsServe)
+		InitViperSubCmd(viper.GetViper(), cmd, &vprFlgsServe)
 	},
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		// Show the version of the k8s-kms-plugin and commit ID

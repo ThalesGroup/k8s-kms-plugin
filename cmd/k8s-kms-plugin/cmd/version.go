@@ -59,7 +59,7 @@ Examples:
   # JSON string.
   k8s-kms-plugin version -o json --pretty=false`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		InitViper(viper.GetViper(), cmd, &vprFlgsVersion)
+		InitViperSubCmd(viper.GetViper(), cmd, &vprFlgsVersion)
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		// Output version info
