@@ -69,7 +69,7 @@ Examples:
 
 func init() {
 	// Ensure initConfigVersion runs before anything else
-	cobra.OnInitialize(initConfigVersion)
+	cobra.OnInitialize(initViperVersionCmd)
 
 	// rootCmd is the parent command
 	rootCmd.AddCommand(versionCmd)
@@ -85,9 +85,9 @@ func init() {
 	})
 }
 
-// initConfigVersion binds cobra flags to viper and unmarshals the subcommand
+// initViperVersionCmd binds cobra flags to viper and unmarshals the subcommand
 // specific viper configuration to the ViperFlagsVersion struct.
-func initConfigVersion() {
+func initViperVersionCmd() {
 	vprBuf := viper.GetViper()
 	// Bind subcommand-specific cobra flags to viper
 	err := vprBuf.BindPFlags(versionCmd.Flags())
