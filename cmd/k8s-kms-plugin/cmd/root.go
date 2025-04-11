@@ -207,7 +207,7 @@ func initConfig() {
 		logrus.Tracef("Using config file from the environment variable: %s", envVar)
 		viper.SetConfigFile(envVar)
 	} else {
-		logrus.Infof("Using config file from default location")
+		logrus.Tracef("Using config file from default location")
 		// Find home directory.
 		home, err := homedir.Dir()
 		if err != nil {
