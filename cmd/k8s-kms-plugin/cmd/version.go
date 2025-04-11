@@ -24,14 +24,13 @@ package cmd
 
 import (
 	"fmt"
-	"strings"
+	"os"
 
-	"github.com/ThalesGroup/k8s-kms-plugin/pkg/version"
+	version "github.com/ThalesGroup/k8s-kms-plugin/pkg/version"
 	"github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	//"os"
 )
 
 // CLI options pflags names
@@ -62,70 +61,19 @@ Examples:
   # JSON string.
   k8s-kms-plugin version -o json --pretty=false`,
 	Run: func(cmd *cobra.Command, args []string) {
-		// Ensure all Cobra flags are bound to Viper
-		// Bind subcommand-specific flags
-		_ = viper.BindPFlag("output", cmd.Flags().Lookup("output"))
-		_ = viper.BindPFlag("pretty", cmd.Flags().Lookup("pretty"))
-
-		// Always set env var prefix for consistency
-		viper.SetEnvPrefix("K8S_KMS_PLUGIN")
-		viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
-		viper.AutomaticEnv()
-
-		// Extract "version" config if present
-		vprSubBuf := viper.Sub("version")
-
-		// If config exists, bind its values
-		if vprSubBuf != nil {
-			logrus.Tracef("A 'version' section found in %s", viper.ConfigFileUsed())
-
-			// Apply env vars to sub-Viper instance
-
-			_ = vprSubBuf.BindPFlag("output", cmd.Flags().Lookup("output"))
-			_ = vprSubBuf.BindPFlag("pretty", cmd.Flags().Lookup("pretty"))
-
-			vprSubBuf.SetEnvPrefix("K8S_KMS_PLUGIN")
-			vprSubBuf.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
-			vprSubBuf.AutomaticEnv()
-
-			// // Re-bind flags at the sub-Viper level
-			// if err := vprSubBuf.BindPFlags(cmd.Flags()); err != nil {
-			// 	logrus.Errorf("Error binding flags: %v", err)
-			// 	os.Exit(1)
-			// }
-
-			// Merge config from file + env vars + flags
-			if err := vprSubBuf.Unmarshal(&vprFlgsVersion); err != nil {
-				logrus.WithError(err).Fatal("versionCmd: failed to unmarshal viper config")
-			}
-
-			// Override with environment variables manually
-			if envVal := vprSubBuf.GetString("output"); envVal != "" {
-				vprFlgsVersion.OutputFormat = envVal
-			}
-			if envVal := vprSubBuf.GetBool("pretty"); envVal {
-				vprFlgsVersion.PrettyPrintVersion = envVal
-			}
-
-		} else {
-			logrus.Tracef("No 'version' section found, using root-level Viper settings.")
-
-			// Use root-level Viper config if no sub-config exists
-			if err := viper.Unmarshal(&vprFlgsVersion); err != nil {
-				logrus.WithError(err).Fatal("versionCmd: failed to unmarshal viper config")
-			}
-		}
-
-		// Debug: print the final configuration
-		logrus.Infof("Final Config: %+v", vprFlgsVersion)
-
 		// Output version info
 		fmt.Fprintln(cmd.OutOrStdout(), version.VersionOutputToString(vprFlgsVersion.OutputFormat, vprFlgsVersion.PrettyPrintVersion))
+
 	},
 }
 
 func init() {
+	// Ensure initConfigVersion runs before anything else
+	cobra.OnInitialize(initConfigVersion)
+
+	// rootCmd is the parent command
 	rootCmd.AddCommand(versionCmd)
+
 	// Here you will define your flags and configuration settings.
 	versionCmd.Flags().StringVarP(&outputFormat, "output", "o", "", "Format of the version output. One of 'yaml' or 'json'.")
 	versionCmd.RegisterFlagCompletionFunc("output", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -135,4 +83,21 @@ func init() {
 	versionCmd.RegisterFlagCompletionFunc("pretty", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"true", "false"}, cobra.ShellCompDirectiveNoFileComp
 	})
+}
+
+// initConfigVersion binds cobra flags to viper and unmarshals the subcommand
+// specific viper configuration to the ViperFlagsVersion struct.
+func initConfigVersion() {
+	vprBuf := viper.GetViper()
+	// Bind subcommand-specific cobra flags to viper
+	err := vprBuf.BindPFlags(versionCmd.Flags())
+	if err != nil {
+		logrus.WithField("cobra-cmd", versionCmd.Use).Errorf("error binding flags: %v", err)
+		os.Exit(1)
+	}
+
+	err = UnmarshalSubMerged(vprBuf, versionCmd.Use, &vprFlgsVersion)
+	if err != nil {
+		logrus.Fatalf("failed to unmarshal version config: %v", err)
+	}
 }
