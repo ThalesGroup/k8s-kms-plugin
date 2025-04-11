@@ -24,11 +24,19 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
+// Parameters:
+//   - v: the viper instance that contains the configuration
+//   - section: the subsection of the config file to merge
+//   - target: the struct to unmarshal the merged configuration into
+//
 // The purpose of UnmarshalSubMerged is to temporarily fix a flaw in viper.Sub("section") from here
 // https://github.com/spf13/viper/blob/9568cfcfd660a1c1c6c762f335ae79f370488417/viper.go#L764
 //
@@ -73,4 +81,31 @@ func UnmarshalSubMerged(v *viper.Viper, section string, target any) error {
 	// 4. Now unmarshal with proper priority:
 	// flags > env > merged config > defaults
 	return v.Unmarshal(target)
+}
+
+// initViper binds cobra flags to viper for the given subcommand and unmarshals
+// the configuration into the specified target. It first binds the flags of the
+// provided cobra command to viper, logging and exiting on error. Then, it attempts
+// to unmarshal the merged configuration data, which includes flag, environment,
+// and default values, into the target. Logs fatal on unmarshalling failure.
+func InitViper(v *viper.Viper, cobraCmd *cobra.Command, target any) {
+	// Bind subcommand-specific cobra flags to viper
+	err := v.BindPFlags(cobraCmd.Flags())
+	if err != nil {
+		logrus.WithField("cobra-cmd", cobraCmd.Use).Errorf("error binding flags: %v", err)
+		os.Exit(1)
+	}
+
+	// the name of the cobra subcommand is the "section" of the config file
+	// in this situation we suppose the cobra command correspond to a first level command. But if it is a second or third or greater level subcommand, we need the section to represent all the parent name. How can we get the fulle path to root command ?
+	var path []string
+	for cmd := cobraCmd; cmd != nil && cmd.HasParent(); cmd = cmd.Parent() {
+		path = append([]string{cmd.Name()}, path...)
+	}
+	section := strings.Join(path, ".")
+
+	err = UnmarshalSubMerged(v, section, &target)
+	if err != nil {
+		logrus.Fatalf("failed to unmarshal version config: %v", err)
+	}
 }

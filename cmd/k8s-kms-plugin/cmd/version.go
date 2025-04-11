@@ -24,10 +24,8 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	version "github.com/ThalesGroup/k8s-kms-plugin/pkg/version"
-	"github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -60,17 +58,16 @@ Examples:
   # print the version information with git repository details as a one liner
   # JSON string.
   k8s-kms-plugin version -o json --pretty=false`,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		InitViper(viper.GetViper(), cmd, &vprFlgsVersion)
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		// Output version info
 		fmt.Fprintln(cmd.OutOrStdout(), version.VersionOutputToString(vprFlgsVersion.OutputFormat, vprFlgsVersion.PrettyPrintVersion))
-
 	},
 }
 
 func init() {
-	// Ensure initConfigVersion runs before anything else
-	cobra.OnInitialize(initViperVersionCmd)
-
 	// rootCmd is the parent command
 	rootCmd.AddCommand(versionCmd)
 
@@ -83,21 +80,4 @@ func init() {
 	versionCmd.RegisterFlagCompletionFunc("pretty", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"true", "false"}, cobra.ShellCompDirectiveNoFileComp
 	})
-}
-
-// initViperVersionCmd binds cobra flags to viper and unmarshals the subcommand
-// specific viper configuration to the ViperFlagsVersion struct.
-func initViperVersionCmd() {
-	vprBuf := viper.GetViper()
-	// Bind subcommand-specific cobra flags to viper
-	err := vprBuf.BindPFlags(versionCmd.Flags())
-	if err != nil {
-		logrus.WithField("cobra-cmd", versionCmd.Use).Errorf("error binding flags: %v", err)
-		os.Exit(1)
-	}
-
-	err = UnmarshalSubMerged(vprBuf, versionCmd.Use, &vprFlgsVersion)
-	if err != nil {
-		logrus.Fatalf("failed to unmarshal version config: %v", err)
-	}
 }
