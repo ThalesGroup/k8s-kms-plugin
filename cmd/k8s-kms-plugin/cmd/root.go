@@ -96,7 +96,7 @@ var rootCmd = &cobra.Command{
 	Use:   "k8s-kms-plugin",
 	Short: "Thales KMS Server for K8S",
 	Long: `Use k8s-kms-plugin to connect a kubernetes cluster to a PKCS11 TPM or HSM.
-k8s-kms-plugin prioritizes configuration sources as follows: CLI flags > environment variables > configuration files > default settings.`,
+ k8s-kms-plugin prioritizes configuration sources as follows: CLI flags > environment variables > configuration files > default settings.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		logrus.Info("Running k8s-kms-plugin")
 		//logrus.Debugf("k8s-kms-plugin version: %s", logrus.GetLevel())
@@ -147,7 +147,7 @@ func init() {
 	})
 	rootCmd.PersistentFlags().StringVar(&kekKeyId, "kek-id", defaultKekId, "Key ID for KMS KEK. Corresponding environment variable: K8S_KMS_PLUGIN_KEK_ID")
 	rootCmd.PersistentFlags().StringVar(&caId, "ca-id", defaultCaId, "Cert ID for CA Cert record. Corresponding environment variable: K8S_KMS_PLUGIN_CA_ID")
-	rootCmd.PersistentFlags().StringVar(&p11lib, "p11-lib", "", "Path to p11 library/client. Corresponding environment variable: K8S_KMS_PLUGIN_P11_LIBRARY")
+	rootCmd.PersistentFlags().StringVar(&p11lib, "p11-lib", "", "Path to p11 library/client. Corresponding environment variable: K8S_KMS_PLUGIN_P11_LIB")
 	rootCmd.PersistentFlags().StringVar(&p11label, "p11-label", "", "P11 token label. Corresponding environment variable: K8S_KMS_PLUGIN_P11_TOKEN")
 	rootCmd.PersistentFlags().IntVar(&p11slot, "p11-slot", 0, "P11 token slot. Corresponding environment variable: K8S_KMS_PLUGIN_P11_SLOT")
 	rootCmd.PersistentFlags().StringVar(&p11pin, "p11-pin", "", "P11 Pin. Corresponding environment variable: K8S_KMS_PLUGIN_P11_PIN")
