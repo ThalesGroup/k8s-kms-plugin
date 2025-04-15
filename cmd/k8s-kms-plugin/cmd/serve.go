@@ -172,17 +172,17 @@ func init() {
 	rootCmd.AddCommand(serveCmd)
 
 	// unix socket server options
-	serveCmd.Flags().BoolVar(&disableSocket, "disable-socket", false, "Disable socket based server. Corresponding environment variable: K8S_KMS_PLUGIN_DISABLE_SOCKET.")
+	serveCmd.Flags().BoolVar(&disableSocket, "disable-socket", false, "Disable socket based server. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_DISABLE_SOCKET.")
 
 	// tcp server options
-	serveCmd.Flags().BoolVar(&enableTCP, "enable-server", false, "Enable TLS based server. Corresponding environment variable: K8S_KMS_PLUGIN_ENABLE_SERVER.")
-	serveCmd.Flags().StringVar(&caTLSCert, "tls-ca", "certs/ca.crt", "TLS CA cert. Corresponding environment variable: K8S_KMS_PLUGIN_TLS_CA.")
-	serveCmd.Flags().StringVar(&serverTLSKey, "tls-key", "certs/tls.key", "TLS server key. Corresponding environment variable: K8S_KMS_PLUGIN_TLS_KEY")
-	serveCmd.Flags().StringVar(&serverTLSCert, "tls-certificate", "certs/tls.crt", "TLS server cert. Corresponding environment variable: K8S_KMS_PLUGIN_TLS_CERTIFICATE")
+	serveCmd.Flags().BoolVar(&enableTCP, "enable-server", false, "Enable TLS based server. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_ENABLE_SERVER.")
+	serveCmd.Flags().StringVar(&caTLSCert, "tls-ca", "certs/ca.crt", "TLS CA cert. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_TLS_CA.")
+	serveCmd.Flags().StringVar(&serverTLSKey, "tls-key", "certs/tls.key", "TLS server key. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_TLS_KEY")
+	serveCmd.Flags().StringVar(&serverTLSCert, "tls-certificate", "certs/tls.crt", "TLS server cert. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_TLS_CERTIFICATE")
 
-	serveCmd.Flags().BoolVar(&allowAny, "allow-any", false, "Allow any device (accepts all ids/secrets). Corresponding environment variable: K8S_KMS_PLUGIN_ALLOW_ANY")
+	serveCmd.Flags().BoolVar(&allowAny, "allow-any", false, "Allow any device (accepts all ids/secrets). Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_ALLOW_ANY")
 
-	serveCmd.Flags().StringVar(&algorithm, "algorithm", "aes-gcm", "Set the algorithm for encryption/decryption. Possible values: aes-gcm, aes-cbc, rsa-oaep. Corresponding environment variable: K8S_KMS_PLUGIN_ALGORITHM")
+	serveCmd.Flags().StringVar(&algorithm, "algorithm", "aes-gcm", "Set the algorithm for encryption/decryption. Possible values: aes-gcm, aes-cbc, rsa-oaep. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_ALGORITHM")
 	serveCmd.RegisterFlagCompletionFunc("algorithm", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"aes-gcm", "aes-cbc", "rsa-oaep"}, cobra.ShellCompDirectiveNoFileComp
 	})
