@@ -44,7 +44,7 @@ var (
 	createKey       bool
 	debug           bool
 	dekKeyLabelName string
-	grpcPort        int64
+	grpcPort        uint16
 	hmacKeyName     string
 	host            string
 	kekKeyId        string
@@ -77,7 +77,7 @@ type ViperFlagsRoot struct {
 	P11Lib       string `mapstructure:"p11-lib"`
 	P11Pin       string `mapstructure:"p11-pin"`
 	P11Slot      int    `mapstructure:"p11-slot"`
-	Port         int64  `mapstructure:"port"`
+	Port         uint16 `mapstructure:"port"`
 	Provider     string `mapstructure:"provider"`
 	SocketPath   string `mapstructure:"socket"`
 }
@@ -138,7 +138,7 @@ func init() {
 	rootCmd.MarkFlagsMutuallyExclusive("log-level", "debug")
 
 	rootCmd.PersistentFlags().StringVar(&host, "host", "0.0.0.0", "Hostname without port. Corresponding environment variable: K8S_KMS_PLUGIN_HOST.")
-	rootCmd.PersistentFlags().Int64Var(&grpcPort, "port", 31400, "TCP Port for gRPC service. Corresponding environment variable: K8S_KMS_PLUGIN_PORT.")
+	rootCmd.PersistentFlags().Uint16Var(&grpcPort, "port", 31400, "TCP Port for gRPC service. Corresponding environment variable: K8S_KMS_PLUGIN_PORT.")
 	rootCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Corresponding environment variable: K8S_KMS_PLUGIN_SOCKET")
 	// Provider
 	rootCmd.PersistentFlags().StringVar(&provider, "provider", "p11", "Provider. Possible values: p11, softhsm, luna, dpod. Corresponding environment variable: K8S_KMS_PLUGIN_PROVIDER.")

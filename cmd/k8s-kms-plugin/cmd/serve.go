@@ -28,10 +28,10 @@ package cmd
 //   - crypto11
 import (
 	"errors"
-	"fmt"
 	"net"
 	"os"
 	"reflect"
+	"strconv"
 	"time"
 
 	"github.com/ThalesGroup/crypto11"
@@ -66,11 +66,11 @@ var (
 type ViperFlagsServe struct {
 	Algorithm     string `mapstructure:"algorithm"`
 	AllowAny      bool   `mapstructure:"allow-any"`
-	caTLSCert     string `mapstructure:"tls-ca"`
-	disableSocket bool   `mapstructure:"disable-socket"`
-	enableTCP     bool   `mapstructure:"enable-server"`
-	serverTLSCert string `mapstructure:"tls-certificate"`
-	serverTLSKey  string `mapstructure:"tls-key"`
+	CaTLSCert     string `mapstructure:"tls-ca"`
+	DisableSocket bool   `mapstructure:"disable-socket"`
+	EnableTCP     bool   `mapstructure:"enable-server"`
+	ServerTLSCert string `mapstructure:"tls-certificate"`
+	ServerTLSKey  string `mapstructure:"tls-key"`
 }
 
 // Initialize the ViperConfig struct with all the serve CLI flags bound to Viper env vars
@@ -135,8 +135,9 @@ var serveCmd = &cobra.Command{
 		g := new(errgroup.Group)
 		var grpcTCP, grpcUNIX net.Listener
 
-		if enableTCP {
-			grpcAddr := fmt.Sprintf("%v:%d", host, grpcPort)
+		if vprFlgsServe.EnableTCP {
+			// vprFlgsRoot.Port needs to convert from uint16 to string
+			grpcAddr := net.JoinHostPort(vprFlgsRoot.Host, strconv.FormatUint(uint64(vprFlgsRoot.Port), 10))
 
 			if grpcTCP, err = net.Listen("tcp", grpcAddr); err != nil {
 				return
@@ -146,15 +147,15 @@ var serveCmd = &cobra.Command{
 		}
 
 		if !disableSocket {
-			_ = os.Remove(socketPath)
-			if grpcUNIX, err = net.Listen("unix", socketPath); err != nil {
+			_ = os.Remove(vprFlgsRoot.SocketPath)
+			if grpcUNIX, err = net.Listen("unix", vprFlgsRoot.SocketPath); err != nil {
 				return
 			}
 
 			// Istiod runs with uid and gid 1337, but the plugin runs with uid 0 and
 			// gid 1337.  Change the socket permissions so the group has read/write
 			// access to the socket.
-			os.Chmod(socketPath, 0775)
+			os.Chmod(vprFlgsRoot.SocketPath, 0775)
 			g.Go(func() error { return grpcServe(grpcUNIX, p) })
 		}
 
@@ -189,27 +190,27 @@ func init() {
 
 func initProvider() (p providers.Provider, err error) {
 	// init the algorithm to use in the kms from user input
-	alg, err := algFromString(algorithm)
+	alg, err := algFromString(vprFlgsServe.Algorithm)
 	if err != nil {
 		return
 	}
 
 	// init the provider config from user input
 	config := &crypto11.Config{}
-	switch provider {
+	switch vprFlgsRoot.Provider {
 	case "p11", "softhsm":
 		logrus.Debug("initProvider: case p11 or softhsm")
 		config = &crypto11.Config{
-			Path:            p11lib,
-			Pin:             p11pin,
+			Path:            vprFlgsRoot.P11Lib,
+			Pin:             vprFlgsRoot.P11Pin,
 			UseGCMIVFromHSM: false,
 		}
 
 	case "luna", "dpod":
 		logrus.Debug("initProvider: case luna HSM or dpod")
 		config = &crypto11.Config{
-			Path:            p11lib,
-			Pin:             p11pin,
+			Path:            vprFlgsRoot.P11Lib,
+			Pin:             vprFlgsRoot.P11Pin,
 			UseGCMIVFromHSM: true,
 			GCMIVFromHSMControl: crypto11.GCMIVFromHSMConfig{
 				SupplyIvForHSMGCMEncrypt: false,
@@ -217,18 +218,19 @@ func initProvider() (p providers.Provider, err error) {
 			},
 		}
 	default:
+		logrus.WithField("provider", vprFlgsRoot.Provider).Error("unknown provider")
 		err = errors.New("unknown provider")
 		return
 	}
 
-	if p11label != "" {
-		config.TokenLabel = p11label
+	if vprFlgsRoot.P11Label != "" {
+		config.TokenLabel = vprFlgsRoot.P11Label
 	} else {
-		config.SlotNumber = &p11slot
+		config.SlotNumber = &vprFlgsRoot.P11Slot
 	}
 	// init the provider
 	// TODO: See https://github.com/ThalesGroup/k8s-kms-plugin/issues/40#issuecomment-2593267852
-	if p, err = providers.NewP11(config, createKey, dekKeyLabelName, hmacKeyName, alg); err != nil {
+	if p, err = providers.NewP11(config, vprFlgsRoot.CreateKey, vprFlgsRoot.DekKeyLabel, vprFlgsRoot.HmacKeyLabel, alg); err != nil {
 		return
 	}
 	return
@@ -249,7 +251,7 @@ func grpcServe(gl net.Listener, p providers.Provider) (err error) {
 	istio.RegisterKeyManagementServiceServer(gs, p)
 
 	logrus.Infof("Serving on socket: %s", gl.Addr().String())
-	logrus.Debugf("grpcServe: value of grpcPort user input: %d", grpcPort)
+	logrus.Debugf("grpcServe: value of grpcPort user input: %d", vprFlgsRoot.Port)
 
 START:
 	if err = gs.Serve(gl); err != nil {
