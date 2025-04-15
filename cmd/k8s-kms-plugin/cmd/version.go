@@ -26,6 +26,7 @@ import (
 	"fmt"
 
 	version "github.com/ThalesGroup/k8s-kms-plugin/pkg/version"
+	"github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -58,8 +59,12 @@ Examples:
   # print the version information with git repository details as a one liner
   # JSON string.
   k8s-kms-plugin version -o json --pretty=false`,
-	PreRun: func(cmd *cobra.Command, args []string) {
-		InitViperSubCmd(viper.GetViper(), cmd, &vprFlgsVersion)
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		if err := InitViperSubCmdE(viper.GetViper(), cmd, &vprFlgsVersion); err != nil {
+			logrus.WithField("cobra-cmd", cmd.Use).WithError(err).Error("Error initializing Viper")
+			return err
+		}
+		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		// Output version info

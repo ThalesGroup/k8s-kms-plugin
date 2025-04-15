@@ -24,13 +24,10 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"path/filepath"
-	"strings"
 
 	filename "github.com/keepeye/logrus-filename"
-	"github.com/mitchellh/go-homedir"
 	"github.com/sirupsen/logrus"
 
 	"os"
@@ -100,43 +97,6 @@ var rootCmd = &cobra.Command{
 	Short: "Thales KMS Server for K8S",
 	Long: `Use k8s-kms-plugin to connect a kubernetes cluster to a PKCS11 TPM or HSM.
 k8s-kms-plugin prioritizes configuration sources as follows: CLI flags > environment variables > configuration files > default settings.`,
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		// Set logs format
-		switch vprFlgsRoot.LogFormat {
-		case "json":
-			logrus.SetFormatter(&logrus.JSONFormatter{
-				PrettyPrint: false,
-			})
-		case "text":
-			logrus.SetFormatter(&logrus.TextFormatter{
-				ForceColors:      true,
-				DisableTimestamp: true,
-			})
-		default:
-			return errors.New("logrus unknown output format")
-		}
-		logrus.Debugf("logrus output format is set to: %s", vprFlgsRoot.LogFormat)
-
-		// Initialize logrus log level and log format for all cobra commands and subcommands.
-		debugFlagIsUsed := cmd.Flags().Lookup("debug").Changed
-
-		switch {
-		case debugFlagIsUsed:
-			// harcode that the --debug flags set logrus level to debug
-			logrus.SetLevel(logrus.DebugLevel)
-		default:
-			// get the log level from viper which is bind to the cobra flag --log-level
-			level, err := logrus.ParseLevel(vprFlgsRoot.LogLevel)
-			if err != nil {
-				return err
-			}
-			logrus.SetLevel(level)
-		}
-		logrus.Debugf("logrus log-level is set to: %s", logrus.GetLevel())
-
-		// PersistentPreRunE returns an error or nil
-		return nil
-	},
 	Run: func(cmd *cobra.Command, args []string) {
 		logrus.Info("Running k8s-kms-plugin")
 		//logrus.Debugf("k8s-kms-plugin version: %s", logrus.GetLevel())
@@ -199,56 +159,41 @@ func init() {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	// use a configuration file parsed by viper
-	if rootCmd.Flags().Lookup("config").Changed && cfgFile != "" {
-		logrus.Tracef("Using config file from the flag: %s", cfgFile)
-		viper.SetConfigFile(cfgFile)
-	} else if envVar, ok := os.LookupEnv("K8S_KMS_PLUGIN_CONFIG"); ok {
-		logrus.Tracef("Using config file from the environment variable: %s", envVar)
-		viper.SetConfigFile(envVar)
-	} else {
-		logrus.Tracef("Using config file from default location")
-		// Find home directory.
-		home, err := homedir.Dir()
+	ReadViperConfigE(viper.GetViper(), rootCmd)
+
+	InitViperSubCmdE(viper.GetViper(), rootCmd, &vprFlgsRoot)
+
+	// Set logs format
+	switch vprFlgsRoot.LogFormat {
+	case "json":
+		logrus.SetFormatter(&logrus.JSONFormatter{
+			PrettyPrint: false,
+		})
+	case "text":
+		logrus.SetFormatter(&logrus.TextFormatter{
+			ForceColors:      true,
+			DisableTimestamp: true,
+		})
+	default:
+		logrus.WithError(fmt.Errorf("logrus unknown output format")).Error("unknown log format")
+	}
+	logrus.Debugf("logrus output format is set to: %s", vprFlgsRoot.LogFormat)
+
+	// Initialize logrus log level and log format for all cobra commands and subcommands.
+	debugFlagIsUsed := rootCmd.Flags().Lookup("debug").Changed
+
+	switch {
+	case debugFlagIsUsed:
+		// harcode that the --debug flags set logrus level to debug
+		logrus.SetLevel(logrus.DebugLevel)
+	default:
+		// get the log level from viper which is bind to the cobra flag --log-level
+		level, err := logrus.ParseLevel(vprFlgsRoot.LogLevel)
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			logrus.WithError(err).Error("unknown log level")
 		}
-
-		viper.SetConfigName("k8s-kms-plugin.conf") // name of config file (viper needs no file extension)
-		viper.AddConfigPath(home)
-		viper.AddConfigPath(filepath.Join(home, ".config/k8s-kms-plugin"))
-		//logrus.Infof("default config filename %s", rootCmd.Flags().Lookup("config").DefValue)
+		logrus.SetLevel(level)
 	}
+	logrus.Debugf("logrus log-level is set to: %s", logrus.GetLevel())
 
-	// If a config file is not found, log a trace error. Otherwise, read it in.
-	if err := viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			logrus.Trace("No config file found; continue with cobra default values")
-		} else {
-			// Config file was found but another error occurred
-			fmt.Fprintf(os.Stderr, "Error reading config file: %v\n", err)
-			os.Exit(1)
-		}
-	}
-
-	// Support ENV variables with prefix with viper bound to cobra
-	// Example: A CLI flag like --some-flag becomes K8S_KMS_PLUGIN_SOME_FLAG in environment variables.
-	viper.SetEnvPrefix("K8S_KMS_PLUGIN")
-	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_")) // Converts flags to ENV format
-	viper.AutomaticEnv()                                   // Enables automatic binding
-
-	// Ensure all Cobra flags are bound to Viper after initializing them
-	if err := viper.BindPFlags(rootCmd.PersistentFlags()); err != nil {
-		logrus.Errorf("Error binding flags: %v", err)
-		os.Exit(1)
-	}
-
-	// Initialize and Load the ViperConfig that are bound to root Cobra CLI flags
-	if err := viper.Unmarshal(&vprFlgsRoot); err != nil {
-		logrus.Fatalf("Failed to load viper config: %v", err)
-	}
-
-	// Debugging: Show all loaded settings
-	logrus.Tracef("Viper settings: %+v", viper.AllSettings())
 }

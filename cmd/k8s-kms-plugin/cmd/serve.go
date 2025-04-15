@@ -105,8 +105,12 @@ func algFromString(s string) (jose.Alg, error) {
 var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Serve KMS",
-	PreRun: func(cmd *cobra.Command, args []string) {
-		InitViperSubCmd(viper.GetViper(), cmd, &vprFlgsServe)
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		if err := InitViperSubCmdE(viper.GetViper(), cmd, &vprFlgsServe); err != nil {
+			logrus.WithField("cobra-cmd", cmd.Use).WithError(err).Error("Error initializing Viper")
+			return err
+		}
+		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		// Show the version of the k8s-kms-plugin and commit ID

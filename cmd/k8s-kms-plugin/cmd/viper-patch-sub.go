@@ -25,19 +25,31 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
+
+	"github.com/mitchellh/go-homedir"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
+// UnmarshalSubMergedE is a temporary fix to a flaw in viper.Sub("section") that ignores the flag/env/default/override
+// priority chain when using viper.Unmarshal(). It merges the subsection of the config file back into the Viper config
+// layer (without overriding) and then calls viper.Unmarshal() to take into account the flag/env/default/override
+// priority chain.
+//
 // Parameters:
 //   - v: the viper instance that contains the configuration
 //   - section: the subsection of the config file to merge
 //   - target: the struct to unmarshal the merged configuration into
 //
-// The purpose of UnmarshalSubMerged is to temporarily fix a flaw in viper.Sub("section") from here
+// It will return an error if:
+//   - the subsection does not exist in the config file
+//   - the merge into the Viper config layer fails
+//
+// The purpose of UnmarshalSubMergedE is to temporarily fix a flaw in viper.Sub("section") from here
 // https://github.com/spf13/viper/blob/9568cfcfd660a1c1c6c762f335ae79f370488417/viper.go#L764
 //
 // When using viper.Sub(), the resulting Viper instance only sees the config file data for that
@@ -53,11 +65,11 @@ import (
 // will not take into account the flag/env/default/override priority chain, since the viper.Sub()
 // instance only sees the config file data for that subsection.
 //
-// UnmarshalSubMerged fixes this issue by merging the config file data for the subsection into the
+// UnmarshalSubMergedE fixes this issue by merging the config file data for the subsection into the
 // Viper config layer, so that viper.Unmarshal() will use the flag/env/default/override priority chain.
 //
 // TODO: make a pull request to viper to fix this flaw.
-func UnmarshalSubMerged(v *viper.Viper, section string, target any) error {
+func UnmarshalSubMergedE(v *viper.Viper, section string, target any) error {
 	// 1. Skip if no config file is loaded at all
 	if v.ConfigFileUsed() == "" {
 		logrus.Trace("UnmarshalSubMerged: no config file loaded")
@@ -83,34 +95,103 @@ func UnmarshalSubMerged(v *viper.Viper, section string, target any) error {
 	return v.Unmarshal(target)
 }
 
-// initViper binds cobra flags to viper for the given subcommand and unmarshals
-// the configuration into the specified target. It first binds the flags of the
-// provided cobra command to viper, logging and exiting on error. Then, it attempts
-// to unmarshal the merged configuration data, which includes flag, environment,
-// and default values, into the target. Logs fatal on unmarshalling failure.
-func InitViperSubCmd(v *viper.Viper, cobraCmd *cobra.Command, target any) {
+// InitViperSubCmdE initializes Viper for a specific Cobra subcommand.
+// It sets up the environment variable prefix using the full command path
+// of the subcommand, with each command path segment separated by an underscore.
+// It then binds the subcommand-specific flags to Viper. Finally, it merges
+// the configuration from the subcommand's section in the config file into
+// Viper's configuration, allowing it to respect the usual priority chain of
+// flags > env variables > config file > defaults.
+//
+// Parameters:
+//   - v: the Viper instance for managing configuration.
+//   - cobraCmd: the Cobra command representing the subcommand.
+//   - target: the structure to unmarshal the final configuration into.
+//
+// Returns an error if there is a failure in binding flags or unmarshalling
+// the configuration.
+func InitViperSubCmdE(v *viper.Viper, cobraCmd *cobra.Command, target any) error {
 	// the name of the cobra subcommand is the "section" of the config file
 	// in this situation we suppose the cobra command correspond to a first level command. But if it is a second or third or greater level subcommand, we need the section to represent all the parent name. How can we get the fulle path to root command ?
-	var path []string
-	for cmd := cobraCmd; cmd != nil && cmd.HasParent(); cmd = cmd.Parent() {
-		path = append([]string{cmd.Name()}, path...)
-	}
-	section := strings.Join(path, ".") // for parsing the config file
+	logrus.WithField("cobra-cmd", cobraCmd.Use).Trace("cobra command path: " + cobraCmd.CommandPath())
+
+	// cobra.CommandPath returns the full path to the command, including all parent commands, each command separated by 1 space.
+	// TODO: allow cobra.CommandPath to get new separator like ".".
+	// See https://github.com/spf13/cobra/blob/40b5bc1437a564fc795d388b23835e84f54cd1d1/command.go#L1460
+	sectionPath := strings.ReplaceAll(cobraCmd.CommandPath(), " ", ".")
+	logrus.WithField("cobra-cmd", cobraCmd.Use).Tracef("section path: %s", sectionPath)
 
 	// modify viper env prefix with the current cobra subcommand name
-	envPrefixSubCmd := strings.ToUpper(strings.Join(path, "_"))
-	envPrefixSubCmd = strings.ReplaceAll(envPrefixSubCmd, "-", "_")
-	v.SetEnvPrefix(strings.Join([]string{v.GetEnvPrefix(), envPrefixSubCmd}, "_"))
+	sectionEnvPrefix := strings.ToUpper(strings.NewReplacer("-", "_", ".", "_").Replace(sectionPath)) // for the env prefix, this should be uppercase snake case and replace dot . with underscore
+	// concat the previous viper env prefix with the current cobra subcommand name
+	logrus.WithField("cobra-cmd", cobraCmd.Use).Trace("new viper env prefix: " + sectionEnvPrefix)
+	v.SetEnvPrefix(sectionEnvPrefix)
+	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_")) // Converts flags to ENV format
+	v.AutomaticEnv()                                   // Enables automatic binding
 
 	// Bind subcommand-specific cobra flags to viper
 	err := v.BindPFlags(cobraCmd.Flags())
 	if err != nil {
 		logrus.WithField("cobra-cmd", cobraCmd.Use).Errorf("error binding flags: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("error binding flags: %w", err)
 	}
 
-	err = UnmarshalSubMerged(v, section, &target)
+	// Load config values for this subcommand
+	err = UnmarshalSubMergedE(v, sectionPath, &target)
 	if err != nil {
-		logrus.Fatalf("failed to unmarshal version config: %v", err)
+		logrus.WithField("cobra-cmd", cobraCmd.Use).Fatalf("failed to unmarshal version config: %v", err)
+		return fmt.Errorf("failed to unmarshal version config: %w", err)
 	}
+
+	return nil
+}
+
+// ReadViperConfigE reads a viper configuration file from a variety of sources.
+//
+// If the "-c" or "--config" flag is set, it reads from the file specified by
+// that flag. If that flag is not set, it looks for an environment variable
+// named COBRAVSVIPER_CONFIG and reads the file specified by that variable.
+// If neither the flag nor the environment variable is set, it looks for a
+// file named "cobravsviper.conf.yaml" in the following places, in order:
+// - The user's home directory (e.g. ~/.config/cobravsviper.conf.yaml)
+// - The .config directory under the user's home directory (e.g. ~/.config/cobravsviper.conf.yaml)
+//
+// If a config file is not found, it logs a trace error and continues with
+// cobra's default values. Otherwise, it reads in the config file and returns
+// an error if there was a problem doing so.
+func ReadViperConfigE(v *viper.Viper, cmd *cobra.Command) error {
+	// use a configuration file parsed by viper
+	if cmd.Flags().Lookup("config").Changed && cfgFile != "" {
+		logrus.Tracef("Case config file from the flag: %s", cfgFile)
+		viper.SetConfigFile(cfgFile)
+	} else if envVar, ok := os.LookupEnv("COBRAVSVIPER_CONFIG"); ok {
+		logrus.Tracef("Case config file from the environment variable: %s", envVar)
+		viper.SetConfigFile(envVar)
+	} else {
+		logrus.Tracef("Case config file from default location")
+		// Find home directory.
+		home, err := homedir.Dir()
+		if err != nil {
+			return fmt.Errorf("failed to find home directory: %w", err)
+		}
+
+		viper.SetConfigName("cobravsviper.conf") // name of config file (viper needs no file extension)
+		// TODO: consider using the rootCmd.Flags().Lookup("config").DefValue for viper.SetConfigName
+		// logrus.Infof("default config filename %s", rootCmd.Flags().Lookup("config").DefValue)
+		logrus.Tracef("Search config in .config directory %s with name cobravsviper.conf.yaml (without extension).", home)
+		viper.AddConfigPath(home)
+		logrus.Tracef("Search config in home directory %s with name cobravsviper.conf.yaml (without extension).", filepath.Join(home, ".config/cobravsviper"))
+		viper.AddConfigPath(filepath.Join(home, ".config/cobravsviper"))
+	}
+
+	// If a config file is not found, log a trace error. Otherwise, read it in.
+	if err := viper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			logrus.Trace("No config file found; continue with cobra default values")
+		} else {
+			// Config file was found but another error occurred
+			return fmt.Errorf("error reading config file: %w", err)
+		}
+	}
+	return nil
 }
