@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"time"
 
 	istio "github.com/ThalesGroup/k8s-kms-plugin/apis/istio/v1"
 	"github.com/spf13/cobra"
 )
 
+// cobra decrypt-csr.go CLI Flags
 var inName, outName string
 
 type CSRSecret struct {
@@ -87,7 +87,6 @@ func decryptCSR() error {
 func init() {
 	rootCmd.AddCommand(decryptCSRCmd)
 
-	decryptCSRCmd.Flags().DurationVar(&timeout, "timeout", 30*time.Second, "Timeout Duration")
 	decryptCSRCmd.Flags().StringVarP(&inName, "inName", "f", "", "Input file")
 	decryptCSRCmd.Flags().StringVarP(&outName, "outName", "o", "", "Output file")
 }

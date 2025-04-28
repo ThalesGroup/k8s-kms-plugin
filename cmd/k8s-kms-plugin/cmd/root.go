@@ -26,6 +26,7 @@ package cmd
 import (
 	"fmt"
 	"path/filepath"
+	"time"
 
 	filename "github.com/keepeye/logrus-filename"
 	"github.com/sirupsen/logrus"
@@ -57,29 +58,31 @@ var (
 	p11slot         int
 	provider        string
 	socketPath      string
+	timeout         time.Duration
 )
 
 // ViperFlagsRoot defines a struct to hold all the configuration values and use viper.Unmarshal
 // to populate it:
 type ViperFlagsRoot struct {
-	CaID         string `mapstructure:"ca-id"`
-	ConfigFile   string `mapstructure:"config"`
-	CreateKey    bool   `mapstructure:"auto-create"`
-	Debug        bool   `mapstructure:"debug"`
-	DekKeyLabel  string `mapstructure:"p11-key-label"`
-	HmacKeyLabel string `mapstructure:"p11-hmac-label"`
-	Host         string `mapstructure:"host"`
-	KekKeyID     string `mapstructure:"kek-id"`
-	LogFormat    string `mapstructure:"log-format"`
-	LogLevel     string `mapstructure:"log-level"`
-	NativePath   string `mapstructure:"native-path"`
-	P11Label     string `mapstructure:"p11-label"`
-	P11Lib       string `mapstructure:"p11-lib"`
-	P11Pin       string `mapstructure:"p11-pin"`
-	P11Slot      int    `mapstructure:"p11-slot"`
-	Port         uint16 `mapstructure:"port"`
-	Provider     string `mapstructure:"provider"`
-	SocketPath   string `mapstructure:"socket"`
+	CaID         string        `mapstructure:"ca-id"`
+	ConfigFile   string        `mapstructure:"config"`
+	CreateKey    bool          `mapstructure:"auto-create"`
+	Debug        bool          `mapstructure:"debug"`
+	DekKeyLabel  string        `mapstructure:"p11-key-label"`
+	HmacKeyLabel string        `mapstructure:"p11-hmac-label"`
+	Host         string        `mapstructure:"host"`
+	KekKeyID     string        `mapstructure:"kek-id"`
+	LogFormat    string        `mapstructure:"log-format"`
+	LogLevel     string        `mapstructure:"log-level"`
+	NativePath   string        `mapstructure:"native-path"`
+	P11Label     string        `mapstructure:"p11-label"`
+	P11Lib       string        `mapstructure:"p11-lib"`
+	P11Pin       string        `mapstructure:"p11-pin"`
+	P11Slot      int           `mapstructure:"p11-slot"`
+	Port         uint16        `mapstructure:"port"`
+	Provider     string        `mapstructure:"provider"`
+	SocketPath   string        `mapstructure:"socket"`
+	Timeout      time.Duration `mapstructure:"timeout"`
 }
 
 // Initialize the ViperConfig struct with all the root CLI flags bound to Viper env vars
@@ -96,7 +99,7 @@ var rootCmd = &cobra.Command{
 	Use:   "k8s-kms-plugin",
 	Short: "Thales KMS Server for K8S",
 	Long: `Use k8s-kms-plugin to connect a kubernetes cluster to a PKCS11 TPM or HSM.
- k8s-kms-plugin prioritizes configuration sources as follows: CLI flags > environment variables > configuration files > default settings.`,
+k8s-kms-plugin prioritizes configuration sources as follows: CLI flags > environment variables > configuration files > default settings.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		logrus.Info("Running k8s-kms-plugin")
 		//logrus.Debugf("k8s-kms-plugin version: %s", logrus.GetLevel())
@@ -155,6 +158,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&host, "host", "0.0.0.0", "Hostname without port. Corresponding environment variable: K8S_KMS_PLUGIN_HOST.")
 	rootCmd.PersistentFlags().Uint16Var(&grpcPort, "port", 31400, "TCP Port for gRPC service. Corresponding environment variable: K8S_KMS_PLUGIN_PORT.")
 	rootCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Corresponding environment variable: K8S_KMS_PLUGIN_SOCKET")
+
 	// Provider
 	rootCmd.PersistentFlags().StringVar(&provider, "provider", "p11", "Provider. Possible values: p11, softhsm, luna, dpod. Corresponding environment variable: K8S_KMS_PLUGIN_PROVIDER.")
 	rootCmd.RegisterFlagCompletionFunc("provider", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -170,6 +174,8 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&hmacKeyName, "p11-hmac-label", "k8s-hmac", "Key Label to use for sha based verifications. Corresponding environment variable: K8S_KMS_PLUGIN_P11_HMAC_LABEL.")
 	rootCmd.PersistentFlags().StringVarP(&nativePath, "native-path", "p", ".keys", "Path to key store for native provider(Files only). Corresponding environment variable: K8S_KMS_PLUGIN_NATIVE_PATH.")
 	rootCmd.PersistentFlags().BoolVar(&createKey, "auto-create", false, "Auto create the keys if needed. Corresponding environment variable: K8S_KMS_PLUGIN_AUTO_CREATE.")
+
+	rootCmd.PersistentFlags().DurationVar(&timeout, "timeout", 30*time.Second, "Timeout Duration")
 }
 
 // initConfig reads in config file and ENV variables if set.

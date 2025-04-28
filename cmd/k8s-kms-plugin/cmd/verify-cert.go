@@ -20,7 +20,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"os"
-	"time"
 
 	"github.com/spf13/cobra"
 
@@ -70,7 +69,6 @@ var verifyCertCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(verifyCertCmd)
 
-	verifyCertCmd.Flags().DurationVar(&timeout, "timeout", 10*time.Second, "Timeout Duration")
 	verifyCertCmd.Flags().StringVarP(&certChainPath, "cert-file", "f", "", "Cert Chain File ")
 	verifyCertCmd.MarkFlagRequired("cert-file")
 }

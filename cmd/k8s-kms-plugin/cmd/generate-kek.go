@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"time"
 
 	istio "github.com/ThalesGroup/k8s-kms-plugin/apis/istio/v1"
 	"github.com/spf13/cobra"
@@ -44,6 +43,5 @@ func generateKEK() error {
 
 func init() {
 	rootCmd.AddCommand(generateKEKCmd)
-	generateKEKCmd.Flags().DurationVar(&timeout, "timeout", 30*time.Second, "Timeout Duration")
 	generateKEKCmd.Flags().StringVar(&kekID, "kek-id", "", "KEK ID to request")
 }

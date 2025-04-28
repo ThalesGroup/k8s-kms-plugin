@@ -18,7 +18,6 @@ package cmd
 import (
 	"context"
 	"os"
-	"time"
 
 	istio "github.com/ThalesGroup/k8s-kms-plugin/apis/istio/v1"
 	"github.com/spf13/cobra"
@@ -58,7 +57,6 @@ var importCaCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(importCaCmd)
 
-	importCaCmd.Flags().DurationVar(&timeout, "timeout", 30*time.Second, "Timeout Duration")
 	importCaCmd.Flags().StringVarP(&caCertPath, "cert-file", "f", "", "Certificate File")
 	importCaCmd.MarkFlagRequired("cert-file")
 }
