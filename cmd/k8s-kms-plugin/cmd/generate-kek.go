@@ -24,7 +24,7 @@ var generateKEKCmd = &cobra.Command{
 }
 
 func generateKEK() error {
-	ctx, cancel, c, err := istio.GetClientSocket(socketPath, timeout)
+	ctx, cancel, c, err := istio.GetClientSocket(socketPath, vprFlgsRoot.Timeout)
 	defer cancel()
 	if err != nil {
 		return fmt.Errorf("could not open socket: %v", err)

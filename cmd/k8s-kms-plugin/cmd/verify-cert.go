@@ -38,7 +38,7 @@ var verifyCertCmd = &cobra.Command{
 		var ictx context.Context
 		var icancel context.CancelFunc
 		var ic istio.KeyManagementServiceClient
-		if ictx, icancel, ic, err = istio.GetClientSocket(socketPath, timeout); err != nil {
+		if ictx, icancel, ic, err = istio.GetClientSocket(socketPath, vprFlgsRoot.Timeout); err != nil {
 			return
 		}
 		defer icancel()

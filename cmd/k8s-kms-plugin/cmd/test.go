@@ -128,7 +128,7 @@ func loopTestRun() error {
 func runTest() error {
 	// Run Istio e2e tests against the socket
 
-	ictx, icancel, ic, err := istio.GetClientSocket(socketPath, timeout)
+	ictx, icancel, ic, err := istio.GetClientSocket(socketPath, vprFlgsRoot.Timeout)
 	defer icancel()
 	if err != nil {
 		logrus.Fatal(err)
