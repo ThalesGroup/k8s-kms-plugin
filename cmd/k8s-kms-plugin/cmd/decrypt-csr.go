@@ -13,6 +13,16 @@ import (
 // cobra decrypt-csr.go CLI Flags
 var inName, outName string
 
+// ViperFlagsDecryptCSR defines a struct to hold the configuration values and use viper.Unmarshal
+// to populate it
+type ViperFlagsDecryptCSR struct {
+	InputFilename  string `mapstructure:"input-filename"`
+	OutputFilename string `mapstructure:"output-filename"`
+}
+
+// Declare the viper config struct with all the decrypt-csr CLI flags bound to viper env vars
+var vprFlgsDecryptCSR ViperFlagsDecryptCSR
+
 type CSRSecret struct {
 	KekID  string `json:"kek-id"`
 	EncDEK string `json:"encrypted-dek"`
@@ -33,7 +43,7 @@ var decryptCSRCmd = &cobra.Command{
 }
 
 func decryptCSR() error {
-	csrJson, err := os.ReadFile(inName)
+	csrJson, err := os.ReadFile(vprFlgsDecryptCSR.InputFilename)
 	if err != nil {
 		return fmt.Errorf("couldn't open JSON CSR file: %v", err)
 	}
@@ -72,8 +82,8 @@ func decryptCSR() error {
 	fmt.Printf("KEK ID: %v\n", string(kekID))
 	fmt.Printf("CSR ID: %v\n", string(csrID))
 
-	if outName != "" {
-		err = os.WriteFile(outName, adResp.Plaintext, 0644)
+	if vprFlgsDecryptCSR.OutputFilename != "" {
+		err = os.WriteFile(vprFlgsDecryptCSR.OutputFilename, adResp.Plaintext, 0644)
 		if err != nil {
 			return fmt.Errorf("couldn't write output file: %v", err)
 		}
@@ -87,6 +97,6 @@ func decryptCSR() error {
 func init() {
 	rootCmd.AddCommand(decryptCSRCmd)
 
-	decryptCSRCmd.Flags().StringVarP(&inName, "inName", "f", "", "Input file")
-	decryptCSRCmd.Flags().StringVarP(&outName, "outName", "o", "", "Output file")
+	decryptCSRCmd.Flags().StringVarP(&inName, "input-filename", "f", "", "Input file")
+	decryptCSRCmd.Flags().StringVarP(&outName, "output-filename", "o", "", "Output file")
 }
