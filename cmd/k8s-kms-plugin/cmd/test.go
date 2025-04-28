@@ -213,7 +213,7 @@ func runTest() error {
 		return err
 	}
 	var out string
-	if debug {
+	if vprFlgsRoot.Debug {
 		out = string(loadSKEYResp.PlaintextSkey)
 	} else {
 		out = "Success"
