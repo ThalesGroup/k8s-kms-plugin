@@ -103,8 +103,9 @@ func algFromString(s string) (jose.Alg, error) {
 
 // serveCmd represents the serve command
 var serveCmd = &cobra.Command{
-	Use:   "serve",
-	Short: "Serve KMS",
+	Use:     "serve",
+	Short:   "Serve KMS",
+	GroupID: "kmscmdsgrpmain",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		if err := InitViperSubCmdE(viper.GetViper(), cmd, &vprFlgsServe); err != nil {
 			logrus.WithField("cobra-cmd", cmd.Use).WithError(err).Error("Error initializing Viper")

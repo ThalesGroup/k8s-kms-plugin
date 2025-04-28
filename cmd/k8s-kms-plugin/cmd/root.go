@@ -120,6 +120,21 @@ func init() {
 	// Ensure initConfig runs before anything else
 	cobra.OnInitialize(initConfig)
 
+	// Define cobra commands groups
+	kmsCmdsGrpMain := &cobra.Group{
+		ID:    "kmscmdsgrpmain", // ID needs to be lowercase
+		Title: "Main KMS Commands:",
+	}
+
+	kmsCmdsGrpSupporting := &cobra.Group{
+		ID:    "kmscmdsgrpsupporting", // ID needs to be lowercase
+		Title: "Supporting KMS Commands:",
+	}
+
+	// Add groups to the root command
+	rootCmd.AddGroup(kmsCmdsGrpMain)
+	rootCmd.AddGroup(kmsCmdsGrpSupporting)
+
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.

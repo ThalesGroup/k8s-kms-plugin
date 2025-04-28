@@ -93,9 +93,9 @@ func hashCsrTemplate(hashF hash.Hash, csrTemplate *x509.CertificateRequest) (dig
 
 // testCmd represents the test command
 var testCmd = &cobra.Command{
-	Use:   "test",
-	Short: "Test connectivity to the socket for some encrypt/decrypt",
-
+	Use:     "test",
+	Short:   "Test connectivity to the socket for some encrypt/decrypt",
+	GroupID: "kmscmdsgrpsupporting",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		time.Sleep(2 * time.Second)
 

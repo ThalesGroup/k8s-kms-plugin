@@ -13,8 +13,9 @@ var (
 )
 
 var generateKEKCmd = &cobra.Command{
-	Use:   "generate-kek",
-	Short: "Generate a KEK",
+	Use:     "generate-kek",
+	Short:   "Generate a KEK",
+	GroupID: "kmscmdsgrpsupporting",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := generateKEK(); err != nil {
 			return err

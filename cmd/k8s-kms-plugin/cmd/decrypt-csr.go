@@ -21,8 +21,9 @@ type CSRSecret struct {
 }
 
 var decryptCSRCmd = &cobra.Command{
-	Use:   "decrypt-csr",
-	Short: "Decrypt CSR",
+	Use:     "decrypt-csr",
+	Short:   "Decrypt CSR",
+	GroupID: "kmscmdsgrpsupporting",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := decryptCSR(); err != nil {
 			return err

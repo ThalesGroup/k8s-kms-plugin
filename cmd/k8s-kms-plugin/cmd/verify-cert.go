@@ -32,9 +32,9 @@ var certChainPath string
 
 // verifyCertCmd represents the verify-cert command
 var verifyCertCmd = &cobra.Command{
-	Use:   "verify-cert",
-	Short: "Verify a cert chain in PEM format against a previously loaded CA",
-
+	Use:     "verify-cert",
+	Short:   "Verify a cert chain in PEM format against a previously loaded CA",
+	GroupID: "kmscmdsgrpsupporting",
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		var ictx context.Context
 		var icancel context.CancelFunc

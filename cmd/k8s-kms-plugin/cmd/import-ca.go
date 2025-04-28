@@ -29,9 +29,9 @@ var caCertPath string
 
 // importCaCmd represents the import-ca command
 var importCaCmd = &cobra.Command{
-	Use:   "import-ca",
-	Short: "Import CA certificate",
-
+	Use:     "import-ca",
+	Short:   "Import CA certificate",
+	GroupID: "kmscmdsgrpsupporting",
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		var ictx context.Context
 		var icancel context.CancelFunc
