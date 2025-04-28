@@ -7,10 +7,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	kekID string
-)
-
 var generateKEKCmd = &cobra.Command{
 	Use:     "generate-kek",
 	Short:   "Generate a KEK",
@@ -31,7 +27,7 @@ func generateKEK() error {
 	}
 
 	genKEKResp, err := c.GenerateKEK(ctx, &istio.GenerateKEKRequest{
-		KekKid: []byte(kekID),
+		KekKid: []byte(vprFlgsRoot.KekKeyID),
 	})
 	if err != nil {
 		return fmt.Errorf("generate KEK failed: %v", err)
@@ -43,5 +39,4 @@ func generateKEK() error {
 
 func init() {
 	rootCmd.AddCommand(generateKEKCmd)
-	generateKEKCmd.Flags().StringVar(&kekID, "kek-id", "", "KEK ID to request")
 }
