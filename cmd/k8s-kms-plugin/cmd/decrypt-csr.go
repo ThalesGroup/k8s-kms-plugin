@@ -53,7 +53,7 @@ func decryptCSR() error {
 		return fmt.Errorf("Base64 decoding secret failed")
 	}
 
-	ctx, cancel, c, err := istio.GetClientSocket(socketPath, vprFlgsRoot.Timeout)
+	ctx, cancel, c, err := istio.GetClientSocket(vprFlgsRoot.SocketPath, vprFlgsRoot.Timeout)
 	defer cancel()
 	if err != nil {
 		return fmt.Errorf("could not open socket: %v", err)

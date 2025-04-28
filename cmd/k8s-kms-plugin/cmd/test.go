@@ -27,8 +27,6 @@ import (
 	"hash"
 	"math/big"
 	"net"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/google/uuid"
@@ -128,7 +126,7 @@ func loopTestRun() error {
 func runTest() error {
 	// Run Istio e2e tests against the socket
 
-	ictx, icancel, ic, err := istio.GetClientSocket(socketPath, vprFlgsRoot.Timeout)
+	ictx, icancel, ic, err := istio.GetClientSocket(vprFlgsRoot.SocketPath, vprFlgsRoot.Timeout)
 	defer icancel()
 	if err != nil {
 		logrus.Fatal(err)
@@ -461,7 +459,7 @@ func runTest() error {
 
 func init() {
 	rootCmd.AddCommand(testCmd)
-	testCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket")
+
 	testCmd.Flags().BoolVar(&loop, "loop", false, "Should we run the test in a loop?")
 	testCmd.Flags().DurationVar(&loopTime, "loop-sleep", 10, "How many seconds to sleep between test runs ")
 	testCmd.Flags().IntVar(&maxLoops, "max-loops", 100, "How many seconds to sleep between test runs ")
