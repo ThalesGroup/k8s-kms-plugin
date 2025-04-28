@@ -44,7 +44,7 @@ var importCaCmd = &cobra.Command{
 			return
 		}
 		req := &istio.ImportCACertRequest{
-			CaId:       []byte(caId),
+			CaId:       []byte(vprFlgsRoot.CaID),
 			CaCertBlob: caCertPem,
 		}
 		if _, err = ic.ImportCACert(ictx, req); err != nil {
