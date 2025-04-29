@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
+	"time"
 
 	istio "github.com/ThalesGroup/k8s-kms-plugin/apis/istio/v1"
 	"github.com/spf13/cobra"
@@ -16,6 +18,8 @@ var inName, outName string
 // ViperFlagsDecryptCSR defines a struct to hold the configuration values and use viper.Unmarshal
 // to populate it
 type ViperFlagsDecryptCSR struct {
+	Socket         string
+	Timeout        time.Duration
 	InputFilename  string `mapstructure:"input-filename"`
 	OutputFilename string `mapstructure:"output-filename"`
 }
@@ -63,7 +67,7 @@ func decryptCSR() error {
 		return fmt.Errorf("Base64 decoding secret failed")
 	}
 
-	ctx, cancel, c, err := istio.GetClientSocket(vprFlgsRoot.SocketPath, vprFlgsRoot.Timeout)
+	ctx, cancel, c, err := istio.GetClientSocket(vprFlgsDecryptCSR.Socket, vprFlgsDecryptCSR.Timeout)
 	defer cancel()
 	if err != nil {
 		return fmt.Errorf("could not open socket: %v", err)
@@ -96,6 +100,9 @@ func decryptCSR() error {
 
 func init() {
 	rootCmd.AddCommand(decryptCSRCmd)
+
+	generateKEKCmd.Flags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_DECRYPT_CSR_SOCKET")
+	generateKEKCmd.Flags().Duration("timeout", 5*time.Second, "KMS timeout")
 
 	decryptCSRCmd.Flags().StringVarP(&inName, "input-filename", "f", "", "Input file")
 	decryptCSRCmd.Flags().StringVarP(&outName, "output-filename", "o", "", "Output file")
