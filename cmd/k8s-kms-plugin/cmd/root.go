@@ -40,17 +40,21 @@ import (
 // cobra root CLI flags. They are mostly not used because we use viper that binds the cobra flags
 // to the corresponding environment variables that viper reads.
 var (
+	cfgFile   string
+	debug     bool
+	logFormat string
+	logLevel  string
+)
+
+// TODO: move this to each subcommands which needs it
+var (
 	caId            string
-	cfgFile         string
 	createKey       bool
-	debug           bool
 	dekKeyLabelName string
 	grpcPort        uint16
 	hmacKeyName     string
 	host            string
 	kekKeyId        string
-	logFormat       string
-	logLevel        string
 	nativePath      string
 	p11label        string
 	p11lib          string
@@ -64,16 +68,19 @@ var (
 // ViperFlagsRoot defines a struct to hold all the configuration values and use viper.Unmarshal
 // to populate it:
 type ViperFlagsRoot struct {
+	// TODO: Keep this for root persistent flags
+	ConfigFile string `mapstructure:"config"`
+	Debug      bool   `mapstructure:"debug"`
+	LogFormat  string `mapstructure:"log-format"`
+	LogLevel   string `mapstructure:"log-level"`
+
+	// TODO: move this to each subcommands which needs it
 	CaID         string        `mapstructure:"ca-id"`
-	ConfigFile   string        `mapstructure:"config"`
 	CreateKey    bool          `mapstructure:"auto-create"`
-	Debug        bool          `mapstructure:"debug"`
 	DekKeyLabel  string        `mapstructure:"p11-key-label"`
 	HmacKeyLabel string        `mapstructure:"p11-hmac-label"`
 	Host         string        `mapstructure:"host"`
 	KekKeyID     string        `mapstructure:"kek-id"`
-	LogFormat    string        `mapstructure:"log-format"`
-	LogLevel     string        `mapstructure:"log-level"`
 	NativePath   string        `mapstructure:"native-path"`
 	P11Label     string        `mapstructure:"p11-label"`
 	P11Lib       string        `mapstructure:"p11-lib"`
@@ -155,6 +162,7 @@ func init() {
 	})
 	rootCmd.MarkFlagsMutuallyExclusive("log-level", "debug")
 
+	// TODO: this below should be moved to each subcommand
 	rootCmd.PersistentFlags().StringVar(&host, "host", "0.0.0.0", "Hostname without port. Corresponding environment variable: K8S_KMS_PLUGIN_HOST.")
 	rootCmd.PersistentFlags().Uint16Var(&grpcPort, "port", 31400, "TCP Port for gRPC service. Corresponding environment variable: K8S_KMS_PLUGIN_PORT.")
 	rootCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Corresponding environment variable: K8S_KMS_PLUGIN_SOCKET")
