@@ -93,6 +93,6 @@ func init() {
 	verifyCertCmd.MarkFlagRequired("cert-file")
 
 	// Socket & Timeout
-	verifyCertCmd.PersistentFlags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_SOCKET")
-	verifyCertCmd.PersistentFlags().Duration("timeout", 30*time.Second, "Timeout Duration")
+	verifyCertCmd.Flags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_GENERATE_KEK_SOCKET")
+	verifyCertCmd.Flags().Duration("timeout", 5*time.Second, "KMS timeout")
 }
