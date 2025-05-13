@@ -482,7 +482,7 @@ func init() {
 
 	// Socket & Timeout
 	testCmd.Flags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_GENERATE_KEK_SOCKET")
-	testCmd.Flags().Duration("timeout", 5*time.Second, "KMS timeout")
+	testCmd.Flags().Duration("timeout", 30*time.Second, "KMS timeout")
 }
 
 func dummyCaCertSigner(p10Csr []byte, pemCaCert, pemCaPrivKey string) (signedCert []byte, err error) {
