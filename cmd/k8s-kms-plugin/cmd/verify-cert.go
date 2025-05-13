@@ -20,30 +20,50 @@ import (
 	"encoding/pem"
 	"errors"
 	"os"
+	"path/filepath"
+	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/ThalesGroup/k8s-kms-plugin/apis/istio/v1"
 )
 
+// buffer to hold the cert chain
 var certChainPem []byte
-var certChainPath string
+
+type ViperFlagsVerifyCert struct {
+	CertChainPath string        `mapstructure:"cert-file"`
+	SocketPath    string        `mapstructure:"socket"`
+	Timeout       time.Duration `mapstructure:"timeout"`
+}
+
+// Initialize the ViperFlagsVerifyCert struct with all the verify-cert cobra CLI flags bound to Viper env vars & config file
+var vprFlgsVerifyCert ViperFlagsVerifyCert
 
 // verifyCertCmd represents the verify-cert command
 var verifyCertCmd = &cobra.Command{
 	Use:     "verify-cert",
 	Short:   "Verify a cert chain in PEM format against a previously loaded CA",
 	GroupID: "kmscmdsgrpsupporting",
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		if err := InitViperSubCmdE(viper.GetViper(), cmd, &vprFlgsVerifyCert); err != nil {
+			logrus.WithField("cobra-cmd", cmd.Use).WithError(err).Error("Error initializing Viper")
+			return err
+		}
+		return nil
+	},
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		var ictx context.Context
 		var icancel context.CancelFunc
 		var ic istio.KeyManagementServiceClient
-		if ictx, icancel, ic, err = istio.GetClientSocket(vprFlgsRoot.SocketPath, vprFlgsRoot.Timeout); err != nil {
+		if ictx, icancel, ic, err = istio.GetClientSocket(vprFlgsVerifyCert.SocketPath, vprFlgsVerifyCert.Timeout); err != nil {
 			return
 		}
 		defer icancel()
 
-		if certChainPem, err = os.ReadFile(certChainPath); err != nil {
+		if certChainPem, err = os.ReadFile(vprFlgsVerifyCert.CertChainPath); err != nil {
 			return
 		}
 
@@ -69,6 +89,10 @@ var verifyCertCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(verifyCertCmd)
 
-	verifyCertCmd.Flags().StringVarP(&certChainPath, "cert-file", "f", "", "Cert Chain File ")
+	verifyCertCmd.Flags().StringP("cert-file", "f", "", "Cert Chain File ")
 	verifyCertCmd.MarkFlagRequired("cert-file")
+
+	// Socket & Timeout
+	verifyCertCmd.PersistentFlags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_SOCKET")
+	verifyCertCmd.PersistentFlags().Duration("timeout", 30*time.Second, "Timeout Duration")
 }
