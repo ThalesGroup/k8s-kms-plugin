@@ -101,8 +101,8 @@ func decryptCSR() error {
 func init() {
 	rootCmd.AddCommand(decryptCSRCmd)
 
-	generateKEKCmd.Flags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_DECRYPT_CSR_SOCKET")
-	generateKEKCmd.Flags().Duration("timeout", 5*time.Second, "KMS timeout")
+	decryptCSRCmd.Flags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_DECRYPT_CSR_SOCKET")
+	decryptCSRCmd.Flags().Duration("timeout", 5*time.Second, "KMS timeout")
 
 	decryptCSRCmd.Flags().StringVarP(&inName, "input-filename", "f", "", "Input file")
 	decryptCSRCmd.Flags().StringVarP(&outName, "output-filename", "o", "", "Output file")
