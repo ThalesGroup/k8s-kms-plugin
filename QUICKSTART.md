@@ -56,3 +56,15 @@ Start a K3S cluster with the proper KMS configuration in [encryption-conf-kmsv1.
 curl -sfL https://get.k3s.io | sh -s - \
   --kube-apiserver-arg=encryption-provider-config=encryption-conf-kmsv1.yaml
 ```
+
+## Using Env Vars Thanks to Viper
+
+> TODO: improve this section and harmonise the previous section to use viper's env vars
+
+vTPM
+
+```bash
+export K8S_KMS_PLUGIN_SERVE_SOCKET="/run/user/$(id -u $USER)/k8s-kms-plugin.sock"
+export K8S_KMS_PLUGIN_SERVE_P11_LIB="/usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1"
+k8s-kms-plugin serve --p11-label mylabel --p11-pin mypin --p11-key-label aes0 --enable-server
+```
