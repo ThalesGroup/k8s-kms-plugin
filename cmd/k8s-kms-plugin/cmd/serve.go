@@ -52,18 +52,6 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-// cobra serve.go CLI Flags. They are mostly not used because we use viper that binds the cobra flags
-// to the corresponding environment variables that viper reads.
-var (
-	algorithm     string
-	allowAny      bool
-	caTLSCert     string
-	disableSocket bool
-	enableTCP     bool
-	serverTLSCert string
-	serverTLSKey  string
-)
-
 // ViperFlagsServe defines a struct to hold the values of cobra CLI flags and use viper to populate them
 type ViperFlagsServe struct {
 	Algorithm     string `mapstructure:"algorithm"`
@@ -74,7 +62,7 @@ type ViperFlagsServe struct {
 	ServerTLSCert string `mapstructure:"tls-certificate"`
 	ServerTLSKey  string `mapstructure:"tls-key"`
 
-	// TODO: These flags have been moved from root to here
+	// These flags have been moved from root to serve
 	CaID         string `mapstructure:"ca-id"`
 	CreateKey    bool   `mapstructure:"auto-create"`
 	DekKeyLabel  string `mapstructure:"p11-key-label"`
@@ -167,7 +155,7 @@ var serveCmd = &cobra.Command{
 			g.Go(func() error { return grpcServe(grpcTCP, p) })
 		}
 
-		if !disableSocket {
+		if !vprFlgsServe.DisableSocket {
 			_ = os.Remove(vprFlgsServe.SocketPath)
 			if grpcUNIX, err = net.Listen("unix", vprFlgsServe.SocketPath); err != nil {
 				return
@@ -195,20 +183,19 @@ func init() {
 	// Since this project uses Viper bind with Cobra flags, we generally do not need to use "Flags().*Var"
 	// (like StringVar, BoolVar, Uint16Var, etc...) as we do not need to access the cobra flag values directly. This is
 	// because we use Viper to retrieve the values of the flags.
-	// TODO: remove Flags().*Var and replace with viper
 
 	// unix socket server options
-	serveCmd.Flags().BoolVar(&disableSocket, "disable-socket", false, "Disable socket based server. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_DISABLE_SOCKET.")
+	serveCmd.Flags().Bool("disable-socket", false, "Disable socket based server. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_DISABLE_SOCKET.")
 
 	// tcp server options
-	serveCmd.Flags().BoolVar(&enableTCP, "enable-server", false, "Enable TLS based server. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_ENABLE_SERVER.")
-	serveCmd.Flags().StringVar(&caTLSCert, "tls-ca", "certs/ca.crt", "TLS CA cert. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_TLS_CA.")
-	serveCmd.Flags().StringVar(&serverTLSKey, "tls-key", "certs/tls.key", "TLS server key. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_TLS_KEY")
-	serveCmd.Flags().StringVar(&serverTLSCert, "tls-certificate", "certs/tls.crt", "TLS server cert. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_TLS_CERTIFICATE")
+	serveCmd.Flags().Bool("enable-server", false, "Enable TLS based server. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_ENABLE_SERVER.")
+	serveCmd.Flags().String("tls-ca", "certs/ca.crt", "TLS CA cert. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_TLS_CA.")
+	serveCmd.Flags().String("tls-key", "certs/tls.key", "TLS server key. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_TLS_KEY")
+	serveCmd.Flags().String("tls-certificate", "certs/tls.crt", "TLS server cert. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_TLS_CERTIFICATE")
 
-	serveCmd.Flags().BoolVar(&allowAny, "allow-any", false, "Allow any device (accepts all ids/secrets). Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_ALLOW_ANY")
+	serveCmd.Flags().Bool("allow-any", false, "Allow any device (accepts all ids/secrets). Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_ALLOW_ANY")
 
-	serveCmd.Flags().StringVar(&algorithm, "algorithm", "aes-gcm", "Set the algorithm for encryption/decryption. Possible values: aes-gcm, aes-cbc, rsa-oaep. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_ALGORITHM")
+	serveCmd.Flags().String("algorithm", "aes-gcm", "Set the algorithm for encryption/decryption. Possible values: aes-gcm, aes-cbc, rsa-oaep. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_ALGORITHM")
 	serveCmd.RegisterFlagCompletionFunc("algorithm", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"aes-gcm", "aes-cbc", "rsa-oaep"}, cobra.ShellCompDirectiveNoFileComp
 	})

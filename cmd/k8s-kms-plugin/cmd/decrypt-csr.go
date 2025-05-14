@@ -14,9 +14,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-// cobra decrypt-csr.go CLI Flags
-var inName, outName string
-
 // ViperFlagsDecryptCSR defines a struct to hold the values of cobra CLI flags and use viper to populate them
 type ViperFlagsDecryptCSR struct {
 	InputFilename  string `mapstructure:"input-filename"`
@@ -114,9 +111,8 @@ func init() {
 	// Since this project uses Viper bind with Cobra flags, we generally do not need to use "Flags().*Var"
 	// (like StringVar, BoolVar, Uint16Var, etc...) as we do not need to access the cobra flag values directly. This is
 	// because we use Viper to retrieve the values of the flags.
-	// TODO: remove Flags().*Var and replace with viper
-	decryptCSRCmd.Flags().StringVarP(&inName, "input-filename", "f", "", "Input file")
-	decryptCSRCmd.Flags().StringVarP(&outName, "output-filename", "o", "", "Output file")
+	decryptCSRCmd.Flags().StringP("input-filename", "f", "", "Input file")
+	decryptCSRCmd.Flags().StringP("output-filename", "o", "", "Output file")
 
 	// Socket & Timeout
 	decryptCSRCmd.Flags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_DECRYPT_CSR_SOCKET")
