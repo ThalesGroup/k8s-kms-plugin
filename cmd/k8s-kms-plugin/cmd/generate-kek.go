@@ -12,19 +12,22 @@ import (
 	"github.com/spf13/viper"
 )
 
-// ViperFlagsGenerateKEK defines a struct to hold the values of the flags for the generate-kek command
+// ViperFlagsGenerateKEK defines a struct to hold the values of cobra CLI flags and use viper to populate them
 type ViperFlagsGenerateKEK struct {
-	Socket   string
-	Timeout  time.Duration
-	KekKeyID string
+	KekKeyID string `mapstructure:"kek-id"`
+
+	Socket  string        `mapstructure:"socket"`
+	Timeout time.Duration `mapstructure:"timeout"`
 }
 
+// Declare the viper CLI flag values buffer
 var vprFlgsGenerateKEK ViperFlagsGenerateKEK
 
 var generateKEKCmd = &cobra.Command{
 	Use:     "generate-kek",
 	Short:   "Generate a KEK",
 	GroupID: "kmscmdsgrpsupporting",
+	// Initialize and populate cobra CLI flags values with viper during the Persistent pre-run
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		if err := InitViperSubCmdE(viper.GetViper(), cmd, &vprFlgsGenerateKEK); err != nil {
 			logrus.WithField("cobra-cmd", cmd.Use).WithError(err).Error("Error initializing Viper")
@@ -69,7 +72,9 @@ func init() {
 	// Since this project uses Viper bind with Cobra flags, we generally do not need to use "Flags().*Var"
 	// (like StringVar, BoolVar, Uint16Var, etc...) as we do not need to access the cobra flag values directly. This is
 	// because we use Viper to retrieve the values of the flags.
+	generateKEKCmd.Flags().String("kek-id", defaultKekId, "Key ID for KMS KEK. Env var: K8S_KMS_PLUGIN_GENERATE_KEK_KEK_ID")
+
+	// Socket & Timeout
 	generateKEKCmd.Flags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_GENERATE_KEK_SOCKET")
 	generateKEKCmd.Flags().Duration("timeout", 30*time.Second, "KMS timeout")
-	generateKEKCmd.Flags().String("kek-id", defaultKekId, "Key ID for KMS KEK. Env var: K8S_KMS_PLUGIN_GENERATE_KEK_KEK_ID")
 }

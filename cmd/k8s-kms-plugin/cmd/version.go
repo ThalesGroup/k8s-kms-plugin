@@ -38,14 +38,13 @@ var outputFormat string // One of 'yaml' or 'json'.
 // prettyPrintVersion defined by the user with flag --pretty
 var prettyPrintVersion bool
 
-// ViperFlagsVersion defines a struct to hold all the configuration values and use viper.Unmarshal
-// to populate it:
+// ViperFlagsVersion defines a struct to hold the values of cobra CLI flags and use viper to populate them
 type ViperFlagsVersion struct {
 	OutputFormat       string `mapstructure:"output"`
 	PrettyPrintVersion bool   `mapstructure:"pretty"`
 }
 
-// Initialize the ViperConfig struct with all the version CLI flags bound to Viper env vars
+// Declare the viper CLI flag values buffer
 var vprFlgsVersion ViperFlagsVersion
 
 // versionCmd represents the version command
@@ -59,6 +58,7 @@ Examples:
   # print the version information with git repository details as a one liner
   # JSON string.
   k8s-kms-plugin version -o json --pretty=false`,
+	// Initialize and populate cobra CLI flags values with viper during the Persistent pre-run
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		if err := InitViperSubCmdE(viper.GetViper(), cmd, &vprFlgsVersion); err != nil {
 			logrus.WithField("cobra-cmd", cmd.Use).WithError(err).Error("Error initializing Viper")
@@ -75,6 +75,10 @@ Examples:
 func init() {
 	// rootCmd is the parent command
 	rootCmd.AddCommand(versionCmd)
+
+	// Since this project uses Viper bind with Cobra flags, we generally do not need to use "Flags().*Var"
+	// (like StringVar, BoolVar, Uint16Var, etc...) as we do not need to access the cobra flag values directly. This is
+	// because we use Viper to retrieve the values of the flags.
 
 	// Here you will define your flags and configuration settings.
 	versionCmd.Flags().StringVarP(&outputFormat, "output", "o", "", "Format of the version output. One of 'yaml' or 'json'. Corresponding environment variable: K8S_KMS_PLUGIN_VERSION_OUTPUT")

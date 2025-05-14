@@ -33,13 +33,15 @@ import (
 // buffer to hold the cert chain
 var certChainPem []byte
 
+// ViperFlagsVerifyCert defines a struct to hold the values of cobra CLI flags and use viper to populate them
 type ViperFlagsVerifyCert struct {
-	CertChainPath string        `mapstructure:"cert-file"`
-	SocketPath    string        `mapstructure:"socket"`
-	Timeout       time.Duration `mapstructure:"timeout"`
+	CertChainPath string `mapstructure:"cert-file"`
+
+	SocketPath string        `mapstructure:"socket"`
+	Timeout    time.Duration `mapstructure:"timeout"`
 }
 
-// Initialize the ViperFlagsVerifyCert struct with all the verify-cert cobra CLI flags bound to Viper env vars & config file
+// Declare the viper CLI flag values buffer
 var vprFlgsVerifyCert ViperFlagsVerifyCert
 
 // verifyCertCmd represents the verify-cert command
@@ -47,6 +49,7 @@ var verifyCertCmd = &cobra.Command{
 	Use:     "verify-cert",
 	Short:   "Verify a cert chain in PEM format against a previously loaded CA",
 	GroupID: "kmscmdsgrpsupporting",
+	// Initialize and populate cobra CLI flags values with viper during the Persistent pre-run
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		if err := InitViperSubCmdE(viper.GetViper(), cmd, &vprFlgsVerifyCert); err != nil {
 			logrus.WithField("cobra-cmd", cmd.Use).WithError(err).Error("Error initializing Viper")
@@ -88,6 +91,10 @@ var verifyCertCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(verifyCertCmd)
+
+	// Since this project uses Viper bind with Cobra flags, we generally do not need to use "Flags().*Var"
+	// (like StringVar, BoolVar, Uint16Var, etc...) as we do not need to access the cobra flag values directly. This is
+	// because we use Viper to retrieve the values of the flags.
 
 	verifyCertCmd.Flags().StringP("cert-file", "f", "", "Cert Chain File ")
 	verifyCertCmd.MarkFlagRequired("cert-file")

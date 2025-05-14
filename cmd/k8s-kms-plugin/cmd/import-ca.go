@@ -30,14 +30,16 @@ import (
 // buffer to hold the CA certificate
 var caCertPem []byte
 
+// ViperFlagsImportCa defines a struct to hold the values of cobra CLI flags and use viper to populate them
 type ViperFlagsImportCa struct {
-	CaCertPath string        `mapstructure:"cert-file"`
-	CaID       string        `mapstructure:"ca-id"`
+	CaCertPath string `mapstructure:"cert-file"`
+	CaID       string `mapstructure:"ca-id"`
+
 	SocketPath string        `mapstructure:"socket"`
 	Timeout    time.Duration `mapstructure:"timeout"`
 }
 
-// Initialize the ViperFlagsImportCa struct with all the import-ca cobra CLI flags bound to Viper env vars & config file
+// Declare the viper CLI flag values buffer
 var vprFlgsImportCa ViperFlagsImportCa
 
 // importCaCmd represents the import-ca command
@@ -78,6 +80,9 @@ var importCaCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(importCaCmd)
 
+	// Since this project uses Viper bind with Cobra flags, we generally do not need to use "Flags().*Var"
+	// (like StringVar, BoolVar, Uint16Var, etc...) as we do not need to access the cobra flag values directly. This is
+	// because we use Viper to retrieve the values of the flags.
 	importCaCmd.Flags().StringP("cert-file", "f", "", "Certificate File")
 	importCaCmd.MarkFlagRequired("cert-file")
 

@@ -17,16 +17,16 @@ import (
 // cobra decrypt-csr.go CLI Flags
 var inName, outName string
 
-// ViperFlagsDecryptCSR defines a struct to hold the configuration values and use viper.Unmarshal
-// to populate it
+// ViperFlagsDecryptCSR defines a struct to hold the values of cobra CLI flags and use viper to populate them
 type ViperFlagsDecryptCSR struct {
-	Socket         string
-	Timeout        time.Duration
 	InputFilename  string `mapstructure:"input-filename"`
 	OutputFilename string `mapstructure:"output-filename"`
+
+	Socket  string        `mapstructure:"socket"`
+	Timeout time.Duration `mapstructure:"timeout"`
 }
 
-// Declare the viper config struct with all the decrypt-csr CLI flags bound to viper env vars
+// Declare the viper CLI flag values buffer
 var vprFlgsDecryptCSR ViperFlagsDecryptCSR
 
 type CSRSecret struct {
@@ -40,6 +40,7 @@ var decryptCSRCmd = &cobra.Command{
 	Use:     "decrypt-csr",
 	Short:   "Decrypt CSR",
 	GroupID: "kmscmdsgrpsupporting",
+	// Initialize and populate cobra CLI flags values with viper during the Persistent pre-run
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		if err := InitViperSubCmdE(viper.GetViper(), cmd, &vprFlgsDecryptCSR); err != nil {
 			logrus.WithField("cobra-cmd", cmd.Use).WithError(err).Error("Error initializing Viper")
@@ -110,9 +111,14 @@ func decryptCSR() error {
 func init() {
 	rootCmd.AddCommand(decryptCSRCmd)
 
-	decryptCSRCmd.Flags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_DECRYPT_CSR_SOCKET")
-	decryptCSRCmd.Flags().Duration("timeout", 30*time.Second, "KMS timeout")
-
+	// Since this project uses Viper bind with Cobra flags, we generally do not need to use "Flags().*Var"
+	// (like StringVar, BoolVar, Uint16Var, etc...) as we do not need to access the cobra flag values directly. This is
+	// because we use Viper to retrieve the values of the flags.
+	// TODO: remove Flags().*Var and replace with viper
 	decryptCSRCmd.Flags().StringVarP(&inName, "input-filename", "f", "", "Input file")
 	decryptCSRCmd.Flags().StringVarP(&outName, "output-filename", "o", "", "Output file")
+
+	// Socket & Timeout
+	decryptCSRCmd.Flags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_DECRYPT_CSR_SOCKET")
+	decryptCSRCmd.Flags().Duration("timeout", 30*time.Second, "KMS timeout")
 }

@@ -40,6 +40,7 @@ import (
 	istio "github.com/ThalesGroup/k8s-kms-plugin/apis/istio/v1"
 )
 
+// ViperFlagsTest defines a struct to hold the values of cobra CLI flags and use viper to populate them
 type ViperFlagsTest struct {
 	Loop     bool          `mapstructure:"loop"`
 	MaxLoops int           `mapstructure:"max-loops"`
@@ -49,6 +50,7 @@ type ViperFlagsTest struct {
 	Timeout    time.Duration `mapstructure:"timeout"`
 }
 
+// Declare the viper CLI flag values buffer
 var viperFlagsTest ViperFlagsTest
 
 // dummy certificates & private keys
@@ -105,6 +107,7 @@ var testCmd = &cobra.Command{
 	Use:     "test",
 	Short:   "Test connectivity to the socket for some encrypt/decrypt",
 	GroupID: "kmscmdsgrpsupporting",
+	// Initialize and populate cobra CLI flags values with viper during the Persistent pre-run
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		if err := InitViperSubCmdE(viper.GetViper(), cmd, &viperFlagsTest); err != nil {
 			logrus.WithField("cobra-cmd", cmd.Use).WithError(err).Error("Error initializing Viper")
@@ -475,6 +478,10 @@ func runTest() error {
 
 func init() {
 	rootCmd.AddCommand(testCmd)
+
+	// Since this project uses Viper bind with Cobra flags, we generally do not need to use "Flags().*Var"
+	// (like StringVar, BoolVar, Uint16Var, etc...) as we do not need to access the cobra flag values directly. This is
+	// because we use Viper to retrieve the values of the flags.
 
 	testCmd.Flags().Bool("loop", false, "Should we run the test in a loop?")
 	testCmd.Flags().Duration("loop-sleep", 10, "How many seconds to sleep between test runs ")
