@@ -1,24 +1,24 @@
 /*
- * // Copyright 2025 Thales Group
- * //
- * // Permission is hereby granted, free of charge, to any person obtaining
- * // a copy of this software and associated documentation files (the
- * // "Software"), to deal in the Software without restriction, including
- * // without limitation the rights to use, copy, modify, merge, publish,
- * // distribute, sublicense, and/or sell copies of the Software, and to
- * // permit persons to whom the Software is furnished to do so, subject to
- * // the following conditions:
- * //
- * // The above copyright notice and this permission notice shall be
- * // included in all copies or substantial portions of the Software.
- * //
- * // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * // EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * // MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * // NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
- * // LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
- * // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
- * // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * Copyright 2025 Thales Group
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 package cmd
@@ -30,6 +30,7 @@ import (
 	"errors"
 	"net"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"time"
@@ -63,6 +64,7 @@ var (
 	serverTLSKey  string
 )
 
+// ViperFlagsServe defines a struct to hold the values of cobra CLI flags and use viper to populate them
 type ViperFlagsServe struct {
 	Algorithm     string `mapstructure:"algorithm"`
 	AllowAny      bool   `mapstructure:"allow-any"`
@@ -71,9 +73,26 @@ type ViperFlagsServe struct {
 	EnableTCP     bool   `mapstructure:"enable-server"`
 	ServerTLSCert string `mapstructure:"tls-certificate"`
 	ServerTLSKey  string `mapstructure:"tls-key"`
+
+	// TODO: These flags have been moved from root to here
+	CaID         string `mapstructure:"ca-id"`
+	CreateKey    bool   `mapstructure:"auto-create"`
+	DekKeyLabel  string `mapstructure:"p11-key-label"`
+	HmacKeyLabel string `mapstructure:"p11-hmac-label"`
+	Host         string `mapstructure:"host"`
+	KekKeyID     string `mapstructure:"kek-id"`
+	NativePath   string `mapstructure:"native-path"`
+	P11Label     string `mapstructure:"p11-label"`
+	P11Lib       string `mapstructure:"p11-lib"`
+	P11Pin       string `mapstructure:"p11-pin"`
+	P11Slot      int    `mapstructure:"p11-slot"`
+	Port         uint16 `mapstructure:"port"`
+	Provider     string `mapstructure:"provider"`
+
+	SocketPath string `mapstructure:"socket"`
 }
 
-// Initialize the ViperConfig struct with all the serve CLI flags bound to Viper env vars
+// Declare the viper CLI flag values buffer
 var vprFlgsServe ViperFlagsServe
 
 // Algorithm supports user input for configuration
@@ -106,6 +125,7 @@ var serveCmd = &cobra.Command{
 	Use:     "serve",
 	Short:   "Serve KMS",
 	GroupID: "kmscmdsgrpmain",
+	// Initialize and populate cobra CLI flags values with viper during the Persistent pre-run
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		if err := InitViperSubCmdE(viper.GetViper(), cmd, &vprFlgsServe); err != nil {
 			logrus.WithField("cobra-cmd", cmd.Use).WithError(err).Error("Error initializing Viper")
@@ -137,8 +157,8 @@ var serveCmd = &cobra.Command{
 		var grpcTCP, grpcUNIX net.Listener
 
 		if vprFlgsServe.EnableTCP {
-			// vprFlgsRoot.Port needs to convert from uint16 to string
-			grpcAddr := net.JoinHostPort(vprFlgsRoot.Host, strconv.FormatUint(uint64(vprFlgsRoot.Port), 10))
+			// vprFlgsServe.Port needs to be converted from uint16 to string
+			grpcAddr := net.JoinHostPort(vprFlgsServe.Host, strconv.FormatUint(uint64(vprFlgsServe.Port), 10))
 
 			if grpcTCP, err = net.Listen("tcp", grpcAddr); err != nil {
 				return
@@ -148,15 +168,15 @@ var serveCmd = &cobra.Command{
 		}
 
 		if !disableSocket {
-			_ = os.Remove(vprFlgsRoot.SocketPath)
-			if grpcUNIX, err = net.Listen("unix", vprFlgsRoot.SocketPath); err != nil {
+			_ = os.Remove(vprFlgsServe.SocketPath)
+			if grpcUNIX, err = net.Listen("unix", vprFlgsServe.SocketPath); err != nil {
 				return
 			}
 
 			// Istiod runs with uid and gid 1337, but the plugin runs with uid 0 and
 			// gid 1337.  Change the socket permissions so the group has read/write
 			// access to the socket.
-			os.Chmod(vprFlgsRoot.SocketPath, 0775)
+			os.Chmod(vprFlgsServe.SocketPath, 0775)
 			g.Go(func() error { return grpcServe(grpcUNIX, p) })
 		}
 
@@ -171,6 +191,11 @@ var serveCmd = &cobra.Command{
 func init() {
 	// rootCmd is the parent command
 	rootCmd.AddCommand(serveCmd)
+
+	// Since this project uses Viper bind with Cobra flags, we generally do not need to use "Flags().*Var"
+	// (like StringVar, BoolVar, Uint16Var, etc...) as we do not need to access the cobra flag values directly. This is
+	// because we use Viper to retrieve the values of the flags.
+	// TODO: remove Flags().*Var and replace with viper
 
 	// unix socket server options
 	serveCmd.Flags().BoolVar(&disableSocket, "disable-socket", false, "Disable socket based server. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_DISABLE_SOCKET.")
@@ -187,6 +212,29 @@ func init() {
 	serveCmd.RegisterFlagCompletionFunc("algorithm", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"aes-gcm", "aes-cbc", "rsa-oaep"}, cobra.ShellCompDirectiveNoFileComp
 	})
+
+	// These flags comes from root
+	// These flags does not need to store their values in variable because we use the viper structure ViperFlagsServe to do this
+	serveCmd.Flags().String("ca-id", defaultCaId, "Cert ID for CA Cert record. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_CA_ID")
+	serveCmd.Flags().Bool("auto-create", false, "Auto create the keys if needed. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_AUTO_CREATE.")
+	serveCmd.Flags().String("p11-key-label", "k8s-dek", "Key Label to use for encrypt/decrypt. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_P11_KEY_LABEL.")
+	serveCmd.Flags().String("p11-hmac-label", "k8s-hmac", "Key Label to use for sha based verifications. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_P11_HMAC_LABEL.")
+	serveCmd.Flags().String("host", "0.0.0.0", "Hostname without port. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_HOST.")
+	serveCmd.Flags().String("kek-id", defaultKekId, "Key ID for KMS KEK. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_KEK_ID")
+	serveCmd.Flags().StringP("native-path", "p", ".keys", "Path to key store for native provider(Files only). Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_NATIVE_PATH.")
+	serveCmd.Flags().String("p11-label", "", "P11 token label. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_P11_TOKEN")
+	serveCmd.Flags().String("p11-lib", "", "Path to p11 library/client. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_P11_LIB")
+	serveCmd.Flags().String("p11-pin", "", "P11 Pin. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_P11_PIN")
+	serveCmd.Flags().Int("p11-slot", 0, "P11 token slot. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_P11_SLOT")
+	serveCmd.Flags().Uint16("port", 31400, "TCP Port for gRPC service. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_PORT.")
+	// Provider
+	serveCmd.Flags().String("provider", "p11", "Provider. Possible values: p11, softhsm, luna, dpod. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_PROVIDER.")
+	serveCmd.RegisterFlagCompletionFunc("provider", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"p11", "softhsm", "luna", "dpod"}, cobra.ShellCompDirectiveNoFileComp
+	})
+
+	// Socket
+	serveCmd.Flags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_GENERATE_KEK_SOCKET")
 }
 
 func initProvider() (p providers.Provider, err error) {
@@ -198,20 +246,20 @@ func initProvider() (p providers.Provider, err error) {
 
 	// init the provider config from user input
 	config := &crypto11.Config{}
-	switch vprFlgsRoot.Provider {
+	switch vprFlgsServe.Provider {
 	case "p11", "softhsm":
 		logrus.Debug("initProvider: case p11 or softhsm")
 		config = &crypto11.Config{
-			Path:            vprFlgsRoot.P11Lib,
-			Pin:             vprFlgsRoot.P11Pin,
+			Path:            vprFlgsServe.P11Lib,
+			Pin:             vprFlgsServe.P11Pin,
 			UseGCMIVFromHSM: false,
 		}
 
 	case "luna", "dpod":
 		logrus.Debug("initProvider: case luna HSM or dpod")
 		config = &crypto11.Config{
-			Path:            vprFlgsRoot.P11Lib,
-			Pin:             vprFlgsRoot.P11Pin,
+			Path:            vprFlgsServe.P11Lib,
+			Pin:             vprFlgsServe.P11Pin,
 			UseGCMIVFromHSM: true,
 			GCMIVFromHSMControl: crypto11.GCMIVFromHSMConfig{
 				SupplyIvForHSMGCMEncrypt: false,
@@ -219,19 +267,19 @@ func initProvider() (p providers.Provider, err error) {
 			},
 		}
 	default:
-		logrus.WithField("provider", vprFlgsRoot.Provider).Error("unknown provider")
+		logrus.WithField("provider", vprFlgsServe.Provider).Error("unknown provider")
 		err = errors.New("unknown provider")
 		return
 	}
 
-	if vprFlgsRoot.P11Label != "" {
-		config.TokenLabel = vprFlgsRoot.P11Label
+	if vprFlgsServe.P11Label != "" {
+		config.TokenLabel = vprFlgsServe.P11Label
 	} else {
-		config.SlotNumber = &vprFlgsRoot.P11Slot
+		config.SlotNumber = &vprFlgsServe.P11Slot
 	}
 	// init the provider
 	// TODO: See https://github.com/ThalesGroup/k8s-kms-plugin/issues/40#issuecomment-2593267852
-	if p, err = providers.NewP11(config, vprFlgsRoot.CreateKey, vprFlgsRoot.DekKeyLabel, vprFlgsRoot.HmacKeyLabel, alg); err != nil {
+	if p, err = providers.NewP11(config, vprFlgsServe.CreateKey, vprFlgsServe.DekKeyLabel, vprFlgsServe.HmacKeyLabel, alg); err != nil {
 		return
 	}
 	return
@@ -252,7 +300,7 @@ func grpcServe(gl net.Listener, p providers.Provider) (err error) {
 	istio.RegisterKeyManagementServiceServer(gs, p)
 
 	logrus.Infof("Serving on socket: %s", gl.Addr().String())
-	logrus.Debugf("grpcServe: value of grpcPort user input: %d", vprFlgsRoot.Port)
+	logrus.Debugf("grpcServe: value of grpcPort user input: %d", vprFlgsServe.Port)
 
 START:
 	if err = gs.Serve(gl); err != nil {

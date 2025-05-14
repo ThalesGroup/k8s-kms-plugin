@@ -1,32 +1,30 @@
 /*
- * // Copyright 2025 Thales Group
- * //
- * // Permission is hereby granted, free of charge, to any person obtaining
- * // a copy of this software and associated documentation files (the
- * // "Software"), to deal in the Software without restriction, including
- * // without limitation the rights to use, copy, modify, merge, publish,
- * // distribute, sublicense, and/or sell copies of the Software, and to
- * // permit persons to whom the Software is furnished to do so, subject to
- * // the following conditions:
- * //
- * // The above copyright notice and this permission notice shall be
- * // included in all copies or substantial portions of the Software.
- * //
- * // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * // EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * // MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * // NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
- * // LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
- * // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
- * // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * Copyright 2025 Thales Group
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 package cmd
 
 import (
 	"fmt"
-	"path/filepath"
-	"time"
 
 	filename "github.com/keepeye/logrus-filename"
 	"github.com/sirupsen/logrus"
@@ -46,53 +44,16 @@ var (
 	logLevel  string
 )
 
-// TODO: move this to each subcommands which needs it
-var (
-	caId            string
-	createKey       bool
-	dekKeyLabelName string
-	grpcPort        uint16
-	hmacKeyName     string
-	host            string
-	kekKeyId        string
-	nativePath      string
-	p11label        string
-	p11lib          string
-	p11pin          string
-	p11slot         int
-	provider        string
-	socketPath      string
-	timeout         time.Duration
-)
-
-// ViperFlagsRoot defines a struct to hold all the configuration values and use viper.Unmarshal
-// to populate it:
+// ViperFlagsRoot defines a struct to hold the values of cobra CLI flags and use viper to populate them
 type ViperFlagsRoot struct {
 	// TODO: Keep this for root persistent flags
 	ConfigFile string `mapstructure:"config"`
 	Debug      bool   `mapstructure:"debug"`
 	LogFormat  string `mapstructure:"log-format"`
 	LogLevel   string `mapstructure:"log-level"`
-
-	// TODO: move this to each subcommands which needs it
-	CaID         string        `mapstructure:"ca-id"`
-	CreateKey    bool          `mapstructure:"auto-create"`
-	DekKeyLabel  string        `mapstructure:"p11-key-label"`
-	HmacKeyLabel string        `mapstructure:"p11-hmac-label"`
-	Host         string        `mapstructure:"host"`
-	KekKeyID     string        `mapstructure:"kek-id"`
-	NativePath   string        `mapstructure:"native-path"`
-	P11Label     string        `mapstructure:"p11-label"`
-	P11Lib       string        `mapstructure:"p11-lib"`
-	P11Pin       string        `mapstructure:"p11-pin"`
-	P11Slot      int           `mapstructure:"p11-slot"`
-	Port         uint16        `mapstructure:"port"`
-	Provider     string        `mapstructure:"provider"`
-	SocketPath   string        `mapstructure:"socket"`
-	Timeout      time.Duration `mapstructure:"timeout"`
 }
 
-// Initialize the ViperConfig struct with all the root CLI flags bound to Viper env vars
+// Declare the viper CLI flag values buffer
 var vprFlgsRoot ViperFlagsRoot
 
 // cobra root CLI flags default value
@@ -145,6 +106,10 @@ func init() {
 	rootCmd.AddGroup(kmsCmdsGrpMain)
 	rootCmd.AddGroup(kmsCmdsGrpSupporting)
 
+	// Since this project uses Viper bind with Cobra flags, we generally do not need to use "Flags().*Var"
+	// (like StringVar, BoolVar, Uint16Var, etc...) as we do not need to access the cobra flag values directly. This is
+	// because we use Viper to retrieve the values of the flags.
+
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
@@ -161,34 +126,14 @@ func init() {
 		return []string{"text", "json"}, cobra.ShellCompDirectiveNoFileComp
 	})
 	rootCmd.MarkFlagsMutuallyExclusive("log-level", "debug")
-
-	// TODO: this below should be moved to each subcommand
-	rootCmd.PersistentFlags().StringVar(&caId, "ca-id", defaultCaId, "Cert ID for CA Cert record. Corresponding environment variable: K8S_KMS_PLUGIN_CA_ID")
-	rootCmd.PersistentFlags().BoolVar(&createKey, "auto-create", false, "Auto create the keys if needed. Corresponding environment variable: K8S_KMS_PLUGIN_AUTO_CREATE.")
-	rootCmd.PersistentFlags().StringVar(&dekKeyLabelName, "p11-key-label", "k8s-dek", "Key Label to use for encrypt/decrypt. Corresponding environment variable: K8S_KMS_PLUGIN_P11_KEY_LABEL.")
-	rootCmd.PersistentFlags().StringVar(&hmacKeyName, "p11-hmac-label", "k8s-hmac", "Key Label to use for sha based verifications. Corresponding environment variable: K8S_KMS_PLUGIN_P11_HMAC_LABEL.")
-	rootCmd.PersistentFlags().StringVar(&host, "host", "0.0.0.0", "Hostname without port. Corresponding environment variable: K8S_KMS_PLUGIN_HOST.")
-	rootCmd.PersistentFlags().StringVar(&kekKeyId, "kek-id", defaultKekId, "Key ID for KMS KEK. Corresponding environment variable: K8S_KMS_PLUGIN_KEK_ID")
-	rootCmd.PersistentFlags().StringVarP(&nativePath, "native-path", "p", ".keys", "Path to key store for native provider(Files only). Corresponding environment variable: K8S_KMS_PLUGIN_NATIVE_PATH.")
-	rootCmd.PersistentFlags().StringVar(&p11label, "p11-label", "", "P11 token label. Corresponding environment variable: K8S_KMS_PLUGIN_P11_TOKEN")
-	rootCmd.PersistentFlags().StringVar(&p11lib, "p11-lib", "", "Path to p11 library/client. Corresponding environment variable: K8S_KMS_PLUGIN_P11_LIB")
-	rootCmd.PersistentFlags().StringVar(&p11pin, "p11-pin", "", "P11 Pin. Corresponding environment variable: K8S_KMS_PLUGIN_P11_PIN")
-	rootCmd.PersistentFlags().IntVar(&p11slot, "p11-slot", 0, "P11 token slot. Corresponding environment variable: K8S_KMS_PLUGIN_P11_SLOT")
-	rootCmd.PersistentFlags().Uint16Var(&grpcPort, "port", 31400, "TCP Port for gRPC service. Corresponding environment variable: K8S_KMS_PLUGIN_PORT.")
-	// Provider
-	rootCmd.PersistentFlags().StringVar(&provider, "provider", "p11", "Provider. Possible values: p11, softhsm, luna, dpod. Corresponding environment variable: K8S_KMS_PLUGIN_PROVIDER.")
-	rootCmd.RegisterFlagCompletionFunc("provider", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		return []string{"p11", "softhsm", "luna", "dpod"}, cobra.ShellCompDirectiveNoFileComp
-	})
-
-	rootCmd.PersistentFlags().StringVar(&socketPath, "socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Corresponding environment variable: K8S_KMS_PLUGIN_SOCKET")
-	rootCmd.PersistentFlags().DurationVar(&timeout, "timeout", 30*time.Second, "Timeout Duration")
 }
 
-// initConfig reads in config file and ENV variables if set.
+// initConfig reads in config file and ENV variables if set and populate CLI flags buffer thanks to viper
 func initConfig() {
+	// Parse config file with viper
 	ReadViperConfigE(viper.GetViper(), rootCmd)
 
+	// Initialize and populate cobra CLI root flags values with viper
 	InitViperSubCmdE(viper.GetViper(), rootCmd, &vprFlgsRoot)
 
 	// Set logs format
