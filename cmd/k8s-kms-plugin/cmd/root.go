@@ -37,6 +37,7 @@ import (
 
 // cobra root CLI flags. They are mostly not used because we use viper that binds the cobra flags
 // to the corresponding environment variables that viper reads.
+// TODO: verfiy if we can get rid of this
 var (
 	cfgFile   string
 	debug     bool
@@ -46,7 +47,6 @@ var (
 
 // ViperFlagsRoot defines a struct to hold the values of cobra CLI flags and use viper to populate them
 type ViperFlagsRoot struct {
-	// TODO: Keep this for root persistent flags
 	ConfigFile string `mapstructure:"config"`
 	Debug      bool   `mapstructure:"debug"`
 	LogFormat  string `mapstructure:"log-format"`
