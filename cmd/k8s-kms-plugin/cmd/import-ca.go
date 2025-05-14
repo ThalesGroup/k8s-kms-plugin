@@ -82,7 +82,6 @@ func init() {
 	importCaCmd.MarkFlagRequired("cert-file")
 
 	// Socket & Timeout
-	importCaCmd.PersistentFlags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_SOCKET")
-	importCaCmd.PersistentFlags().Duration("timeout", 30*time.Second, "Timeout Duration")
-
+	importCaCmd.Flags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_GENERATE_KEK_SOCKET")
+	importCaCmd.Flags().Duration("timeout", 30*time.Second, "KMS timeout")
 }
