@@ -94,5 +94,5 @@ func init() {
 
 	// Socket & Timeout
 	verifyCertCmd.Flags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_GENERATE_KEK_SOCKET")
-	verifyCertCmd.Flags().Duration("timeout", 5*time.Second, "KMS timeout")
+	verifyCertCmd.Flags().Duration("timeout", 10*time.Second, "KMS timeout")
 }

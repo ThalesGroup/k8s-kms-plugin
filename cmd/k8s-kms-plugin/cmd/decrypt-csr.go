@@ -9,7 +9,9 @@ import (
 	"time"
 
 	istio "github.com/ThalesGroup/k8s-kms-plugin/apis/istio/v1"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // cobra decrypt-csr.go CLI Flags
@@ -38,6 +40,13 @@ var decryptCSRCmd = &cobra.Command{
 	Use:     "decrypt-csr",
 	Short:   "Decrypt CSR",
 	GroupID: "kmscmdsgrpsupporting",
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		if err := InitViperSubCmdE(viper.GetViper(), cmd, &vprFlgsDecryptCSR); err != nil {
+			logrus.WithField("cobra-cmd", cmd.Use).WithError(err).Error("Error initializing Viper")
+			return err
+		}
+		return nil
+	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := decryptCSR(); err != nil {
 			return err
@@ -102,7 +111,7 @@ func init() {
 	rootCmd.AddCommand(decryptCSRCmd)
 
 	decryptCSRCmd.Flags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_DECRYPT_CSR_SOCKET")
-	decryptCSRCmd.Flags().Duration("timeout", 5*time.Second, "KMS timeout")
+	decryptCSRCmd.Flags().Duration("timeout", 30*time.Second, "KMS timeout")
 
 	decryptCSRCmd.Flags().StringVarP(&inName, "input-filename", "f", "", "Input file")
 	decryptCSRCmd.Flags().StringVarP(&outName, "output-filename", "o", "", "Output file")
