@@ -10,32 +10,34 @@ k8s-kms-plugin:
   ### log-format possible values: text, json
   log-format: "json"
   
-  ## Server settings
-  host: "127.0.0.1"
-  port: 8080
-  socket: "/var/run/kms-plugin.sock"
-  
-  ## KMS settings
-  ### provider possible values: p11, softhsm, luna, dpod.
-  provider: "p11"
-  kek-id: "my-key"
-  ca-id: "my-ca"
-  
-  p11-lib: "/usr/local/lib/softhsm/libsofthsm2.so"
-  p11-label: "my-jechangecettevaleur"
-  p11-slot: 0
-  p11-pin: "1234" # This is a secret, you set this with an environment variable K8S_KMS_PLUGIN_P11_PIN instead of the configuration file
-  
   # Cobra subcommands
   serve:
-    disable-socket: false
-    enable-server: true
+    ## algorithm possible values: aes-gcm, aes-cbc, rsa-oaep
+    algorithm: "rsa-oaep"
+    allow-any: false
+
+    ## TLS settings
     tls-ca: "certs/ca.crt"
     tls-key: "certs/tls.key"
     tls-certificate: "certs/tls.crt"
-    allow-any: false
-    ## algorithm possible values: aes-gcm, aes-cbc, rsa-oaep
-    algorithm: "rsa-oaep"
+
+    ## Server settings
+    disable-socket: false
+    enable-server: true
+    host: "127.0.0.1"
+    port: 8080
+    socket: "/var/run/kms-plugin.sock"
+    
+    ## KMS settings
+    ### provider possible values: p11, softhsm, luna, dpod.
+    provider: "p11"
+    kek-id: "my-key"
+    ca-id: "my-ca"
+    
+    p11-lib: "/usr/local/lib/softhsm/libsofthsm2.so"
+    p11-label: "my-current-label"
+    p11-slot: 0
+    p11-pin: "1234" # This is a secret, you set this with an environment variable K8S_KMS_PLUGIN_P11_PIN instead of the configuration file
   
   version:
     # Format of the version output. One of 'yaml' or 'json'.
