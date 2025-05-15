@@ -1,4 +1,9 @@
 # Copyright 2025 Thales
+# SPDX-License-Identifier: MIT
+#
+# Use of this source code is governed by an MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT.
 .PHONY: all lint build coverage dev gen
 
 all: build
@@ -91,5 +96,4 @@ release:
 		@echo "Makefile: Running goreleaser release --clean fro project $(PROJECT_NAME)"
 		LDFLAGS=$(LDFLAGS) goreleaser release --clean --skip sign,validate,ko
 get-ldflags:
- 	
 		@echo $(LDFLAGS)
