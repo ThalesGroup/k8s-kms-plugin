@@ -226,7 +226,7 @@ func runTest() error {
 		return err
 	}
 	var out string
-	if vprFlgsRoot.Debug {
+	if logrus.GetLevel() >= logrus.DebugLevel {
 		out = string(loadSKEYResp.PlaintextSkey)
 	} else {
 		out = "Success"
