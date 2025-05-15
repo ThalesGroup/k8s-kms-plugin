@@ -78,10 +78,10 @@ func init() {
 	// Since this project uses Viper bind with Cobra flags, we generally do not need to use "Flags().*Var"
 	// (like StringVar, BoolVar, Uint16Var, etc...) as we do not need to access the cobra flag values directly. This is
 	// because we use Viper to retrieve the values of the flags.
-	importCaCmd.Flags().StringP("cert-file", "f", "", "Certificate File")
+	importCaCmd.Flags().StringP("cert-file", "f", "", "Certificate File. Env var: K8S_KMS_PLUGIN_IMPORT_CA_CERT_FILE")
 	importCaCmd.MarkFlagRequired("cert-file")
 
 	// Socket & Timeout
-	importCaCmd.Flags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_GENERATE_KEK_SOCKET")
-	importCaCmd.Flags().Duration("timeout", 30*time.Second, "KMS timeout")
+	importCaCmd.Flags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_IMPORT_CA_SOCKET")
+	importCaCmd.Flags().Duration("timeout", 30*time.Second, "KMS timeout. Env var: K8S_KMS_PLUGIN_IMPORT_CA_TIMEOUT")
 }

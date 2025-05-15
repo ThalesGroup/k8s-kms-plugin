@@ -171,43 +171,43 @@ func init() {
 	// because we use Viper to retrieve the values of the flags.
 
 	// unix socket server options
-	serveCmd.Flags().Bool("disable-socket", false, "Disable socket based server. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_DISABLE_SOCKET.")
+	serveCmd.Flags().Bool("disable-socket", false, "Disable socket based server. Env var: K8S_KMS_PLUGIN_SERVE_DISABLE_SOCKET.")
 
 	// tcp server options
-	serveCmd.Flags().Bool("enable-server", false, "Enable TLS based server. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_ENABLE_SERVER.")
-	serveCmd.Flags().String("tls-ca", "certs/ca.crt", "TLS CA cert. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_TLS_CA.")
-	serveCmd.Flags().String("tls-key", "certs/tls.key", "TLS server key. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_TLS_KEY")
-	serveCmd.Flags().String("tls-certificate", "certs/tls.crt", "TLS server cert. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_TLS_CERTIFICATE")
+	serveCmd.Flags().Bool("enable-server", false, "Enable TLS based server. Env var: K8S_KMS_PLUGIN_SERVE_ENABLE_SERVER.")
+	serveCmd.Flags().String("tls-ca", "certs/ca.crt", "TLS CA cert. Env var: K8S_KMS_PLUGIN_SERVE_TLS_CA.")
+	serveCmd.Flags().String("tls-key", "certs/tls.key", "TLS server key. Env var: K8S_KMS_PLUGIN_SERVE_TLS_KEY")
+	serveCmd.Flags().String("tls-certificate", "certs/tls.crt", "TLS server cert. Env var: K8S_KMS_PLUGIN_SERVE_TLS_CERTIFICATE")
 
-	serveCmd.Flags().Bool("allow-any", false, "Allow any device (accepts all ids/secrets). Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_ALLOW_ANY")
+	serveCmd.Flags().Bool("allow-any", false, "Allow any device (accepts all ids/secrets). Env var: K8S_KMS_PLUGIN_SERVE_ALLOW_ANY")
 
-	serveCmd.Flags().String("algorithm", "aes-gcm", "Set the algorithm for encryption/decryption. Possible values: aes-gcm, aes-cbc, rsa-oaep. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_ALGORITHM")
+	serveCmd.Flags().String("algorithm", "aes-gcm", "Set the algorithm for encryption/decryption. Possible values: aes-gcm, aes-cbc, rsa-oaep. Env var: K8S_KMS_PLUGIN_SERVE_ALGORITHM")
 	serveCmd.RegisterFlagCompletionFunc("algorithm", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"aes-gcm", "aes-cbc", "rsa-oaep"}, cobra.ShellCompDirectiveNoFileComp
 	})
 
 	// These flags comes from root
 	// These flags does not need to store their values in variable because we use the viper structure ViperFlagsServe to do this
-	serveCmd.Flags().String("ca-id", defaultCaId, "Cert ID for CA Cert record. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_CA_ID")
-	serveCmd.Flags().Bool("auto-create", false, "Auto create the keys if needed. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_AUTO_CREATE.")
-	serveCmd.Flags().String("p11-key-label", "k8s-dek", "Key Label to use for encrypt/decrypt. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_P11_KEY_LABEL.")
-	serveCmd.Flags().String("p11-hmac-label", "k8s-hmac", "Key Label to use for sha based verifications. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_P11_HMAC_LABEL.")
-	serveCmd.Flags().String("host", "0.0.0.0", "Hostname without port. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_HOST.")
-	serveCmd.Flags().String("kek-id", defaultKekId, "Key ID for KMS KEK. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_KEK_ID")
-	serveCmd.Flags().StringP("native-path", "p", ".keys", "Path to key store for native provider(Files only). Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_NATIVE_PATH.")
-	serveCmd.Flags().String("p11-label", "", "P11 token label. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_P11_TOKEN")
-	serveCmd.Flags().String("p11-lib", "", "Path to p11 library/client. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_P11_LIB")
-	serveCmd.Flags().String("p11-pin", "", "P11 Pin. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_P11_PIN")
-	serveCmd.Flags().Int("p11-slot", 0, "P11 token slot. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_P11_SLOT")
-	serveCmd.Flags().Uint16("port", 31400, "TCP Port for gRPC service. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_PORT.")
+	serveCmd.Flags().String("ca-id", defaultCaId, "Cert ID for CA Cert record. Env var: K8S_KMS_PLUGIN_SERVE_CA_ID")
+	serveCmd.Flags().Bool("auto-create", false, "Auto create the keys if needed. Env var: K8S_KMS_PLUGIN_SERVE_AUTO_CREATE.")
+	serveCmd.Flags().String("p11-key-label", "k8s-dek", "Key Label to use for encrypt/decrypt. Env var: K8S_KMS_PLUGIN_SERVE_P11_KEY_LABEL.")
+	serveCmd.Flags().String("p11-hmac-label", "k8s-hmac", "Key Label to use for sha based verifications. Env var: K8S_KMS_PLUGIN_SERVE_P11_HMAC_LABEL.")
+	serveCmd.Flags().String("host", "0.0.0.0", "Hostname without port. Env var: K8S_KMS_PLUGIN_SERVE_HOST.")
+	serveCmd.Flags().String("kek-id", defaultKekId, "Key ID for KMS KEK. Env var: K8S_KMS_PLUGIN_SERVE_KEK_ID")
+	serveCmd.Flags().StringP("native-path", "p", ".keys", "Path to key store for native provider(Files only). Env var: K8S_KMS_PLUGIN_SERVE_NATIVE_PATH.")
+	serveCmd.Flags().String("p11-label", "", "P11 token label. Env var: K8S_KMS_PLUGIN_SERVE_P11_TOKEN")
+	serveCmd.Flags().String("p11-lib", "", "Path to p11 library/client. Env var: K8S_KMS_PLUGIN_SERVE_P11_LIB")
+	serveCmd.Flags().String("p11-pin", "", "P11 Pin. Env var: K8S_KMS_PLUGIN_SERVE_P11_PIN")
+	serveCmd.Flags().Int("p11-slot", 0, "P11 token slot. Env var: K8S_KMS_PLUGIN_SERVE_P11_SLOT")
+	serveCmd.Flags().Uint16("port", 31400, "TCP Port for gRPC service. Env var: K8S_KMS_PLUGIN_SERVE_PORT.")
 	// Provider
-	serveCmd.Flags().String("provider", "p11", "Provider. Possible values: p11, softhsm, luna, dpod. Corresponding environment variable: K8S_KMS_PLUGIN_SERVE_PROVIDER.")
+	serveCmd.Flags().String("provider", "p11", "Provider. Possible values: p11, softhsm, luna, dpod. Env var: K8S_KMS_PLUGIN_SERVE_PROVIDER.")
 	serveCmd.RegisterFlagCompletionFunc("provider", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"p11", "softhsm", "luna", "dpod"}, cobra.ShellCompDirectiveNoFileComp
 	})
 
 	// Socket
-	serveCmd.Flags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_GENERATE_KEK_SOCKET")
+	serveCmd.Flags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_SERVE_KEK_SOCKET")
 }
 
 func initProvider() (p providers.Provider, err error) {

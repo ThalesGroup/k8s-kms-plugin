@@ -90,10 +90,10 @@ func init() {
 	// (like StringVar, BoolVar, Uint16Var, etc...) as we do not need to access the cobra flag values directly. This is
 	// because we use Viper to retrieve the values of the flags.
 
-	verifyCertCmd.Flags().StringP("cert-file", "f", "", "Cert Chain File ")
+	verifyCertCmd.Flags().StringP("cert-file", "f", "", "Cert Chain File. Env var: K8S_KMS_PLUGIN_VERIFY_CERT_FILE")
 	verifyCertCmd.MarkFlagRequired("cert-file")
 
 	// Socket & Timeout
-	verifyCertCmd.Flags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_GENERATE_KEK_SOCKET")
-	verifyCertCmd.Flags().Duration("timeout", 10*time.Second, "KMS timeout")
+	verifyCertCmd.Flags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_VERIFY_CERT_SOCKET")
+	verifyCertCmd.Flags().Duration("timeout", 10*time.Second, "KMS timeout. Env var: K8S_KMS_PLUGIN_VERIFY_CERT_TIMEOUT")
 }

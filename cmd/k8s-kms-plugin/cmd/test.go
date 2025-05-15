@@ -477,13 +477,13 @@ func init() {
 	// (like StringVar, BoolVar, Uint16Var, etc...) as we do not need to access the cobra flag values directly. This is
 	// because we use Viper to retrieve the values of the flags.
 
-	testCmd.Flags().Bool("loop", false, "Should we run the test in a loop?")
-	testCmd.Flags().Duration("loop-sleep", 10, "How many seconds to sleep between test runs ")
-	testCmd.Flags().Int("max-loops", 100, "How many seconds to sleep between test runs ")
+	testCmd.Flags().Bool("loop", false, "Should we run the test in a loop? Env var: K8S_KMS_PLUGIN_TEST_LOOP")
+	testCmd.Flags().Duration("loop-sleep", 10*time.Second, "How many seconds to sleep between test runs. Env var: K8S_KMS_PLUGIN_TEST_LOOP_SLEEP")
+	testCmd.Flags().Int("max-loops", 100, "How many seconds to sleep between test runs. Env var: K8S_KMS_PLUGIN_TEST_LOOP_SLEEP")
 
 	// Socket & Timeout
-	testCmd.Flags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_GENERATE_KEK_SOCKET")
-	testCmd.Flags().Duration("timeout", 30*time.Second, "KMS timeout")
+	testCmd.Flags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_TEST_SOCKET")
+	testCmd.Flags().Duration("timeout", 30*time.Second, "KMS timeout. Env var: K8S_KMS_PLUGIN_TEST_TIMEOUT")
 }
 
 func dummyCaCertSigner(p10Csr []byte, pemCaCert, pemCaPrivKey string) (signedCert []byte, err error) {

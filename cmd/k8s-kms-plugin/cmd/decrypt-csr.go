@@ -120,10 +120,10 @@ func init() {
 	// Since this project uses Viper bind with Cobra flags, we generally do not need to use "Flags().*Var"
 	// (like StringVar, BoolVar, Uint16Var, etc...) as we do not need to access the cobra flag values directly. This is
 	// because we use Viper to retrieve the values of the flags.
-	decryptCSRCmd.Flags().StringP("input-filename", "f", "", "Input file")
-	decryptCSRCmd.Flags().StringP("output-filename", "o", "", "Output file")
+	decryptCSRCmd.Flags().StringP("input-filename", "f", "", "Input file. Env var: K8S_KMS_PLUGIN_DECRYPT_CSR_INPUT_FILE")
+	decryptCSRCmd.Flags().StringP("output-filename", "o", "", "Output file. Env var: K8S_KMS_PLUGIN_DECRYPT_CSR_OUTPUT_FILE")
 
 	// Socket & Timeout
 	decryptCSRCmd.Flags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_DECRYPT_CSR_SOCKET")
-	decryptCSRCmd.Flags().Duration("timeout", 30*time.Second, "KMS timeout")
+	decryptCSRCmd.Flags().Duration("timeout", 30*time.Second, "KMS timeout. Env var: K8S_KMS_PLUGIN_DECRYPT_CSR_TIMEOUT")
 }
