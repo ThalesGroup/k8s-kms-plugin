@@ -14,7 +14,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"text/tabwriter"
 	"time"
 
 	"github.com/ThalesGroup/k8s-kms-plugin/pkg/version"
@@ -23,6 +22,8 @@ import (
 	"github.com/spf13/cobra/doc"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+
+	"github.com/jedib0t/go-pretty/v6/table"
 )
 
 // ViperFlagsServe defines a struct to hold the values of cobra CLI flags and use viper to populate them
@@ -69,38 +70,51 @@ func init() {
 
 // Print a Markdown table of flag -> env var -> viper key
 func printFlagTable(c *cobra.Command) {
-	w := tabwriter.NewWriter(os.Stdout, 2, 8, 2, ' ', 0)
+	t := table.NewWriter()
+	t.SetOutputMirror(os.Stdout)
+	//t.SetStyle(table.StyleBold)
+	t.AppendHeader(table.Row{"Command", "Flag", "Persistent", "Env Var", "Viper Key", "Default"})
 
-	fmt.Fprintln(w, "| Command | Flag | Environment Variable | Config Key |")
-	fmt.Fprintln(w, "|---------|------|----------------------|------------|")
-
-	walk(c, w)
-
-	w.Flush()
+	walkPretty(c, t)
+	t.Render()
+	t.RenderCSV()
+	t.RenderHTML()
+	t.RenderMarkdown()
+	t.RenderTSV()
 }
 
-func walk(c *cobra.Command, w *tabwriter.Writer) {
-	section := strings.ReplaceAll(c.CommandPath(), " ", ".") // viper config path
+func walkPretty(cmd *cobra.Command, t table.Writer) {
+	section := strings.ReplaceAll(cmd.CommandPath(), " ", ".")
 
-	c.Flags().VisitAll(func(f *pflag.Flag) {
-		if f.Name == "no-descriptions" {
-			return
+	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		if f.Name != "no-descriptions" {
+			t.AppendRow(buildRow(cmd, f, section, false))
 		}
-		env := strings.ToUpper(strings.NewReplacer("-", "_", ".", "_").Replace(fmt.Sprintf("%s_%s", section, f.Name)))
-		fmt.Fprintf(w, "| %s | --%s | %s | %s |\n", c.CommandPath(), f.Name, env, section+"."+f.Name)
 	})
 
-	// Also include persistent flags
-	c.PersistentFlags().VisitAll(func(f *pflag.Flag) {
-		if f.Name == "no-descriptions" {
-			return
+	cmd.PersistentFlags().VisitAll(func(f *pflag.Flag) {
+		if f.Name != "no-descriptions" {
+			t.AppendRow(buildRow(cmd, f, section, true))
 		}
-		env := strings.ToUpper(strings.NewReplacer(".", "_", "-", "_").Replace(fmt.Sprintf("%s_%s", section, f.Name)))
-		fmt.Fprintf(w, "| %s | --%s (persistent flag) | %s | %s |\n", c.CommandPath(), f.Name, env, section+"."+f.Name)
 	})
 
-	for _, sub := range c.Commands() {
-		walk(sub, w)
+	for _, sub := range cmd.Commands() {
+		walkPretty(sub, t)
+	}
+}
+
+func buildRow(cmd *cobra.Command, f *pflag.Flag, section string, persistent bool) table.Row {
+	envVarPrefix := strings.ToUpper(strings.NewReplacer("-", "_", ".", "_").Replace(fmt.Sprintf("%s", section)))
+	envVar := envVarPrefix + "_" + strings.ToUpper(strings.ReplaceAll(f.Name, "-", "_"))
+	viperKey := section + "." + strings.ReplaceAll(f.Name, "-", "_")
+
+	return table.Row{
+		cmd.CommandPath(),
+		"--" + f.Name,
+		persistent,
+		envVar,
+		viperKey,
+		f.DefValue,
 	}
 }
 
