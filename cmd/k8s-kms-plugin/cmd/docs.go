@@ -49,7 +49,7 @@ var docsCmd = &cobra.Command{
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		err := generateDocs(vprFlgsDocs.Format, vprFlgsDocs.OutputDir)
+		err := generateCobraDocs(vprFlgsDocs.Format, vprFlgsDocs.OutputDir)
 		if err != nil {
 			logrus.WithError(err).Errorf("Error generating docs in format %s at %s", vprFlgsDocs.Format, vprFlgsDocs.OutputDir)
 		}
@@ -68,49 +68,101 @@ func init() {
 	docsCmd.Flags().StringP("output-dir", "o", filepath.Join(os.TempDir(), fmt.Sprintf("k8s-kms-plugin-docs-%s", time.Now().Format(time.RFC3339))), "Output directory")
 }
 
-// Print a Markdown table of flag -> env var -> viper key
-func printFlagTable(c *cobra.Command) {
+// getFlagTable takes a cobra command and a format string and returns a table
+// displaying the command's flags, their properties and default values in the
+// requested format.
+//
+// The table columns are:
+//   - Command: the name of the command
+//   - Flag: the flag name
+//   - Persistent Flag: whether the flag is persistent
+//   - Env Var: the environment variable name for the flag
+//   - Viper Key: the viper key for the flag
+//   - Default: the default value for the flag
+//
+// The formats supported are:
+//   - markdown: renders the table in markdown format
+//   - html: renders the table in html format
+//   - csv: renders the table in comma-separated values format
+//   - (default): renders the table in a human-readable "pretty" format
+func getFlagTable(c *cobra.Command, format string) string {
+	// Initialize the table
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
 	//t.SetStyle(table.StyleBold)
+	// Create the header with the columns
 	t.AppendHeader(table.Row{"Command", "Flag", "Persistent Flag", "Env Var", "Viper Key", "Default"})
 
-	walkPretty(c, t)
-	// t.Render()
-	// t.RenderCSV()
-	// t.RenderHTML()
-	t.RenderMarkdown()
-	// t.RenderTSV()
+	walkCobraFlagsPretty(c, t)
+
+	// render the table in the given format
+	switch format {
+	case "markdown":
+		return t.RenderMarkdown()
+	case "html":
+		return t.RenderHTML()
+	case "csv":
+		return t.RenderCSV()
+	}
+	// Default renders the Table in a human-readable "pretty" format
+	return t.Render()
 }
 
-func walkPretty(cmd *cobra.Command, t table.Writer) {
-
-	// section is the path for a flag in a Viper configuration file
+// walkCobraFlagsPretty traverses the cobra command tree and prints a pretty table of flags -> env vars -> viper keys
+// Only local and non-persistent flags are printed. Local persistent flags are printed as well, but only for the local commands
+// and not its subcommands.
+// The table is printed to t, which is a table.Writer
+// The section is the path for a flag in a Viper configuration file, obtained by replacing spaces with dots in the command path
+func walkCobraFlagsPretty(cmd *cobra.Command, t table.Writer) {
+	// section is the path (JSON, YAML) for a flag in a Viper configuration file
 	section := strings.ReplaceAll(cmd.CommandPath(), " ", ".")
 
-	// Add only flags that are local and not persistent
+	// Add only flags that are local and do not add persistent flags
 	cmd.LocalNonPersistentFlags().VisitAll(func(f *pflag.Flag) {
 		if f.Name != "no-descriptions" {
-			t.AppendRow(buildRow(cmd, f, section, false))
+			t.AppendRow(buildTableRow(cmd, f, section, false))
 		}
 	})
 
-	// Add the persistent flags
+	// Add the persistent flags of the current but not its subcommands
 	cmd.PersistentFlags().VisitAll(func(f *pflag.Flag) {
 		if f.Name != "no-descriptions" {
-			t.AppendRow(buildRow(cmd, f, section, true))
+			t.AppendRow(buildTableRow(cmd, f, section, true))
 		}
 	})
 
-	// iterate recurssively on sub command but ignore inherited flags from p
+	// Iterate recurssively on sub command but ignore inherited flags from parent commands to prevent duplication of
+	// flags and persistent flags in the documentation
 	for _, sub := range cmd.Commands() {
-		walkPretty(sub, t)
+		t.AppendSeparator()
+		walkCobraFlagsPretty(sub, t)
 	}
 }
 
-func buildRow(cmd *cobra.Command, f *pflag.Flag, section string, persistent bool) table.Row {
+// buildTableRow returns a table.Row representing a cobra flag as a row in a table.
+// Inputs:
+// - cmd: the cobra command that contains the flag
+// - f: the flag
+// - section: the path (JSON, YAML) for a flag in a Viper configuration file
+// - persistent: whether the flag is a persistent flag or not
+//
+// The columns of the table are:
+// - Command: the path of the command. Example "k8s-kms-plugin serve"
+// - Flag: the flag name. Example: --host
+// - Persistent Flag: whether the flag is a persistent flag
+// - Env Var: the environment variable name that can be used to override the flag. Example: K8S_KMS_PLUGIN_SERVE_HOST.
+// - Viper Key: the full key path in a Viper configuration file (JSON or YAML). Example: k8s-kms-plugin.serve.host
+// - Default: the default value of the flag. Example: host => 0.0.0.0
+func buildTableRow(cmd *cobra.Command, f *pflag.Flag, section string, persistent bool) table.Row {
+	// envVarPrefix include the name of the binary and the section of the cli command.
+	// Example: K8S_KMS_PLUGIN_SERVE_* for the command k8s-kms-plugin serve
 	envVarPrefix := strings.ToUpper(strings.NewReplacer("-", "_", ".", "_").Replace(fmt.Sprintf("%s", section)))
+
+	// envVar is the environment variable name that can be used to override the flag. Ex.: K8S_KMS_PLUGIN_SERVE_HOST
 	envVar := envVarPrefix + "_" + strings.ToUpper(strings.ReplaceAll(f.Name, "-", "_"))
+
+	// viperKey is the keyname and fullpath for the viper configuration file (JSON or YAML)
+	// Example: k8s-kms-plugin.serve.host for the command k8s-kms-plugin serve --host
 	viperKey := section + "." + f.Name
 
 	return table.Row{
@@ -123,7 +175,19 @@ func buildRow(cmd *cobra.Command, f *pflag.Flag, section string, persistent bool
 	}
 }
 
-func generateDocs(format, out string) error {
+// generateCobraDocs generates CLI documentation for the k8s-kms-plugin in the specified format.
+// It supports generating documentation in "markdown", "man", "rst", "yaml", "table", or "all" formats.
+// The output directory is created if it does not exist. If the format is "all",
+// documentation is generated in multiple subdirectories within the given output directory.
+// Returns an error if the format is unsupported or if any I/O operation fails.
+//
+// Parameters:
+//   - format: The output format for the documentation (e.g., "markdown", "man", "rst", "yaml", "table", "all").
+//   - out: The directory where the generated documentation files will be saved.
+//
+// Returns:
+//   - error: An error object if any step of the documentation generation fails.
+func generateCobraDocs(format, out string) error {
 	// Create the output directory if it doesn't already exist
 	if _, err := os.Stat(out); os.IsNotExist(err) {
 		logrus.Tracef("Creating output directory %s", out)
@@ -155,7 +219,7 @@ func generateDocs(format, out string) error {
 		return doc.GenYamlTree(rootCmd, out)
 	case "table":
 		logrus.Tracef("Generating table documentation at %s", out)
-		printFlagTable(rootCmd)
+		getFlagTable(rootCmd, "")
 		return nil
 	case "all":
 		for _, dir := range []string{"rst", "markdown", "man", "yaml"} {
