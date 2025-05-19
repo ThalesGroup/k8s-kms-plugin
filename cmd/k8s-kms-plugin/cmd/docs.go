@@ -73,31 +73,36 @@ func printFlagTable(c *cobra.Command) {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
 	//t.SetStyle(table.StyleBold)
-	t.AppendHeader(table.Row{"Command", "Flag", "Persistent", "Env Var", "Viper Key", "Default"})
+	t.AppendHeader(table.Row{"Command", "Flag", "Persistent Flag", "Env Var", "Viper Key", "Default"})
 
 	walkPretty(c, t)
-	t.Render()
-	t.RenderCSV()
-	t.RenderHTML()
+	// t.Render()
+	// t.RenderCSV()
+	// t.RenderHTML()
 	t.RenderMarkdown()
-	t.RenderTSV()
+	// t.RenderTSV()
 }
 
 func walkPretty(cmd *cobra.Command, t table.Writer) {
+
+	// section is the path for a flag in a Viper configuration file
 	section := strings.ReplaceAll(cmd.CommandPath(), " ", ".")
 
-	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+	// Add only flags that are local and not persistent
+	cmd.LocalNonPersistentFlags().VisitAll(func(f *pflag.Flag) {
 		if f.Name != "no-descriptions" {
 			t.AppendRow(buildRow(cmd, f, section, false))
 		}
 	})
 
+	// Add the persistent flags
 	cmd.PersistentFlags().VisitAll(func(f *pflag.Flag) {
 		if f.Name != "no-descriptions" {
 			t.AppendRow(buildRow(cmd, f, section, true))
 		}
 	})
 
+	// iterate recurssively on sub command but ignore inherited flags from p
 	for _, sub := range cmd.Commands() {
 		walkPretty(sub, t)
 	}
@@ -106,7 +111,7 @@ func walkPretty(cmd *cobra.Command, t table.Writer) {
 func buildRow(cmd *cobra.Command, f *pflag.Flag, section string, persistent bool) table.Row {
 	envVarPrefix := strings.ToUpper(strings.NewReplacer("-", "_", ".", "_").Replace(fmt.Sprintf("%s", section)))
 	envVar := envVarPrefix + "_" + strings.ToUpper(strings.ReplaceAll(f.Name, "-", "_"))
-	viperKey := section + "." + strings.ReplaceAll(f.Name, "-", "_")
+	viperKey := section + "." + f.Name
 
 	return table.Row{
 		cmd.CommandPath(),
