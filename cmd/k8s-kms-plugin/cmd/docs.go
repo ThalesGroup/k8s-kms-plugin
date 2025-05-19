@@ -60,9 +60,9 @@ var docsCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(docsCmd)
 
-	docsCmd.Flags().StringP("format", "f", "markdown", "Output format: markdown, man, rst, html")
+	docsCmd.Flags().StringP("format", "f", "markdown", "Docs Output format. Prefered is markdown. Supported formats: markdown, man, rst, yaml, cli-table-csv, cli-table-pretty, cli-table-html, all.")
 	docsCmd.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		return []string{"markdown", "man", "rst", "yaml", "table", "all"}, cobra.ShellCompDirectiveNoFileComp
+		return []string{"markdown", "man", "rst", "yaml", "cli-table-csv", "cli-table-pretty", "cli-table-html", "all"}, cobra.ShellCompDirectiveNoFileComp
 	})
 
 	docsCmd.Flags().StringP("output-dir", "o", filepath.Join(os.TempDir(), fmt.Sprintf("k8s-kms-plugin-docs-%s", time.Now().Format(time.RFC3339))), "Output directory")
@@ -88,10 +88,20 @@ func init() {
 func getFlagTable(c *cobra.Command, format string) string {
 	// Initialize the table
 	t := table.NewWriter()
-	t.SetOutputMirror(os.Stdout)
-	//t.SetStyle(table.StyleBold)
+	//t.SetOutputMirror(os.Stdout)
+	t.SetStyle(table.StyleLight)
 	// Create the header with the columns
-	t.AppendHeader(table.Row{"Command", "Flag", "Persistent Flag", "Env Var", "Viper Key", "Default"})
+	t.AppendHeader(table.Row{
+		"Command",
+		"Flag (long)",
+		"Flag (short)",
+		"Env Var",
+		"Viper Key",
+		"Default",
+		"Type",
+		"Persistent Flag",
+		"Usage",
+	})
 
 	walkCobraFlagsPretty(c, t)
 
@@ -106,6 +116,16 @@ func getFlagTable(c *cobra.Command, format string) string {
 	}
 	// Default renders the Table in a human-readable "pretty" format
 	return t.Render()
+}
+
+func writeFlagTableToFile(c *cobra.Command, format string, filename string) error {
+	f, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, err = f.WriteString(getFlagTable(c, format))
+	return err
 }
 
 // walkCobraFlagsPretty traverses the cobra command tree and prints a pretty table of flags -> env vars -> viper keys
@@ -134,6 +154,7 @@ func walkCobraFlagsPretty(cmd *cobra.Command, t table.Writer) {
 	// Iterate recurssively on sub command but ignore inherited flags from parent commands to prevent duplication of
 	// flags and persistent flags in the documentation
 	for _, sub := range cmd.Commands() {
+		// Add separator between different commands. This has no effect if the table is rendered as markdown
 		t.AppendSeparator()
 		walkCobraFlagsPretty(sub, t)
 	}
@@ -149,9 +170,11 @@ func walkCobraFlagsPretty(cmd *cobra.Command, t table.Writer) {
 // The columns of the table are:
 // - Command: the path of the command. Example "k8s-kms-plugin serve"
 // - Flag: the flag name. Example: --host
+// - Short Flag: the short flag name. Example: -p
 // - Persistent Flag: whether the flag is a persistent flag
 // - Env Var: the environment variable name that can be used to override the flag. Example: K8S_KMS_PLUGIN_SERVE_HOST.
 // - Viper Key: the full key path in a Viper configuration file (JSON or YAML). Example: k8s-kms-plugin.serve.host
+// - Type: the type of the flag. Example: string
 // - Default: the default value of the flag. Example: host => 0.0.0.0
 func buildTableRow(cmd *cobra.Command, f *pflag.Flag, section string, persistent bool) table.Row {
 	// envVarPrefix include the name of the binary and the section of the cli command.
@@ -168,10 +191,19 @@ func buildTableRow(cmd *cobra.Command, f *pflag.Flag, section string, persistent
 	return table.Row{
 		cmd.CommandPath(),
 		"--" + f.Name,
-		persistent,
+		// if f.Shorthand short flag is empty, then leave cell empty
+		func() string {
+			if f.Shorthand != "" {
+				return "-" + f.Shorthand
+			}
+			return ""
+		}(),
 		envVar,
 		viperKey,
 		f.DefValue,
+		f.Value.Type(),
+		persistent,
+		f.Usage,
 	}
 }
 
@@ -207,22 +239,62 @@ func generateCobraDocs(format, out string) error {
 	switch format {
 	case "markdown":
 		logrus.Tracef("Generating markdown documentation at %s", out)
-		return doc.GenMarkdownTree(rootCmd, out)
+		if err := writeFlagTableToFile(rootCmd, format, filepath.Join(out, "cli-env-var-table.md")); err != nil {
+			return fmt.Errorf("error writing flag table to file: %w", err)
+		}
+
+		if err := doc.GenMarkdownTree(rootCmd, out); err != nil {
+			return fmt.Errorf("error generating markdown documentation at %s: %w", out, err)
+		}
+		return nil
 	case "man":
 		logrus.Tracef("Generating man documentation at %s", out)
-		return doc.GenManTree(rootCmd, manHeader, out)
+		if err := writeFlagTableToFile(rootCmd, "", filepath.Join(out, "cli-env-var-table.txt")); err != nil {
+			return fmt.Errorf("error writing flag table to file: %w", err)
+		}
+
+		if err := doc.GenManTree(rootCmd, manHeader, out); err != nil {
+			return fmt.Errorf("error generating man documentation at %s: %w", out, err)
+		}
+		return nil
 	case "rst":
 		logrus.Tracef("Generating rst documentation at %s", out)
-		return doc.GenReSTTree(rootCmd, out)
+		if err := writeFlagTableToFile(rootCmd, "", filepath.Join(out, "cli-env-var-table.txt")); err != nil {
+			return fmt.Errorf("error writing flag table to file: %w", err)
+		}
+		if err := doc.GenReSTTree(rootCmd, out); err != nil {
+			return fmt.Errorf("error generating rst documentation at %s: %w", out, err)
+		}
+		return nil
 	case "yaml":
 		logrus.Tracef("Generating yaml documentation at %s", out)
-		return doc.GenYamlTree(rootCmd, out)
-	case "table":
+		if err := writeFlagTableToFile(rootCmd, "", filepath.Join(out, "cli-env-var-table.txt")); err != nil {
+			return fmt.Errorf("error writing flag table to file: %w", err)
+		}
+		if err := doc.GenYamlTree(rootCmd, out); err != nil {
+			return fmt.Errorf("error generating yaml documentation at %s: %w", out, err)
+		}
+		return nil
+	case "cli-table-csv":
 		logrus.Tracef("Generating table documentation at %s", out)
-		getFlagTable(rootCmd, "")
+		if err := writeFlagTableToFile(rootCmd, "csv", filepath.Join(out, "cli-env-var-table.csv")); err != nil {
+			return fmt.Errorf("error writing flag table to file: %w", err)
+		}
+		return nil
+	case "cli-table-pretty":
+		logrus.Tracef("Generating table documentation at %s", out)
+		if err := writeFlagTableToFile(rootCmd, "", filepath.Join(out, "cli-env-var-table.txt")); err != nil {
+			return fmt.Errorf("error writing flag table to file: %w", err)
+		}
+		return nil
+	case "cli-table-html":
+		logrus.Tracef("Generating table documentation at %s", out)
+		if err := writeFlagTableToFile(rootCmd, "html", filepath.Join(out, "cli-env-var-table.html")); err != nil {
+			return fmt.Errorf("error writing flag table to file: %w", err)
+		}
 		return nil
 	case "all":
-		for _, dir := range []string{"rst", "markdown", "man", "yaml"} {
+		for _, dir := range []string{"rst", "markdown", "man", "yaml", "csv", "html"} {
 			if _, err := os.Stat(filepath.Join(out, dir)); os.IsNotExist(err) {
 				logrus.Tracef("Creating output directory %s", filepath.Join(out, dir))
 				if err := os.MkdirAll(filepath.Join(out, dir), 0755); err != nil {
@@ -246,7 +318,15 @@ func generateCobraDocs(format, out string) error {
 		if err := doc.GenYamlTree(rootCmd, filepath.Join(out, "yaml")); err != nil {
 			return fmt.Errorf("error generating yaml documentation: %w", err)
 		}
-
+		if err := writeFlagTableToFile(rootCmd, "markdown", filepath.Join(out, "markdown", "cli-env-var-table.md")); err != nil {
+			return fmt.Errorf("error writing flag table to file: %w", err)
+		}
+		if err := writeFlagTableToFile(rootCmd, "csv", filepath.Join(out, "csv", "cli-env-var-table.csv")); err != nil {
+			return fmt.Errorf("error writing flag table to file: %w", err)
+		}
+		if err := writeFlagTableToFile(rootCmd, "csv", filepath.Join(out, "html", "cli-env-var-table.html")); err != nil {
+			return fmt.Errorf("error writing flag table to file: %w", err)
+		}
 		return nil
 	default:
 		return fmt.Errorf("unsupported format: %s", format)
