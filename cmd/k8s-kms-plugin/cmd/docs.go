@@ -75,10 +75,13 @@ func init() {
 // The table columns are:
 //   - Command: the name of the command
 //   - Flag: the flag name
-//   - Persistent Flag: whether the flag is persistent
+//   - Short Flag: the short flag name
 //   - Env Var: the environment variable name for the flag
 //   - Viper Key: the viper key for the flag
 //   - Default: the default value for the flag
+//   - Type: the type of the flag
+//   - Persistent Flag: whether the flag is persistent
+//   - Usage: the usage string for the flag
 //
 // The formats supported are:
 //   - markdown: renders the table in markdown format
@@ -92,6 +95,18 @@ func getFlagTable(c *cobra.Command, format string) string {
 	t.SetStyle(table.StyleLight)
 	// Create the header with the columns
 	t.AppendHeader(table.Row{
+		"Command",
+		"Flag (long)",
+		"Flag (short)",
+		"Env Var",
+		"Viper Key",
+		"Default",
+		"Type",
+		"Persistent Flag",
+		"Usage",
+	})
+
+	t.AppendFooter(table.Row{
 		"Command",
 		"Flag (long)",
 		"Flag (short)",
@@ -171,11 +186,12 @@ func walkCobraFlagsPretty(cmd *cobra.Command, t table.Writer) {
 // - Command: the path of the command. Example "k8s-kms-plugin serve"
 // - Flag: the flag name. Example: --host
 // - Short Flag: the short flag name. Example: -p
-// - Persistent Flag: whether the flag is a persistent flag
 // - Env Var: the environment variable name that can be used to override the flag. Example: K8S_KMS_PLUGIN_SERVE_HOST.
 // - Viper Key: the full key path in a Viper configuration file (JSON or YAML). Example: k8s-kms-plugin.serve.host
-// - Type: the type of the flag. Example: string
 // - Default: the default value of the flag. Example: host => 0.0.0.0
+// - Type: the type of the flag. Example: string
+// - Persistent Flag: whether the flag is a persistent flag
+// - Usage: the usage string for the flag
 func buildTableRow(cmd *cobra.Command, f *pflag.Flag, section string, persistent bool) table.Row {
 	// envVarPrefix include the name of the binary and the section of the cli command.
 	// Example: K8S_KMS_PLUGIN_SERVE_* for the command k8s-kms-plugin serve
