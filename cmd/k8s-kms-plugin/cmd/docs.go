@@ -223,6 +223,30 @@ func buildTableRow(cmd *cobra.Command, f *pflag.Flag, section string, persistent
 	}
 }
 
+func writeMarkdownReadme(dir string) error {
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		return fmt.Errorf("unable to read markdown output directory: %w", err)
+	}
+
+	readme := strings.Builder{}
+	readme.WriteString("# k8s-kms-plugin CLI Documentation\n\n")
+	readme.WriteString(fmt.Sprintf("This documentation is auto-generated from `k8s-kms-plugin`:\n\n"))
+	readme.WriteString(fmt.Sprintf("- version `%s`\n- commit `%s`\n- build date %s.\n\n",
+		version.RawGitDescribe, version.GitCommitIdLong, version.BuildDate))
+
+	readme.WriteString("## Available Command Documentation\n\n")
+	for _, f := range files {
+		if !f.IsDir() && strings.HasSuffix(f.Name(), ".md") {
+			readme.WriteString(fmt.Sprintf("- [%s](%s)\n", strings.TrimSuffix(f.Name(), ".md"), f.Name()))
+		}
+	}
+
+	readme.WriteString("##### Auto Generated README.md file using `k8s-kms-plugin docs -f markdown`\n")
+
+	return os.WriteFile(filepath.Join(dir, "README.md"), []byte(readme.String()), 0644)
+}
+
 // generateCobraDocs generates CLI documentation for the k8s-kms-plugin in the specified format.
 // It supports generating documentation in "markdown", "man", "rst", "yaml", "table", or "all" formats.
 // The output directory is created if it does not exist. If the format is "all",
@@ -252,6 +276,7 @@ func generateCobraDocs(format, out string) error {
 		Manual:  version.RawGitDescribe,
 	}
 
+	// TODO: improve and clean this switch case
 	switch format {
 	case "markdown":
 		logrus.Tracef("Generating markdown documentation at %s", out)
@@ -261,6 +286,9 @@ func generateCobraDocs(format, out string) error {
 
 		if err := doc.GenMarkdownTree(rootCmd, out); err != nil {
 			return fmt.Errorf("error generating markdown documentation at %s: %w", out, err)
+		}
+		if err := writeMarkdownReadme(out); err != nil {
+			return fmt.Errorf("error generating markdown readme at %s: %w", out, err)
 		}
 		return nil
 	case "man":
@@ -310,7 +338,7 @@ func generateCobraDocs(format, out string) error {
 		}
 		return nil
 	case "all":
-		for _, dir := range []string{"rst", "markdown", "man", "yaml", "csv", "html"} {
+		for _, dir := range []string{"rst", "markdown", "man", "yaml", "csv", "html", "txt"} {
 			if _, err := os.Stat(filepath.Join(out, dir)); os.IsNotExist(err) {
 				logrus.Tracef("Creating output directory %s", filepath.Join(out, dir))
 				if err := os.MkdirAll(filepath.Join(out, dir), 0755); err != nil {
@@ -322,25 +350,37 @@ func generateCobraDocs(format, out string) error {
 		}
 
 		logrus.Tracef("Generating all documentation at %s", out)
+		// markdown
 		if err := doc.GenMarkdownTree(rootCmd, filepath.Join(out, "markdown")); err != nil {
 			return fmt.Errorf("error generating markdown documentation: %w", err)
-		}
-		if err := doc.GenManTree(rootCmd, manHeader, filepath.Join(out, "man")); err != nil {
-			return fmt.Errorf("error generating man documentation: %w", err)
-		}
-		if err := doc.GenReSTTree(rootCmd, filepath.Join(out, "rst")); err != nil {
-			return fmt.Errorf("error generating rst documentation: %w", err)
-		}
-		if err := doc.GenYamlTree(rootCmd, filepath.Join(out, "yaml")); err != nil {
-			return fmt.Errorf("error generating yaml documentation: %w", err)
 		}
 		if err := writeFlagTableToFile(rootCmd, "markdown", filepath.Join(out, "markdown", "cli-env-var-table.md")); err != nil {
 			return fmt.Errorf("error writing flag table to file: %w", err)
 		}
+		if err := writeMarkdownReadme(filepath.Join(out, "markdown")); err != nil {
+			return fmt.Errorf("error generating markdown readme at %s: %w", filepath.Join(out, "markdown"), err)
+		}
+		// man
+		if err := doc.GenManTree(rootCmd, manHeader, filepath.Join(out, "man")); err != nil {
+			return fmt.Errorf("error generating man documentation: %w", err)
+		}
+		// rst
+		if err := doc.GenReSTTree(rootCmd, filepath.Join(out, "rst")); err != nil {
+			return fmt.Errorf("error generating rst documentation: %w", err)
+		}
+		// yaml
+		if err := doc.GenYamlTree(rootCmd, filepath.Join(out, "yaml")); err != nil {
+			return fmt.Errorf("error generating yaml documentation: %w", err)
+		}
+
+		// CLI table
 		if err := writeFlagTableToFile(rootCmd, "csv", filepath.Join(out, "csv", "cli-env-var-table.csv")); err != nil {
 			return fmt.Errorf("error writing flag table to file: %w", err)
 		}
-		if err := writeFlagTableToFile(rootCmd, "csv", filepath.Join(out, "html", "cli-env-var-table.html")); err != nil {
+		if err := writeFlagTableToFile(rootCmd, "html", filepath.Join(out, "html", "cli-env-var-table.html")); err != nil {
+			return fmt.Errorf("error writing flag table to file: %w", err)
+		}
+		if err := writeFlagTableToFile(rootCmd, "", filepath.Join(out, "txt", "cli-env-var-table.txt")); err != nil {
 			return fmt.Errorf("error writing flag table to file: %w", err)
 		}
 		return nil
