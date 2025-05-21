@@ -137,11 +137,11 @@ func InitViperSubCmdE(v *viper.Viper, cobraCmd *cobra.Command, target any) error
 //
 // If the "-c" or "--config" flag is set, it reads from the file specified by
 // that flag. If that flag is not set, it looks for an environment variable
-// named COBRAVSVIPER_CONFIG and reads the file specified by that variable.
+// named K8S_KMS_PLUGIN_CONFIG and reads the file specified by that variable.
 // If neither the flag nor the environment variable is set, it looks for a
-// file named "cobravsviper.conf.yaml" in the following places, in order:
-// - The user's home directory (e.g. ~/.config/cobravsviper.conf.yaml)
-// - The .config directory under the user's home directory (e.g. ~/.config/cobravsviper.conf.yaml)
+// file named "k8s-kms-plugin.conf.yaml" in the following places, in order:
+// - The user's home directory (e.g. ~/.config/k8s-kms-plugin.conf.yaml)
+// - The .config directory under the user's home directory (e.g. ~/.config/k8s-kms-plugin.conf.yaml)
 //
 // If a config file is not found, it logs a trace error and continues with
 // cobra's default values. Otherwise, it reads in the config file and returns
@@ -151,7 +151,7 @@ func ReadViperConfigE(v *viper.Viper, cmd *cobra.Command) error {
 	if cmd.Flags().Lookup("config").Changed && cfgFile != "" {
 		logrus.Tracef("Case config file from the flag: %s", cfgFile)
 		viper.SetConfigFile(cfgFile)
-	} else if envVar, ok := os.LookupEnv("COBRAVSVIPER_CONFIG"); ok {
+	} else if envVar, ok := os.LookupEnv("K8S_KMS_PLUGIN_CONFIG"); ok {
 		logrus.Tracef("Case config file from the environment variable: %s", envVar)
 		viper.SetConfigFile(envVar)
 	} else {
@@ -162,13 +162,13 @@ func ReadViperConfigE(v *viper.Viper, cmd *cobra.Command) error {
 			return fmt.Errorf("failed to find home directory: %w", err)
 		}
 
-		viper.SetConfigName("cobravsviper.conf") // name of config file (viper needs no file extension)
+		viper.SetConfigName("k8s-kms-plugin.conf") // name of config file (viper needs no file extension)
 		// TODO: consider using the rootCmd.Flags().Lookup("config").DefValue for viper.SetConfigName
 		// logrus.Infof("default config filename %s", rootCmd.Flags().Lookup("config").DefValue)
-		logrus.Tracef("Search config in .config directory %s with name cobravsviper.conf.yaml (without extension).", home)
+		logrus.Tracef("Search config in .config directory %s with name k8s-kms-plugin.conf.yaml (without extension).", home)
 		viper.AddConfigPath(home)
-		logrus.Tracef("Search config in home directory %s with name cobravsviper.conf.yaml (without extension).", filepath.Join(home, ".config/cobravsviper"))
-		viper.AddConfigPath(filepath.Join(home, ".config/cobravsviper"))
+		logrus.Tracef("Search config in home directory %s with name k8s-kms-plugin.conf.yaml (without extension).", filepath.Join(home, ".config/k8s-kms-plugin"))
+		viper.AddConfigPath(filepath.Join(home, ".config/k8s-kms-plugin"))
 	}
 
 	// If a config file is not found, log a trace error. Otherwise, read it in.

@@ -264,7 +264,7 @@ func TestReturnJsonVersion_Valid(t *testing.T) {
 	}
 }
 
-// Ensure the JSON output starts with cobravsviper as a top-level key
+// Ensure the JSON output starts with k8s-kms-plugin as a top-level key
 func TestTopLevelKey_JSON(t *testing.T) {
 	resetGlobals()
 	RawGitDescribe = "v0.3.0"
@@ -274,12 +274,12 @@ func TestTopLevelKey_JSON(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
-	if !strings.Contains(string(data), `"cobravsviper":`) {
-		t.Errorf("Expected top-level key 'cobravsviper' in JSON: %s", data)
+	if !strings.Contains(string(data), `"k8s-kms-plugin":`) {
+		t.Errorf("Expected top-level key 'k8s-kms-plugin' in JSON: %s", data)
 	}
 }
 
-// Ensure the YAML output starts with cobravsviper as a top-level key
+// Ensure the YAML output starts with k8s-kms-plugin as a top-level key
 func TestTopLevelKey_YAML(t *testing.T) {
 	resetGlobals()
 	RawGitDescribe = "v0.3.0"
@@ -289,8 +289,8 @@ func TestTopLevelKey_YAML(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
-	if !strings.Contains(string(data), "cobravsviper:\n") {
-		t.Errorf("Expected top-level key 'cobravsviper' in YAML: %s", data)
+	if !strings.Contains(string(data), "k8s-kms-plugin:\n") {
+		t.Errorf("Expected top-level key 'k8s-kms-plugin' in YAML: %s", data)
 	}
 }
 

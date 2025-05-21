@@ -32,7 +32,7 @@ var (
 
 // VersionDetails represents the JSON & YAML output structure.
 type VersionDetails struct {
-	VersionData VersionData `json:"cobravsviper" yaml:"cobravsviper"`
+	VersionData VersionData `json:"k8s-kms-plugin" yaml:"k8s-kms-plugin"`
 }
 
 // VersionData holds structured versioning details.
@@ -164,7 +164,7 @@ func LogrusOutputVersion() {
 		return
 	}
 
-	logrus.Infof("cobravsviper version: %s", versionData.Version)
+	logrus.Infof("k8s-kms-plugin version: %s", versionData.Version)
 	logrus.WithFields(logrus.Fields{
 		"build-date":       versionData.BuildDate,
 		"build-platform":   versionData.BuildPlatform,
@@ -173,7 +173,7 @@ func LogrusOutputVersion() {
 		"raw-git-describe": versionData.Version,
 		"is-git-dirty":     versionData.IsGitDirty,
 		"short-commit":     versionData.GitCommitIdShort,
-	}).Debug("cobravsviper version details")
+	}).Debug("k8s-kms-plugin version details")
 }
 
 // VersionOutputToString returns the version as a formatted string.
@@ -197,9 +197,9 @@ func VersionOutputToString(outputFormat string, prettyPrint bool) string {
 		version, err := go_version.NewSemver(RawGitDescribe)
 		if err != nil {
 			logrus.WithError(err).Debug("Invalid semantic versioning, falling back to snapshot version")
-			return fmt.Sprintf("cobravsviper: (snapshot) %s", RawGitDescribe)
+			return fmt.Sprintf("k8s-kms-plugin: (snapshot) %s", RawGitDescribe)
 		}
 
-		return fmt.Sprintf("cobravsviper: %s", version.String())
+		return fmt.Sprintf("k8s-kms-plugin: %s", version.String())
 	}
 }
