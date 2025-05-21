@@ -54,9 +54,9 @@ var rootCmd = &cobra.Command{
 	Short: "Thales KMS Server for K8S",
 	Long: `Use k8s-kms-plugin to connect a kubernetes cluster to a PKCS11 TPM or HSM.
 k8s-kms-plugin prioritizes configuration sources as follows: CLI flags > environment variables > configuration files > default settings.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		logrus.Info("Running k8s-kms-plugin")
-		//logrus.Debugf("k8s-kms-plugin version: %s", logrus.GetLevel())
+	RunE: func(cmd *cobra.Command, args []string) error {
+		logrus.Warn("No subcommand provided. Please use one of the available subcommands. Showing help message.")
+		return cmd.Help()
 	},
 }
 
