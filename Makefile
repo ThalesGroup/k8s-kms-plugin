@@ -1,4 +1,4 @@
-# Copyright 2025 Thales
+# Copyright 2025 Thales Group
 # SPDX-License-Identifier: MIT
 #
 # Use of this source code is governed by an MIT-style
