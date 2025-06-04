@@ -1,0 +1,137 @@
+@startuml CKA_ID and CKA_LABEL
+
+'=============================================================================='
+'== PlantUML Appearance parameters ============================================'
+'=============================================================================='
+'!theme plain
+skinparam shadowing false
+'skinparam backgroundColor transparent
+
+' enable arrows on same level
+'!pragma teoz true
+
+skinparam legend {
+  FontSize 13
+  FontName DejaVu Sans Mono
+  BorderColor black
+  BackgroundColor white
+  Aignment left
+}
+
+
+skinparam ArrowFontName DejaVu Sans Mono
+
+
+skinparam defaultTextAlignment left
+skinparam activity {
+  BackgroundColor lightblue
+  BorderColor darkblue
+}
+skinparam decision {
+  BackgroundColor lightyellow
+  BorderColor orange
+}
+
+'=============================================================================='
+'== Title ====================================================================='
+'=============================================================================='
+title
+    Handle CKA_ID and CKA_LABEL - k8s.io/kms/apis/v2 & KMS Plugin for PKCS #11
+end title
+
+skinparam HeaderFontSize 14
+header <font color=black>kubernetes KMS v2 & KMS- Figure %page% of %lastpage%</font>
+footer © 2025 Thales Group for Thales Open Source
+
+' Legend
+legend top left
+    Legend
+    CKA_ID    (Byte array)          PKCS #11 Key identifier for public/private key pairs
+    CKA_LABEL (RFC2279 string UTF8) PKCS #11 Description of the object (default empty).
+
+| Cobra CLI Flags  | --kek-id (CKA_ID) | --p11-key-label (CKA_LABEL) | Comment                                                                                                                                                                                    |
+| User Input Value | ""   (empty)      | ""   (empty)                | This fails as there is no way to find the key without one of these information                                                                                                             |
+|                  | ""   (empty)      | "<pkcs11_key_label>"        | Need to find the CKA_ID thanks to the CKA_LABEL                                                                                                                                            |
+|                  | "<pkcs11_key_id>" | ""   (empty)                | In this situation, finding the LABEL with the ID might not be usefull, except for logging.                                                                                                 |
+|                  | "<pkcs11_key_id>" | "<pkcs11_key_label>"        | In this situation we risk a mismatch between the 2 flags (ID not corresponding to Label).\n Either we make this 2 flags `MarkFlagsMutuallyExclusive`, or we test if ID corresponds to LABEL. |
+
+    PKCS #11 v3.0: https://docs.oasis-open.org/pkcs11/pkcs11-base/v3.0/pkcs11-base-v3.0.html
+end legend
+
+'=============================================================================='
+'== Sequence diagram begins ==================================================='
+'=============================================================================='
+
+start
+
+:Parse CLI Flags (user provided|
+:--kek-id (CKA_ID)
+--p11-key-label (CKA_LABEL);
+
+if (CKA_ID empty?) then (yes)
+  if (CKA_LABEL empty?) then (yes)
+    :❌ ERROR|
+    :Cannot find key without 
+    ID or LABEL information;
+    stop
+  else (no)
+    :✅ Find CKA_ID using CKA_LABEL|
+    :Search PKCS11 store for 
+    key with matching label;
+    if (Key found?) then (yes)
+      :✅ SUCCESS|
+      :Use found CKA_ID;
+      stop
+    else (no)
+      :❌ ERROR|
+      :Key with label not found;
+      stop
+    endif
+  endif
+else (no)
+  if (CKA_LABEL empty?) then (yes)
+    :✅ Use provided CKA_ID|
+    :Optional: Find LABEL 
+    for logging purposes;
+    note right
+      Finding LABEL with ID 
+      might not be useful, 
+      except for logging
+    end note
+    :✅ SUCCESS|
+    :Use provided CKA_ID;
+    stop
+  else (no)
+    :⚠️ Both ID and LABEL provided|
+    :Risk of mismatch between flags;
+    
+    note right
+      Decision point: Either make flags 
+      mutually exclusive OR validate 
+      ID corresponds to LABEL
+    end note
+    
+    if (Validation approach?) then (Make flags mutually exclusive)
+      :❌ ERROR|
+      :Cannot specify both 
+      ID and LABEL;
+      stop
+    else (Validate ID-LABEL match)
+      :Verify ID corresponds to LABEL|
+      :Check if provided ID matches 
+      the ID of key with provided LABEL;
+      if (ID matches LABEL?) then (yes)
+        :✅ SUCCESS|
+        :Use validated CKA_ID;
+        stop
+      else (no)
+        :❌ ERROR|
+        :ID does not correspond 
+        to provided LABEL;
+        stop
+      endif
+    endif
+  endif
+endif
+
+@enduml

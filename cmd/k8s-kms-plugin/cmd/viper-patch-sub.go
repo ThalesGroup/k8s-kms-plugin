@@ -19,6 +19,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
@@ -129,6 +130,19 @@ func InitViperSubCmdE(v *viper.Viper, cobraCmd *cobra.Command, target any) error
 		logrus.WithField("cobra-cmd", cobraCmd.Use).Fatalf("failed to unmarshal version config: %v", err)
 		return fmt.Errorf("failed to unmarshal version config: %w", err)
 	}
+
+	// Synchronize Cobra flags with Viper configuration to support cobra's
+	// MarkFlagsMutuallyExclusive and MarkFlagsOneRequired.
+	// Source : https://github.com/spf13/viper/pull/852/files
+	// Without this, if a cobra flag is marked MarkFlagsMutuallyExclusive or MarkFlagsOneRequired,
+	// when a user decide to use a config file or an env variable rather than the CLI flag itself
+	// to set the value of this flag, cobra will not be aware that the value is set through viper.
+	// In this situation, cobra will give an error even is viper set the value.
+	cobraCmd.Flags().VisitAll(func(f *pflag.Flag) {
+		if viper.IsSet(f.Name) && viper.GetString(f.Name) != "" {
+			cobraCmd.Flags().Set(f.Name, viper.GetString(f.Name))
+		}
+	})
 
 	return nil
 }
