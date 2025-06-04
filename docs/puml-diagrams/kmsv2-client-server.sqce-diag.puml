@@ -1,0 +1,51 @@
+@startuml
+    actor "k8s admin" as k8sa
+    box "k8s" #LightBlue
+        participant "k8s apiserver" as k8sapisrv
+        participant "k8s-kms-plugin (client)" as client
+
+    end box
+    actor "kms admin" as kmsa
+    box "kms" #fff
+        participant "k8s-kms-plugin (server)" as server
+        participant "pkcs11-device" as p11
+    end box
+
+    group KMS Status
+        loop "every minute when plugin is healthy or every 10 seconds when the plugin is not healthy"
+        k8sapisrv -> client : Status(StatusRequest) 
+        client -> server : Status(StatusRequest) 
+        server -> client : Status(StatusResponse) \n {Version:"v2", Healthz: "ok", KeyID:<string>}
+        client -> k8sapisrv : Status(StatusResponse) \n {Version:"v2", Healthz: "ok", KeyID:<string>}
+        end
+    end
+
+    group KMS Encryption
+        loop "any distinct plaintext results in a distinct response"
+        k8sapisrv -> client : Encrypt(EncryptRequest) \n {Plaintext:<[]byte>, Uid:<string>}
+        client -> server : Encrypt(EncryptRequest) \n {Plaintext:<[]byte>, Uid:<string>}
+        server -> p11 : Encrypt(Plaintext)
+        server <- p11 : Encrypt(Ciphertext)
+        server -> client : Encrypt(EncryptResponse) \n {Ciphertext:<[]byte>, KeyId:<string>, \n Annotations: <map[string][]byte>}
+        client -> k8sapisrv : Encrypt(EncryptResponse) \n {Ciphertext:<[]byte>, KeyId:<string>, \n Annotations: <map[string][]byte>}
+        end
+    end
+
+    group KMS Decryption
+        k8sapisrv -> client : Decrypt(DecryptRequest) \n {Ciphertext:<[]byte>, KeyId:<string>, \n Uid:<string>, Annotations: <map[string][]byte>}
+        client -> server : Decrypt(DecryptRequest) \n {Ciphertext:<[]byte>, KeyId:<string>, \n Uid:<string>, Annotations: <map[string][]byte>}
+        server -> p11 : Decrypt(Ciphertext)
+        server <- p11 : Decrypt(Plaintext)
+        server -> client : Decrypt(DecryptResponse) \n {Plaintext:<[]byte>}
+        client -> k8sapisrv : Decrypt(DecryptResponse) \n {Plaintext:<[]byte>}
+    end
+
+    group Key rotation
+      group API server considers the key_id returned \n from the Status procedure call to be authoritative
+        k8sapisrv -> client : Status(StatusRequest) 
+        client -> server : Status(StatusRequest) 
+        server -> client : Status(StatusResponse) \n {Version:"v2", Healthz: "ok", KeyID:<string>}
+        client -> k8sapisrv : Status(StatusResponse) \n {Version:"v2", Healthz: "ok", KeyID:<string>}
+      end
+    end
+@enduml>
