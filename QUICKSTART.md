@@ -61,6 +61,9 @@ curl -sfL https://get.k3s.io | sh -s - \
 
 > TODO: improve this section and harmonise the previous section to use viper's env vars
 
+Have a look at this [table](docs/markdown/cli-env-var-table.md) which explains how to use environment variables with the
+`k8s-kms-plugin`.
+
 vTPM
 
 ```bash
