@@ -17,7 +17,7 @@ import (
 	"google.golang.org/grpc"
 
 	istio "github.com/ThalesGroup/k8s-kms-plugin/apis/istio/v1"
-	k8s "github.com/ThalesGroup/k8s-kms-plugin/apis/k8s/v1beta1"
+	k8skmsv2 "k8s.io/kms/apis/v2"
 )
 
 var (
@@ -33,7 +33,7 @@ type Config struct {
 	KekKid []byte
 }
 type Provider interface {
-	k8s.KeyManagementServiceServer
+	k8skmsv2.KeyManagementServiceServer
 	istio.KeyManagementServiceServer
 	// Ad
 	UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error)

@@ -195,7 +195,7 @@ func walkCobraFlagsPretty(cmd *cobra.Command, t table.Writer) {
 func buildTableRow(cmd *cobra.Command, f *pflag.Flag, section string, persistent bool) table.Row {
 	// envVarPrefix include the name of the binary and the section of the cli command.
 	// Example: K8S_KMS_PLUGIN_SERVE_* for the command k8s-kms-plugin serve
-	envVarPrefix := strings.ToUpper(strings.NewReplacer("-", "_", ".", "_").Replace(fmt.Sprintf("%s", section)))
+	envVarPrefix := strings.ToUpper(strings.NewReplacer("-", "_", ".", "_").Replace(section))
 
 	// envVar is the environment variable name that can be used to override the flag. Ex.: K8S_KMS_PLUGIN_SERVE_HOST
 	envVar := envVarPrefix + "_" + strings.ToUpper(strings.ReplaceAll(f.Name, "-", "_"))
@@ -231,7 +231,7 @@ func writeMarkdownReadme(dir string) error {
 
 	readme := strings.Builder{}
 	readme.WriteString("# k8s-kms-plugin CLI Documentation\n\n")
-	readme.WriteString(fmt.Sprintf("This documentation is auto-generated from `k8s-kms-plugin`:\n\n"))
+	readme.WriteString("This documentation is auto-generated from `k8s-kms-plugin`:\n\n")
 	readme.WriteString(fmt.Sprintf("- version `%s`\n- commit `%s`\n- build date %s.\n\n",
 		version.RawGitDescribe, version.GitCommitIdLong, version.BuildDate))
 
