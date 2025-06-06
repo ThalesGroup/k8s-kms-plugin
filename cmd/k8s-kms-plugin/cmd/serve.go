@@ -26,8 +26,8 @@ import (
 	"github.com/ThalesGroup/gose/jose"
 
 	istio "github.com/ThalesGroup/k8s-kms-plugin/apis/istio/v1"
-	k8s "github.com/ThalesGroup/k8s-kms-plugin/apis/k8s/v1beta1"
 	version "github.com/ThalesGroup/k8s-kms-plugin/pkg/version"
+	k8skmsv2 "k8s.io/kms/apis/v2"
 
 	"github.com/ThalesGroup/k8s-kms-plugin/pkg/providers"
 	"github.com/sirupsen/logrus"
@@ -268,7 +268,7 @@ func grpcServe(gl net.Listener, p providers.Provider) (err error) {
 	}
 	gs := grpc.NewServer(serverOptions...)
 
-	k8s.RegisterKeyManagementServiceServer(gs, p)
+	k8skmsv2.RegisterKeyManagementServiceServer(gs, p)
 	reflection.Register(gs)
 	istio.RegisterKeyManagementServiceServer(gs, p)
 
