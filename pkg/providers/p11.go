@@ -185,10 +185,11 @@ type P11 struct {
 	algorithm          jose.Alg
 }
 
-func NewP11(config *crypto11.Config, createKey bool, k8sKekLabel string, hmacKeyLabel string, algorithm jose.Alg) (p *P11, err error) {
+func NewP11(config *crypto11.Config, createKey bool, kekkeyid []byte, k8sKekLabel string, hmacKeyLabel string, algorithm jose.Alg) (p *P11, err error) {
 	p = &P11{
 		config:             config,
 		createKey:          createKey,
+		kid:                kekkeyid,
 		k8sDefaultDekLabel: k8sKekLabel,
 		k8sHmacKeyLabel:    hmacKeyLabel,
 		algorithm:          algorithm,
