@@ -805,17 +805,17 @@ func (p *P11) LoadSKey(ctx context.Context, request *istio.LoadSKeyRequest) (res
 func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 	switch req.(type) {
 	case *kms.VersionRequest: // TODO: For information in k8s.io/kms/apis/v2, VersionRequest was deprecated in v1beta1 and replaced by StatusRequest in v2
-	case *k8skmsv2.StatusRequest: // TODO: improve how symmetric & asymmetric keys are handled
+	case *k8skmsv2.StatusResponse: // TODO: improve how symmetric & asymmetric keys are handled
 		{
-			logrus.Trace("UnaryInterceptor kms v2 StatusRequest")
+			logrus.Trace("UnaryInterceptor kms v2 StatusResponse")
 			logrus.WithField("key-id", req.(*k8skmsv2.StatusResponse).KeyId).Trace("UnaryInterceptor: kms v2 StatusResponse")
 		}
-	case *k8skmsv2.EncryptRequest: // TODO: In k8s.io/kms/apis/v2, EncryptRequest has no KeyId field, nor KeyringId field.
+	case *k8skmsv2.EncryptResponse:
 		{
-			logrus.Trace("UnaryInterceptor kms v2 EncryptRequest")
+			logrus.Trace("UnaryInterceptor kms v2 EncryptResponse")
 			logrus.WithField("key-id", req.(*k8skmsv2.EncryptResponse).KeyId).Trace("UnaryInterceptor: kms v2 EncryptResponse")
 		}
-	case *k8skmsv2.DecryptRequest: // TODO: In k8s.io/kms/apis/v2, DecryptRequest has no KeyringId field.
+	case *k8skmsv2.DecryptRequest:
 		{
 			logrus.Trace("UnaryInterceptor kms v2 DecryptRequest")
 			if (req).(*k8skmsv2.DecryptRequest).KeyId == "" {
@@ -1027,13 +1027,13 @@ func (p *P11) Status(ctx context.Context, request *k8skmsv2.StatusRequest) (stat
 
 		var a *crypto11.Attribute
 
-		logrus.Trace("UnaryInterceptor: no kek id provided, trying to find a key with label %s", p.k8sDekLabel)
+		logrus.Trace("Status: no kek id provided, trying to find a key with label %s", p.k8sDekLabel)
 		// try to find a symmetric key
 		if kekKey, err = p.ctx.FindKey(nil, []byte(p.k8sDekLabel)); err != nil {
-			logrus.WithError(err).Errorf("UnaryInterceptor: cannot find a symmetric key with label %s", p.k8sDekLabel)
+			logrus.WithError(err).Errorf("Status: cannot find a symmetric key with label %s", p.k8sDekLabel)
 			return
 		} else {
-			logrus.Tracef("UnaryInterceptor: found a symmetric key with label %s", p.k8sDekLabel)
+			logrus.Tracef("Status: found a symmetric key with label %s", p.k8sDekLabel)
 			if a, err = p.ctx.GetAttribute(kekKey, crypto11.CkaId); err != nil {
 				return
 			}
@@ -1041,16 +1041,16 @@ func (p *P11) Status(ctx context.Context, request *k8skmsv2.StatusRequest) (stat
 
 		// try to find a asymmetric key
 		if kekPair, err = p.ctx.FindRSAKeyPair(nil, []byte(p.k8sDekLabel)); err != nil {
-			logrus.WithError(err).Errorf("UnaryInterceptor: cannot find an asymmetric key with label %s", p.k8sDekLabel)
+			logrus.WithError(err).Errorf("Status: cannot find an asymmetric key with label %s", p.k8sDekLabel)
 			return
 		} else {
-			logrus.Tracef("UnaryInterceptor: found an asymmetric key with label %s", p.k8sDekLabel)
+			logrus.Tracef("Status: found an asymmetric key with label %s", p.k8sDekLabel)
 			if a, err = p.ctx.GetAttribute(kekPair, crypto11.CkaId); err != nil {
 				return
 			}
 		}
 
-		logrus.Tracef("UnaryInterceptor: key label %s, key id %s", p.k8sDekLabel, string(a.Value))
+		logrus.Tracef("Status: key label %s, key id %s", p.k8sDekLabel, string(a.Value))
 
 		statusResponse = &k8skmsv2.StatusResponse{
 			Version: "v2",
