@@ -644,7 +644,7 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 	resp = &k8skmsv2.EncryptResponse{
 		// the bytes array contains the bytes of the marshalled jwe
 		Ciphertext: []byte(out),
-		//keyID: ..
+		KeyId:      string(p.kid),
 		//Annotations: nil
 	}
 	return
