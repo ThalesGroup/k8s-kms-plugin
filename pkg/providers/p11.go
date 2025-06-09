@@ -805,10 +805,6 @@ func (p *P11) LoadSKey(ctx context.Context, request *istio.LoadSKeyRequest) (res
 func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 	switch req.(type) {
 	case *kms.VersionRequest: // TODO: For information in k8s.io/kms/apis/v2, VersionRequest was deprecated in v1beta1 and replaced by StatusRequest in v2
-	case *k8skmsv2.EncryptRequest: // TODO: In k8s.io/kms/apis/v2, EncryptRequest has no KeyId field, nor KeyringId field.
-		{
-			logrus.Trace("UnaryInterceptor kms v2 EncryptRequest")
-		}
 	case *k8skmsv2.StatusResponse:
 		{
 			logrus.Trace("UnaryInterceptor kms v2 StatusResponse")
@@ -834,7 +830,10 @@ func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.
 				(req).(*k8skmsv2.StatusResponse).KeyId = string(a.Value)
 			}
 		}
-
+	case *k8skmsv2.EncryptRequest: // TODO: In k8s.io/kms/apis/v2, EncryptRequest has no KeyId field, nor KeyringId field.
+		{
+			logrus.Trace("UnaryInterceptor kms v2 EncryptRequest")
+		}
 	case *k8skmsv2.DecryptRequest: // TODO: In k8s.io/kms/apis/v2, DecryptRequest has no KeyringId field.
 		{
 			if (req).(*k8skmsv2.DecryptRequest).KeyId == "" {
