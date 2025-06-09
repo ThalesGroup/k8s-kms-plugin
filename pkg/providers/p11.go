@@ -173,26 +173,26 @@ func randomSerial() (serial *big.Int) {
 }
 
 type P11 struct {
-	kid                []byte
-	cid                []byte
-	config             *crypto11.Config
-	ctx                *crypto11.Context
-	encryptors         map[string]gose.JweEncryptor
-	decryptors         map[string]gose.JweDecryptor
-	createKey          bool
-	k8sDefaultDekLabel string
-	k8sHmacKeyLabel    string
-	algorithm          jose.Alg
+	kid             []byte
+	cid             []byte
+	config          *crypto11.Config
+	ctx             *crypto11.Context
+	encryptors      map[string]gose.JweEncryptor
+	decryptors      map[string]gose.JweDecryptor
+	createKey       bool
+	k8sDekLabel     string
+	k8sHmacKeyLabel string
+	algorithm       jose.Alg
 }
 
 func NewP11(config *crypto11.Config, createKey bool, kekkeyid []byte, k8sKekLabel string, hmacKeyLabel string, algorithm jose.Alg) (p *P11, err error) {
 	p = &P11{
-		config:             config,
-		createKey:          createKey,
-		kid:                kekkeyid,
-		k8sDefaultDekLabel: k8sKekLabel,
-		k8sHmacKeyLabel:    hmacKeyLabel,
-		algorithm:          algorithm,
+		config:          config,
+		createKey:       createKey,
+		kid:             kekkeyid,
+		k8sDekLabel:     k8sKekLabel,
+		k8sHmacKeyLabel: hmacKeyLabel,
+		algorithm:       algorithm,
 	}
 	// Bootstrap the Pkcs11 device or die
 	if p.ctx, err = crypto11.Configure(p.config); err != nil {
@@ -203,7 +203,7 @@ func NewP11(config *crypto11.Config, createKey bool, kekkeyid []byte, k8sKekLabe
 	if p.createKey {
 		// Check if the default key exists - if not, create it
 		var foundDefaultDek *crypto11.SecretKey
-		if foundDefaultDek, err = p.ctx.FindKey([]byte(p.kid), []byte(p.k8sDefaultDekLabel)); nil != err {
+		if foundDefaultDek, err = p.ctx.FindKey([]byte(p.kid), []byte(p.k8sDekLabel)); nil != err {
 			return
 		}
 		if nil == foundDefaultDek {
@@ -215,7 +215,7 @@ func NewP11(config *crypto11.Config, createKey bool, kekkeyid []byte, k8sKekLabe
 			if uuidBytes, err = newDekUUID.MarshalText(); nil != err {
 				return
 			}
-			if _, err = p.ctx.GenerateSecretKeyWithLabel(uuidBytes, []byte(p.k8sDefaultDekLabel), 256, crypto11.CipherAES); nil != err {
+			if _, err = p.ctx.GenerateSecretKeyWithLabel(uuidBytes, []byte(p.k8sDekLabel), 256, crypto11.CipherAES); nil != err {
 				return
 			}
 		}
@@ -359,7 +359,7 @@ func (p *P11) makeAeadKey(rng io.Reader, kek *crypto11.SecretKey) (aek gose.Aead
 	if aead, err = kek.NewGCM(); err != nil {
 		return nil, fmt.Errorf("error while creating new gcm cipher: %v", err)
 	}
-	if aek, err = gose.NewAesGcmCryptor(aead, rng, p.k8sDefaultDekLabel, jose.AlgA256GCM, kekKeyOps); err != nil {
+	if aek, err = gose.NewAesGcmCryptor(aead, rng, p.k8sDekLabel, jose.AlgA256GCM, kekKeyOps); err != nil {
 		return nil, fmt.Errorf("error while creating aead key: %v", err)
 	}
 	return
@@ -523,7 +523,7 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 			logrus.Tracef("p11:Encrypt case %s", jose.AlgA256GCM)
 			// Find the KEK in the KMS
 			var kek *crypto11.SecretKey
-			if kek, err = p.ctx.FindKey(nil, []byte(p.k8sDefaultDekLabel)); nil != err {
+			if kek, err = p.ctx.FindKey(nil, []byte(p.k8sDekLabel)); nil != err {
 				return
 			}
 			// Random source from the HSM (pkcs11 context)
@@ -545,7 +545,7 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 			logrus.Tracef("p11:Encrypt case %s", jose.AlgA256CBC)
 			// Find the KEK in the KMS
 			var kek *crypto11.SecretKey
-			if kek, err = p.ctx.FindKey(nil, []byte(p.k8sDefaultDekLabel)); nil != err {
+			if kek, err = p.ctx.FindKey(nil, []byte(p.k8sDekLabel)); nil != err {
 				return
 			}
 			// Random source from the HSM (pkcs11 context)
@@ -813,13 +813,13 @@ func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.
 		{
 			logrus.Trace("UnaryInterceptor kms v2 StatusResponse")
 			if (req).(*k8skmsv2.StatusResponse).KeyId == "" {
-				kekKey, _ := s.ctx.FindKey(nil, []byte(s.k8sDefaultDekLabel))
+				kekKey, _ := s.ctx.FindKey(nil, []byte(s.k8sDekLabel))
 				var a *crypto11.Attribute
 
 				// TODO if asymmetric key
 				if kekKey == nil {
 					var kekPair crypto11.SignerDecrypter
-					if kekPair, err = s.ctx.FindRSAKeyPair(nil, []byte(s.k8sDefaultDekLabel)); err != nil {
+					if kekPair, err = s.ctx.FindRSAKeyPair(nil, []byte(s.k8sDekLabel)); err != nil {
 						return
 					}
 					if a, err = s.ctx.GetAttribute(kekPair, crypto11.CkaId); nil != err {
@@ -839,13 +839,13 @@ func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.
 		{
 			if (req).(*k8skmsv2.DecryptRequest).KeyId == "" {
 				// Assume we're handling the original API and look up the ID of our default DEK
-				kekKey, _ := s.ctx.FindKey(nil, []byte(s.k8sDefaultDekLabel))
+				kekKey, _ := s.ctx.FindKey(nil, []byte(s.k8sDekLabel))
 				var a *crypto11.Attribute
 
 				// TODO if asymmetric key
 				if kekKey == nil {
 					var kekPair crypto11.SignerDecrypter
-					if kekPair, err = s.ctx.FindRSAKeyPair(nil, []byte(s.k8sDefaultDekLabel)); err != nil {
+					if kekPair, err = s.ctx.FindRSAKeyPair(nil, []byte(s.k8sDekLabel)); err != nil {
 						return
 					}
 					if a, err = s.ctx.GetAttribute(kekPair, crypto11.CkaId); nil != err {
