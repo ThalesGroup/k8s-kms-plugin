@@ -1035,7 +1035,15 @@ func (p *P11) Status(ctx context.Context, request *k8skmsv2.StatusRequest) (stat
 		} else {
 			logrus.Tracef("Status: found a symmetric key with label %s", p.k8sDekLabel)
 			if a, err = p.ctx.GetAttribute(kekKey, crypto11.CkaId); err != nil {
+				logrus.WithError(err).Errorf("Status: cannot get the key id for a symmetric key with label %s", p.k8sDekLabel)
 				return
+			} else {
+				logrus.Tracef("Status: key label %s, key id %s", p.k8sDekLabel, string(a.Value))
+				statusResponse = &k8skmsv2.StatusResponse{
+					Version: "v2",
+					Healthz: "ok",
+					KeyId:   string(a.Value),
+				}
 			}
 		}
 
