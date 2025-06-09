@@ -861,7 +861,7 @@ func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.
 				}
 			}
 		}
-	case *k8skmsv2.EncryptRequest: // TODO: In k8s.io/kms/apis/v2, EncryptRequest has no KeyId field, nor KeyringId field.
+	case *k8skmsv2.EncryptResponse: // TODO: In k8s.io/kms/apis/v2, EncryptRequest has no KeyId field, nor KeyringId field.
 		{
 			logrus.Trace("UnaryInterceptor kms v2 EncryptRequest")
 			if (req).(*k8skmsv2.EncryptResponse).GetKeyId() == "" {
