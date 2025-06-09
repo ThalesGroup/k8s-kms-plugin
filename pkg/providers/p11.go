@@ -173,8 +173,8 @@ func randomSerial() (serial *big.Int) {
 }
 
 type P11 struct {
-	kid             []byte
-	cid             []byte
+	kid             []byte // Key Identifier
+	cid             []byte // Certificate Identifier
 	config          *crypto11.Config
 	ctx             *crypto11.Context
 	encryptors      map[string]gose.JweEncryptor
@@ -805,29 +805,60 @@ func (p *P11) LoadSKey(ctx context.Context, request *istio.LoadSKeyRequest) (res
 func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 	switch req.(type) {
 	case *kms.VersionRequest: // TODO: For information in k8s.io/kms/apis/v2, VersionRequest was deprecated in v1beta1 and replaced by StatusRequest in v2
-	case *k8skmsv2.StatusResponse:
+	case *k8skmsv2.StatusResponse: // TODO: improve how symmetric & asymmetric keys are handled
 		{
 			logrus.Trace("UnaryInterceptor kms v2 StatusResponse")
-			if (req).(*k8skmsv2.StatusResponse).KeyId == "" {
-				kekKey, _ := s.ctx.FindKey(nil, []byte(s.k8sDekLabel))
+			if (req).(*k8skmsv2.StatusResponse).GetKeyId() == "" {
+				var kekKey *crypto11.SecretKey       // symmetric key
+				var kekPair crypto11.SignerDecrypter // asymmetric key
+
 				var a *crypto11.Attribute
 
-				// TODO if asymmetric key
-				if kekKey == nil {
-					var kekPair crypto11.SignerDecrypter
-					if kekPair, err = s.ctx.FindRSAKeyPair(nil, []byte(s.k8sDekLabel)); err != nil {
+				// in case the k8s-kms-plugin serve runs with flag --kek-id
+				if len(s.kid) != 0 {
+					logrus.Trace("UnaryInterceptor: kek id provided, trying to find a key with id %s", s.kid)
+					// verify the key id matches a symmetric key that exist
+					if kekKey, err = s.ctx.FindKey([]byte(s.kid), nil); err != nil {
+						logrus.WithError(err).Errorf("UnaryInterceptor: cannot find a symmetric key with id %s", s.kid)
 						return
 					}
-					if a, err = s.ctx.GetAttribute(kekPair, crypto11.CkaId); nil != err {
+
+					// verify the key id matches an asymmetric key that exist
+					if kekPair, err = s.ctx.FindRSAKeyPair([]byte(s.kid), nil); err != nil {
+						logrus.WithError(err).Errorf("UnaryInterceptor: cannot find a asymmetric key with id %s", s.kid)
 						return
 					}
-				} else {
-					if a, err = s.ctx.GetAttribute(kekKey, crypto11.CkaId); nil != err {
-						return
-					}
+					(req).(*k8skmsv2.StatusResponse).KeyId = string(s.kid)
 				}
 
-				(req).(*k8skmsv2.StatusResponse).KeyId = string(a.Value)
+				// in case the k8s-kms-plugin serve runs without flag --kek-id, find the key ID thanks to the label
+				if len(s.kid) == 0 {
+					logrus.Trace("UnaryInterceptor: no kek id provided, trying to find a key with label %s", s.k8sDekLabel)
+					// try to find a symmetric key
+					if kekKey, err = s.ctx.FindKey(nil, []byte(s.k8sDekLabel)); err != nil {
+						logrus.WithError(err).Errorf("UnaryInterceptor: cannot find a symmetric key with label %s", s.k8sDekLabel)
+						return
+					} else {
+						logrus.Tracef("UnaryInterceptor: found a symmetric key with label %s", s.k8sDekLabel)
+						if a, err = s.ctx.GetAttribute(kekKey, crypto11.CkaId); err != nil {
+							return
+						}
+					}
+
+					// try to find a asymmetric key
+					if kekPair, err = s.ctx.FindRSAKeyPair(nil, []byte(s.k8sDekLabel)); err != nil {
+						logrus.WithError(err).Errorf("UnaryInterceptor: cannot find an asymmetric key with label %s", s.k8sDekLabel)
+						return
+					} else {
+						logrus.Tracef("UnaryInterceptor: found an asymmetric key with label %s", s.k8sDekLabel)
+						if a, err = s.ctx.GetAttribute(kekPair, crypto11.CkaId); err != nil {
+							return
+						}
+					}
+
+					logrus.Tracef("UnaryInterceptor: key label %s, key id %s", s.k8sDekLabel, string(a.Value))
+					(req).(*k8skmsv2.StatusResponse).KeyId = string(a.Value)
+				}
 			}
 		}
 	case *k8skmsv2.EncryptRequest: // TODO: In k8s.io/kms/apis/v2, EncryptRequest has no KeyId field, nor KeyringId field.
