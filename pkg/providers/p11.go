@@ -805,7 +805,7 @@ func (p *P11) LoadSKey(ctx context.Context, request *istio.LoadSKeyRequest) (res
 func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 	switch req.(type) {
 	case *kms.VersionRequest: // TODO: For information in k8s.io/kms/apis/v2, VersionRequest was deprecated in v1beta1 and replaced by StatusRequest in v2
-	case *k8skmsv2.StatusRequest: // TODO: improve how symmetric & asymmetric keys are handled
+	case *k8skmsv2.StatusResponse: // TODO: improve how symmetric & asymmetric keys are handled
 		{
 			logrus.Trace("UnaryInterceptor kms v2 StatusRequest")
 			if (req).(*k8skmsv2.StatusResponse).GetKeyId() == "" {
