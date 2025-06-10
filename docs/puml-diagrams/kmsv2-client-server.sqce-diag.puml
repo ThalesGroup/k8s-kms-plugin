@@ -15,8 +15,8 @@
         loop "every minute when plugin is healthy or every 10 seconds when the plugin is not healthy"
         k8sapisrv -> client : Status(StatusRequest) 
         client -> server : Status(StatusRequest) 
-        server -> client : Status(StatusResponse) \n {Version:"v2", Healthz: "ok", KeyID:<string>}
-        client -> k8sapisrv : Status(StatusResponse) \n {Version:"v2", Healthz: "ok", KeyID:<string>}
+        server -> client : Status(StatusResponse) \n {Version:"v2", Healthz: "ok", KeyId:<string>}
+        client -> k8sapisrv : Status(StatusResponse) \n {Version:"v2", Healthz: "ok", KeyId:<string>}
         end
     end
 
@@ -44,8 +44,8 @@
       group API server considers the key_id returned \n from the Status procedure call to be authoritative
         k8sapisrv -> client : Status(StatusRequest) 
         client -> server : Status(StatusRequest) 
-        server -> client : Status(StatusResponse) \n {Version:"v2", Healthz: "ok", KeyID:<string>}
-        client -> k8sapisrv : Status(StatusResponse) \n {Version:"v2", Healthz: "ok", KeyID:<string>}
+        server -> client : Status(StatusResponse) \n {Version:"v2", Healthz: "ok", KeyId:<string>}
+        client -> k8sapisrv : Status(StatusResponse) \n {Version:"v2", Healthz: "ok", KeyId:<string>}
       end
     end
-@enduml>
+@enduml
