@@ -1,51 +1,144 @@
 @startuml
-    actor "k8s admin" as k8sa
-    box "k8s" #LightBlue
-        participant "k8s apiserver" as k8sapisrv
-        participant "k8s-kms-plugin (client)" as client
+'=============================================================================='
+'== PlantUMLAppearance parameters ============================================='
+'=============================================================================='
+skinparam shadowing false
+'skinparam backgroundColor transparent
 
-    end box
+' enable arrows on same level
+'!pragma teoz true
+
+skinparam legend {
+  FontSize 13
+  FontName DejaVu Sans Mono
+  BorderColor black
+  BackgroundColor white
+}
+
+skinparam sequence {
+ArrowColor Black
+ActorBorderColor Black
+LifeLineBorderColor Black
+LifeLineBackgroundColor #A9DCDF
+
+ParticipantBorderColor MidnightBlue
+ParticipantBackgroundColor #326CE5
+ParticipantFontName Impact
+ParticipantFontSize 17
+ParticipantFontColor white
+
+ActorBackgroundColor MidnightBlue
+ActorFontColor MidnightBlue
+ActorFontSize 17
+ActorFontName Aapex
+}
+
+skinparam ArrowFontName DejaVu Sans Mono
+
+
+' Title
+title
+    Kubernetes KMS API v2 - k8s.io/kms/apis/v2
+end title
+
+skinparam HeaderFontSize 18
+header <font color=black>USG connectivity - v2020-04-23 - Figure %page% of %lastpage%</font>
+footer © 2025 Thales Group for Thales Open Source
+
+' Legend
+legend top left
+    Legend
+    CKA_ID (Byte array) PKCS11 Key identifier for public/private key pairs
+    DEK    Data Encryption Key
+    KEK    Key Encryption Key
+    KMS    Key Management System
+    HSM    Hardware Security Module
+    TPM    Trusted Platform Module
+
+    PKCS11 v3.0: https://docs.oasis-open.org/pkcs11/pkcs11-base/v3.0/pkcs11-base-v3.0.html
+    KMS v2: - https://github.com/kubernetes/enhancements/tree/master/keps/sig-auth/3299-kms-v2-improvements
+            - https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/
+end legend
+
+'=============================================================================='
+'== Sequence diagram begins ==================================================='
+'=============================================================================='
+
+    actor "k8s admin" as k8sa
     actor "kms admin" as kmsa
+
+    box "k8s" #AliceBlue
+        participant "k8s apiserver" as k8sapisrv
+        participant "etcd" as etcd
+    end box
+
+
     box "kms" #fff
         participant "k8s-kms-plugin (server)" as server
         participant "pkcs11-device" as p11
     end box
 
-    group KMS Status
+    group KMS v2 Status
+        alt Generate DEK seed at k8s startup
+
+        kmsa -> server : run k8s-kms-plugin
+        k8sa -> k8sapisrv : Deploy/install/start \na kubernetes cluster
+
+        k8sapisrv -> k8sapisrv : generate DEK seed at \nstartup and cache it \n(32 random bytes)
+        k8sapisrv -> server : send EncryptRequest \n {Plaintext:<DEK seed as []byte>, Uid:<string>}
+        server -> p11 : Encrypt(Plaintext) \n encrypt DEK seed with remote KEK
+        p11 -> server : return encrypted DEK seed & KEK ID, \n e.g. CKA_ID
+        server -> k8sapisrv : return EncryptResponse \n {Ciphertext:<encrypted DEK seed as []byte>,\n KeyId: <remote KEK ID as string>, \n Annotations: <map[string][]byte>}
+        end
+
         loop "every minute when plugin is healthy or every 10 seconds when the plugin is not healthy"
-        k8sapisrv -> client : Status(StatusRequest) 
-        client -> server : Status(StatusRequest) 
-        server -> client : Status(StatusResponse) \n {Version:"v2", Healthz: "ok", KeyId:<string>}
-        client -> k8sapisrv : Status(StatusResponse) \n {Version:"v2", Healthz: "ok", KeyId:<string>}
+        k8sapisrv -> server : send StatusRequest
+        server -> p11 : validate remote KEK, e.g. \n get CKA_ID from TPM/HSM
+        p11 -> server : return KEK status, e.g. CKA_ID
+        server -> k8sapisrv : return StatusResponse \n {Version:"v2", Healthz: "ok", \n KeyId:<remote KEK ID string>}
+        end
+
+        alt remote KEK rotation detected (KeyId changed), rotate DEK seed
+        kmsa -> server : run k8s-kms-plugin with a new KEK and keep old KEK available to \ndecrypt previously encrypted data and reencrypt with new KEK
+        k8sapisrv -> k8sapisrv : generate new DEK seed \nand cache it \n(32 random bytes)
+        k8sapisrv -> server : send EncryptRequest \n {Plaintext:<new DEK seed as []byte>, Uid:<string>}
+        server -> p11 : Encrypt(Plaintext) \n encrypt new DEK seed with new remote KEK
+        p11 -> server : return new encrypted DEK seed & new KEK ID
+        server -> k8sapisrv : return EncryptResponse \n {Ciphertext:<new encrypted DEK seed as []byte>,\n KeyId: <new remote KEK ID as string>, \n Annotations:... }
         end
     end
 
-    group KMS Encryption
-        loop "any distinct plaintext results in a distinct response"
-        k8sapisrv -> client : Encrypt(EncryptRequest) \n {Plaintext:<[]byte>, Uid:<string>}
-        client -> server : Encrypt(EncryptRequest) \n {Plaintext:<[]byte>, Uid:<string>}
+    group KMS v2 Encryption
+
+        alt "Generate DEK seed at startup & cache it, or do a DecryptRequest then cache it"
+        k8sapisrv -> server : send EncryptRequest \n {Plaintext:<[]byte>, Uid:<string>}
         server -> p11 : Encrypt(Plaintext)
-        server <- p11 : Encrypt(Ciphertext)
-        server -> client : Encrypt(EncryptResponse) \n {Ciphertext:<[]byte>, KeyId:<string>, \n Annotations: <map[string][]byte>}
-        client -> k8sapisrv : Encrypt(EncryptResponse) \n {Ciphertext:<[]byte>, KeyId:<string>, \n Annotations: <map[string][]byte>}
+        server <- p11 : {Ciphertext, CKA_ID}
+        server -> k8sapisrv : Encrypt(EncryptResponse) \n {Ciphertext:<[]byte>, KeyId:<string>, \n Annotations: <map[string][]byte>}
         end
+        k8sa -> k8sapisrv : create/update resource that's \n to be encrypted
+        k8sapisrv -> k8sapisrv : generate DEK using DEK seed
+        k8sapisrv -> k8sapisrv : encrypt resource with DEK
+        k8sapisrv -> etcd : store encrypted object
     end
 
-    group KMS Decryption
-        k8sapisrv -> client : Decrypt(DecryptRequest) \n {Ciphertext:<[]byte>, KeyId:<string>, \n Uid:<string>, Annotations: <map[string][]byte>}
-        client -> server : Decrypt(DecryptRequest) \n {Ciphertext:<[]byte>, KeyId:<string>, \n Uid:<string>, Annotations: <map[string][]byte>}
-        server -> p11 : Decrypt(Ciphertext)
-        server <- p11 : Decrypt(Plaintext)
-        server -> client : Decrypt(DecryptResponse) \n {Plaintext:<[]byte>}
-        client -> k8sapisrv : Decrypt(DecryptResponse) \n {Plaintext:<[]byte>}
+    group KMS v2 Decryption
+        k8sa -> k8sapisrv : get/list resource that's encrypted
+        k8sapisrv -> etcd : get encrypted resource
+        etcd -> k8sapisrv : return encrypted resource
+
+        alt Encrypted DEK seed not in cache ; KMS plugin is only called when cache is empty
+        k8sapisrv -> server : send DecryptRequest \n {Ciphertext:<[]byte>, KeyId:<string>, \n Uid:<string>, Annotations: <map[string][]byte>}
+        server -> p11 : Decrypt(Ciphertext) \n decrypt DEK seed with remote KEK
+        server <- p11 : return decrypted DEK seed
+        server -> k8sapisrv : Decrypt(DecryptResponse) \n {Plaintext:<decrypted DEK seed []byte>}
+        k8sapisrv -> k8sapisrv : cache decrypted DEK seed
+        end
+
+        k8sapisrv -> k8sapisrv : generate DEK using DEK seed
+        k8sapisrv -> k8sapisrv : decrypt resource with DEK
+
+        k8sapisrv -> k8sa : return decrypted resource
     end
 
-    group Key rotation
-      group API server considers the key_id returned \n from the Status procedure call to be authoritative
-        k8sapisrv -> client : Status(StatusRequest) 
-        client -> server : Status(StatusRequest) 
-        server -> client : Status(StatusResponse) \n {Version:"v2", Healthz: "ok", KeyId:<string>}
-        client -> k8sapisrv : Status(StatusResponse) \n {Version:"v2", Healthz: "ok", KeyId:<string>}
-      end
-    end
 @enduml
