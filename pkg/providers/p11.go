@@ -804,21 +804,18 @@ func (p *P11) LoadSKey(ctx context.Context, request *istio.LoadSKeyRequest) (res
 
 func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 	switch req.(type) {
-	case *kms.VersionRequest: // TODO: For information in k8s.io/kms/apis/v2, VersionRequest was deprecated in v1beta1 and replaced by StatusRequest in v2
-	case *k8skmsv2.StatusResponse: // TODO: improve how symmetric & asymmetric keys are handled
+	case *k8skmsv2.StatusRequest: // TODO: improve how symmetric & asymmetric keys are handled
 		{
-			logrus.Trace("UnaryInterceptor kms v2 StatusResponse")
-			logrus.WithField("key-id", req.(*k8skmsv2.StatusResponse).KeyId).Trace("UnaryInterceptor: kms v2 StatusResponse")
+			logrus.Trace("UnaryInterceptor kms v2 StatusRequest")
 		}
-	case *k8skmsv2.EncryptResponse:
+	case *k8skmsv2.EncryptRequest:
 		{
-			logrus.Trace("UnaryInterceptor kms v2 EncryptResponse")
-			logrus.WithField("key-id", req.(*k8skmsv2.EncryptResponse).KeyId).Trace("UnaryInterceptor: kms v2 EncryptResponse")
+			logrus.Trace("UnaryInterceptor kms v2 EncryptRequest")
 		}
 	case *k8skmsv2.DecryptRequest:
 		{
 			logrus.Trace("UnaryInterceptor kms v2 DecryptRequest")
-			if (req).(*k8skmsv2.DecryptRequest).KeyId == "" {
+			if (req).(*k8skmsv2.DecryptRequest).GetKeyId() == "" {
 				logrus.Trace("UnaryInterceptor: KeyId is empty in the DecryptRequest")
 				return nil, status.Errorf(codes.InvalidArgument, "UnaryInterceptor: KeyId is empty in the DecryptRequest")
 			}
