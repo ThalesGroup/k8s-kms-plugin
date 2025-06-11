@@ -1016,7 +1016,7 @@ func (p *P11) Status(ctx context.Context, request *k8skmsv2.StatusRequest) (stat
 		statusResponse = &k8skmsv2.StatusResponse{
 			Version: "v2",
 			Healthz: "ok",
-			KeyId:   string(p.kid), // TODO: Check if this is enough to cast p.kid from []byte to string.
+			KeyId:   fmt.Sprintf("%X", p.kid), // TODO: Check if this is enough to cast p.kid from []byte to string.
 		}
 	}
 
@@ -1038,11 +1038,16 @@ func (p *P11) Status(ctx context.Context, request *k8skmsv2.StatusRequest) (stat
 				logrus.WithError(err).Errorf("Status: cannot get the key id for a symmetric key with label %s", p.k8sDekLabel)
 				return
 			} else {
-				logrus.Tracef("Status: key label %s, key id %s", p.k8sDekLabel, string(a.Value))
+				logrus.WithFields(
+					logrus.Fields{
+						"cka_id_hex":   fmt.Sprintf("%X", a.Value),         // Uppercase hex for readability
+						"cka_id_ascii": fmt.Sprintf("%q", string(a.Value)), // Quoted string to show control characters
+						"cka_label":    p.k8sDekLabel,
+					}).Trace("StatusResponse symmetric key")
 				statusResponse = &k8skmsv2.StatusResponse{
 					Version: "v2",
 					Healthz: "ok",
-					KeyId:   string(a.Value),
+					KeyId:   fmt.Sprintf("%X", a.Value),
 				}
 			}
 		}
@@ -1058,12 +1063,17 @@ func (p *P11) Status(ctx context.Context, request *k8skmsv2.StatusRequest) (stat
 			}
 		}
 
-		logrus.Tracef("Status: key label %s, key id %s", p.k8sDekLabel, string(a.Value))
+		logrus.WithFields(
+			logrus.Fields{
+				"cka_id_hex":   fmt.Sprintf("%X", a.Value),         // Uppercase hex for readability
+				"cka_id_ascii": fmt.Sprintf("%q", string(a.Value)), // Quoted string to show control characters
+				"cka_label":    p.k8sDekLabel,
+			}).Trace("StatusResponse asymmetric key")
 
 		statusResponse = &k8skmsv2.StatusResponse{
 			Version: "v2",
 			Healthz: "ok",
-			KeyId:   string(a.Value),
+			KeyId:   fmt.Sprintf("%X", a.Value),
 		}
 	}
 
