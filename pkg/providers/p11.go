@@ -514,6 +514,7 @@ func (p *P11) Decrypt(ctx context.Context, req *k8skmsv2.DecryptRequest) (resp *
 func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *k8skmsv2.EncryptResponse, err error) {
 	var encryptor gose.JweEncryptor
 	var out string
+	var kekKeyID []byte // for the EncryptResponse
 
 	// TODO: p.kid might need to be initialized
 	if encryptor = p.encryptors[string(p.kid)]; encryptor == nil {
@@ -526,6 +527,16 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 			if kek, err = p.ctx.FindKey(nil, []byte(p.k8sDekLabel)); nil != err {
 				return
 			}
+
+			// Get the key id by key label
+			var a *crypto11.Attribute
+			if a, err = p.ctx.GetAttribute(kek, crypto11.CkaId); err != nil {
+				logrus.WithError(err).Errorf("Encrypt: cannot get the key id for algo %s and key with label %s", p.algorithm, p.k8sDekLabel)
+				return
+			} else {
+				kekKeyID = a.Value
+			}
+
 			// Random source from the HSM (pkcs11 context)
 			var rng io.Reader
 			if rng, err = p.ctx.NewRandomReader(); err != nil {
@@ -548,6 +559,16 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 			if kek, err = p.ctx.FindKey(nil, []byte(p.k8sDekLabel)); nil != err {
 				return
 			}
+
+			// Get the key id by key label
+			var a *crypto11.Attribute
+			if a, err = p.ctx.GetAttribute(kek, crypto11.CkaId); err != nil {
+				logrus.WithError(err).Errorf("Encrypt: cannot get the key id for algo %s and key with label %s", p.algorithm, p.k8sDekLabel)
+				return
+			} else {
+				kekKeyID = a.Value
+			}
+
 			// Random source from the HSM (pkcs11 context)
 			var rng io.Reader
 			if rng, err = p.ctx.NewRandomReader(); err != nil {
@@ -604,8 +625,17 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 			//         "kid":"2011-04-29"
 			//    }
 			var rsaKeyPair crypto11.SignerDecrypter
-			if rsaKeyPair, err = p.ctx.FindRSAKeyPair([]byte(p.kid), nil); err != nil {
+			if rsaKeyPair, err = p.ctx.FindRSAKeyPair(nil, []byte(p.k8sDekLabel)); err != nil {
 				panic(err)
+			}
+
+			// Get the key id by key label
+			var a *crypto11.Attribute
+			if a, err = p.ctx.GetAttribute(rsaKeyPair, crypto11.CkaId); err != nil {
+				logrus.WithError(err).Errorf("Encrypt: cannot get the key id for algo %s and key with label %s", p.algorithm, p.k8sDekLabel)
+				return
+			} else {
+				kekKeyID = a.Value
 			}
 
 			// ENCRYPTION
@@ -644,7 +674,7 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 	resp = &k8skmsv2.EncryptResponse{
 		// the bytes array contains the bytes of the marshalled jwe
 		Ciphertext: []byte(out),
-		KeyId:      string(p.kid),
+		KeyId:      fmt.Sprintf("%X", kekKeyID),
 		//Annotations: nil
 	}
 	return
