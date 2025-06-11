@@ -1008,27 +1008,29 @@ func (p *P11) Version(ctx context.Context, request *kms.VersionRequest) (version
 func (p *P11) Status(ctx context.Context, request *k8skmsv2.StatusRequest) (statusResponse *k8skmsv2.StatusResponse, err error) {
 	logrus.Trace("p11 Status: entering method")
 
-	// in case the k8s-kms-plugin serve runs with flag --kek-id
-	if len(p.kid) != 0 {
-		statusResponse = &k8skmsv2.StatusResponse{
+	// Case 1: KEK ID already provided at startup with flag --kek-id
+	if len(p.kid) > 0 {
+		kekKeyID := fmt.Sprintf("%X", p.kid)
+		logrus.WithField("key-id", kekKeyID).Trace("Status: using configured KEK ID")
+		return &k8skmsv2.StatusResponse{
 			Version: "v2",
 			Healthz: "ok",
-			KeyId:   fmt.Sprintf("%X", p.kid), // TODO: Check if this is enough to cast p.kid from []byte to string.
-		}
+			KeyId:   kekKeyID,
+		}, nil
 	}
 
+	// Case 2: Attempt to discover KEK ID by label
 	// in case the k8s-kms-plugin serve runs without flag --kek-id, find the key ID thanks to the label
 	if len(p.kid) == 0 {
+		logrus.Trace("Status: no kek id provided, trying to find a key with label %s", p.k8sDekLabel)
 		var kekKey *crypto11.SecretKey       // symmetric key
 		var kekPair crypto11.SignerDecrypter // asymmetric key
 
 		var a *crypto11.Attribute
 
-		logrus.Trace("Status: no kek id provided, trying to find a key with label %s", p.k8sDekLabel)
 		// try to find a symmetric key
 		if kekKey, err = p.ctx.FindKey(nil, []byte(p.k8sDekLabel)); err != nil {
 			logrus.WithError(err).Errorf("Status: cannot find a symmetric key with label %s", p.k8sDekLabel)
-			return
 		} else {
 			logrus.Tracef("Status: found a symmetric key with label %s", p.k8sDekLabel)
 			if a, err = p.ctx.GetAttribute(kekKey, crypto11.CkaId); err != nil {
@@ -1041,18 +1043,17 @@ func (p *P11) Status(ctx context.Context, request *k8skmsv2.StatusRequest) (stat
 						"cka_id_ascii": fmt.Sprintf("%q", string(a.Value)), // Quoted string to show control characters
 						"cka_label":    p.k8sDekLabel,
 					}).Trace("StatusResponse symmetric key")
-				statusResponse = &k8skmsv2.StatusResponse{
+				return &k8skmsv2.StatusResponse{
 					Version: "v2",
 					Healthz: "ok",
 					KeyId:   fmt.Sprintf("%X", a.Value),
-				}
+				}, nil
 			}
 		}
 
 		// try to find a asymmetric key
 		if kekPair, err = p.ctx.FindRSAKeyPair(nil, []byte(p.k8sDekLabel)); err != nil {
 			logrus.WithError(err).Errorf("Status: cannot find an asymmetric key with label %s", p.k8sDekLabel)
-			return
 		} else {
 			logrus.Tracef("Status: found an asymmetric key with label %s", p.k8sDekLabel)
 			if a, err = p.ctx.GetAttribute(kekPair, crypto11.CkaId); err != nil {
@@ -1076,7 +1077,7 @@ func (p *P11) Status(ctx context.Context, request *k8skmsv2.StatusRequest) (stat
 
 	logrus.Debugf("Status response: %+v", statusResponse)
 	logrus.Debugf("Status response KeyId: %s", statusResponse.KeyId)
-	return
+	return statusResponse, nil
 }
 
 func (p *P11) genKekKid() (kid []byte, err error) {
