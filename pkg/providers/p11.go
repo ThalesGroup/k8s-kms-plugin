@@ -173,15 +173,15 @@ func randomSerial() (serial *big.Int) {
 }
 
 type P11 struct {
-	kid             []byte // Key Identifier
+	kid             []byte // Key Encryption Key KEK Identifier & CKA_ID
 	cid             []byte // Certificate Identifier
 	config          *crypto11.Config
 	ctx             *crypto11.Context
 	encryptors      map[string]gose.JweEncryptor
 	decryptors      map[string]gose.JweDecryptor
 	createKey       bool
-	k8sDekLabel     string
-	k8sHmacKeyLabel string
+	k8sDekLabel     string // CKA_LABEL utf8
+	k8sHmacKeyLabel string // for AES-CBC & HMAC
 	algorithm       jose.Alg
 }
 
@@ -532,7 +532,7 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 				return
 			}
 
-			// Get the key id by key label
+			// Get the KEK key id by key label
 			var a *crypto11.Attribute
 			if a, err = p.ctx.GetAttribute(kek, crypto11.CkaId); err != nil {
 				logrus.WithError(err).Errorf("Encrypt: cannot get the key id for algo %s and key with label %s", p.algorithm, p.k8sDekLabel)
@@ -678,7 +678,7 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 	resp = &k8skmsv2.EncryptResponse{
 		// the bytes array contains the bytes of the marshalled jwe
 		Ciphertext: []byte(out),
-		KeyId:      fmt.Sprintf("%X", kekKeyID),
+		KeyId:      string(kekKeyID),
 		//Annotations: nil
 	}
 	return
@@ -1044,12 +1044,16 @@ func (p *P11) Status(ctx context.Context, request *k8skmsv2.StatusRequest) (stat
 
 	// Case 1: KEK ID already provided at startup with flag --kek-id
 	if len(p.kid) > 0 {
-		kekKeyID := fmt.Sprintf("%X", p.kid)
-		logrus.WithField("key-id", kekKeyID).Trace("Status: using configured KEK ID")
+		logrus.WithFields(
+			logrus.Fields{
+				"cka_id_hex":   fmt.Sprintf("%X", p.kid),         // Uppercase hex for readability
+				"cka_id_ascii": fmt.Sprintf("%q", string(p.kid)), // Quoted string to show control characters
+				"cka_label":    p.k8sDekLabel,
+			}).Trace("Status: using user provided KEK ID")
 		return &k8skmsv2.StatusResponse{
 			Version: "v2",
 			Healthz: "ok",
-			KeyId:   kekKeyID,
+			KeyId:   string(p.kid),
 		}, nil
 	}
 
@@ -1080,7 +1084,7 @@ func (p *P11) Status(ctx context.Context, request *k8skmsv2.StatusRequest) (stat
 				return &k8skmsv2.StatusResponse{
 					Version: "v2",
 					Healthz: "ok",
-					KeyId:   fmt.Sprintf("%X", a.Value),
+					KeyId:   string(a.Value),
 				}, nil
 			}
 		}
@@ -1105,7 +1109,7 @@ func (p *P11) Status(ctx context.Context, request *k8skmsv2.StatusRequest) (stat
 		statusResponse = &k8skmsv2.StatusResponse{
 			Version: "v2",
 			Healthz: "ok",
-			KeyId:   fmt.Sprintf("%X", a.Value),
+			KeyId:   string(a.Value),
 		}
 	}
 
