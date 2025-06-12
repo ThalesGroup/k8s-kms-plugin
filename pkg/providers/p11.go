@@ -395,7 +395,7 @@ func (p *P11) Decrypt(ctx context.Context, req *k8skmsv2.DecryptRequest) (resp *
 	var aad []byte
 
 	// req.KeyId populated by interceptor
-	if decryptor = p.decryptors[req.KeyId]; decryptor == nil {
+	if decryptor = p.decryptors[req.GetKeyId()]; decryptor == nil {
 		// Random source from the HSM (pkcs11 context)
 		var rng io.Reader
 		if rng, err = p.ctx.NewRandomReader(); err != nil {
@@ -405,6 +405,10 @@ func (p *P11) Decrypt(ctx context.Context, req *k8skmsv2.DecryptRequest) (resp *
 		// get kek by id
 		var kek *crypto11.SecretKey
 		// Since the DecryptRequest comes from kubernetes, the only information k8s has is the keyId via the StatusResponse
+		logrus.WithFields(logrus.Fields{
+			"req.GetKeyId()":         req.GetKeyId(),
+			"[]byte(req.GetKeyId())": []byte(req.GetKeyId()),
+		}).Tracef("p11:Decrypt")
 		if kek, err = p.ctx.FindKey([]byte(req.GetKeyId()), nil); nil != err {
 			return
 		}
@@ -417,7 +421,7 @@ func (p *P11) Decrypt(ctx context.Context, req *k8skmsv2.DecryptRequest) (resp *
 			}
 			decryptor = gose.NewJweDirectDecryptorAeadImpl([]gose.AeadEncryptionKey{aek})
 
-			if out, aad, err = decryptor.Decrypt(string(req.Ciphertext)); err != nil {
+			if out, aad, err = decryptor.Decrypt(string(req.GetCiphertext())); err != nil {
 				return
 			}
 			if nil != aad {
@@ -438,7 +442,7 @@ func (p *P11) Decrypt(ctx context.Context, req *k8skmsv2.DecryptRequest) (resp *
 				return nil, fmt.Errorf("error initializing block cipher: %v", err)
 			}
 
-			cbcKey := gose.NewAesCbcCryptor(blockMode, string(p.kid), jose.AlgA256CBC)
+			cbcKey := gose.NewAesCbcCryptor(blockMode, req.GetKeyId(), jose.AlgA256CBC)
 			// Initialize the hmac key for authentication
 			var hmacp11Key *crypto11.SecretKey
 			if hmacp11Key, err = p.ctx.FindKey(nil, []byte(p.k8sHmacKeyLabel)); err != nil {
@@ -454,7 +458,7 @@ func (p *P11) Decrypt(ctx context.Context, req *k8skmsv2.DecryptRequest) (resp *
 			// !!! It is very important to finalize each PKCS11 operation
 			defer blockMode.Close()
 
-			if out, aad, err = decryptor.Decrypt(string(req.Ciphertext)); err != nil {
+			if out, aad, err = decryptor.Decrypt(string(req.GetCiphertext())); err != nil {
 				return
 			}
 			if nil != aad {
@@ -466,19 +470,19 @@ func (p *P11) Decrypt(ctx context.Context, req *k8skmsv2.DecryptRequest) (resp *
 			logrus.Tracef("p11:Decrypt case %s", jose.AlgRSAOAEP)
 			// load pkcs11 context
 			var rsaKeyPair crypto11.SignerDecrypter
-			if rsaKeyPair, err = p.ctx.FindRSAKeyPair([]byte(req.KeyId), nil); err != nil {
+			if rsaKeyPair, err = p.ctx.FindRSAKeyPair([]byte(req.GetKeyId()), nil); err != nil {
 				panic(err)
 			}
 			var privKey *hsm.AsymmetricDecryptionKey
-			if privKey, err = hsm.NewAsymmetricDecryptionKey(p.ctx, rsaKeyPair, []byte(req.KeyId), nil); err != nil {
+			if privKey, err = hsm.NewAsymmetricDecryptionKey(p.ctx, rsaKeyPair, []byte(req.GetKeyId()), nil); err != nil {
 				panic(err)
 			}
 			// create key store from private key
-			store, err := gose.NewAsymmetricDecryptionKeyStoreImpl(map[string]gose.AsymmetricDecryptionKey{req.KeyId: privKey})
+			store, err := gose.NewAsymmetricDecryptionKeyStoreImpl(map[string]gose.AsymmetricDecryptionKey{req.GetKeyId(): privKey})
 			// create decryptor
 			decryptor := gose.NewJweRsaKeyEncryptionDecryptorImpl(store)
 			// decrypt
-			out, _, err = decryptor.Decrypt(string(req.Ciphertext), crypto.SHA256)
+			out, _, err = decryptor.Decrypt(string(req.GetCiphertext()), crypto.SHA256)
 			if err != nil {
 				panic(err)
 			}
