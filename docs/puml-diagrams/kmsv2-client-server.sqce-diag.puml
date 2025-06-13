@@ -86,7 +86,7 @@ end legend
 
         kmsa -> kmsplg : run k8s-kms-plugin serve with a KEK stored on the TPM
         k8sa -> k8sapisrv : deploy/install/start \na kubernetes cluster
-        k8sapisrv -> k8sapisrv : generate DEK seed at \nstartup and cache it \n(32 random bytes)
+        k8sapisrv -> k8sapisrv : generate DEK seed (32 random bytes)\nat startup and cache it ; indefinite \nretention until kube-apiserver restart \nor KEK rotation
 
           group KMS v2 Encrypts DEK Seed
           k8sapisrv -> kmsplg : send EncryptRequest \n {Plaintext:<DEK seed as []byte>, Uid:<string>}
@@ -107,7 +107,7 @@ end legend
 
         alt remote KEK rotation detected from last StatusResponse (KeyId changed), rotate DEK seed
         kmsa -> kmsplg : run k8s-kms-plugin with a new KEK and keep old KEK available to \ndecrypt previously encrypted data and reencrypt with new KEK
-        k8sapisrv -> k8sapisrv : generate new DEK seed \nand cache it \n(32 random bytes)
+        k8sapisrv -> k8sapisrv : generate a new DEK seed (32 random bytes)\nat startup and cache it ; indefinite \nretention until kube-apiserver restart \nor KEK rotation
 
           group KMS v2 encrypt new DEK Seed
           k8sapisrv -> kmsplg : send EncryptRequest \n {Plaintext:<new DEK seed as []byte>, Uid:<string>}
