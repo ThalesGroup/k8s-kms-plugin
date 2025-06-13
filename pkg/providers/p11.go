@@ -595,13 +595,14 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 			// Find the KEK in the KMS
 			var kek *crypto11.SecretKey
 			if kek, err = p.ctx.FindKey(nil, []byte(p.k8sDekLabel)); nil != err {
+				logrus.WithError(err).Errorf("Encrypt: cannot find a %s symmetric key with label %s", jose.AlgA256GCM, p.k8sDekLabel)
 				return
 			}
 
 			// Get the KEK key id by key label
 			var a *crypto11.Attribute
 			if a, err = p.ctx.GetAttribute(kek, crypto11.CkaId); err != nil {
-				logrus.WithError(err).Errorf("Encrypt: cannot get the key id for algo %s and key with label %s", p.algorithm, p.k8sDekLabel)
+				logrus.WithError(err).Errorf("Encrypt: cannot get the KEK key id for algo %s with label %s", p.algorithm, p.k8sDekLabel)
 				return
 			} else {
 				kekKeyID = a.Value
@@ -610,27 +611,31 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 			// Random source from the HSM (pkcs11 context)
 			var rng io.Reader
 			if rng, err = p.ctx.NewRandomReader(); err != nil {
-				logrus.Error(err)
+				logrus.WithError(err).Errorf("Encrypt: cannot get a random source from the HSM (pkcs11 context)")
 				return
 			}
 			var aek gose.AeadEncryptionKey
 			if aek, err = p.makeAeadKey(rng, kek); err != nil {
+				logrus.WithError(err).Errorf("Encrypt: cannot create an aead key for algo %s with label %s", p.algorithm, p.k8sDekLabel)
 				return
 			}
 			encryptor = gose.NewJweDirectEncryptorAead(aek, p.config.UseGCMIVFromHSM)
 			// output is the marshalled jwe
 			if out, err = encryptor.Encrypt(req.Plaintext, nil); err != nil {
-				return
-			}
-		case jose.AlgA256CBC:
-			logrus.Tracef("p11:Encrypt case %s", jose.AlgA256CBC)
-			// Find the KEK in the KMS
-			var kek *crypto11.SecretKey
-			if kek, err = p.ctx.FindKey(nil, []byte(p.k8sDekLabel)); nil != err {
+				logrus.WithError(err).Error("Encrypt: encryption failed")
 				return
 			}
 
-			// Get the key id by key label
+		case jose.AlgA256CBC:
+			logrus.Tracef("p11:Encrypt case %s", jose.AlgA256CBC)
+			// Find the KEK in the KMS by key label
+			var kek *crypto11.SecretKey
+			if kek, err = p.ctx.FindKey(nil, []byte(p.k8sDekLabel)); nil != err {
+				logrus.WithError(err).Errorf("Encrypt: cannot find a %s symmetric key with label %s", jose.AlgA256CBC, p.k8sDekLabel)
+				return
+			}
+
+			// Get the KEK key id
 			var a *crypto11.Attribute
 			if a, err = p.ctx.GetAttribute(kek, crypto11.CkaId); err != nil {
 				logrus.WithError(err).Errorf("Encrypt: cannot get the key id for algo %s and key with label %s", p.algorithm, p.k8sDekLabel)
@@ -642,7 +647,7 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 			// Random source from the HSM (pkcs11 context)
 			var rng io.Reader
 			if rng, err = p.ctx.NewRandomReader(); err != nil {
-				logrus.Error(err)
+				logrus.WithError(err).Errorf("Encrypt: cannot get a random source from the HSM (pkcs11 context) for algo %s and key with label %s", p.algorithm, p.k8sDekLabel)
 				return
 			}
 			// generate the IV from the KMS, using the kek block size
@@ -674,6 +679,7 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 			if out, err = encryptor.Encrypt(req.Plaintext, nil); err != nil {
 				return
 			}
+
 		case jose.AlgRSAOAEP:
 			logrus.Tracef("p11:Encrypt case %s", jose.AlgRSAOAEP)
 			//TODO generate a jwk with the kid of the public key. Ex :
@@ -696,7 +702,8 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 			//    }
 			var rsaKeyPair crypto11.SignerDecrypter
 			if rsaKeyPair, err = p.ctx.FindRSAKeyPair(nil, []byte(p.k8sDekLabel)); err != nil {
-				panic(err)
+				logrus.WithError(err).Errorf("Encrypt: cannot find an rsa key pair with label %s", p.k8sDekLabel)
+				return nil, err
 			}
 
 			// Get the key id by key label
@@ -715,7 +722,8 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 			// generate jwk from public key
 			var pubJwk jose.Jwk
 			if pubJwk, err = gose.JwkFromPublicKey(pubkey, []jose.KeyOps{jose.KeyOpsEncrypt}, nil); err != nil {
-				panic(err)
+				logrus.WithError(err).Error("Failed to create JWE RSA Key Encryption Encryptor")
+				return nil, err
 			}
 			// set JWK Algorithm for encryption
 			pubJwk.SetAlg(jose.AlgRSAOAEP)
@@ -723,14 +731,15 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 			// encrypt plaintext
 			var rsaEncryptor *gose.JweRsaKeyEncryptionEncryptorImpl
 			if rsaEncryptor, err = gose.NewJweRsaKeyEncryptionEncryptorImpl(pubJwk, rand.Reader); err != nil {
-				panic(err)
+				logrus.WithError(err).Error("Failed to create JWE RSA Key Encryption Encryptor")
+				return nil, err
 			}
 			// output is the marshalled jwe
 			if out, err = rsaEncryptor.Encrypt(req.Plaintext, crypto.SHA256); err != nil {
 				return
 			}
 		default:
-			print("not supported")
+			logrus.Infof("Encrypt: not supported algorithm: %s", p.algorithm)
 		}
 	}
 
@@ -747,7 +756,7 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 		KeyId:      string(kekKeyID),
 		//Annotations: nil
 	}
-	return
+	return resp, nil
 }
 
 // GenerateDEK a 256 bit AES DEK Key , Wrapped via JWE with the PKCS11 base KEK
