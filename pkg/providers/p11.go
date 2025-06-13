@@ -526,7 +526,8 @@ func (p *P11) Decrypt(ctx context.Context, req *k8skmsv2.DecryptRequest) (resp *
 			defer blockMode.Close()
 
 			if out, aad, err = decryptor.Decrypt(string(req.GetCiphertext())); err != nil {
-				return
+				logrus.WithError(err).Tracef("error during decryption")
+				return nil, err
 			}
 			if nil != aad {
 				// AAD should be nil - if not, needs to be changed in tandem with /Encrypt
