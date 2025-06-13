@@ -30,8 +30,7 @@ import (
 	"github.com/ThalesGroup/gose"
 	"github.com/ThalesGroup/gose/hsm"
 	"github.com/ThalesGroup/gose/jose"
-	"github.com/ThalesGroup/k8s-kms-plugin/apis/istio/v1"
-	"github.com/ThalesGroup/k8s-kms-plugin/apis/kms/v1"
+	"github.com/ThalesGroup/k8s-kms-plugin/apis/istio/v1" // TODO: should be removed when support for KMS v2 is implemented
 	"github.com/google/uuid"
 	"github.com/miekg/pkcs11"
 	"github.com/sirupsen/logrus"
@@ -63,6 +62,15 @@ var (
 	}
 )
 
+// generateDEK generates a Data Encryption Key (DEK) and encrypts it using
+// the provided JWE encryptor. It first creates a random 32-byte symmetric
+// key, converts it to a JWK format, and then encrypts the JWK using the
+// encryptor. The resulting encrypted DEK is returned as a byte slice.
+// Any errors encountered during random number generation, key conversion,
+// or encryption are returned.
+//
+// for Istio: generateDEK is only used by GenerateDEK.
+// TODO: decide is this Istio related method should be separated from the KMS v2 plugin
 func generateDEK(ctx11 *crypto11.Context, encryptor gose.JweEncryptor) (encryptedKeyBlob []byte, err error) {
 
 	key := make([]byte, 32)
@@ -94,7 +102,14 @@ func generateDEK(ctx11 *crypto11.Context, encryptor gose.JweEncryptor) (encrypte
 	return
 }
 
-// generateKEK an KEK
+// generateKEK generates a Key Encryption Key (KEK) using the provided
+// cryptographic context, identity, label, and algorithm. The function
+// checks if the specified algorithm is supported and, if so, generates
+// a secret key with the associated parameters. It returns the generated
+// AEAD encryption key or an error if the operation fails.
+//
+// for Istio: generateKEK is only used by GenerateKEK.
+// TODO: decide is this Istio related method should be separated from the KMS v2 plugin
 func generateKEK(ctx *crypto11.Context, identity, label []byte, alg jose.Alg) (key gose.AeadEncryptionKey, err error) {
 	params, supported := algToKeyGenParams[alg]
 	if !supported {
@@ -109,6 +124,14 @@ func generateKEK(ctx *crypto11.Context, identity, label []byte, alg jose.Alg) (k
 	return
 }
 
+// generateSKey generates a Symmetric Key (SKey) using the provided
+// cryptographic context, kind, and size. The function checks if the
+// specified algorithm is supported and, if so, generates a secret key
+// with the associated parameters. It returns the generated AEAD
+// encryption key or an error if the operation fails.
+//
+// for Istio: generateSKey is only used by GenerateSKey.
+// TODO: decide is this Istio related method should be separated from the KMS v2 plugin
 func generateSKey(ctx *crypto11.Context, request *istio.GenerateSKeyRequest, dekEncryptor gose.JweEncryptor) (wrappedSKey []byte, err error) {
 	var rng io.Reader
 	if rng, err = ctx.NewRandomReader(); err != nil {
@@ -167,6 +190,8 @@ func IsPKCS11AuthenticationError(err error) bool {
 	}
 }
 
+// randomSerial returns a random big.Int suitable for use as an X.509v3 certificate
+// serial number.
 func randomSerial() (serial *big.Int) {
 	serial, _ = rand.Int(rand.Reader, big.NewInt(20000))
 	return
@@ -179,12 +204,34 @@ type P11 struct {
 	ctx             *crypto11.Context
 	encryptors      map[string]gose.JweEncryptor
 	decryptors      map[string]gose.JweDecryptor
-	createKey       bool
-	k8sDekLabel     string // CKA_LABEL utf8
-	k8sHmacKeyLabel string // for AES-CBC & HMAC
-	algorithm       jose.Alg
+	createKey       bool     // TODO: explain the use case of when should the k8s-kms-plugin create the key
+	k8sDekLabel     string   // e.g. CKA_LABEL utf8
+	k8sHmacKeyLabel string   // for AES-CBC & HMAC
+	algorithm       jose.Alg // specify which algorithm to use, symmetric or asymmetric
 }
 
+// NewP11 creates a new P11 instance.
+//
+// The P11 instance is configured with the given crypto11.Config.
+//
+// The createKey argument is a boolean that indicates whether the P11 instance
+// should create a default key with the given label. TODO: explain the use case
+// when this would be needed
+//
+// The kekkeyid argument is the Key Encryption Key (KEK) identifier.
+// This could be the CKA_ID.
+//
+// The k8sKekLabel argument is the label of the default key.
+// This could be the CKA_LABEL.
+//
+// The hmacKeyLabel argument is the label of the HMAC key, for AES-CBC + HMAC.
+//
+// The algorithm argument specify which algorithm to use, symmetric or
+// asymmetric.
+//
+// The function returns a pointer to the P11 instance and an error value. If
+// the error value is not nil, the P11 instance is not valid and should not
+// be used.
 func NewP11(config *crypto11.Config, createKey bool, kekkeyid []byte, k8sKekLabel string, hmacKeyLabel string, algorithm jose.Alg) (p *P11, err error) {
 	p = &P11{
 		config:          config,
@@ -223,6 +270,7 @@ func NewP11(config *crypto11.Config, createKey bool, kekkeyid []byte, k8sKekLabe
 	return
 }
 
+// TODO: decide is this Istio related method should be separated from the KMS v2 plugin
 func (p *P11) AuthenticatedDecrypt(ctx context.Context, request *istio.AuthenticatedDecryptRequest) (resp *istio.AuthenticatedDecryptResponse, err error) {
 	var kekDecryptor gose.JweDecryptor
 	if kekDecryptor = p.decryptors[string(request.KekKid)]; kekDecryptor == nil {
@@ -272,7 +320,15 @@ func (p *P11) AuthenticatedDecrypt(ctx context.Context, request *istio.Authentic
 	return
 }
 
-func (p *P11) loadKEKbyID(ctx *crypto11.Context, kekIdentity, label []byte) (encryptor gose.JweEncryptor, decryptor gose.JweDecryptor, err error) {
+// loadKEKbyID loads a Key Encryption Key (KEK) from the HSM for the given
+// kekIdentity and label. It returns the loaded KEK as a gose.AeadEncryptionKey,
+// a gose.JweEncryptor, and a gose.JweDecryptor. If the key is not found or
+// there is an error loading the key, loadKEKbyID returns an error.
+//
+// TODO: for now this method only support AES GCM symmetric keys as ctx.FindKey
+// only supports symmetric keys. This needs to be extended to support other
+// algorithms inlcuding asymmetric.
+func (p *P11) loadKEKbyID(ctx *crypto11.Context, kekId, kekLabel []byte) (encryptor gose.JweEncryptor, decryptor gose.JweDecryptor, err error) {
 
 	var rng io.Reader
 	var aek gose.AeadEncryptionKey
@@ -282,18 +338,22 @@ func (p *P11) loadKEKbyID(ctx *crypto11.Context, kekIdentity, label []byte) (enc
 	}
 	// get the HSM Key
 	var handle *crypto11.SecretKey
-	if handle, err = ctx.FindKey(kekIdentity, label); err != nil {
+	if handle, err = ctx.FindKey(kekId, kekLabel); err != nil {
 		return
 	}
 	if handle == nil {
 		err = errors.New("no such key")
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"kekIdentity": string(kekId),
+			"label":       string(kekLabel),
+		}).Error("load KEK by ID or label failed")
 		return
 	}
 	var aead cipher.AEAD
 	if aead, err = handle.NewGCM(); err != nil {
 		return
 	}
-	if aek, err = gose.NewAesGcmCryptor(aead, rng, string(kekIdentity), jose.AlgA256GCM, kekKeyOps); err != nil {
+	if aek, err = gose.NewAesGcmCryptor(aead, rng, string(kekId), jose.AlgA256GCM, kekKeyOps); err != nil {
 		return
 	}
 	decryptor = gose.NewJweDirectDecryptorAeadImpl([]gose.AeadEncryptionKey{aek})
@@ -302,6 +362,7 @@ func (p *P11) loadKEKbyID(ctx *crypto11.Context, kekIdentity, label []byte) (enc
 	return
 }
 
+// TODO: decide is this Istio related method should be separated from the KMS v2 plugin
 func (p *P11) AuthenticatedEncrypt(ctx context.Context, request *istio.AuthenticatedEncryptRequest) (resp *istio.AuthenticatedEncryptResponse, err error) {
 	var kekDecryptor gose.JweDecryptor
 	if kekDecryptor = p.decryptors[string(request.KekKid)]; nil == kekDecryptor {
@@ -354,6 +415,8 @@ func (p *P11) Close() (err error) {
 	return
 }
 
+// makeAeadKey creates a new AES GCM key encryption key from the given HSM key
+// and random reader. It returns a gose.AeadEncryptionKey and an error.
 func (p *P11) makeAeadKey(rng io.Reader, kek *crypto11.SecretKey) (aek gose.AeadEncryptionKey, err error) {
 	var aead cipher.AEAD
 	if aead, err = kek.NewGCM(); err != nil {
@@ -365,6 +428,10 @@ func (p *P11) makeAeadKey(rng io.Reader, kek *crypto11.SecretKey) (aek gose.Aead
 	return
 }
 
+// getIVFromDecryptRequest extracts the Initialization Vector from a KMS v2
+// DecryptRequest. It first unmarshalls the JWE from the ciphertext, and
+// then returns the InitializationVector from the unmarshalled JWE. If
+// there is an error during unmarshalling, it is returned.
 func getIVFromDecryptRequest(req *k8skmsv2.DecryptRequest) (iv []byte, err error) {
 	var jwe jose.JweRfc7516Compact
 	if err = jwe.Unmarshal(string(req.Ciphertext)); err != nil {
@@ -391,8 +458,8 @@ func getIVFromDecryptRequest(req *k8skmsv2.DecryptRequest) (iv []byte, err error
 //		 Annotations          map[string][]byte
 func (p *P11) Decrypt(ctx context.Context, req *k8skmsv2.DecryptRequest) (resp *k8skmsv2.DecryptResponse, err error) {
 	var decryptor gose.JweDecryptor
-	var out []byte
-	var aad []byte
+	var out []byte // buffer for the DecryptResponse.Plaintext
+	var aad []byte // Additional Authenticated Data optional input used in authenticated encryption algorithms like AES-GCM or AES-CBC-HMAC
 
 	// req.KeyId populated by interceptor
 	if decryptor = p.decryptors[req.GetKeyId()]; decryptor == nil {
@@ -493,7 +560,6 @@ func (p *P11) Decrypt(ctx context.Context, req *k8skmsv2.DecryptRequest) (resp *
 	}
 
 	resp = &k8skmsv2.DecryptResponse{
-		// no changes in v2
 		Plaintext: out,
 	}
 	return
@@ -517,8 +583,8 @@ func (p *P11) Decrypt(ctx context.Context, req *k8skmsv2.DecryptRequest) (resp *
 //     Uid string
 func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *k8skmsv2.EncryptResponse, err error) {
 	var encryptor gose.JweEncryptor
-	var out string
-	var kekKeyID []byte // for the EncryptResponse
+	var out string      // buffer for the EncryptResponse.Ciphertext
+	var kekKeyID []byte // buffer for the EncryptResponse.KeyId
 
 	// TODO: p.kid might need to be initialized
 	if encryptor = p.encryptors[string(p.kid)]; encryptor == nil {
@@ -685,6 +751,7 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 }
 
 // GenerateDEK a 256 bit AES DEK Key , Wrapped via JWE with the PKCS11 base KEK
+// TODO: decide is this Istio related method should be separated from the KMS v2 plugin
 func (p *P11) GenerateDEK(ctx context.Context, request *istio.GenerateDEKRequest) (resp *istio.GenerateDEKResponse, err error) {
 	if request == nil {
 		logrus.Error(err)
@@ -708,7 +775,8 @@ func (p *P11) GenerateDEK(ctx context.Context, request *istio.GenerateDEKRequest
 	return
 }
 
-// GenerateKEK a 256 bit AES KEK Key that resides in the Pkcs11 device
+// for Istio: GenerateKEK a 256 bit AES KEK Key that resides in the Pkcs11 device
+// TODO: decide is this Istio related method should be separated from the KMS v2 plugin
 func (p *P11) GenerateKEK(ctx context.Context, request *istio.GenerateKEKRequest) (resp *istio.GenerateKEKResponse, err error) {
 	if request.KekKid == nil {
 		request.KekKid, err = p.genKekKid()
@@ -731,6 +799,7 @@ func (p *P11) GenerateKEK(ctx context.Context, request *istio.GenerateKEKRequest
 }
 
 // GenerateSKey gens a 4096 RSA Key with the DEK that is protected by the KEK for later Unwrapping by the remote client in it's pod/container
+// TODO: decide is this Istio related method should be separated from the KMS v2 plugin
 func (p *P11) GenerateSKey(ctx context.Context, request *istio.GenerateSKeyRequest) (resp *istio.GenerateSKeyResponse, err error) {
 	if request == nil {
 		return nil, status.Error(codes.InvalidArgument, "no request sent")
@@ -771,6 +840,7 @@ func (p *P11) GenerateSKey(ctx context.Context, request *istio.GenerateSKeyReque
 }
 
 // ImportCACert inserts the Root CA cert chain
+// TODO: decide is this Istio related method should be separated from the KMS v2 plugin
 func (p *P11) ImportCACert(ctx context.Context, request *istio.ImportCACertRequest) (resp *istio.ImportCACertResponse, err error) {
 	resp = &istio.ImportCACertResponse{
 		Success: false,
@@ -798,6 +868,7 @@ func (p *P11) ImportCACert(ctx context.Context, request *istio.ImportCACertReque
 }
 
 // LoadSKey unwraps the supplied sKey with the Wrapped sKey
+// TODO: decide is this Istio related method should be separated from the KMS v2 plugin
 func (p *P11) LoadSKey(ctx context.Context, request *istio.LoadSKeyRequest) (resp *istio.LoadSKeyResponse, err error) {
 	if request == nil {
 		return nil, status.Error(codes.InvalidArgument, "no request sent")
@@ -867,6 +938,7 @@ func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.
 }
 
 // VerifyCertChain verifies a provided cert-chain (currently self-contained)
+// TODO: decide is this Istio related method should be separated from the KMS v2 plugin
 func (p *P11) VerifyCertChain(ctx context.Context, request *istio.VerifyCertChainRequest) (resp *istio.VerifyCertChainResponse, err error) {
 	defer func() {
 		if err != nil {
@@ -1024,17 +1096,11 @@ func (p *P11) VerifyCertChain(ctx context.Context, request *istio.VerifyCertChai
 
 }
 
-// TODO: In k8s.io/kms/apis/v2, KeyManagementServiceServer has 3 methods Status, Decrypt and Encrypt. There is no Version method. See https://github.com/ThalesGroup/k8s-kms-plugin/issues/40#issuecomment-2593267852
-// TODO: replace or adapt this Version method by a Status method: Status(context.Context, *StatusRequest) (*StatusResponse, error)
-func (p *P11) Version(ctx context.Context, request *kms.VersionRequest) (versionResponse *kms.VersionResponse, err error) {
-	versionResponse = &kms.VersionResponse{
-		Version:        "v1beta1",
-		RuntimeName:    "Thales k8s KMS plugin",
-		RuntimeVersion: "v0.5.0",
-	}
-	return
-}
-
+// Status returns the StatusResponse for the KMS plugin. There are two cases:
+// 1. The KEK ID is provided at plugin startup with flag --kek-id (CKA_ID).
+// 2. The KEK ID is not provided at startup with flag --kek-id and is discovered thanks to the label (CKA_LABEL).
+// The returned StatusResponse contains the KeyID of the KEK, the Healthz and the Version.
+//
 // Status() method comes from the KeyManagementServiceClient interface from "k8s.io/kms/apis/v2"
 // See https://pkg.go.dev/k8s.io/kms@v0.31.3/apis/v2#KeyManagementServiceClient
 // Also check the content of a StatusResponse
@@ -1118,6 +1184,7 @@ func (p *P11) Status(ctx context.Context, request *k8skmsv2.StatusRequest) (stat
 	return statusResponse, nil
 }
 
+// TODO: decide is this Istio related method should be separated from the KMS v2 plugin
 func (p *P11) genKekKid() (kid []byte, err error) {
 	var u uuid.UUID
 	u, err = uuid.NewRandom()
