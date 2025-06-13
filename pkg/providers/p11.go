@@ -930,10 +930,9 @@ func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.
 		{
 			logrus.Trace("UnaryInterceptor kms v2 DecryptRequest")
 			if (req).(*k8skmsv2.DecryptRequest).GetKeyId() == "" {
-				logrus.Trace("UnaryInterceptor: KeyId is empty in the DecryptRequest")
+				logrus.Error("UnaryInterceptor: KeyId is empty in the DecryptRequest")
 				return nil, status.Errorf(codes.InvalidArgument, "UnaryInterceptor: KeyId is empty in the DecryptRequest")
 			}
-			return
 		}
 	default:
 		// TODO
