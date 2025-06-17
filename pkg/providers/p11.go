@@ -248,7 +248,7 @@ func NewP11(config *crypto11.Config, createKey bool, kekkeyid []byte, k8sKekLabe
 	// EncryptRequest.KeyId should use a unique identifier: pkcs11.CKA_ID is a unique identifier.
 	// If the user set the k8sKekLabel flag (CKA_LABEL), then the kekkeyid (CKA_ID) is retrieved by
 	// the k8sKekLabel.
-	if kekkeyid == nil && k8sKekLabel != "" {
+	if len(kekkeyid) == 0 && k8sKekLabel != "" {
 		logrus.Trace("NewP11: kekkeyid is nil. Find CKA_ID by CKA_LABEL %s", k8sKekLabel)
 		p.k8sDekLabel = k8sKekLabel
 
@@ -295,7 +295,7 @@ func NewP11(config *crypto11.Config, createKey bool, kekkeyid []byte, k8sKekLabe
 	// API calls.
 	// But we could use EncryptResponse.Annotations and DecryptRequest.Annotations to store
 	// the value of the key label CKA_LABEL.
-	if kekkeyid != nil && k8sKekLabel == "" {
+	if len(kekkeyid) > 0 && k8sKekLabel == "" {
 		logrus.Trace("NewP11: k8sKekLabel is empty but kekkeyid is not nil. Find CKA_LABEL by CKA_ID %s", kekkeyid)
 		p.kid = kekkeyid
 
