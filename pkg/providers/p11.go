@@ -240,6 +240,12 @@ func NewP11(config *crypto11.Config, createKey bool, kekkeyid []byte, k8sKekLabe
 		algorithm:       algorithm,
 	}
 
+	// Bootstrap the Pkcs11 device or die
+	if p.ctx, err = crypto11.Configure(p.config); err != nil {
+		logrus.Error(err)
+		return
+	}
+
 	// Case: Attempt to discover KEK ID (CKA_ID) by Key label (CKA_LABEL)
 	// From the CLI's user input perspective, the kekkeyid (CKA_ID) and k8sKekLabel (CKA_LABEL)
 	// should be marked as MarkFlagsMutuallyExclusive and MarkFlagsOneRequired.
@@ -334,12 +340,6 @@ func NewP11(config *crypto11.Config, createKey bool, kekkeyid []byte, k8sKekLabe
 				p.kid = a.Value
 			}
 		}
-	}
-
-	// Bootstrap the Pkcs11 device or die
-	if p.ctx, err = crypto11.Configure(p.config); err != nil {
-		logrus.Error(err)
-		return
 	}
 
 	if p.createKey {
