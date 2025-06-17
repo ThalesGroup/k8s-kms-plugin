@@ -44,8 +44,8 @@ var vprFlgsRoot ViperFlagsRoot
 
 // cobra root CLI flags default value
 const (
-	defaultKekId = "a37807cd-6d1a-4d75-813a-e120f30176f7"
-	defaultCaId  = "1c3d30d5-dfa8-4167-a9f9-2c768464181b"
+	defaultKekId = "a37807cd-6d1a-4d75-813a-e120f30176f7" // TODO: with KMS v2, consider not using this hardcoded value
+	defaultCaId  = "1c3d30d5-dfa8-4167-a9f9-2c768464181b" // TODO: with KMS v2, consider not using this hardcoded value
 )
 
 // rootCmd represents the base command when called without any subcommands

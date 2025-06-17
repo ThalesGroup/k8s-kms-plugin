@@ -193,7 +193,7 @@ func init() {
 	serveCmd.Flags().String("p11-key-label", "k8s-dek", "Key Label to use for encrypt/decrypt. Env var: K8S_KMS_PLUGIN_SERVE_P11_KEY_LABEL.")
 	serveCmd.Flags().String("p11-hmac-label", "k8s-hmac", "Key Label to use for sha based verifications. Env var: K8S_KMS_PLUGIN_SERVE_P11_HMAC_LABEL.")
 	serveCmd.Flags().String("host", "0.0.0.0", "Hostname without port. Env var: K8S_KMS_PLUGIN_SERVE_HOST.")
-	serveCmd.Flags().String("kek-id", defaultKekId, "Key ID for KMS KEK. Env var: K8S_KMS_PLUGIN_SERVE_KEK_ID")
+	serveCmd.Flags().String("kek-id", "", "Key ID for KMS KEK. Env var: K8S_KMS_PLUGIN_SERVE_KEK_ID")
 	serveCmd.Flags().StringP("native-path", "p", ".keys", "Path to key store for native provider(Files only). Env var: K8S_KMS_PLUGIN_SERVE_NATIVE_PATH.")
 	serveCmd.Flags().String("p11-label", "", "P11 token label. Env var: K8S_KMS_PLUGIN_SERVE_P11_TOKEN")
 	serveCmd.Flags().String("p11-lib", "", "Path to p11 library/client. Env var: K8S_KMS_PLUGIN_SERVE_P11_LIB")
