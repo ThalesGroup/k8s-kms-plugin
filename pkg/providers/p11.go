@@ -41,8 +41,8 @@ import (
 )
 
 var (
-	defaultKEKlabel    = []byte("k8s-kms-plugin-kek")
-	defaultRootCAlabel = []byte("k8s-kms-plugin-root-ca")
+	defaultKEKlabel    = []byte("k8s-kms-plugin-kek")     // TODO: decide is this Istio related method should be separated from the KMS v2 plugin
+	defaultRootCAlabel = []byte("k8s-kms-plugin-root-ca") // TODO: this is not used
 )
 
 var (
@@ -205,8 +205,8 @@ type P11 struct {
 	encryptors      map[string]gose.JweEncryptor
 	decryptors      map[string]gose.JweDecryptor
 	createKey       bool     // TODO: explain the use case of when should the k8s-kms-plugin create the key
-	k8sDekLabel     string   // e.g. CKA_LABEL utf8
-	k8sHmacKeyLabel string   // for AES-CBC & HMAC
+	k8sDekLabel     string   // CKA_LABEL utf8
+	k8sHmacKeyLabel string   // CKA_LABEL of HSMAC keyfor AES-CBC + HMAC
 	algorithm       jose.Alg // specify which algorithm to use, symmetric or asymmetric
 }
 
@@ -216,13 +216,13 @@ type P11 struct {
 //
 // The createKey argument is a boolean that indicates whether the P11 instance
 // should create a default key with the given label. TODO: explain the use case
-// when this would be needed
+// when this would be needed, eventualy move this to a new command.
 //
 // The kekkeyid argument is the Key Encryption Key (KEK) identifier.
-// This could be the CKA_ID.
+// This is the PKCS #11 CKA_ID.
 //
 // The k8sKekLabel argument is the label of the default key.
-// This could be the CKA_LABEL.
+// This is the PKCS #11 CKA_LABEL.
 //
 // The hmacKeyLabel argument is the label of the HMAC key, for AES-CBC + HMAC.
 //
@@ -242,7 +242,7 @@ func NewP11(config *crypto11.Config, createKey bool, kekkeyid []byte, k8sKekLabe
 
 	// Bootstrap the Pkcs11 device or die
 	if p.ctx, err = crypto11.Configure(p.config); err != nil {
-		logrus.Error(err)
+		logrus.WithError(err).Error("NewP11: failed to configure the Pkcs11 device")
 		return
 	}
 
@@ -255,7 +255,7 @@ func NewP11(config *crypto11.Config, createKey bool, kekkeyid []byte, k8sKekLabe
 	// If the user set the k8sKekLabel flag (CKA_LABEL), then the kekkeyid (CKA_ID) is retrieved by
 	// the k8sKekLabel.
 	if len(kekkeyid) == 0 && k8sKekLabel != "" {
-		logrus.Trace("NewP11: kekkeyid is nil. Find CKA_ID by CKA_LABEL %s", k8sKekLabel)
+		logrus.Trace("NewP11: kekkeyid (CKA_ID) is empty. Find CKA_ID by CKA_LABEL %s", k8sKekLabel)
 		p.k8sDekLabel = k8sKekLabel
 
 		switch p.algorithm {
@@ -267,10 +267,10 @@ func NewP11(config *crypto11.Config, createKey bool, kekkeyid []byte, k8sKekLabe
 				return p, err
 			}
 
-			// Get the CKA_ID to obtain theKEK key id
+			// Get the CKA_ID to obtain the KEK key id
 			var a *crypto11.Attribute
 			if a, err = p.ctx.GetAttribute(kek, crypto11.CkaId); err != nil {
-				logrus.WithError(err).Errorf("NewP11: cannot get the key id for algo %s and key with label %s", p.algorithm, p.k8sDekLabel)
+				logrus.WithError(err).Errorf("NewP11: cannot get the KEK CKA_ID for algo %s and key with label %s", p.algorithm, p.k8sDekLabel)
 				return p, err
 			} else {
 				p.kid = a.Value
@@ -280,14 +280,14 @@ func NewP11(config *crypto11.Config, createKey bool, kekkeyid []byte, k8sKekLabe
 			// Find the KEK in the KMS by key label for RSA asymmetric algorithms
 			var rsaKeyPair crypto11.SignerDecrypter
 			if rsaKeyPair, err = p.ctx.FindRSAKeyPair(nil, []byte(p.k8sDekLabel)); err != nil {
-				logrus.WithError(err).Errorf("NewP11: cannot find an rsa key pair with label %s", p.k8sDekLabel)
+				logrus.WithError(err).Errorf("NewP11: cannot find an rsa key pair with CKA_LABEL %s", p.k8sDekLabel)
 				return p, err
 			}
 
 			// Get the key id by key label
 			var a *crypto11.Attribute
 			if a, err = p.ctx.GetAttribute(rsaKeyPair, crypto11.CkaId); err != nil {
-				logrus.WithError(err).Errorf("NewP11: cannot get the key id for algo %s and key with label %s", p.algorithm, p.k8sDekLabel)
+				logrus.WithError(err).Errorf("NewP11: cannot get the KEK CKA_ID for algo %s and key with CKA_LABEL %s", p.algorithm, p.k8sDekLabel)
 				return p, err
 			} else {
 				p.kid = a.Value
@@ -302,7 +302,7 @@ func NewP11(config *crypto11.Config, createKey bool, kekkeyid []byte, k8sKekLabe
 	// But we could use EncryptResponse.Annotations and DecryptRequest.Annotations to store
 	// the value of the key label CKA_LABEL.
 	if len(kekkeyid) > 0 && k8sKekLabel == "" {
-		logrus.Trace("NewP11: k8sKekLabel is empty but kekkeyid is not nil. Find CKA_LABEL by CKA_ID %s", kekkeyid)
+		logrus.Trace("NewP11: k8sKekLabel (CKA_LABEL) is empty but kekkeyid (CKA_ID) is not empty. Find CKA_LABEL by CKA_ID %s", kekkeyid)
 		p.kid = kekkeyid
 
 		switch p.algorithm {
@@ -310,14 +310,14 @@ func NewP11(config *crypto11.Config, createKey bool, kekkeyid []byte, k8sKekLabe
 			// Find the KEK in the KMS by key ID for symmetric algorithm
 			var kek *crypto11.SecretKey
 			if kek, err = p.ctx.FindKey(p.kid, nil); nil != err {
-				logrus.WithError(err).Errorf("NewP11: cannot find a %s symmetric key with label %s", jose.AlgA256CBC, p.k8sDekLabel)
+				logrus.WithError(err).Errorf("NewP11: cannot find a %s symmetric key with KEK CKA_ID %s", jose.AlgA256CBC, p.kid)
 				return p, err
 			}
 
 			// Get the CKA_LABEL
 			var a *crypto11.Attribute
 			if a, err = p.ctx.GetAttribute(kek, crypto11.CkaLabel); err != nil {
-				logrus.WithError(err).Errorf("NewP11: cannot get the key label for algo %s and key with KEK ID %s", p.algorithm, p.k8sDekLabel)
+				logrus.WithError(err).Errorf("NewP11: cannot get the CKA_LABEL for algo %s with KEK CKA_ID %s", p.algorithm, p.kid)
 				return p, err
 			} else {
 				p.k8sDekLabel = string(a.Value)
@@ -327,14 +327,14 @@ func NewP11(config *crypto11.Config, createKey bool, kekkeyid []byte, k8sKekLabe
 			// Find the KEK in the KMS by key ID for RSA asymmetric algorithms
 			var rsaKeyPair crypto11.SignerDecrypter
 			if rsaKeyPair, err = p.ctx.FindRSAKeyPair(p.kid, nil); err != nil {
-				logrus.WithError(err).Errorf("NewP11: cannot find an rsa key pair with label %s", p.k8sDekLabel)
+				logrus.WithError(err).Errorf("NewP11: cannot find an rsa key pair with CKA_ID %s", p.kid)
 				return p, err
 			}
 
 			// Get the CKA_LABEL
 			var a *crypto11.Attribute
 			if a, err = p.ctx.GetAttribute(rsaKeyPair, crypto11.CkaLabel); err != nil {
-				logrus.WithError(err).Errorf("NewP11: cannot get the key id for algo %s and key with label %s", p.algorithm, p.k8sDekLabel)
+				logrus.WithError(err).Errorf("NewP11: cannot get the CKA_LABEL for algo %s with CKA_ID %s", p.algorithm, p.kid)
 				return p, err
 			} else {
 				p.kid = a.Value
@@ -690,7 +690,11 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 			// Find the KEK in the KMS
 			var kek *crypto11.SecretKey
 			if kek, err = p.ctx.FindKey(p.kid, []byte(p.k8sDekLabel)); nil != err {
-				logrus.WithError(err).Errorf("Encrypt: cannot find a %s symmetric key with label %s and ID %s", jose.AlgA256GCM, p.k8sDekLabel, p.kid)
+				logrus.WithError(err).WithFields(logrus.Fields{
+					"algorithm": jose.AlgA256GCM,
+					"label":     p.k8sDekLabel,
+					"keyId":     p.kid,
+				}).Errorf("Encrypt: cannot find a symmetric key")
 				return
 			}
 
@@ -702,7 +706,11 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 			}
 			var aek gose.AeadEncryptionKey
 			if aek, err = p.makeAeadKey(rng, kek); err != nil {
-				logrus.WithError(err).Errorf("Encrypt: cannot create an aead key for algo %s with label %s and ID %s", p.algorithm, p.k8sDekLabel, p.kid)
+				logrus.WithError(err).WithFields(logrus.Fields{
+					"algorithm": p.algorithm,
+					"label":     p.k8sDekLabel,
+					"keyId":     p.kid,
+				}).Errorf("Encrypt: cannot create an aead key")
 				return
 			}
 			encryptor = gose.NewJweDirectEncryptorAead(aek, p.config.UseGCMIVFromHSM)
@@ -717,14 +725,22 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 			// Find the KEK in the KMS
 			var kek *crypto11.SecretKey
 			if kek, err = p.ctx.FindKey(p.kid, []byte(p.k8sDekLabel)); nil != err {
-				logrus.WithError(err).Errorf("Encrypt: cannot find a %s symmetric key with label %s and ID %s", p.algorithm, p.k8sDekLabel, p.kid)
+				logrus.WithError(err).WithFields(logrus.Fields{
+					"algorithm": p.algorithm,
+					"label":     p.k8sDekLabel,
+					"keyId":     p.kid,
+				}).Errorf("Encrypt: cannot find a %s symmetric key", p.algorithm)
 				return
 			}
 
 			// Random source from the HSM (pkcs11 context)
 			var rng io.Reader
 			if rng, err = p.ctx.NewRandomReader(); err != nil {
-				logrus.WithError(err).Errorf("Encrypt: cannot get a random source from the HSM (pkcs11 context) for algo %s and key with label %s and ID %s", p.algorithm, p.k8sDekLabel, p.kid)
+				logrus.WithError(err).WithFields(logrus.Fields{
+					"algorithm": p.algorithm,
+					"label":     p.k8sDekLabel,
+					"keyId":     p.kid,
+				}).Errorf("Encrypt: cannot get a random source from the HSM (pkcs11 context)")
 				return
 			}
 			// generate the IV from the KMS, using the kek block size
@@ -738,7 +754,8 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 				return nil, fmt.Errorf("error initializing block cipher: %v", err)
 			}
 			cbcKey := gose.NewAesCbcCryptor(blockMode, string(p.kid), p.algorithm)
-			// Initialize the hmac key for authentication
+
+			// Initialize the hmac key for authentication TODO: consider allowing user to use a CKA_ID to get the HMAC key
 			var hmacp11Key *crypto11.SecretKey
 			if hmacp11Key, err = p.ctx.FindKey(nil, []byte(p.k8sHmacKeyLabel)); err != nil {
 				return nil, fmt.Errorf("error getting hmac key from HSM with label '%s': %v", p.k8sHmacKeyLabel, err)
@@ -754,6 +771,7 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 			defer blockMode.Close()
 			// output is the marshalled jwe
 			if out, err = encryptor.Encrypt(req.Plaintext, nil); err != nil {
+				logrus.WithError(err).Error("Encrypt: encryption failed")
 				return
 			}
 
@@ -804,6 +822,7 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 			}
 			// output is the marshalled jwe
 			if out, err = rsaEncryptor.Encrypt(req.Plaintext, crypto.SHA256); err != nil {
+				logrus.WithError(err).Error("Encrypt: encryption failed")
 				return
 			}
 		default:
