@@ -208,6 +208,13 @@ func init() {
 
 	// Socket
 	serveCmd.Flags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_SERVE_KEK_SOCKET")
+
+	// At least one of CKA_ID or CKA_LABEL must be provided by the user
+	serveCmd.MarkFlagsOneRequired("kek-id", "p11-key-label")
+
+	// To prevent mismatch between user provided CKA_ID and user provided CKA_LABEL, flags are Mutually Exclusive.
+	// NewP11 make sure to retrieve the ID by label, or label by ID.
+	serveCmd.MarkFlagsMutuallyExclusive("kek-id", "p11-key-label")
 }
 
 func initProvider() (p providers.Provider, err error) {
