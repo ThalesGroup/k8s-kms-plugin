@@ -822,9 +822,6 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 		// the bytes array contains the bytes of the marshalled jwe
 		Ciphertext: []byte(out),
 		KeyId:      string(p.kid),
-		Annotations: map[string][]byte{
-			"KeyLabel": []byte(p.k8sDekLabel),
-		},
 	}
 	return resp, nil
 }
