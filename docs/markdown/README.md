@@ -2,12 +2,13 @@
 
 This documentation is auto-generated from `k8s-kms-plugin`:
 
-- version `v0.6.0-alpha-97-g3707915-dirty`
-- commit `37079152fd9af1b19e44d641e3fe37d30b072b93`
-- build date 2025-05-20T16:16:37+00:00.
+- version `v0.6.0-alpha-59-gf2c9e99`
+- commit `f2c9e9965702d83c0632e6f2a4523a432deec486`
+- build date 2025-06-18T20:29:22+00:00.
 
 ## Available Command Documentation
 
+- [README](README.md)
 - [cli-env-var-table](cli-env-var-table.md)
 - [k8s-kms-plugin](k8s-kms-plugin.md)
 - [k8s-kms-plugin_completion](k8s-kms-plugin_completion.md)
