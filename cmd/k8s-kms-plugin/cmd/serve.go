@@ -55,6 +55,7 @@ type ViperFlagsServe struct {
 	HmacKeyLabel string `mapstructure:"p11-hmac-label"`
 	Host         string `mapstructure:"host"`
 	KekKeyID     string `mapstructure:"kek-id"`
+	HmacKeyID    string `mapstructure:"hmac-id"`
 	NativePath   string `mapstructure:"native-path"`
 	P11Label     string `mapstructure:"p11-label"`
 	P11Lib       string `mapstructure:"p11-lib"`
@@ -190,10 +191,11 @@ func init() {
 	// These flags does not need to store their values in variable because we use the viper structure ViperFlagsServe to do this
 	serveCmd.Flags().String("ca-id", defaultCaId, "Cert ID for CA Cert record. Env var: K8S_KMS_PLUGIN_SERVE_CA_ID")
 	serveCmd.Flags().Bool("auto-create", false, "Auto create the keys if needed. Env var: K8S_KMS_PLUGIN_SERVE_AUTO_CREATE.")
-	serveCmd.Flags().String("p11-key-label", "", "Key Label to use for encrypt/decrypt. Env var: K8S_KMS_PLUGIN_SERVE_P11_KEY_LABEL.")
-	serveCmd.Flags().String("p11-hmac-label", "", "Key Label to use for sha based verifications. Env var: K8S_KMS_PLUGIN_SERVE_P11_HMAC_LABEL.")
+	serveCmd.Flags().String("p11-key-label", "", "Key Label CKA_LABEL to use for encrypt/decrypt. Env var: K8S_KMS_PLUGIN_SERVE_P11_KEY_LABEL.")
+	serveCmd.Flags().String("p11-hmac-label", "", "Key Label CKA_LABEL to use for sha based verifications. Env var: K8S_KMS_PLUGIN_SERVE_P11_HMAC_LABEL.")
 	serveCmd.Flags().String("host", "0.0.0.0", "Hostname without port. Env var: K8S_KMS_PLUGIN_SERVE_HOST.")
-	serveCmd.Flags().String("kek-id", "", "Key ID for KMS KEK. Env var: K8S_KMS_PLUGIN_SERVE_KEK_ID")
+	serveCmd.Flags().String("kek-id", "", "Key ID CKA_ID for KMS KEK. Env var: K8S_KMS_PLUGIN_SERVE_KEK_ID")
+	serveCmd.Flags().String("hmac-id", "", "Key ID CKA_ID for KMS HMAC. Env var: K8S_KMS_PLUGIN_SERVE_HMAC_ID")
 	serveCmd.Flags().StringP("native-path", "p", ".keys", "Path to key store for native provider(Files only). Env var: K8S_KMS_PLUGIN_SERVE_NATIVE_PATH.")
 	serveCmd.Flags().String("p11-label", "", "P11 token label. Env var: K8S_KMS_PLUGIN_SERVE_P11_TOKEN")
 	serveCmd.Flags().String("p11-lib", "", "Path to p11 library/client. Env var: K8S_KMS_PLUGIN_SERVE_P11_LIB")
@@ -209,12 +211,13 @@ func init() {
 	// Socket
 	serveCmd.Flags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_SERVE_KEK_SOCKET")
 
-	// At least one of CKA_ID or CKA_LABEL must be provided by the user
+	// At least one of KEK CKA_ID or CKA_LABEL must be provided by the user
 	serveCmd.MarkFlagsOneRequired("kek-id", "p11-key-label")
 
 	// To prevent mismatch between user provided CKA_ID and user provided CKA_LABEL, flags are Mutually Exclusive.
 	// NewP11 make sure to retrieve the ID by label, or label by ID.
 	serveCmd.MarkFlagsMutuallyExclusive("kek-id", "p11-key-label")
+	serveCmd.MarkFlagsMutuallyExclusive("hmac-id", "p11-hmac-label")
 }
 
 func initProvider() (p providers.Provider, err error) {
@@ -259,7 +262,7 @@ func initProvider() (p providers.Provider, err error) {
 	}
 	// init the provider
 	// TODO: See https://github.com/ThalesGroup/k8s-kms-plugin/issues/40#issuecomment-2593267852
-	if p, err = providers.NewP11(config, vprFlgsServe.CreateKey, vprFlgsServe.KekKeyID, vprFlgsServe.DekKeyLabel, vprFlgsServe.HmacKeyLabel, alg); err != nil {
+	if p, err = providers.NewP11(config, vprFlgsServe.CreateKey, vprFlgsServe.KekKeyID, vprFlgsServe.DekKeyLabel, vprFlgsServe.HmacKeyLabel, vprFlgsServe.HmacKeyID, alg); err != nil {
 		return
 	}
 	return
