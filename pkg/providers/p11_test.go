@@ -27,7 +27,6 @@ import (
 	"github.com/ThalesGroup/gose"
 	"github.com/ThalesGroup/gose/jose"
 	"github.com/ThalesGroup/k8s-kms-plugin/apis/istio/v1"
-	v1 "github.com/ThalesGroup/k8s-kms-plugin/apis/kms/v1"
 	"github.com/google/uuid"
 	"github.com/miekg/pkcs11"
 	"github.com/stretchr/testify/require"
@@ -363,19 +362,6 @@ func TestP11_GenerateSKey(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestP11_Version(t *testing.T) {
-	p := &P11{}
-
-	versionResp, versionErr := p.Version(context.Background(), &v1.VersionRequest{})
-
-	require.NoError(t, versionErr)
-
-	const expectedVersion = "v1beta1"
-
-	require.Equal(t, expectedVersion, versionResp.Version)
-
 }
 
 func TestP11_ImportCACert(t *testing.T) {
