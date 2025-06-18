@@ -244,19 +244,59 @@ func NewP11(
 	algorithm jose.Alg,
 ) (p *P11, err error) {
 	p = &P11{
-		config:       config,
-		createKey:    createKey,
-		hmacCkaLabel: hmacKeyLabel,
-		algorithm:    algorithm,
+		config:    config,
+		createKey: createKey,
+		algorithm: algorithm,
 	}
-
-	// in case the user provide the CKA_ID of the HMAC
-	p.SetHmacKeyId(hmacCkaId)
 
 	// Bootstrap the Pkcs11 device or die
 	if p.ctx, err = crypto11.Configure(p.config); err != nil {
 		logrus.WithError(err).Error("NewP11: failed to configure the Pkcs11 device")
 		return
+	}
+
+	// in case the user provide the CKA_ID or the CKA_LABEL of the HMAC
+	if p.algorithm == jose.AlgA256CBC {
+		if hmacCkaId == "" && hmacKeyLabel != "" {
+			p.hmacCkaLabel = hmacKeyLabel
+
+			// Get the the HMAC key id CKA_ID by label
+			var hmacp11Key *crypto11.SecretKey
+			if hmacp11Key, err = p.ctx.FindKey(nil, []byte(p.hmacCkaLabel)); err != nil {
+				return nil, fmt.Errorf("error getting hmac key from HSM with label '%s' : %v", p.hmacCkaLabel, err)
+			}
+
+			var a *crypto11.Attribute
+			if a, err = p.ctx.GetAttribute(hmacp11Key, crypto11.CkaId); err != nil {
+				logrus.WithError(err).Errorf("NewP11: cannot get the HMAC CKA_ID for algo %s with label %s", p.algorithm, p.hmacCkaLabel)
+				return p, err
+			} else {
+				p.kekCkaId = a.Value
+			}
+		} else if hmacCkaId != "" && hmacKeyLabel == "" {
+			p.SetHmacKeyIdString(hmacCkaId)
+
+			// Get the the HMAC CKA_LABEL by id
+			var hmacp11Key *crypto11.SecretKey
+			if hmacp11Key, err = p.ctx.FindKey(p.hmacCkaId, nil); err != nil {
+				return nil, fmt.Errorf("error getting hmac key from HSM with label '%s' : %v", p.hmacCkaLabel, err)
+			}
+
+			var a *crypto11.Attribute
+			if a, err = p.ctx.GetAttribute(hmacp11Key, crypto11.CkaLabel); err != nil {
+				logrus.WithError(err).Errorf("NewP11: cannot get the HMAC CKA_LABEL for algo %s with IS %s", p.algorithm, p.GetHmacKeyIdString())
+				return p, err
+			} else {
+				p.hmacCkaLabel = string(a.Value)
+			}
+
+		} else if hmacCkaId == "" && hmacKeyLabel == "" {
+			logrus.WithError(err).Errorf("NewP11: hmacCkaId and hmacKeyLabel are both empty, please provide one of them")
+			return nil, fmt.Errorf("hmacCkaId and hmacKeyLabel are both empty, please provide one of them")
+		} else {
+			logrus.WithError(err).Errorf("NewP11: both hmacCkaId and hmacKeyLabel are provided, please provide only one")
+			return nil, fmt.Errorf("both hmacCkaId and hmacKeyLabel are provided, please provide only one")
+		}
 	}
 
 	// Case: Attempt to discover KEK ID (CKA_ID) by Key label (CKA_LABEL)
@@ -316,7 +356,7 @@ func NewP11(
 	// the value of the key label CKA_LABEL.
 	if kekkeyid != "" && k8sKekLabel == "" {
 		logrus.Tracef("NewP11: k8sKekLabel (CKA_LABEL) is empty but kekkeyid (CKA_ID) is not empty. Find CKA_LABEL by CKA_ID %s", kekkeyid)
-		p.SetKeyIdString(kekkeyid)
+		p.SetKekKeyIdString(kekkeyid)
 
 		switch p.algorithm {
 		case jose.AlgA256GCM, jose.AlgA256CBC:
@@ -378,8 +418,8 @@ func NewP11(
 	return
 }
 
-// SetKeyID sets the internal CKA_ID from a hex-encoded string.
-func (p *P11) SetKeyIdString(hexKeyID string) error {
+// SetKekKeyIdString sets the internal CKA_ID from a hex-encoded string.
+func (p *P11) SetKekKeyIdString(hexKeyID string) error {
 	kid, err := hex.DecodeString(hexKeyID)
 	if err != nil {
 		return fmt.Errorf("invalid hex KeyID: %w", err)
@@ -400,8 +440,8 @@ func (p *P11) GetKekCkaLabelByteA() []byte {
 	return []byte(p.kekCkaLabel)
 }
 
-// SetHmacKeyId sets the internal HMAC Key ID from a hex-encoded string.
-func (p *P11) SetHmacKeyId(hexHmacKeyID string) error {
+// SetHmacKeyIdString sets the internal HMAC Key ID from a hex-encoded string.
+func (p *P11) SetHmacKeyIdString(hexHmacKeyID string) error {
 	hmacId, err := hex.DecodeString(hexHmacKeyID)
 	if err != nil {
 		return fmt.Errorf("invalid hex HMAC KeyID: %w", err)
