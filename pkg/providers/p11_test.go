@@ -90,12 +90,12 @@ var (
 		args: testCaseArgs{
 			ctx: context.Background(),
 			req: &k8skmsv2.EncryptRequest{
-				Version: "1",
-				Plain:   testPlainMessage,
+				//Uid: "...", // TODO: handle this
+				Plaintext: testPlainMessage,
 			},
 		},
 		wantResp: &k8skmsv2.EncryptResponse{
-			Cipher: []byte(testEncryptedBlob),
+			Ciphertext: []byte(testEncryptedBlob),
 		},
 		wantErr: false,
 	}
@@ -115,12 +115,12 @@ var (
 		args: testCaseArgs{
 			ctx: context.Background(),
 			req: &k8skmsv2.EncryptRequest{
-				Version: "1",
-				Plain:   testPlainMessage,
+				//Uid: "...", // TODO: handle this
+				Plaintext: testPlainMessage,
 			},
 		},
 		wantResp: &k8skmsv2.EncryptResponse{
-			Cipher: []byte(testEncryptedBlob),
+			Ciphertext: []byte(testEncryptedBlob),
 		},
 		wantErr: false,
 	}
@@ -146,14 +146,13 @@ func makeTestCases(t testing.TB) (tests []testCase, td func(testing.TB)) {
 				args: testCaseArgs{
 					ctx: context.Background(),
 					req: &k8skmsv2.EncryptRequest{
-						Version: "1",
-						Plain:   []byte("I only wish that ordinary people had an unlimited capacity for doing harm; then they might have an unlimited power for doing good."),
-						KeyId:   string(testKid),
+						//Uid: "...", // TODO: handle this
+						Plaintext: []byte("I only wish that ordinary people had an unlimited capacity for doing harm; then they might have an unlimited power for doing good."),
 					},
 				},
 				wantResp: &k8skmsv2.EncryptResponse{
 
-					Cipher: []byte(testEncryptedBlob),
+					Ciphertext: []byte(testEncryptedBlob),
 				},
 				wantErr: false,
 			},
@@ -176,12 +175,12 @@ func makeTestCases(t testing.TB) (tests []testCase, td func(testing.TB)) {
 				args: testCaseArgs{
 					ctx: context.Background(),
 					req: &k8skmsv2.EncryptRequest{
-						Version: "1",
-						Plain:   testPlainMessage,
+						//Uid: "...", // TODO: handle this
+						Plaintext: testPlainMessage,
 					},
 				},
 				wantResp: &k8skmsv2.EncryptResponse{
-					Cipher: []byte(testEncryptedBlob),
+					Ciphertext: []byte(testEncryptedBlob),
 				},
 				wantErr: false,
 			},
@@ -218,13 +217,13 @@ func TestP11_Encrypt(t *testing.T) {
 			var gotClearResp *k8skmsv2.DecryptResponse
 			if gotClearResp, err = p.Decrypt(context.Background(), &k8skmsv2.DecryptRequest{
 				Ciphertext: gotResp.GetCiphertext(),
-				Version:    "1",
-				KeyId:      string(tt.fields.keyId),
+				//Uid: "...", // TODO: handle this
+				KeyId: string(tt.fields.keyId),
 			}); err != nil {
 				t.Errorf("Unable to decrypt the payload... danger!!!")
 				return
 			}
-			if string(gotClearResp.Plain) != string(testPlainMessage) {
+			if string(gotClearResp.Plaintext) != string(testPlainMessage) {
 				t.Errorf("bad decrypt... something really wrong!!!")
 				return
 			}
@@ -377,6 +376,5 @@ func setupSoftHSMTestCase(t testing.TB) func(t testing.TB) {
 		for _, key := range keys {
 			_ = key.Delete()
 		}
-
 	}
 }
