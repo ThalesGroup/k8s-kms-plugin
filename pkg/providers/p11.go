@@ -338,7 +338,7 @@ func NewP11(config *crypto11.Config, createKey bool, kekkeyid string, k8sKekLabe
 				logrus.WithError(err).Errorf("NewP11: cannot get the CKA_LABEL for algo %s with CKA_ID %s", p.algorithm, p.GetKeyIdString())
 				return p, err
 			} else {
-				p.kid = a.Value
+				p.kekCkaLabel = string(a.Value)
 			}
 		}
 	}
