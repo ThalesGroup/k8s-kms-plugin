@@ -56,7 +56,7 @@ require (
 )
 
 // TODO: remove this replace statement once the update to go1.23.9 is completed on the crypto11 repo
-replace github.com/ThalesGroup/crypto11 v1.4.1 => github.com/ThalesGroup/crypto11 v1.4.1-0.20250515132444-7d70ab3e000b
+replace github.com/ThalesGroup/crypto11 v1.4.1 => github.com/ThalesGroup/crypto11 v1.4.1-0.20250618135458-26c1a35db6a0
 
 // TODO: remove this replace statement once the update to go1.23.9 is completed on the gose repo
 replace github.com/ThalesGroup/gose v0.10.0 => github.com/ThalesGroup/gose v0.10.1-0.20250515133433-21c55fca0ee1
