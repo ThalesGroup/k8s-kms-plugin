@@ -259,7 +259,7 @@ func initProvider() (p providers.Provider, err error) {
 	}
 	// init the provider
 	// TODO: See https://github.com/ThalesGroup/k8s-kms-plugin/issues/40#issuecomment-2593267852
-	if p, err = providers.NewP11(config, vprFlgsServe.CreateKey, []byte(vprFlgsServe.KekKeyID), vprFlgsServe.DekKeyLabel, vprFlgsServe.HmacKeyLabel, alg); err != nil {
+	if p, err = providers.NewP11(config, vprFlgsServe.CreateKey, vprFlgsServe.KekKeyID, vprFlgsServe.DekKeyLabel, vprFlgsServe.HmacKeyLabel, alg); err != nil {
 		return
 	}
 	return
