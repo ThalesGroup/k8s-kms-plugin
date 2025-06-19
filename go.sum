@@ -36,8 +36,8 @@ github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/DATA-DOG/go-sqlmock v1.5.0/go.mod h1:f/Ixk793poVmq4qj/V1dPUg2JEAKC73Q5eFN3EC/SaM=
 github.com/PuerkitoBio/goquery v1.5.1/go.mod h1:GsLWisAFVj4WgDibEWF4pvYnkVQBpKBKeU+7zCJoLcc=
-github.com/ThalesGroup/crypto11 v1.4.1-0.20250618135458-26c1a35db6a0 h1:W0AYwvkslkj6u1z3bkXp4GcFABM+MyGt7bqWtbts+Mw=
-github.com/ThalesGroup/crypto11 v1.4.1-0.20250618135458-26c1a35db6a0/go.mod h1:clhnmdy6fB/uMNsQdEy6TJydB5YaKugPV4VzikIa9CA=
+github.com/ThalesGroup/crypto11 v1.4.1-0.20250619162703-070c13195312 h1:FjjXCZjcqRmoWGbK5IqLtFpV8FnpDxBGkesaSsAFssI=
+github.com/ThalesGroup/crypto11 v1.4.1-0.20250619162703-070c13195312/go.mod h1:clhnmdy6fB/uMNsQdEy6TJydB5YaKugPV4VzikIa9CA=
 github.com/ThalesGroup/gose v0.10.1-0.20250515133433-21c55fca0ee1 h1:KFHjzMO46lonTBpVoK/MsEj0unvV37B4sad3OY9gopI=
 github.com/ThalesGroup/gose v0.10.1-0.20250515133433-21c55fca0ee1/go.mod h1:7ANYbKM+okpyfXK7bNt5Q64Qb/cvOzHSHdkXHjGC6cM=
 github.com/andybalholm/cascadia v1.1.0/go.mod h1:GsXiBklL0woXo1j/WYWtSYYC4ouU9PqHO0sqidkEA4Y=
