@@ -40,31 +40,33 @@ import (
 
 // ViperFlagsServe defines a struct to hold the values of cobra CLI flags and use viper to populate them
 type ViperFlagsServe struct {
-	Algorithm     string `mapstructure:"algorithm"`
+	// gRPC server parameters
 	AllowAny      bool   `mapstructure:"allow-any"`
-	CaTLSCert     string `mapstructure:"tls-ca"`
 	DisableSocket bool   `mapstructure:"disable-socket"`
 	EnableTCP     bool   `mapstructure:"enable-server"`
+	Host          string `mapstructure:"host"`
+	Port          uint16 `mapstructure:"port"`
 	ServerTLSCert string `mapstructure:"tls-certificate"`
 	ServerTLSKey  string `mapstructure:"tls-key"`
 
-	// These flags have been moved from root to serve
-	CaID         string `mapstructure:"ca-id"`
-	CreateKey    bool   `mapstructure:"auto-create"`
-	DekKeyLabel  string `mapstructure:"p11-key-label"`
-	HmacKeyLabel string `mapstructure:"p11-hmac-label"`
-	Host         string `mapstructure:"host"`
-	KekKeyID     string `mapstructure:"kek-id"`
-	HmacKeyID    string `mapstructure:"hmac-id"`
-	NativePath   string `mapstructure:"native-path"`
-	P11Label     string `mapstructure:"p11-label"`
-	P11Lib       string `mapstructure:"p11-lib"`
-	P11Pin       string `mapstructure:"p11-pin"`
-	P11Slot      int    `mapstructure:"p11-slot"`
-	Port         uint16 `mapstructure:"port"`
-	Provider     string `mapstructure:"provider"`
+	// PKCS #11 & KMS plugin parameters
+	Algorithm  string `mapstructure:"algorithm"`
+	CaID       string `mapstructure:"ca-id"`
+	CaTLSCert  string `mapstructure:"tls-ca"`
+	NativePath string `mapstructure:"native-path"`
+	P11Label   string `mapstructure:"p11-label"`
+	P11Lib     string `mapstructure:"p11-lib"`
+	P11Pin     string `mapstructure:"p11-pin"`
+	P11Slot    int    `mapstructure:"p11-slot"`
+	Provider   string `mapstructure:"provider"`
+	SocketPath string `mapstructure:"socket"` // Unix socket path for TPM or HSM
 
-	SocketPath string `mapstructure:"socket"`
+	// PKCS #11 CKA_ID and CKA_LABEL of active KEK key
+	CreateKey    bool   `mapstructure:"auto-create"`
+	DekKeyLabel  string `mapstructure:"p11-key-label"`  // active DEK key CKA_LABEL
+	HmacKeyID    string `mapstructure:"hmac-id"`        // active HMAC key CKA_ID
+	HmacKeyLabel string `mapstructure:"p11-hmac-label"` // active HMAC key CKA_LABEL
+	KekKeyID     string `mapstructure:"kek-id"`         // active KEK key CKA_ID
 }
 
 // Declare the viper CLI flag values buffer
