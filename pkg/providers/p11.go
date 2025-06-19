@@ -143,18 +143,43 @@ func randomSerial() (serial *big.Int) {
 	return
 }
 
+// P11 is a struct representing a P11 provider, which handles encryption and decryption
+// operations using a Hardware Security Module (HSM). It manages keys, contexts, and
+// encryption algorithms necessary for secure cryptographic operations within the KMS plugin.
+//
+// Active Fields: the actual keys being used in StatusResponse and EncryptResponse.
+//
+// KEK Key Rotation Fields:,old keys used for Decryption of old ciphertext during a key rotation.
+// See: https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/#developing-a-kms-plugin-gRPC-server-notes-kms-v2
+//
+// Istio Related Fields:
+// - cid: Certificate Identifier used in Istio operations.
 type P11 struct {
-	kekCkaId     []byte // Key Encryption Key KEK Identifier & CKA_ID
-	cid          []byte // Certificate Identifier
-	config       *crypto11.Config
-	ctx          *crypto11.Context
-	encryptors   map[string]gose.JweEncryptor
-	decryptors   map[string]gose.JweDecryptor
-	createKey    bool     // TODO: explain the use case of when should the k8s-kms-plugin create the key, or create a new cobra command
-	kekCkaLabel  string   // CKA_LABEL utf8
-	hmacCkaLabel string   // CKA_LABEL utf8 of HMAC key for AES-CBC + HMAC
-	hmacCkaId    []byte   // CKA_ID of HMAC key for AES-CBC + HMAC
-	algorithm    jose.Alg // specify which algorithm to use, symmetric or asymmetric
+	// active KEK parameters
+	createKey    bool                         // Indicates whether the k8s-kms-plugin should create a new key. TODO: explain the use case of when should the k8s-kms-plugin create the key, or create a new cobra command
+	config       *crypto11.Config             // Active configuration for the crypto11 library
+	ctx          *crypto11.Context            // Active cryptographic context for key operations
+	encryptors   map[string]gose.JweEncryptor // Active Map of JWE encryptors used for encryption operations
+	decryptors   map[string]gose.JweDecryptor // Active Map of JWE decryptors used for decryption operations
+	kekCkaId     []byte                       // Active Key Encryption Key KEK Identifier & CKA_ID
+	kekCkaLabel  string                       // Active KEK CKA_LABEL utf8
+	hmacCkaId    []byte                       // Active HMAC key CKA_ID for AES-CBC + HMAC
+	hmacCkaLabel string                       // Active HMAC key CKA_LABEL utf8 for AES-CBC + HMAC
+	algorithm    jose.Alg                     // The active cryptographic algorithm being used
+
+	// Istio related fields
+	cid []byte // Certificate Identifier
+
+	// KEK Key rotation feature for KMS v2
+	oldConfig       *crypto11.Config             // for key rotation
+	oldCtx          *crypto11.Context            // for key rotation
+
+	oldDecryptors   map[string]gose.JweDecryptor // for key rotation
+	oldKekCkaId     []byte                       // Key Encryption Key KEK Identifier & CKA_ID of old KEK being rotated
+	oldKekCkaLabel  string                       // CKA_LABEL utf8 of old KEK being rotated
+	oldHmacCkaId    []byte                       // CKA_ID of old HMAC key being rotated
+	oldHmacCkaLabel string                       // CKA_LABEL utf8 of old HMAC key being rotated
+	oldAlgorithm    jose.Alg                     // algorithm of old KEK being rotated
 }
 
 // NewP11 creates a new P11 instance.
@@ -180,6 +205,7 @@ type P11 struct {
 // the error value is not nil, the P11 instance is not valid and should not
 // be used.
 func NewP11(
+	// active KEK parameters
 	config *crypto11.Config,
 	createKey bool,
 	kekkeyid string,
@@ -187,22 +213,45 @@ func NewP11(
 	hmacKeyLabel string,
 	hmacCkaId string,
 	algorithm jose.Alg,
+
+	// key rotation
+	isKeyRotation bool,
+	oldConfig *crypto11.Config,
+	oldKekkeyid string,
+	oldKekCkaLabel string,
+	OldHmacKeyLabel string,
+	oldHmacCkaId string,
+	oldAlgorithm jose.Alg,
 ) (p *P11, err error) {
 	p = &P11{
+		// active KEK parameters
 		config:    config,
 		createKey: createKey,
 		algorithm: algorithm,
+
+		// key rotation
+		oldConfig:    oldConfig,
+		oldAlgorithm: oldAlgorithm,
 	}
 
-	// Bootstrap the Pkcs11 device or die
+	// Bootstrap the active Pkcs11 device or die
 	if p.ctx, err = crypto11.Configure(p.config); err != nil {
-		logrus.WithError(err).Error("NewP11: failed to configure the Pkcs11 device")
+		logrus.WithError(err).Error("NewP11: failed to configure the active Pkcs11 device")
 		return
+	}
+
+	// Bootstrap the key rotation Pkcs11 device or die
+	if isKeyRotation {
+		if p.oldCtx, err = crypto11.Configure(p.oldConfig); err != nil {
+			logrus.WithError(err).Error("NewP11: failed to configure the key rotation Pkcs11 device")
+			return
+		}
 	}
 
 	// in case the user provide the CKA_ID or the CKA_LABEL of the HMAC
 	if p.algorithm == jose.AlgA256CBC {
 		if hmacCkaId == "" && hmacKeyLabel != "" {
+			// active KEK
 			p.hmacCkaLabel = hmacKeyLabel
 
 			// Get the the HMAC key id CKA_ID by label
@@ -217,6 +266,22 @@ func NewP11(
 				return p, err
 			} else {
 				p.kekCkaId = a.Value
+			}
+
+			// key rotation
+			if isKeyRotation {
+				var oldHmacp11Key *crypto11.SecretKey
+				if oldHmacp11Key, err = p.oldCtx.FindKey(nil, []byte(OldHmacKeyLabel)); err != nil {
+					return nil, fmt.Errorf("key rotation: error getting hmac key from HSM with label '%s' : %v", OldHmacKeyLabel, err)
+				}
+
+				var a *crypto11.Attribute
+				if a, err = p.oldCtx.GetAttribute(oldHmacp11Key, crypto11.CkaId); err != nil {
+					logrus.WithError(err).Errorf("key rotation: cannot get the HMAC CKA_ID for algo %s with label %s", p.algorithm, OldHmacKeyLabel)
+					return p, err
+				} else {
+					p.oldHmacCkaId = a.Value
+				}
 			}
 		} else if hmacCkaId != "" && hmacKeyLabel == "" {
 			p.SetHmacKeyIdString(hmacCkaId)
@@ -873,4 +938,43 @@ func (p *P11) genKekKid() (kid []byte, err error) {
 type keyGenerationParameters struct {
 	size   int
 	cipher *crypto11.SymmetricCipher
+}
+
+func FindCkaId(ctx *crypto11.Config, id, label []byte) ([]byte, error) {
+	var err error
+
+	switch p.algorithm {
+	case jose.AlgA256GCM, jose.AlgA256CBC:
+		// Find the key in the KMS by key label for AES symmetric algorithms
+		var symKey *crypto11.SecretKey
+		if symKey, err = ctx.FindKey(id, label); nil != err {
+			logrus.WithError(err).Errorf("NewP11: cannot find a %s symmetric key with label %s", jose.AlgA256CBC, p.kekCkaLabel)
+			return nil, err
+		}
+
+		// Get the CKA_ID to obtain the KEK key id
+		var a *crypto11.Attribute
+		if a, err = p.ctx.GetAttribute(symKey, crypto11.CkaId); err != nil {
+			logrus.WithError(err).Errorf("NewP11: cannot get the KEK CKA_ID for algo %s and key with label %s", p.algorithm, p.kekCkaLabel)
+			return nil, err
+		} else {
+			return a.Value, nil
+		}
+	case jose.AlgRSAOAEP:
+		// Find the key in the KMS by key label for RSA asymmetric algorithms
+		var rsaKeyPair crypto11.SignerDecrypter
+		if rsaKeyPair, err = p.ctx.FindRSAKeyPair(id, label); err != nil {
+			logrus.WithError(err).Errorf("NewP11: cannot find an rsa key pair with CKA_LABEL %s", p.kekCkaLabel)
+			return nil, err
+		}
+
+		// Get the key id by key label
+		var a *crypto11.Attribute
+		if a, err = p.ctx.GetAttribute(rsaKeyPair, crypto11.CkaId); err != nil {
+			logrus.WithError(err).Errorf("NewP11: cannot get the KEK CKA_ID for algo %s and key with CKA_LABEL %s", p.algorithm, p.kekCkaLabel)
+			return nil, err
+		} else {
+			return a.Value, nil
+		}
+	}
 }
