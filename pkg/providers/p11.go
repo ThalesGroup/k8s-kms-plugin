@@ -250,22 +250,13 @@ func NewP11(
 
 	// in case the user provide the CKA_ID or the CKA_LABEL of the HMAC
 	if p.algorithm == jose.AlgA256CBC {
-		if hmacCkaId == "" && hmacKeyLabel != "" {
+		if hmacCkaId == "" && hmacKeyLabel != "" { // get id by label
 			// active KEK
 			p.hmacCkaLabel = hmacKeyLabel
 
-			// Get the the HMAC key id CKA_ID by label
-			var hmacp11Key *crypto11.SecretKey
-			if hmacp11Key, err = p.ctx.FindKey(nil, []byte(p.hmacCkaLabel)); err != nil {
-				return nil, fmt.Errorf("error getting hmac key from HSM with label '%s' : %v", p.hmacCkaLabel, err)
-			}
-
-			var a *crypto11.Attribute
-			if a, err = p.ctx.GetAttribute(hmacp11Key, crypto11.CkaId); err != nil {
-				logrus.WithError(err).Errorf("NewP11: cannot get the HMAC CKA_ID for algo %s with label %s", p.algorithm, p.hmacCkaLabel)
-				return p, err
-			} else {
-				p.kekCkaId = a.Value
+			if p.kekCkaId, err = FindCkaAttrByIdOrLabel(p.ctx, p.algorithm, crypto11.CkaId, nil, []byte(p.hmacCkaLabel)); err != nil {
+				logrus.WithError(err).Error("NewP11: failed to find HMAC CKA_ID by label")
+				return nil, err
 			}
 
 			// key rotation
@@ -283,29 +274,23 @@ func NewP11(
 					p.oldHmacCkaId = a.Value
 				}
 			}
-		} else if hmacCkaId != "" && hmacKeyLabel == "" {
+		} else if hmacCkaId != "" && hmacKeyLabel == "" { // get label by id
 			p.SetHmacKeyIdString(hmacCkaId)
 
-			// Get the the HMAC CKA_LABEL by id
-			var hmacp11Key *crypto11.SecretKey
-			if hmacp11Key, err = p.ctx.FindKey(p.hmacCkaId, nil); err != nil {
-				return nil, fmt.Errorf("error getting hmac key from HSM with label '%s' : %v", p.hmacCkaLabel, err)
+			var labelBuf []byte
+			if labelBuf, err = FindCkaAttrByIdOrLabel(p.ctx, p.algorithm, crypto11.CkaLabel, p.hmacCkaId, nil); err != nil {
+				logrus.WithError(err).Error("NewP11: failed to find HMAC CKA_LABEL by ID")
+				return nil, err
 			}
 
-			var a *crypto11.Attribute
-			if a, err = p.ctx.GetAttribute(hmacp11Key, crypto11.CkaLabel); err != nil {
-				logrus.WithError(err).Errorf("NewP11: cannot get the HMAC CKA_LABEL for algo %s with IS %s", p.algorithm, p.GetHmacKeyIdString())
-				return p, err
-			} else {
-				p.hmacCkaLabel = string(a.Value)
-			}
+			p.hmacCkaLabel = string(labelBuf)
 
 		} else if hmacCkaId == "" && hmacKeyLabel == "" {
 			logrus.WithError(err).Errorf("NewP11: hmacCkaId and hmacKeyLabel are both empty, please provide one of them")
-			return nil, fmt.Errorf("hmacCkaId and hmacKeyLabel are both empty, please provide one of them")
+			return nil, fmt.Errorf("NewP11: hmacCkaId and hmacKeyLabel are both empty, please provide one of them")
 		} else {
 			logrus.WithError(err).Errorf("NewP11: both hmacCkaId and hmacKeyLabel are provided, please provide only one")
-			return nil, fmt.Errorf("both hmacCkaId and hmacKeyLabel are provided, please provide only one")
+			return nil, fmt.Errorf("NewP11: both hmacCkaId and hmacKeyLabel are provided, please provide only one")
 		}
 	}
 
@@ -321,40 +306,9 @@ func NewP11(
 		logrus.Tracef("NewP11: kek key id (CKA_ID) is empty. Find CKA_ID by CKA_LABEL %s", k8sKekLabel)
 		p.kekCkaLabel = k8sKekLabel
 
-		switch p.algorithm {
-		case jose.AlgA256GCM, jose.AlgA256CBC:
-			// Find the KEK in the KMS by key label for AES symmetric algorithms
-			var kek *crypto11.SecretKey
-			if kek, err = p.ctx.FindKey(nil, p.GetKekCkaLabelByteA()); nil != err {
-				logrus.WithError(err).Errorf("NewP11: cannot find a %s symmetric key with label %s", jose.AlgA256CBC, p.kekCkaLabel)
-				return p, err
-			}
-
-			// Get the CKA_ID to obtain the KEK key id
-			var a *crypto11.Attribute
-			if a, err = p.ctx.GetAttribute(kek, crypto11.CkaId); err != nil {
-				logrus.WithError(err).Errorf("NewP11: cannot get the KEK CKA_ID for algo %s and key with label %s", p.algorithm, p.kekCkaLabel)
-				return p, err
-			} else {
-				p.kekCkaId = a.Value
-			}
-
-		case jose.AlgRSAOAEP:
-			// Find the KEK in the KMS by key label for RSA asymmetric algorithms
-			var rsaKeyPair crypto11.SignerDecrypter
-			if rsaKeyPair, err = p.ctx.FindRSAKeyPair(nil, p.GetKekCkaLabelByteA()); err != nil {
-				logrus.WithError(err).Errorf("NewP11: cannot find an rsa key pair with CKA_LABEL %s", p.kekCkaLabel)
-				return p, err
-			}
-
-			// Get the key id by key label
-			var a *crypto11.Attribute
-			if a, err = p.ctx.GetAttribute(rsaKeyPair, crypto11.CkaId); err != nil {
-				logrus.WithError(err).Errorf("NewP11: cannot get the KEK CKA_ID for algo %s and key with CKA_LABEL %s", p.algorithm, p.kekCkaLabel)
-				return p, err
-			} else {
-				p.kekCkaId = a.Value
-			}
+		if p.kekCkaId, err = FindCkaAttrByIdOrLabel(p.ctx, p.algorithm, crypto11.CkaId, nil, []byte(p.kekCkaLabel)); err != nil {
+			logrus.WithError(err).Error("NewP11: failed to find KEK CKA_ID by CKA_LABEL")
+			return nil, err
 		}
 	}
 
@@ -368,41 +322,12 @@ func NewP11(
 		logrus.Tracef("NewP11: k8sKekLabel (CKA_LABEL) is empty but kekkeyid (CKA_ID) is not empty. Find CKA_LABEL by CKA_ID %s", kekkeyid)
 		p.SetKekKeyIdString(kekkeyid)
 
-		switch p.algorithm {
-		case jose.AlgA256GCM, jose.AlgA256CBC:
-			// Find the KEK in the KMS by key ID for symmetric algorithm
-			var kek *crypto11.SecretKey
-			if kek, err = p.ctx.FindKey(p.kekCkaId, nil); nil != err {
-				logrus.WithError(err).Errorf("NewP11: cannot find a %s symmetric key with KEK CKA_ID %s", jose.AlgA256CBC, p.GetKekKeyIdString())
-				return p, err
-			}
-
-			// Get the CKA_LABEL
-			var a *crypto11.Attribute
-			if a, err = p.ctx.GetAttribute(kek, crypto11.CkaLabel); err != nil {
-				logrus.WithError(err).Errorf("NewP11: cannot get the CKA_LABEL for algo %s with KEK CKA_ID %s", p.algorithm, p.GetKekKeyIdString())
-				return p, err
-			} else {
-				p.kekCkaLabel = string(a.Value)
-			}
-
-		case jose.AlgRSAOAEP:
-			// Find the KEK in the KMS by key ID for RSA asymmetric algorithms
-			var rsaKeyPair crypto11.SignerDecrypter
-			if rsaKeyPair, err = p.ctx.FindRSAKeyPair(p.kekCkaId, nil); err != nil {
-				logrus.WithError(err).Errorf("NewP11: cannot find an rsa key pair with CKA_ID %s", p.GetKekKeyIdString())
-				return p, err
-			}
-
-			// Get the CKA_LABEL
-			var a *crypto11.Attribute
-			if a, err = p.ctx.GetAttribute(rsaKeyPair, crypto11.CkaLabel); err != nil {
-				logrus.WithError(err).Errorf("NewP11: cannot get the CKA_LABEL for algo %s with CKA_ID %s", p.algorithm, p.GetKekKeyIdString())
-				return p, err
-			} else {
-				p.kekCkaLabel = string(a.Value)
-			}
+		var labelBuf []byte
+		if labelBuf, err = FindCkaAttrByIdOrLabel(p.ctx, p.algorithm, crypto11.CkaLabel, p.kekCkaId, nil); err != nil {
+			logrus.WithError(err).Error("NewP11: failed to find KEK CKA_LABEL by CKA_ID")
+			return nil, err
 		}
+		p.kekCkaLabel = string(labelBuf)
 	}
 
 	if p.createKey {
@@ -940,41 +865,58 @@ type keyGenerationParameters struct {
 	cipher *crypto11.SymmetricCipher
 }
 
-func FindCkaId(ctx *crypto11.Config, id, label []byte) ([]byte, error) {
-	var err error
+// Find a CKA attribute like CKA_ID or CKA_LABEL by id or by label.
+func FindCkaAttrByIdOrLabel(ctx *crypto11.Context, algorithm jose.Alg, ckaAttr crypto11.AttributeType, id, label []byte) ([]byte, error) {
+	var outBuf []byte // output buffers
 
-	switch p.algorithm {
-	case jose.AlgA256GCM, jose.AlgA256CBC:
-		// Find the key in the KMS by key label for AES symmetric algorithms
-		var symKey *crypto11.SecretKey
-		if symKey, err = ctx.FindKey(id, label); nil != err {
-			logrus.WithError(err).Errorf("NewP11: cannot find a %s symmetric key with label %s", jose.AlgA256CBC, p.kekCkaLabel)
-			return nil, err
-		}
+	if ( // find ID by label
+	(id == nil || len(id) == 0) &&
+		(label != nil || len(label) > 0) &&
+		(ckaAttr == crypto11.CkaId)) ||
+		( // find label by ID
+		(id != nil || len(id) > 0) &&
+			(label == nil || len(label) == 0) &&
+			(ckaAttr == crypto11.CkaLabel)) {
 
-		// Get the CKA_ID to obtain the KEK key id
-		var a *crypto11.Attribute
-		if a, err = p.ctx.GetAttribute(symKey, crypto11.CkaId); err != nil {
-			logrus.WithError(err).Errorf("NewP11: cannot get the KEK CKA_ID for algo %s and key with label %s", p.algorithm, p.kekCkaLabel)
-			return nil, err
-		} else {
-			return a.Value, nil
-		}
-	case jose.AlgRSAOAEP:
-		// Find the key in the KMS by key label for RSA asymmetric algorithms
-		var rsaKeyPair crypto11.SignerDecrypter
-		if rsaKeyPair, err = p.ctx.FindRSAKeyPair(id, label); err != nil {
-			logrus.WithError(err).Errorf("NewP11: cannot find an rsa key pair with CKA_LABEL %s", p.kekCkaLabel)
-			return nil, err
-		}
+		var err error
+		switch algorithm {
+		case jose.AlgA256GCM, jose.AlgA256CBC:
+			// Find the key in the KMS for AES symmetric algorithms
+			var symKey *crypto11.SecretKey
+			if symKey, err = ctx.FindKey(id, label); nil != err {
+				logrus.WithError(err).Errorf("FindCkaAttrByIdOrLabel:cannot find a %s symmetric key with label %x or id %x", algorithm, label, id)
+				return nil, err
+			}
 
-		// Get the key id by key label
-		var a *crypto11.Attribute
-		if a, err = p.ctx.GetAttribute(rsaKeyPair, crypto11.CkaId); err != nil {
-			logrus.WithError(err).Errorf("NewP11: cannot get the KEK CKA_ID for algo %s and key with CKA_LABEL %s", p.algorithm, p.kekCkaLabel)
-			return nil, err
-		} else {
-			return a.Value, nil
+			// Get the CKA_ID to obtain the KEK key id
+			var attr *crypto11.Attribute
+			if attr, err = ctx.GetAttribute(symKey, ckaAttr); err != nil {
+				logrus.WithError(err).Errorf("FindCkaAttrByIdOrLabel: cannot get the CKA_ attribute %v for algo %s and key with label %x or id %x", ckaAttr, algorithm, label, id)
+				return nil, err
+			} else {
+				outBuf = attr.Value
+			}
+		case jose.AlgRSAOAEP:
+			// Find the key in the KMS for RSA asymmetric algorithms
+			var rsaKeyPair crypto11.SignerDecrypter
+			if rsaKeyPair, err = ctx.FindRSAKeyPair(id, label); err != nil {
+				logrus.WithError(err).Errorf("FindCkaAttrByIdOrLabel: cannot find an rsa key pair with label %x or id %x", label, id)
+				return nil, err
+			}
+
+			// Get the key id by key label
+			var attr *crypto11.Attribute
+			if attr, err = ctx.GetAttribute(rsaKeyPair, ckaAttr); err != nil {
+				logrus.WithError(err).Errorf("FindCkaAttrByIdOrLabel: cannot get the CKA_ attribute %v for algo %s and with label %x or id %x", ckaAttr, algorithm, label, id)
+				return nil, err
+			} else {
+				outBuf = attr.Value
+			}
 		}
+	} else {
+		logrus.Errorf("FindCkaAttrByIdOrLabel: cannot find a key with parameters id%x and label%x", id, label)
+		return nil, fmt.Errorf("FindCkaAttrByIdOrLabel: cannot find a key with parameters id%x and label%x", id, label)
 	}
+
+	return outBuf, nil
 }
