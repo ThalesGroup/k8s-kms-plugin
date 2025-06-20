@@ -2,9 +2,9 @@
 
 This documentation is auto-generated from `k8s-kms-plugin`:
 
-- version `v0.6.0-alpha-59-gf2c9e99`
-- commit `f2c9e9965702d83c0632e6f2a4523a432deec486`
-- build date 2025-06-18T20:29:22+00:00.
+- version `working-kmsv2-rotation-dirty`
+- commit `6e2c253dba3d885fea6f4c4d78ec26a32dafddff`
+- build date 2025-06-20T16:02:44+00:00.
 
 ## Available Command Documentation
 
@@ -21,6 +21,7 @@ This documentation is auto-generated from `k8s-kms-plugin`:
 - [k8s-kms-plugin_generate-kek](k8s-kms-plugin_generate-kek.md)
 - [k8s-kms-plugin_import-ca](k8s-kms-plugin_import-ca.md)
 - [k8s-kms-plugin_serve](k8s-kms-plugin_serve.md)
+- [k8s-kms-plugin_serve_rotation](k8s-kms-plugin_serve_rotation.md)
 - [k8s-kms-plugin_test](k8s-kms-plugin_test.md)
 - [k8s-kms-plugin_verify-cert](k8s-kms-plugin_verify-cert.md)
 - [k8s-kms-plugin_version](k8s-kms-plugin_version.md)

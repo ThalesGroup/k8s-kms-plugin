@@ -52,6 +52,34 @@ var vprFlgsRotation ViperFlagsRotation
 var rotationCmd = &cobra.Command{
 	Use:   "rotation",
 	Short: "KEK Key rotation for KMS v2",
+	Long: `Handles Kubernetes KMS v2 requests and support KEK key rotation with 1 old KEK key and 1 active KEK key.
+"k8s-kms-pluginc serve rotation" is very similar to the "k8s-kms-plugin serve" command, but adds key rotation support.
+Refer to the kubernetes KMS v2 documentation for more details about key rotation.
+https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/#developing-a-kms-plugin-gRPC-server-notes-kms-v2
+`,
+	Example: `
+Using flags:
+	k8s-kms-plugin \
+		serve \
+		--log-level=trace \
+		--socket /run/user/1000/k8s-kms-plugin.sock \
+		--p11-lib /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1 \
+		--p11-label mylabel \
+		--p11-pin mypin \
+		--p11-key-label rsa0 \
+		--algorithm rsa-oaep \
+			rotation \
+			--old-p11-lib /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1 \
+			--old-p11-label mylabel \
+			--old-p11-pin mypin \
+			--old-kek-id 64636138353931326363356537313264 \
+			--old-hmac-id 30663536623936326235663530363234 \
+			--old-algorithm aes-cbc
+
+Using environment variables and configuration file:
+	K8S_KMS_PLUGIN_SERVE_P11_PIN="mypin" k8s-kms-plugin serve --config my-kms-plugin-config.yaml
+	K8S_KMS_PLUGIN_SERVE_P11_PIN="mypin" k8s-kms-plugin --log-format=json serve --config my-kms-plugin-config.yaml
+	`,
 	// Initialize and populate cobra CLI flags values with viper during the Persistent pre-run
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// Manually call parent’s PersistentPreRunE
@@ -67,12 +95,6 @@ var rotationCmd = &cobra.Command{
 		}
 		return nil
 	},
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		// Show the version of the k8s-kms-plugin and commit ID
 		version.LogrusOutputVersion()

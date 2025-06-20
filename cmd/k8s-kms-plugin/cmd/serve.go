@@ -99,8 +99,27 @@ func algFromString(s string) (jose.Alg, error) {
 
 // serveCmd represents the serve command
 var serveCmd = &cobra.Command{
-	Use:     "serve",
-	Short:   "Serve KMS",
+	Use:   "serve",
+	Short: "Handles Kubernetes KMS v2 requests",
+	Long: `Handles Kubernetes KMS v2 requests without key rotation.
+Use "k8s-kms-plugin serve rotation" subcommand for key rotation support.
+Kubernetes documentation: https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/#configuring-the-kms-provider-kms-v2
+`,
+	Example: `
+Using flags:
+	k8s-kms-plugin serve \
+	    --log-level=info \
+	    --socket /run/user/1000/k8s-kms-plugin.sock \
+	    --p11-lib /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1 \
+	    --p11-label mylabel \
+	    --p11-pin mypin \
+	    --p11-key-label rsa0 \
+	    --algorithm rsa-oaep
+
+Using environment variables and configuration file:
+	K8S_KMS_PLUGIN_SERVE_P11_PIN="mypin" k8s-kms-plugin serve rotation --config my-kms-plugin-config.yaml
+	K8S_KMS_PLUGIN_SERVE_P11_PIN="mypin" k8s-kms-plugin --log-format=json serve rotation --config my-kms-plugin-config.yaml
+`,
 	GroupID: "kmscmdsgrpmain",
 	// Initialize and populate cobra CLI flags values with viper during the Persistent pre-run
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
