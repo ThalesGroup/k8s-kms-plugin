@@ -171,9 +171,9 @@ type P11 struct {
 	cid []byte // Certificate Identifier
 
 	// KEK Key rotation feature for KMS v2
-	oldConfig       *crypto11.Config             // for key rotation
-	oldCtx          *crypto11.Context            // for key rotation
-
+	oldConfig *crypto11.Config  // for key rotation
+	oldCtx    *crypto11.Context // for key rotation
+	// no encryptors since the old keys are used for decryption only
 	oldDecryptors   map[string]gose.JweDecryptor // for key rotation
 	oldKekCkaId     []byte                       // Key Encryption Key KEK Identifier & CKA_ID of old KEK being rotated
 	oldKekCkaLabel  string                       // CKA_LABEL utf8 of old KEK being rotated
@@ -219,7 +219,7 @@ func NewP11(
 	oldConfig *crypto11.Config,
 	oldKekkeyid string,
 	oldKekCkaLabel string,
-	OldHmacKeyLabel string,
+	oldHmacKeyLabel string,
 	oldHmacCkaId string,
 	oldAlgorithm jose.Alg,
 ) (p *P11, err error) {
@@ -262,13 +262,13 @@ func NewP11(
 			// key rotation
 			if isKeyRotation {
 				var oldHmacp11Key *crypto11.SecretKey
-				if oldHmacp11Key, err = p.oldCtx.FindKey(nil, []byte(OldHmacKeyLabel)); err != nil {
-					return nil, fmt.Errorf("key rotation: error getting hmac key from HSM with label '%s' : %v", OldHmacKeyLabel, err)
+				if oldHmacp11Key, err = p.oldCtx.FindKey(nil, []byte(oldHmacKeyLabel)); err != nil {
+					return nil, fmt.Errorf("key rotation: error getting hmac key from HSM with label '%s' : %v", oldHmacKeyLabel, err)
 				}
 
 				var a *crypto11.Attribute
 				if a, err = p.oldCtx.GetAttribute(oldHmacp11Key, crypto11.CkaId); err != nil {
-					logrus.WithError(err).Errorf("key rotation: cannot get the HMAC CKA_ID for algo %s with label %s", p.algorithm, OldHmacKeyLabel)
+					logrus.WithError(err).Errorf("key rotation: cannot get the HMAC CKA_ID for algo %s with label %s", p.algorithm, oldHmacKeyLabel)
 					return p, err
 				} else {
 					p.oldHmacCkaId = a.Value
@@ -483,58 +483,100 @@ func getIVFromDecryptRequest(req *k8skmsv2.DecryptRequest) (iv []byte, err error
 //	  // NOT	SURE IF IT IS NECESSARY FOR US
 //		 Annotations          map[string][]byte
 func (p *P11) Decrypt(ctx context.Context, req *k8skmsv2.DecryptRequest) (resp *k8skmsv2.DecryptResponse, err error) {
-	var decryptor gose.JweDecryptor
 	var out []byte // buffer for the DecryptResponse.Plaintext
-	var aad []byte // Additional Authenticated Data optional input used in authenticated encryption algorithms like AES-GCM or AES-CBC-HMAC
 
-	// req.KeyId populated by interceptor
-	if decryptor = p.decryptors[req.GetKeyId()]; decryptor == nil {
+	// Support key rotation
+	switch req.KeyId {
+	case p.GetKekKeyIdString():
+		out, err = p.decryptWithContext(p.ctx, req, p.decryptors, p.algorithm)
+		if err != nil {
+			logrus.WithError(err).Error("error while decrypting with old key")
+			return nil, err
+		}
+	case hex.EncodeToString(p.oldKekCkaId):
+		out, err = p.decryptWithContext(p.oldCtx, req, p.oldDecryptors, p.oldAlgorithm)
+		if err != nil {
+			logrus.WithError(err).Error("error while decrypting with old key")
+			return nil, err
+		}
+	default:
+		logrus.WithError(err).WithField("key_id", req.GetKeyId()).Error("Decrypt: unknown key ID")
+		return nil, fmt.Errorf("Decrypt: unknown key ID: %s", req.GetKeyId())
+	}
+
+	resp = &k8skmsv2.DecryptResponse{
+		Plaintext: out,
+	}
+	return
+}
+
+// decryptWithContext performs decryption using the provided context, DecryptRequest and decryptor map.
+//
+// The method takes into account if the key has been rotated and decrypts the
+// ciphertext accordingly.
+func (p *P11) decryptWithContext(
+	actualCtx *crypto11.Context,
+	req *k8skmsv2.DecryptRequest,
+	decryptors map[string]gose.JweDecryptor,
+	actualAlgo jose.Alg,
+) ([]byte, error) {
+	var decryptor gose.JweDecryptor // buffer
+	var out []byte                  // buffer for the DecryptResponse.Plaintext
+	var aad []byte                  // Additional Authenticated Data optional input used in authenticated encryption algorithms like AES-GCM or AES-CBC-HMAC
+	var err error
+
+	if decryptor = decryptors[req.GetKeyId()]; decryptor == nil {
 		// Random source from the HSM (pkcs11 context)
 		var rng io.Reader
-		if rng, err = p.ctx.NewRandomReader(); err != nil {
-			logrus.Error(err)
-			return
+		if rng, err = actualCtx.NewRandomReader(); err != nil {
+			logrus.WithError(err).Error("error while creating random reader")
+			return nil, err
 		}
 
-		// convert the string DecryptRequest.KeyId to hex []byte
+		// convert the string DecryptRequest.KeyId containing a hex representation as string to hex []byte
 		var reqKekKeyIdByteA []byte
 		if reqKekKeyIdByteA, err = hex.DecodeString(req.GetKeyId()); err != nil {
-			logrus.WithError(err).WithField("req.GetKeyId()", req.GetKeyId()).Error("error while decoding the key id")
+			logrus.WithError(err).WithField("DecryptRequest.KeyId", req.GetKeyId()).Error("error while decoding the key id")
 			return nil, fmt.Errorf("error while decoding the key id: %v", err)
 		}
 
-		switch p.algorithm {
+		switch actualAlgo {
 		case jose.AlgA256GCM:
 			logrus.Tracef("p11:Decrypt case %s", jose.AlgA256GCM)
 
 			// get kek by CKA_ID
 			var kek *crypto11.SecretKey
-			// Since the DecryptRequest comes from kubernetes, the only information k8s has is the keyId via the StatusResponse
 
-			if kek, err = p.ctx.FindKey(reqKekKeyIdByteA, nil); nil != err {
-				return
+			// Since the DecryptRequest comes from kubernetes, the only information k8s has is the keyId via the StatusResponse
+			if kek, err = actualCtx.FindKey(reqKekKeyIdByteA, nil); nil != err {
+				logrus.WithError(err).WithField("DecryptRequest.KeyId", req.GetKeyId()).Error("error while finding key by CKA_ID")
+				return nil, err
 			}
 
 			var aek gose.AeadEncryptionKey
 			if aek, err = p.makeAeadKey(rng, kek); err != nil {
-				return
+				logrus.WithError(err).Error("error while creating aead key")
+				return nil, err
 			}
 			decryptor = gose.NewJweDirectDecryptorAeadImpl([]gose.AeadEncryptionKey{aek})
 
 			if out, aad, err = decryptor.Decrypt(string(req.GetCiphertext())); err != nil {
-				return
+				logrus.WithError(err).Error("error during decryption")
+				return nil, err
 			}
 			if nil != aad {
 				// AAD should be nil - if not, needs to be changed in tandem with /Encrypt
 				err = fmt.Errorf("bad AAD")
-				return
+				logrus.WithError(err).Error("error during decryption AAD should be nil")
+				return nil, err
 			}
 		case jose.AlgA256CBC:
 			logrus.Tracef("p11:Decrypt case %s", jose.AlgA256CBC)
 			// get kek by id
 			var kek *crypto11.SecretKey
-			if kek, err = p.ctx.FindKey(reqKekKeyIdByteA, nil); nil != err {
-				return
+			if kek, err = actualCtx.FindKey(reqKekKeyIdByteA, nil); nil != err {
+				logrus.WithError(err).Error("error finding key by ID")
+				return nil, err
 			}
 
 			// for decryption, we have to retrieve the iv from the jwe
@@ -551,7 +593,7 @@ func (p *P11) Decrypt(ctx context.Context, req *k8skmsv2.DecryptRequest) (resp *
 			cbcKey := gose.NewAesCbcCryptor(blockMode, req.GetKeyId(), jose.AlgA256CBC)
 			// Initialize the hmac key for authentication
 			var hmacp11Key *crypto11.SecretKey
-			if hmacp11Key, err = p.ctx.FindKey(p.hmacCkaId, []byte(p.hmacCkaLabel)); err != nil {
+			if hmacp11Key, err = actualCtx.FindKey(p.hmacCkaId, []byte(p.hmacCkaLabel)); err != nil {
 				return nil, fmt.Errorf("error getting hmac key from HSM with label '%s': %v", p.hmacCkaLabel, err)
 			}
 			var hash hash.Hash
@@ -571,13 +613,14 @@ func (p *P11) Decrypt(ctx context.Context, req *k8skmsv2.DecryptRequest) (resp *
 			if nil != aad {
 				// AAD should be nil - if not, needs to be changed in tandem with /Encrypt
 				err = fmt.Errorf("bad AAD")
-				return
+				logrus.WithError(err).Error("error during decryption AAD should be nil")
+				return nil, err
 			}
 		case jose.AlgRSAOAEP:
 			logrus.Tracef("p11:Decrypt case %s", jose.AlgRSAOAEP)
 			// load pkcs11 context
 			var rsaKeyPair crypto11.SignerDecrypter
-			if rsaKeyPair, err = p.ctx.FindRSAKeyPair(reqKekKeyIdByteA, nil); err != nil {
+			if rsaKeyPair, err = actualCtx.FindRSAKeyPair(reqKekKeyIdByteA, nil); err != nil {
 				logrus.WithError(err).Errorf("error finding RSA key pair with id %X", reqKekKeyIdByteA)
 				return nil, fmt.Errorf("error finding RSA key pair with id %X: %v", reqKekKeyIdByteA, err)
 			}
@@ -603,15 +646,10 @@ func (p *P11) Decrypt(ctx context.Context, req *k8skmsv2.DecryptRequest) (resp *
 				return nil, err
 			}
 		default:
-			print("algorithm not supported")
+			logrus.Error("Decrypt: algorithm not supported")
 		}
-
 	}
-
-	resp = &k8skmsv2.DecryptResponse{
-		Plaintext: out,
-	}
-	return
+	return out, nil
 }
 
 // Encrypt
