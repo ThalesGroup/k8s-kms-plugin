@@ -547,24 +547,23 @@ func getIVFromDecryptRequest(req *k8skmsv2.DecryptRequest) (iv []byte, err error
 //		 Annotations          map[string][]byte
 func (p *P11) Decrypt(ctx context.Context, req *k8skmsv2.DecryptRequest) (resp *k8skmsv2.DecryptResponse, err error) {
 	var out []byte // buffer for the DecryptResponse.Plaintext
+	var isRotation bool
 
 	// Support key rotation
 	switch req.KeyId {
 	case p.GetKekKeyIdString():
-		out, err = p.decryptWithContext(p.ctx, req, p.decryptors, p.algorithm)
-		if err != nil {
-			logrus.WithError(err).Error("error while decrypting with old key")
-			return nil, err
-		}
+		isRotation = false
 	case hex.EncodeToString(p.oldKekCkaId):
-		out, err = p.decryptWithContext(p.oldCtx, req, p.oldDecryptors, p.oldAlgorithm)
-		if err != nil {
-			logrus.WithError(err).Error("error while decrypting with old key")
-			return nil, err
-		}
+		isRotation = true
 	default:
 		logrus.WithError(err).WithField("key_id", req.GetKeyId()).Error("Decrypt: unknown key ID")
 		return nil, fmt.Errorf("Decrypt: unknown key ID: %s", req.GetKeyId())
+	}
+
+	out, err = p.decryptWithContext(req, isRotation)
+	if err != nil {
+		logrus.WithError(err).Error("error while decrypting with old key")
+		return nil, err
 	}
 
 	resp = &k8skmsv2.DecryptResponse{
@@ -577,18 +576,33 @@ func (p *P11) Decrypt(ctx context.Context, req *k8skmsv2.DecryptRequest) (resp *
 //
 // The method takes into account if the key has been rotated and decrypts the
 // ciphertext accordingly.
-func (p *P11) decryptWithContext(
-	actualCtx *crypto11.Context,
-	req *k8skmsv2.DecryptRequest,
-	decryptors map[string]gose.JweDecryptor,
-	actualAlgo jose.Alg,
-) ([]byte, error) {
+func (p *P11) decryptWithContext(req *k8skmsv2.DecryptRequest, isRotation bool) ([]byte, error) {
+	var actualCtx *crypto11.Context
+	var actualDecryptors map[string]gose.JweDecryptor
+	var actualAlgo jose.Alg
+	var actualHmacCkaId []byte
+	var actualHmacCkaLabel string
+
 	var decryptor gose.JweDecryptor // buffer
 	var out []byte                  // buffer for the DecryptResponse.Plaintext
 	var aad []byte                  // Additional Authenticated Data optional input used in authenticated encryption algorithms like AES-GCM or AES-CBC-HMAC
 	var err error
 
-	if decryptor = decryptors[req.GetKeyId()]; decryptor == nil {
+	if isRotation {
+		actualCtx = p.oldCtx
+		actualDecryptors = p.oldDecryptors
+		actualAlgo = p.oldAlgorithm
+		actualHmacCkaId = p.oldHmacCkaId
+		actualHmacCkaLabel = p.oldHmacCkaLabel
+	} else {
+		actualCtx = p.ctx
+		actualDecryptors = p.decryptors
+		actualAlgo = p.algorithm
+		actualHmacCkaId = p.hmacCkaId
+		actualHmacCkaLabel = p.hmacCkaLabel
+	}
+
+	if decryptor = actualDecryptors[req.GetKeyId()]; decryptor == nil {
 		// Random source from the HSM (pkcs11 context)
 		var rng io.Reader
 		if rng, err = actualCtx.NewRandomReader(); err != nil {
@@ -656,14 +670,14 @@ func (p *P11) decryptWithContext(
 			cbcKey := gose.NewAesCbcCryptor(blockMode, req.GetKeyId(), jose.AlgA256CBC)
 			// Initialize the hmac key for authentication
 			var hmacp11Key *crypto11.SecretKey
-			if hmacp11Key, err = actualCtx.FindKey(p.hmacCkaId, []byte(p.hmacCkaLabel)); err != nil {
-				return nil, fmt.Errorf("error getting hmac key from HSM with label '%s': %v", p.hmacCkaLabel, err)
+			if hmacp11Key, err = actualCtx.FindKey(actualHmacCkaId, []byte(actualHmacCkaLabel)); err != nil {
+				return nil, fmt.Errorf("error getting hmac key from HSM with label '%s' or id '%s': %v", actualHmacCkaLabel, actualHmacCkaId, err)
 			}
 			var hash hash.Hash
 			if hash, err = hmacp11Key.NewHMAC(pkcs11.CKM_SHA256_HMAC, 0); err != nil {
-				return nil, fmt.Errorf("error initializing SHA26 with key '%s': %v", p.hmacCkaLabel, err)
+				return nil, fmt.Errorf("error initializing SHA26 with key '%s': %v", actualHmacCkaLabel, err)
 			}
-			hmacKey := gose.NewHmacShaCryptor(p.hmacCkaLabel, hash)
+			hmacKey := gose.NewHmacShaCryptor(actualHmacCkaLabel, hash)
 			// decryptor
 			decryptor = gose.NewJweDirectDecryptorBlock(cbcKey, hmacKey)
 			// !!! It is very important to finalize each PKCS11 operation
