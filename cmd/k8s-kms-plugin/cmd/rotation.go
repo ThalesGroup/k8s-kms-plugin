@@ -175,6 +175,14 @@ func init() {
 	rotationCmd.Flags().String("old-hmac-id", "", "Key ID CKA_ID for old KEK HMAC")
 	rotationCmd.Flags().String("old-p11-hmac-label", "", "Key Label CKA_LABEL for old KEK HMAC")
 	rotationCmd.Flags().String("old-kek-id", "", "Key ID CKA_ID for old KEK")
+
+	// At least one of the old KEK CKA_ID or old CKA_LABEL must be provided by the user
+	rotationCmd.MarkFlagsOneRequired("old-kek-id", "old-p11-key-label")
+
+	// To prevent mismatch between user provided CKA_ID and user provided CKA_LABEL, flags are Mutually Exclusive.
+	// NewP11 make sure to retrieve the ID by label, or label by ID.
+	rotationCmd.MarkFlagsMutuallyExclusive("old-kek-id", "old-p11-key-label")
+	rotationCmd.MarkFlagsMutuallyExclusive("old-hmac-id", "old-p11-hmac-label")
 }
 
 func initRotatedProvider() (pRot providers.Provider, err error) {
