@@ -11,6 +11,7 @@ package cmd
 
 import (
 	"fmt"
+	"time"
 
 	filename "github.com/keepeye/logrus-filename"
 	"github.com/sirupsen/logrus"
@@ -126,12 +127,15 @@ func initConfig() {
 	switch vprFlgsRoot.LogFormat {
 	case "json":
 		logrus.SetFormatter(&logrus.JSONFormatter{
-			PrettyPrint: false,
+			PrettyPrint:      false,
+			DisableTimestamp: false,
+			TimestampFormat:  time.RFC3339,
 		})
 	case "text":
 		logrus.SetFormatter(&logrus.TextFormatter{
 			ForceColors:      true,
-			DisableTimestamp: true,
+			DisableTimestamp: false,
+			TimestampFormat:  time.DateTime,
 		})
 	default:
 		logrus.WithError(fmt.Errorf("logrus unknown output format")).Error("unknown log format")
