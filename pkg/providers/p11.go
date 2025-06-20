@@ -248,32 +248,17 @@ func NewP11(
 		}
 	}
 
-	// in case the user provide the CKA_ID or the CKA_LABEL of the HMAC
+	// in case the user provide the CKA_ID or the CKA_LABEL of HMAC key
 	if p.algorithm == jose.AlgA256CBC {
 		if hmacCkaId == "" && hmacKeyLabel != "" { // get id by label
-			// active KEK
+			// active HMAC
 			p.hmacCkaLabel = hmacKeyLabel
 
-			if p.kekCkaId, err = FindCkaAttrByIdOrLabel(p.ctx, p.algorithm, crypto11.CkaId, nil, []byte(p.hmacCkaLabel)); err != nil {
+			if p.hmacCkaId, err = FindCkaAttrByIdOrLabel(p.ctx, p.algorithm, crypto11.CkaId, nil, []byte(p.hmacCkaLabel)); err != nil {
 				logrus.WithError(err).Error("NewP11: failed to find HMAC CKA_ID by label")
 				return nil, err
 			}
 
-			// key rotation
-			if isKeyRotation {
-				var oldHmacp11Key *crypto11.SecretKey
-				if oldHmacp11Key, err = p.oldCtx.FindKey(nil, []byte(oldHmacKeyLabel)); err != nil {
-					return nil, fmt.Errorf("key rotation: error getting hmac key from HSM with label '%s' : %v", oldHmacKeyLabel, err)
-				}
-
-				var a *crypto11.Attribute
-				if a, err = p.oldCtx.GetAttribute(oldHmacp11Key, crypto11.CkaId); err != nil {
-					logrus.WithError(err).Errorf("key rotation: cannot get the HMAC CKA_ID for algo %s with label %s", p.algorithm, oldHmacKeyLabel)
-					return p, err
-				} else {
-					p.oldHmacCkaId = a.Value
-				}
-			}
 		} else if hmacCkaId != "" && hmacKeyLabel == "" { // get label by id
 			p.SetHmacKeyIdString(hmacCkaId)
 
@@ -328,6 +313,64 @@ func NewP11(
 			return nil, err
 		}
 		p.kekCkaLabel = string(labelBuf)
+	}
+
+	// key rotation
+	if isKeyRotation {
+		// in case the user provide the OLD CKA_ID or the OLD CKA_LABEL of OLD HMAC key
+		if p.oldAlgorithm == jose.AlgA256CBC {
+			if oldHmacCkaId == "" && oldHmacKeyLabel != "" { // get id by label
+				// old HMAC
+				p.oldHmacCkaLabel = oldHmacKeyLabel
+
+				if p.oldHmacCkaId, err = FindCkaAttrByIdOrLabel(p.oldCtx, p.oldAlgorithm, crypto11.CkaId, nil, []byte(p.oldHmacCkaLabel)); err != nil {
+					logrus.WithError(err).Error("NewP11: failed to find HMAC CKA_ID by label")
+					return nil, err
+				}
+
+			} else if oldHmacCkaId != "" && oldHmacKeyLabel == "" { // get label by id
+				p.SetOldHmacKeyIdString(oldHmacCkaId)
+
+				var labelBuf []byte
+				if labelBuf, err = FindCkaAttrByIdOrLabel(p.oldCtx, p.oldAlgorithm, crypto11.CkaLabel, p.oldHmacCkaId, nil); err != nil {
+					logrus.WithError(err).Error("NewP11: failed to find old HMAC CKA_LABEL by ID")
+					return nil, err
+				}
+
+				p.oldHmacCkaLabel = string(labelBuf)
+
+			} else if oldHmacCkaId == "" && oldHmacKeyLabel == "" {
+				logrus.WithError(err).Errorf("NewP11: oldHmacCkaId and oldHmacKeyLabel are both empty, please provide one of them")
+				return nil, fmt.Errorf("NewP11: oldHmacCkaId and oldHmacKeyLabel are both empty, please provide one of them")
+			} else {
+				logrus.WithError(err).Errorf("NewP11: both oldHmacCkaId and oldHmacKeyLabel are provided, please provide only one")
+				return nil, fmt.Errorf("NewP11: both oldHmacCkaId and oldHmacKeyLabel are provided, please provide only one")
+			}
+		}
+
+		// find old KEK ID with LABEL
+		if oldKekkeyid == "" && oldKekCkaLabel != "" {
+			logrus.Tracef("NewP11: kek key id (CKA_ID) is empty. Find CKA_ID by CKA_LABEL %s", k8sKekLabel)
+			p.oldKekCkaLabel = oldKekCkaLabel
+
+			if p.oldKekCkaId, err = FindCkaAttrByIdOrLabel(p.oldCtx, p.oldAlgorithm, crypto11.CkaId, nil, []byte(p.oldKekCkaLabel)); err != nil {
+				logrus.WithError(err).Error("NewP11: failed to find OLD KEK CKA_ID by label")
+				return nil, err
+			}
+		}
+
+		// find old KEK label with ID
+		if oldKekkeyid != "" && oldKekCkaLabel == "" {
+			logrus.Tracef("NewP11: k8sKekLabel (CKA_LABEL) is empty but kekkeyid (CKA_ID) is not empty. Find CKA_LABEL by CKA_ID %s", oldKekkeyid)
+			p.SetOldKekKeyIdString(oldKekkeyid)
+
+			var labelBuf []byte
+			if labelBuf, err = FindCkaAttrByIdOrLabel(p.oldCtx, p.oldAlgorithm, crypto11.CkaLabel, p.oldKekCkaId, nil); err != nil {
+				logrus.WithError(err).Error("NewP11: failed to find OLD KEK CKA_LABEL by CKA_ID")
+				return nil, err
+			}
+			p.oldKekCkaLabel = string(labelBuf)
+		}
 	}
 
 	if p.createKey {
@@ -388,6 +431,26 @@ func (p *P11) SetHmacKeyIdString(hexHmacKeyID string) error {
 // GetHmacKeyIdString returns the HMAC Key ID as a hex-encoded string.
 func (p *P11) GetHmacKeyIdString() string {
 	return hex.EncodeToString(p.hmacCkaId)
+}
+
+// SetHmacKeyIdString sets the internal HMAC Key ID from a hex-encoded string.
+func (p *P11) SetOldHmacKeyIdString(hexOldHmacKeyID string) error {
+	oldHmacId, err := hex.DecodeString(hexOldHmacKeyID)
+	if err != nil {
+		return fmt.Errorf("invalid hex HMAC KeyID: %w", err)
+	}
+	p.oldHmacCkaId = oldHmacId
+	return nil
+}
+
+// SetKekKeyIdString sets the internal CKA_ID from a hex-encoded string.
+func (p *P11) SetOldKekKeyIdString(hexOldKeyID string) error {
+	kid, err := hex.DecodeString(hexOldKeyID)
+	if err != nil {
+		return fmt.Errorf("invalid hex KeyID: %w", err)
+	}
+	p.oldKekCkaId = kid
+	return nil
 }
 
 // loadKEKbyID loads a Key Encryption Key (KEK) from the HSM for the given
