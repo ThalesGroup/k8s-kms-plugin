@@ -54,7 +54,14 @@ var rotationCmd = &cobra.Command{
 	Short: "KEK Key rotation for KMS v2",
 	// Initialize and populate cobra CLI flags values with viper during the Persistent pre-run
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		if err := InitViperSubCmdE(viper.GetViper(), cmd, &vprFlgsServe); err != nil {
+		// Manually call parent’s PersistentPreRunE
+		if cmd.Parent() != nil && cmd.Parent().PersistentPreRunE != nil {
+			if err := cmd.Parent().PersistentPreRunE(cmd.Parent(), args); err != nil {
+				return err
+			}
+		}
+
+		if err := InitViperSubCmdE(viper.GetViper(), cmd, &vprFlgsRotation); err != nil {
 			logrus.WithField("cobra-cmd", cmd.Use).WithError(err).Error("Error initializing Viper")
 			return err
 		}
@@ -104,7 +111,7 @@ to quickly create a Cobra application.`,
 				return
 			}
 
-			g.Go(func() error { return grpcServe(grpcTCP, p) })
+			g.Go(func() error { return grpcRotation(grpcTCP, p) })
 		}
 
 		if !vprFlgsServe.DisableSocket {
@@ -117,7 +124,7 @@ to quickly create a Cobra application.`,
 			// gid 1337.  Change the socket permissions so the group has read/write
 			// access to the socket.
 			os.Chmod(vprFlgsServe.SocketPath, 0775)
-			g.Go(func() error { return grpcServe(grpcUNIX, p) })
+			g.Go(func() error { return grpcRotation(grpcUNIX, p) })
 		}
 
 		if err = g.Wait(); err != nil {
@@ -140,7 +147,7 @@ func init() {
 	rotationCmd.Flags().String("old-p11-pin", "", "P11 Pin for old KEK")
 
 	rotationCmd.Flags().Int("old-p11-slot", 0, "P11 token slot for old KEK")
-	rotationCmd.Flags().String("old-provider", "", "Provider for old KEK")
+	rotationCmd.Flags().String("old-provider", "p11", "Provider for old KEK")
 	rotationCmd.Flags().String("old-socket", "", "Unix socket path for old KEK")
 	rotationCmd.Flags().String("old-p11-key-label", "", "Key Label CKA_LABEL for old KEK")
 	rotationCmd.Flags().String("old-hmac-id", "", "Key ID CKA_ID for old KEK HMAC")
