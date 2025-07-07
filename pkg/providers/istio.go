@@ -358,7 +358,7 @@ func (p *P11) VerifyCertChain(ctx context.Context, request *istio.VerifyCertChai
 		return
 	}
 
-	if 0 != len(request.Certificates) {
+	if len(request.Certificates) != 0 {
 		parsedTargetCert, err = x509.ParseCertificate(request.Certificates[len(request.Certificates)-1])
 		if nil != err {
 			return
@@ -426,7 +426,7 @@ func (p *P11) VerifyCertChain(ctx context.Context, request *istio.VerifyCertChai
 
 					For now, we should only have a single chain, so crash out if there's more than one
 				*/
-				if 1 != len(parsedChains) {
+				if len(parsedChains) != 1 {
 					err = fmt.Errorf("unhandled: multiple verification chains")
 					return
 				}
