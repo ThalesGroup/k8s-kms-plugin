@@ -81,7 +81,10 @@ func generateDEK(ctx11 *crypto11.Context, encryptor gose.JweEncryptor) (encrypte
 		return
 	}
 	var dekStr []byte
-	dekStr, err = json.Marshal(dekJWK)
+	if dekStr, err = json.Marshal(dekJWK); err != nil {
+		logrus.WithError(err).Error("generateDEK: failed to marshal DEK JWK")
+		return
+	}
 	// using the AES key as it's payload
 	var encryptedString string
 	if encryptedString, err = encryptor.Encrypt(dekStr, nil); err != nil {
