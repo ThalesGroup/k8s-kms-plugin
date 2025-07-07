@@ -27,6 +27,7 @@ import (
 	"github.com/ThalesGroup/gose/jose"
 	"github.com/google/uuid"
 	"github.com/miekg/pkcs11"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
 	k8skmsv2 "k8s.io/kms/apis/v2"
@@ -258,6 +259,10 @@ func setupTpm2Pkcs11TestCase(t testing.TB) {
 	require.NoError(t, err)
 
 	att, err := testCtx.GetAttribute(secretKey, crypto11.CkaId)
+	if err != nil {
+		logrus.WithError(err).Errorf("setupTpm2Pkcs11TestCase: cannot get the CKA_ID attribute for the secret key %v", secretKeyLabel)
+		return
+	}
 	testKid = att.Value
 
 	iv := make([]byte, secretKey.Cipher.BlockSize)
