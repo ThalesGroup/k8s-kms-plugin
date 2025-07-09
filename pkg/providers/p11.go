@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"hash"
 	"io"
-	"math/big"
 
 	"github.com/ThalesGroup/crypto11"
 	"github.com/ThalesGroup/gose"
@@ -53,16 +52,16 @@ var (
 	}
 )
 
-// generateDEK generates a Data Encryption Key (DEK) and encrypts it using
+// GenerateDEK generates a Data Encryption Key (DEK) and encrypts it using
 // the provided JWE encryptor. It first creates a random 32-byte symmetric
 // key, converts it to a JWK format, and then encrypts the JWK using the
 // encryptor. The resulting encrypted DEK is returned as a byte slice.
 // Any errors encountered during random number generation, key conversion,
 // or encryption are returned.
 //
-// for Istio: generateDEK is only used by GenerateDEK.
+// for Istio: GenerateDEK is only used by istio.go:GenerateDEK and integration testing.
 // TODO: decide if this Istio related method should be separated from the KMS v2 plugin
-func generateDEK(ctx11 *crypto11.Context, encryptor gose.JweEncryptor) (encryptedKeyBlob []byte, err error) {
+func GenerateDEK(ctx11 *crypto11.Context, encryptor gose.JweEncryptor) (encryptedKeyBlob []byte, err error) {
 
 	key := make([]byte, 32)
 
@@ -96,15 +95,15 @@ func generateDEK(ctx11 *crypto11.Context, encryptor gose.JweEncryptor) (encrypte
 	return
 }
 
-// generateKEK generates a Key Encryption Key (KEK) using the provided
+// GenerateKEK generates a Key Encryption Key (KEK) using the provided
 // cryptographic context, identity, label, and algorithm. The function
 // checks if the specified algorithm is supported and, if so, generates
 // a secret key with the associated parameters. It returns the generated
 // AEAD encryption key or an error if the operation fails.
 //
-// for Istio: generateKEK is only used by GenerateKEK.
+// for Istio: GenerateKEK is only used by istio.go:GenerateKEK and integration testing.
 // TODO: decide if this Istio related method should be separated from the KMS v2 plugin
-func generateKEK(ctx *crypto11.Context, identity, label []byte, alg jose.Alg) (key gose.AeadEncryptionKey, err error) {
+func GenerateKEK(ctx *crypto11.Context, identity, label []byte, alg jose.Alg) (key gose.AeadEncryptionKey, err error) {
 	params, supported := algToKeyGenParams[alg]
 	if !supported {
 		err = fmt.Errorf("algorithm %v is not supported", alg)
@@ -137,13 +136,6 @@ func IsPKCS11AuthenticationError(err error) bool {
 	default:
 		return false
 	}
-}
-
-// randomSerial returns a random big.Int suitable for use as an X.509v3 certificate
-// serial number.
-func randomSerial() (serial *big.Int) {
-	serial, _ = rand.Int(rand.Reader, big.NewInt(20000))
-	return
 }
 
 // P11 is a struct representing a P11 provider, which handles encryption and decryption
@@ -399,6 +391,14 @@ func NewP11(
 	return
 }
 
+func (p *P11) SetKekKeyIdFromBytes(keyID []byte) error {
+	if keyID == nil {
+		return fmt.Errorf("keyID cannot be nil")
+	}
+	p.kekCkaId = keyID
+	return nil
+}
+
 // SetKekKeyIdString sets the internal CKA_ID from a hex-encoded string.
 func (p *P11) SetKekKeyIdString(hexKeyID string) error {
 	kid, err := hex.DecodeString(hexKeyID)
@@ -453,6 +453,60 @@ func (p *P11) SetOldKekKeyIdString(hexOldKeyID string) error {
 		return fmt.Errorf("invalid hex KeyID: %w", err)
 	}
 	p.oldKekCkaId = kid
+	return nil
+}
+
+// SetEncryptor sets the gose.JWE Encryptor.
+func (p *P11) SetEncryptor(encryptor gose.JweEncryptor) error {
+	if encryptor == nil {
+		return fmt.Errorf("SetEncryptor: encryptor is nil")
+	}
+	p.encryptors[p.GetKekKeyIdString()] = encryptor
+	return nil
+}
+
+// SetEncryptors sets the map of encryptors.
+func (p *P11) SetEncryptors(encryptors map[string]gose.JweEncryptor) error {
+	if encryptors == nil {
+		return fmt.Errorf("SetEncryptors: encryptors is nil")
+	}
+	p.encryptors = encryptors
+	return nil
+}
+
+// SetDecryptor sets the gose.JWE Decryptor.
+func (p *P11) SetDecryptor(decryptor gose.JweDecryptor) error {
+	if decryptor == nil {
+		return fmt.Errorf("SetDecryptor: decryptor is nil")
+	}
+	p.decryptors[p.GetKekKeyIdString()] = decryptor
+	return nil
+}
+
+// SetDecryptors sets the map of decryptors.
+func (p *P11) SetDecryptors(decryptors map[string]gose.JweDecryptor) error {
+	if decryptors == nil {
+		return fmt.Errorf("SetDecryptors: decryptors is nil")
+	}
+	p.decryptors = decryptors
+	return nil
+}
+
+// SetContext sets the context.
+func (p *P11) SetContext(ctx *crypto11.Context) error {
+	if ctx == nil {
+		return fmt.Errorf("SetContext: ctx is nil")
+	}
+	p.ctx = ctx
+	return nil
+}
+
+// SetCID sets the Certificate Identifier used in Istio operations.
+func (p *P11) SetCID(cid []byte) error {
+	if cid == nil {
+		return fmt.Errorf("SetCID: cid is nil")
+	}
+	p.cid = cid
 	return nil
 }
 
@@ -998,12 +1052,12 @@ func FindCkaAttrByIdOrLabel(ctx *crypto11.Context, algorithm jose.Alg, ckaAttr c
 	var outBuf []byte // output buffers
 
 	if ( // find ID by label
-	(id == nil || len(id) == 0) &&
+	(len(id) == 0) &&
 		(label != nil || len(label) > 0) &&
 		(ckaAttr == crypto11.CkaId)) ||
 		( // find label by ID
 		(id != nil || len(id) > 0) &&
-			(label == nil || len(label) == 0) &&
+			(len(label) == 0) &&
 			(ckaAttr == crypto11.CkaLabel)) {
 
 		var err error

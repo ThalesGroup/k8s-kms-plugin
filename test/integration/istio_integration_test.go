@@ -7,7 +7,7 @@
  * https://opensource.org/licenses/MIT.
  */
 
-package providers
+package integration
 
 import (
 	"context"
@@ -17,6 +17,7 @@ import (
 	"github.com/ThalesGroup/crypto11"
 	"github.com/ThalesGroup/gose"
 	"github.com/ThalesGroup/k8s-kms-plugin/apis/istio/v1"
+	"github.com/ThalesGroup/k8s-kms-plugin/pkg/providers"
 )
 
 func TestP11_GenerateDEK(t *testing.T) {
@@ -62,13 +63,30 @@ func TestP11_GenerateDEK(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := &P11{
-				config:     tt.fields.config,
-				ctx:        tt.fields.ctx,
-				encryptors: tt.fields.encryptors,
-				decryptors: tt.fields.decryptors,
-				createKey:  tt.fields.createKey,
+			p, err := providers.NewP11(
+				tt.fields.config,
+				tt.fields.createKey,
+				"",    // kekkeyid
+				"",    // k8sKekLabel
+				"",    // hmacKeyLabel
+				"",    // hmacCkaId
+				"",    // algorithm
+				false, // isKeyRotation
+				nil,   // oldConfig
+				"",    // oldKekkeyid
+				"",    // oldKekCkaLabel
+				"",    // oldHmacKeyLabel
+				"",    // oldHmacCkaId
+				"",    // oldAlgorithm
+			)
+			if err != nil {
+				t.Fatalf("Unable to create P11 instance, err: %v", err)
 			}
+
+			p.SetEncryptors(tt.fields.encryptors)
+			p.SetDecryptors(tt.fields.decryptors)
+			p.SetContext(tt.fields.ctx)
+
 			gotResp, err := p.GenerateDEK(tt.args.ctx, tt.args.request)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GenerateDEK() error = %v, wantErr %v", err, tt.wantErr)
@@ -128,13 +146,30 @@ func TestP11_GenerateSKey(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := &P11{
-				config:     tt.fields.config,
-				ctx:        tt.fields.ctx,
-				encryptors: tt.fields.encryptors,
-				decryptors: tt.fields.decryptors,
-				createKey:  tt.fields.createKey,
+			p, err := providers.NewP11(
+				tt.fields.config,
+				tt.fields.createKey,
+				"",    // kekkeyid
+				"",    // k8sKekLabel
+				"",    // hmacKeyLabel
+				"",    // hmacCkaId
+				"",    // algorithm
+				false, // isKeyRotation
+				nil,   // oldConfig
+				"",    // oldKekkeyid
+				"",    // oldKekCkaLabel
+				"",    // oldHmacKeyLabel
+				"",    // oldHmacCkaId
+				"",    // oldAlgorithm
+			)
+			if err != nil {
+				t.Fatalf("Unable to create P11 instance, err: %v", err)
 			}
+
+			p.SetEncryptors(tt.fields.encryptors)
+			p.SetDecryptors(tt.fields.decryptors)
+			p.SetContext(tt.fields.ctx)
+
 			gotResp, err := p.GenerateSKey(tt.args.ctx, tt.args.request)
 			if (err != nil) != tt.wantErr {
 
@@ -197,15 +232,32 @@ func TestP11_ImportCACert(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := &P11{
-				kekCkaId:   tt.fields.kid,
-				cid:        tt.fields.cid,
-				config:     tt.fields.config,
-				ctx:        tt.fields.ctx,
-				encryptors: tt.fields.encryptors,
-				decryptors: tt.fields.decryptors,
-				createKey:  tt.fields.createKey,
+			p, err := providers.NewP11(
+				tt.fields.config,
+				tt.fields.createKey,
+				"",    // kekkeyid
+				"",    // k8sKekLabel
+				"",    // hmacKeyLabel
+				"",    // hmacCkaId
+				"",    // algorithm
+				false, // isKeyRotation
+				nil,   // oldConfig
+				"",    // oldKekkeyid
+				"",    // oldKekCkaLabel
+				"",    // oldHmacKeyLabel
+				"",    // oldHmacCkaId
+				"",    // oldAlgorithm
+			)
+			if err != nil {
+				t.Fatalf("Unable to create P11 instance, err: %v", err)
 			}
+
+			p.SetKekKeyIdFromBytes(tt.fields.kid)
+			p.SetCID(tt.fields.cid)
+			p.SetEncryptors(tt.fields.encryptors)
+			p.SetDecryptors(tt.fields.decryptors)
+			p.SetContext(tt.fields.ctx)
+
 			gotResp, err := p.ImportCACert(tt.args.ctx, tt.args.request)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ImportCACert() error = %v, wantErr %v", err, tt.wantErr)
@@ -264,13 +316,30 @@ func TestP11_LoadDEK(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := &P11{
-				config:     tt.fields.config,
-				ctx:        tt.fields.ctx,
-				encryptors: tt.fields.encryptors,
-				decryptors: tt.fields.decryptors,
-				createKey:  tt.fields.createKey,
+			p, err := providers.NewP11(
+				tt.fields.config,
+				tt.fields.createKey,
+				"",    // kekkeyid
+				"",    // k8sKekLabel
+				"",    // hmacKeyLabel
+				"",    // hmacCkaId
+				"",    // algorithm
+				false, // isKeyRotation
+				nil,   // oldConfig
+				"",    // oldKekkeyid
+				"",    // oldKekCkaLabel
+				"",    // oldHmacKeyLabel
+				"",    // oldHmacCkaId
+				"",    // oldAlgorithm
+			)
+			if err != nil {
+				t.Fatalf("Unable to create P11 instance, err: %v", err)
 			}
+
+			p.SetEncryptors(tt.fields.encryptors)
+			p.SetDecryptors(tt.fields.decryptors)
+			p.SetContext(tt.fields.ctx)
+
 			gotResp, err := p.LoadSKey(tt.args.ctx, tt.args.request)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("LoadDEK() error = %v, wantErr %v", err, tt.wantErr)

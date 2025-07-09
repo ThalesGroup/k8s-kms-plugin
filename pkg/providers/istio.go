@@ -184,7 +184,8 @@ func (p *P11) GenerateDEK(ctx context.Context, request *istio.GenerateDEKRequest
 	}
 	var dekBlob []byte
 
-	if dekBlob, err = generateDEK(p.ctx, encryptor); err != nil {
+	// GenerateDEK from p11.go
+	if dekBlob, err = GenerateDEK(p.ctx, encryptor); err != nil {
 		logrus.Error(err)
 		return
 	}
@@ -204,7 +205,8 @@ func (p *P11) GenerateKEK(ctx context.Context, request *istio.GenerateKEKRequest
 		}
 	}
 
-	_, err = generateKEK(p.ctx, request.KekKid, []byte(defaultKEKlabel), jose.AlgA256GCM)
+	// GenerateKEK from p11.go
+	_, err = GenerateKEK(p.ctx, request.KekKid, []byte(defaultKEKlabel), jose.AlgA256GCM)
 	if err != nil {
 		logrus.Error(err)
 		return
