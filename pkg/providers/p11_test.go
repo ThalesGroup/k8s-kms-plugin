@@ -174,7 +174,7 @@ var validJWEs = []string{
 }
 
 // Tests for getIVFromDecryptRequest function
-func TestGetIVFromDecryptRequest_ValidIV(t *testing.T) {
+func TestP11_GetIVFromDecryptRequest_ValidIV(t *testing.T) {
 
 	for _, mockJWE := range validJWEs {
 		t.Run(mockJWE, func(t *testing.T) {
@@ -215,7 +215,7 @@ var invalidJWEs = []string{
 	"",
 }
 
-func TestGetIVFromDecryptRequest_InvalidIV(t *testing.T) {
+func TestP11_GetIVFromDecryptRequest_InvalidIV(t *testing.T) {
 	for _, mockJWE := range invalidJWEs {
 		t.Run(mockJWE, func(t *testing.T) {
 
@@ -233,7 +233,7 @@ func TestGetIVFromDecryptRequest_InvalidIV(t *testing.T) {
 }
 
 // Test for unknown algorithm in map
-func TestAlgToKeyGenParams_UnknownAlgorithm(t *testing.T) {
+func TestP11_AlgToKeyGenParams_UnknownAlgorithm(t *testing.T) {
 	_, exists := algToKeyGenParams[jose.Alg("unknown")]
 	assert.False(t, exists)
 }
