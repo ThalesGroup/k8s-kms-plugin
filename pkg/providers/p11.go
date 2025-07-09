@@ -61,7 +61,7 @@ var (
 // or encryption are returned.
 //
 // for Istio: generateDEK is only used by GenerateDEK.
-// TODO: decide is this Istio related method should be separated from the KMS v2 plugin
+// TODO: decide if this Istio related method should be separated from the KMS v2 plugin
 func generateDEK(ctx11 *crypto11.Context, encryptor gose.JweEncryptor) (encryptedKeyBlob []byte, err error) {
 
 	key := make([]byte, 32)
@@ -103,7 +103,7 @@ func generateDEK(ctx11 *crypto11.Context, encryptor gose.JweEncryptor) (encrypte
 // AEAD encryption key or an error if the operation fails.
 //
 // for Istio: generateKEK is only used by GenerateKEK.
-// TODO: decide is this Istio related method should be separated from the KMS v2 plugin
+// TODO: decide if this Istio related method should be separated from the KMS v2 plugin
 func generateKEK(ctx *crypto11.Context, identity, label []byte, alg jose.Alg) (key gose.AeadEncryptionKey, err error) {
 	params, supported := algToKeyGenParams[alg]
 	if !supported {
@@ -529,6 +529,9 @@ func getIVFromDecryptRequest(req *k8skmsv2.DecryptRequest) (iv []byte, err error
 	if err = jwe.Unmarshal(string(req.GetCiphertext())); err != nil {
 		return nil, fmt.Errorf("error unmarshalling the jwe: %v", err)
 	}
+	if len(jwe.InitializationVector) == 0 {
+		return nil, fmt.Errorf("no initialization vector found in jwe")
+	}
 	return jwe.InitializationVector, nil
 }
 
@@ -950,6 +953,13 @@ func (p *P11) Status(ctx context.Context, request *k8skmsv2.StatusRequest) (stat
 		return
 	}
 
+	// TODO: consider only testing the length of the KEK ID and not the nil check
+	if len(p.kekCkaId) == 0 {
+		err = errors.New("KEK ID is empty")
+		logrus.WithError(err).Error("p11 Status: error due to missing KEK ID")
+		return
+	}
+
 	statusResponse = &k8skmsv2.StatusResponse{
 		Version: "v2",
 		Healthz: "ok",
@@ -964,7 +974,7 @@ func (p *P11) Status(ctx context.Context, request *k8skmsv2.StatusRequest) (stat
 	return statusResponse, nil
 }
 
-// TODO: decide is this Istio related method should be separated from the KMS v2 plugin
+// TODO: decide if this Istio related method should be separated from the KMS v2 plugin
 func (p *P11) genKekKid() (kid []byte, err error) {
 	var u uuid.UUID
 	u, err = uuid.NewRandom()
