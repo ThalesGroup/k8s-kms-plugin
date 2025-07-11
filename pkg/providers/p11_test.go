@@ -17,6 +17,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/ThalesGroup/crypto11"
 	"github.com/ThalesGroup/gose/jose"
 	"github.com/stretchr/testify/assert"
 
@@ -236,4 +237,30 @@ func TestP11_GetIVFromDecryptRequest_InvalidIV(t *testing.T) {
 func TestP11_AlgToKeyGenParams_UnknownAlgorithm(t *testing.T) {
 	_, exists := algToKeyGenParams[jose.Alg("unknown")]
 	assert.False(t, exists)
+}
+
+func TestP11_NewP11_AllEmptyArgs(t *testing.T) {
+
+	emptyActiveCfg := &crypto11.Config{}
+	emptyOldCfg := &crypto11.Config{}
+
+	_, err := NewP11(emptyActiveCfg, false, "", "", "", "", "", false, emptyOldCfg, "", "", "", "", "")
+	assert.Error(t, err)
+}
+
+func TestP11_NewP11_ConfigEmptyArgs(t *testing.T) {
+
+	validActiveCfg := &crypto11.Config{
+		Path:       "/some/path/to/lib.so",
+		TokenLabel: "label",
+		Pin:        "1234",
+	}
+	validOldCfg := &crypto11.Config{
+		Path:       "/some/path/to/oldlib.so",
+		TokenLabel: "oldlabel",
+		Pin:        "5678",
+	}
+
+	_, err := NewP11(validActiveCfg, false, "", "", "", "", "", false, validOldCfg, "", "", "", "", "")
+	assert.Error(t, err)
 }
