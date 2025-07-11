@@ -48,11 +48,11 @@ type ViperFlagsServe struct {
 	Port          uint16 `mapstructure:"port"`
 	ServerTLSCert string `mapstructure:"tls-certificate"`
 	ServerTLSKey  string `mapstructure:"tls-key"`
+	CaTLSCert     string `mapstructure:"tls-ca"`
 
 	// PKCS #11 & KMS plugin parameters
 	Algorithm  string `mapstructure:"algorithm"`
 	CaID       string `mapstructure:"ca-id"`
-	CaTLSCert  string `mapstructure:"tls-ca"`
 	NativePath string `mapstructure:"native-path"`
 	P11Label   string `mapstructure:"p11-label"`
 	P11Lib     string `mapstructure:"p11-lib"`
