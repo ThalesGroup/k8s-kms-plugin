@@ -14,6 +14,7 @@ package cmd
 //   - crypto11
 import (
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -42,8 +43,7 @@ import (
 type ViperFlagsServe struct {
 	// gRPC server parameters
 	AllowAny      bool   `mapstructure:"allow-any"`
-	DisableSocket bool   `mapstructure:"disable-socket"`
-	EnableTCP     bool   `mapstructure:"enable-server"`
+	GrpcNetwork   string `mapstructure:"grpc-network"`
 	Host          string `mapstructure:"host"`
 	Port          uint16 `mapstructure:"port"`
 	ServerTLSCert string `mapstructure:"tls-certificate"`
@@ -152,7 +152,8 @@ Using environment variables and configuration file:
 		g := new(errgroup.Group)
 		var grpcTCP, grpcUNIX net.Listener
 
-		if vprFlgsServe.EnableTCP {
+		switch vprFlgsServe.GrpcNetwork {
+		case "tcp", "tcp4", "tcp6":
 			// vprFlgsServe.Port needs to be converted from uint16 to string
 			grpcAddr := net.JoinHostPort(vprFlgsServe.Host, strconv.FormatUint(uint64(vprFlgsServe.Port), 10))
 
@@ -161,9 +162,7 @@ Using environment variables and configuration file:
 			}
 
 			g.Go(func() error { return grpcServe(grpcTCP, p) })
-		}
-
-		if !vprFlgsServe.DisableSocket {
+		case "unix":
 			_ = os.Remove(vprFlgsServe.SocketPath)
 			if grpcUNIX, err = net.Listen("unix", vprFlgsServe.SocketPath); err != nil {
 				return
@@ -174,6 +173,12 @@ Using environment variables and configuration file:
 			// access to the socket.
 			os.Chmod(vprFlgsServe.SocketPath, 0775)
 			g.Go(func() error { return grpcServe(grpcUNIX, p) })
+		default:
+			errOut := fmt.Errorf("unknown gRPC network listener type: %q", vprFlgsServe.GrpcNetwork)
+			logrus.WithField("cobra-cmd", cmd.Use).
+				WithError(errOut).
+				Error("unknown gRPC network listener type")
+			return errOut
 		}
 
 		if err = g.Wait(); err != nil {
@@ -190,31 +195,44 @@ func init() {
 
 	// Since this project uses Viper bind with Cobra flags, we generally do not need to use "Flags().*Var"
 	// (like StringVar, BoolVar, Uint16Var, etc...) as we do not need to access the cobra flag values directly. This is
-	// because we use Viper to retrieve the values of the flags.
+	// because we use Viper and our custom Viper patch "cmd/k8s-kms-plugin/cmd/viper-patch-sub.go" to retrieve the
+	// values of the flags.
 
-	// unix socket server options
-	serveCmd.PersistentFlags().Bool("disable-socket", false, "Disable socket based server. Env var: K8S_KMS_PLUGIN_SERVE_DISABLE_SOCKET.")
+	// gRPC network parameter
+	serveCmd.PersistentFlags().String("grpc-network", "unix", "Network to listen on. Options: tcp, tcp4, tcp6, unix. Env var: K8S_KMS_PLUGIN_SERVE_GRPC_NETWORK")
+	serveCmd.RegisterFlagCompletionFunc("grpc-network", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"tcp", "tcp4", "tcp6", "unix"}, cobra.ShellCompDirectiveNoFileComp
+	})
 
-	// tcp server options
-	serveCmd.PersistentFlags().Bool("enable-server", false, "Enable TLS based server. Env var: K8S_KMS_PLUGIN_SERVE_ENABLE_SERVER.")
+	// unix socket server options for the kubernetes facing gRPC API
+	serveCmd.PersistentFlags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_SERVE_KEK_SOCKET")
+
+	// tcp and TLS server options for the kubernetes facing gRPC API
+	serveCmd.PersistentFlags().String("host", "0.0.0.0", "Hostname without port. Env var: K8S_KMS_PLUGIN_SERVE_HOST.")
+	serveCmd.PersistentFlags().Uint16("port", 31400, "TCP Port for gRPC service. Env var: K8S_KMS_PLUGIN_SERVE_PORT.")
 	serveCmd.PersistentFlags().String("tls-ca", "certs/ca.crt", "TLS CA cert. Env var: K8S_KMS_PLUGIN_SERVE_TLS_CA.")
 	serveCmd.PersistentFlags().String("tls-key", "certs/tls.key", "TLS server key. Env var: K8S_KMS_PLUGIN_SERVE_TLS_KEY")
 	serveCmd.PersistentFlags().String("tls-certificate", "certs/tls.crt", "TLS server cert. Env var: K8S_KMS_PLUGIN_SERVE_TLS_CERTIFICATE")
 
 	serveCmd.PersistentFlags().Bool("allow-any", false, "Allow any device (accepts all ids/secrets). Env var: K8S_KMS_PLUGIN_SERVE_ALLOW_ANY")
 
+	// if the user chooses to run k8s-kms-plugin serve with unix socket, then do not configure TCP and TLS settings.
+	serveCmd.MarkFlagsMutuallyExclusive("socket", "host")
+	serveCmd.MarkFlagsMutuallyExclusive("socket", "port")
+	serveCmd.MarkFlagsMutuallyExclusive("socket", "tls-ca")
+	serveCmd.MarkFlagsMutuallyExclusive("socket", "tls-key")
+	serveCmd.MarkFlagsMutuallyExclusive("socket", "tls-certificate")
+
+	// PKCS11 related options
 	serveCmd.PersistentFlags().String("algorithm", "aes-gcm", "Set the algorithm for encryption/decryption. Possible values: aes-gcm, aes-cbc, rsa-oaep. Env var: K8S_KMS_PLUGIN_SERVE_ALGORITHM")
 	serveCmd.RegisterFlagCompletionFunc("algorithm", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"aes-gcm", "aes-cbc", "rsa-oaep"}, cobra.ShellCompDirectiveNoFileComp
 	})
 
-	// These flags comes from root
-	// These flags does not need to store their values in variable because we use the viper structure ViperFlagsServe to do this
 	serveCmd.PersistentFlags().String("ca-id", defaultCaId, "Cert ID for CA Cert record. Env var: K8S_KMS_PLUGIN_SERVE_CA_ID")
 	serveCmd.PersistentFlags().Bool("auto-create", false, "Auto create the keys if needed. Env var: K8S_KMS_PLUGIN_SERVE_AUTO_CREATE.")
 	serveCmd.PersistentFlags().String("p11-key-label", "", "Key Label CKA_LABEL to use for encrypt/decrypt. Env var: K8S_KMS_PLUGIN_SERVE_P11_KEY_LABEL.")
 	serveCmd.PersistentFlags().String("p11-hmac-label", "", "Key Label CKA_LABEL to use for sha based verifications. Env var: K8S_KMS_PLUGIN_SERVE_P11_HMAC_LABEL.")
-	serveCmd.PersistentFlags().String("host", "0.0.0.0", "Hostname without port. Env var: K8S_KMS_PLUGIN_SERVE_HOST.")
 	serveCmd.PersistentFlags().String("kek-id", "", "Key ID CKA_ID for KMS KEK. Env var: K8S_KMS_PLUGIN_SERVE_KEK_ID")
 	serveCmd.PersistentFlags().String("hmac-id", "", "Key ID CKA_ID for KMS HMAC. Env var: K8S_KMS_PLUGIN_SERVE_HMAC_ID")
 	serveCmd.PersistentFlags().StringP("native-path", "p", ".keys", "Path to key store for native provider(Files only). Env var: K8S_KMS_PLUGIN_SERVE_NATIVE_PATH.")
@@ -222,15 +240,11 @@ func init() {
 	serveCmd.PersistentFlags().String("p11-lib", "", "Path to p11 library/client. Env var: K8S_KMS_PLUGIN_SERVE_P11_LIB")
 	serveCmd.PersistentFlags().String("p11-pin", "", "P11 Pin. Env var: K8S_KMS_PLUGIN_SERVE_P11_PIN")
 	serveCmd.PersistentFlags().Int("p11-slot", 0, "P11 token slot. Env var: K8S_KMS_PLUGIN_SERVE_P11_SLOT")
-	serveCmd.PersistentFlags().Uint16("port", 31400, "TCP Port for gRPC service. Env var: K8S_KMS_PLUGIN_SERVE_PORT.")
 	// Provider
 	serveCmd.PersistentFlags().String("provider", "p11", "Provider. Possible values: p11, softhsm, luna, dpod. Env var: K8S_KMS_PLUGIN_SERVE_PROVIDER.")
 	serveCmd.RegisterFlagCompletionFunc("provider", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"p11", "softhsm", "luna", "dpod"}, cobra.ShellCompDirectiveNoFileComp
 	})
-
-	// Socket
-	serveCmd.PersistentFlags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_SERVE_KEK_SOCKET")
 
 	// At least one of KEK CKA_ID or CKA_LABEL must be provided by the user
 	serveCmd.MarkFlagsOneRequired("kek-id", "p11-key-label")
@@ -318,8 +332,16 @@ func grpcServe(gl net.Listener, p providers.Provider) (err error) {
 	reflection.Register(gs)
 	istio.RegisterKeyManagementServiceServer(gs, p)
 
-	logrus.Infof("Serving on socket: %s", gl.Addr().String())
-	logrus.Debugf("grpcServe: value of grpcPort user input: %d", vprFlgsServe.Port)
+	switch vprFlgsServe.GrpcNetwork {
+	case "tcp", "tcp4", "tcp6":
+		logrus.Infof("Serving on TCP: %s", gl.Addr().String())
+	case "unix":
+		logrus.Infof("Serving on unix socket: %s", gl.Addr().String())
+	default:
+		err = fmt.Errorf("unknown gRPC network listener type: %q", vprFlgsServe.GrpcNetwork)
+		logrus.WithError(err).Error("unknown gRPC network listener type")
+		return
+	}
 
 START:
 	if err = gs.Serve(gl); err != nil {

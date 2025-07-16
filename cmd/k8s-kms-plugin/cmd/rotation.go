@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"strconv"
@@ -117,15 +118,12 @@ Using environment variables and configuration file:
 			logrus.WithField("cobra-cmd", cmd.Use).WithError(err).Fatal("failed to initialize rotated provider for old KEK")
 		}
 
-		if err != nil {
-			logrus.WithField("cobra-cmd", cmd.Use).WithError(err).Fatal("failed to initialize provider for new KEK")
-		}
-
 		// gRPC server
 		g := new(errgroup.Group)
 		var grpcTCP, grpcUNIX net.Listener
 
-		if vprFlgsServe.EnableTCP {
+		switch vprFlgsServe.GrpcNetwork {
+		case "tcp", "tcp4", "tcp6":
 			// vprFlgsServe.Port needs to be converted from uint16 to string
 			grpcAddr := net.JoinHostPort(vprFlgsServe.Host, strconv.FormatUint(uint64(vprFlgsServe.Port), 10))
 
@@ -134,9 +132,7 @@ Using environment variables and configuration file:
 			}
 
 			g.Go(func() error { return grpcRotation(grpcTCP, p) })
-		}
-
-		if !vprFlgsServe.DisableSocket {
+		case "unix":
 			_ = os.Remove(vprFlgsServe.SocketPath)
 			if grpcUNIX, err = net.Listen("unix", vprFlgsServe.SocketPath); err != nil {
 				return
@@ -147,6 +143,12 @@ Using environment variables and configuration file:
 			// access to the socket.
 			os.Chmod(vprFlgsServe.SocketPath, 0775)
 			g.Go(func() error { return grpcRotation(grpcUNIX, p) })
+		default:
+			errOut := fmt.Errorf("unknown gRPC network listener type: %q", vprFlgsServe.GrpcNetwork)
+			logrus.WithField("cobra-cmd", cmd.Use).
+				WithError(errOut).
+				Error("unknown gRPC network listener type")
+			return errOut
 		}
 
 		if err = g.Wait(); err != nil {
