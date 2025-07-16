@@ -127,7 +127,7 @@ Using environment variables and configuration file:
 			// vprFlgsServe.Port needs to be converted from uint16 to string
 			grpcAddr := net.JoinHostPort(vprFlgsServe.Host, strconv.FormatUint(uint64(vprFlgsServe.Port), 10))
 
-			if grpcTCP, err = net.Listen("tcp", grpcAddr); err != nil {
+			if grpcTCP, err = net.Listen(vprFlgsServe.GrpcNetwork, grpcAddr); err != nil {
 				return
 			}
 
