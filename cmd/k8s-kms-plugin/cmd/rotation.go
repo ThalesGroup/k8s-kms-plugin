@@ -124,6 +124,13 @@ Using environment variables and configuration file:
 
 		switch vprFlgsServe.GrpcNetwork {
 		case "tcp", "tcp4", "tcp6":
+			if cmd.Flags().Lookup("socket").Changed {
+				errOut := fmt.Errorf("do not set the unix --socket flag when flag --grpc-network or K8S_KMS_PLUGIN_SERVE_GRPC_NETWORK is set to tcp*")
+				logrus.WithField("cobra-cmd", cmd.Use).
+					WithError(errOut).
+					Error("wrong user cli input")
+				return errOut
+			}
 			// vprFlgsServe.Port needs to be converted from uint16 to string
 			grpcAddr := net.JoinHostPort(vprFlgsServe.Host, strconv.FormatUint(uint64(vprFlgsServe.Port), 10))
 
@@ -305,8 +312,18 @@ func grpcRotation(gl net.Listener, p providers.Provider) (err error) {
 	k8skmsv2.RegisterKeyManagementServiceServer(gs, p)
 	reflection.Register(gs)
 
-	logrus.Infof("Serving on socket: %s", gl.Addr().String())
-	logrus.Debugf("grpcRotation: value of grpcPort user input: %d", vprFlgsServe.Port)
+	switch vprFlgsServe.GrpcNetwork {
+	case "tcp", "tcp4", "tcp6":
+		logrus.WithField("endpoint", gl.Addr().String()).
+			Infof("serving k8s facing KMSv2 API on TCP: %s", gl.Addr().String())
+	case "unix":
+		logrus.WithField("endpoint", gl.Addr().String()).
+			Infof("serving k8s facing KMSv2 API on unix socket: %s", gl.Addr().String())
+	default:
+		err = fmt.Errorf("unknown gRPC network listener type: %q", vprFlgsServe.GrpcNetwork)
+		logrus.WithError(err).Error("unknown gRPC network listener type")
+		return
+	}
 
 START:
 	if err = gs.Serve(gl); err != nil {
