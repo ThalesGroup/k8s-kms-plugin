@@ -36,6 +36,7 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -49,6 +50,7 @@ type ViperFlagsServe struct {
 	ServerTLSCert string `mapstructure:"tls-certificate"`
 	ServerTLSKey  string `mapstructure:"tls-key"`
 	CaTLSCert     string `mapstructure:"tls-ca"`
+	EnableTLS     bool   `mapstructure:"enable-tls"`
 
 	// PKCS #11 & KMS plugin parameters
 	Algorithm  string `mapstructure:"algorithm"`
@@ -155,7 +157,7 @@ Using environment variables and configuration file:
 		switch vprFlgsServe.GrpcNetwork {
 		case "tcp", "tcp4", "tcp6":
 			if cmd.Flags().Lookup("socket").Changed {
-				errOut := fmt.Errorf("do not set the unix --socket flag when flag --grpc-network or K8S_KMS_PLUGIN_SERVE_GRPC_NETWORK is set to tcp*")
+				errOut := fmt.Errorf("do not set the unix --socket flag or K8S_KMS_PLUGIN_SERVE_KEK_SOCKET when flag --grpc-network or K8S_KMS_PLUGIN_SERVE_GRPC_NETWORK is set to tcp*")
 				logrus.WithField("cobra-cmd", cmd.Use).
 					WithError(errOut).
 					Error("wrong user cli input")
@@ -211,12 +213,15 @@ func init() {
 		return []string{"tcp", "tcp4", "tcp6", "unix"}, cobra.ShellCompDirectiveNoFileComp
 	})
 
-	// unix socket server options for the kubernetes facing gRPC API
+	// unix socket server parameters for the kubernetes facing gRPC API
 	serveCmd.PersistentFlags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_SERVE_KEK_SOCKET")
 
-	// tcp and TLS server options for the kubernetes facing gRPC API
+	// TCP parameters for the kubernetes facing gRPC API
 	serveCmd.PersistentFlags().String("host", "0.0.0.0", "Hostname without port. Env var: K8S_KMS_PLUGIN_SERVE_HOST.")
 	serveCmd.PersistentFlags().Uint16("port", 31400, "TCP Port for gRPC service. Env var: K8S_KMS_PLUGIN_SERVE_PORT.")
+
+	// TLS parameters for the kubernetes facing TCP gRPC API (not unix socket)
+	serveCmd.PersistentFlags().Bool("enable-tls", false, "Enable TLS on the gRPC server.")
 	serveCmd.PersistentFlags().String("tls-ca", "certs/ca.crt", "TLS CA cert. Env var: K8S_KMS_PLUGIN_SERVE_TLS_CA.")
 	serveCmd.PersistentFlags().String("tls-key", "certs/tls.key", "TLS server key. Env var: K8S_KMS_PLUGIN_SERVE_TLS_KEY")
 	serveCmd.PersistentFlags().String("tls-certificate", "certs/tls.crt", "TLS server cert. Env var: K8S_KMS_PLUGIN_SERVE_TLS_CERTIFICATE")
@@ -226,6 +231,7 @@ func init() {
 	// if the user chooses to run k8s-kms-plugin serve with unix socket, then do not configure TCP and TLS settings.
 	serveCmd.MarkFlagsMutuallyExclusive("socket", "host")
 	serveCmd.MarkFlagsMutuallyExclusive("socket", "port")
+	serveCmd.MarkFlagsMutuallyExclusive("socket", "enable-tls")
 	serveCmd.MarkFlagsMutuallyExclusive("socket", "tls-ca")
 	serveCmd.MarkFlagsMutuallyExclusive("socket", "tls-key")
 	serveCmd.MarkFlagsMutuallyExclusive("socket", "tls-certificate")
@@ -332,6 +338,15 @@ func grpcServe(gl net.Listener, p providers.Provider) (err error) {
 	serverOptions := []grpc.ServerOption{
 		grpc.UnaryInterceptor(p.UnaryInterceptor),
 		grpc.UnknownServiceHandler(unknownServiceHandler),
+	}
+	if vprFlgsServe.EnableTLS {
+		// load TLS keys from PEM files.
+		// TODO: add support for private key stored in a TPM ?
+		tlsCreds, err := credentials.NewServerTLSFromFile(vprFlgsServe.ServerTLSCert, vprFlgsServe.ServerTLSKey)
+		if err != nil {
+			return fmt.Errorf("failed to load TLS keys: %w", err)
+		}
+		serverOptions = append(serverOptions, grpc.Creds(tlsCreds))
 	}
 	gs := grpc.NewServer(serverOptions...)
 

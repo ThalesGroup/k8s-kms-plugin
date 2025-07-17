@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 	k8skmsv2 "k8s.io/kms/apis/v2"
 )
@@ -306,6 +307,15 @@ func grpcRotation(gl net.Listener, p providers.Provider) (err error) {
 	serverOptions := []grpc.ServerOption{
 		grpc.UnaryInterceptor(p.UnaryInterceptor),
 		grpc.UnknownServiceHandler(unknownServiceHandler),
+	}
+	if vprFlgsServe.EnableTLS {
+		// load TLS keys from PEM files.
+		// TODO: add support for private key stored in a TPM ?
+		tlsCreds, err := credentials.NewServerTLSFromFile(vprFlgsServe.ServerTLSCert, vprFlgsServe.ServerTLSKey)
+		if err != nil {
+			return fmt.Errorf("failed to load TLS keys: %w", err)
+		}
+		serverOptions = append(serverOptions, grpc.Creds(tlsCreds))
 	}
 	gs := grpc.NewServer(serverOptions...)
 
