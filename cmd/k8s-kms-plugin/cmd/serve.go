@@ -358,6 +358,9 @@ func grpcServe(gl net.Listener, p providers.Provider) (err error) {
 	case "tcp", "tcp4", "tcp6":
 		logrus.WithField("endpoint", gl.Addr().String()).
 			Infof("serving k8s facing KMSv2 API on TCP: %s", gl.Addr().String())
+		if vprFlgsServe.EnableTLS {
+			logrus.Trace("TLS is enabled on gRPC server")
+		}
 	case "unix":
 		logrus.WithField("endpoint", gl.Addr().String()).
 			Infof("serving k8s facing KMSv2 API on unix socket: %s", gl.Addr().String())
