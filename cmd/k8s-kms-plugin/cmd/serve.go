@@ -108,7 +108,7 @@ Use "k8s-kms-plugin serve rotation" subcommand for key rotation support.
 Kubernetes documentation: https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/#configuring-the-kms-provider-kms-v2
 `,
 	Example: `
-Using flags:
+Using flags and serving on unix socket:
 	k8s-kms-plugin serve \
 	    --log-level=info \
 	    --socket /run/user/1000/k8s-kms-plugin.sock \
@@ -118,9 +118,36 @@ Using flags:
 	    --p11-key-label rsa0 \
 	    --algorithm rsa-oaep
 
-Using environment variables and configuration file:
+Using environment variables and configuration file and serving on unix socket:
 	K8S_KMS_PLUGIN_SERVE_P11_PIN="mypin" k8s-kms-plugin serve rotation --config my-kms-plugin-config.yaml
+
 	K8S_KMS_PLUGIN_SERVE_P11_PIN="mypin" k8s-kms-plugin --log-format=json serve rotation --config my-kms-plugin-config.yaml
+
+Serving on TCP IPv4 and enabling TLS for the gRPC API:
+    k8s-kms-plugin serve  \
+        --log-level=trace  \
+        --p11-lib  /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1  \
+        --p11-label  mylabel  \
+        --p11-pin  mypin  \
+        --kek-id  123abc  \
+        --algorithm  rsa-oaep \
+        --grpc-network tcp4 \
+        --port 8842 \
+        --enable-tls \
+        --tls-key ~/certs/tls.key \
+        --tls-certificate ~/certs/tls.crt \
+        --tls-ca ~/certs/ca.crt
+
+Using AES-CBC with HMAC authentication and serving on unix socket:
+    k8s-kms-plugin serve  \
+        --log-level=trace  \
+        --socket /run/user/1000/k8s-kms-plugin.sock \
+        --p11-lib /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1 \
+        --p11-label mylabel \
+        --p11-pin mypin \
+        --kek-id 64636138353931326363356537313264 \
+        --hmac-id 30663536623936326235663530363234 \
+        --algorithm aes-cbc
 `,
 	GroupID: "kmscmdsgrpmain",
 	// Initialize and populate cobra CLI flags values with viper during the Persistent pre-run
@@ -208,7 +235,7 @@ func init() {
 	// values of the flags.
 
 	// gRPC network parameter
-	serveCmd.PersistentFlags().String("grpc-network", "unix", "Network to listen on. Options: tcp, tcp4, tcp6, unix. Env var: K8S_KMS_PLUGIN_SERVE_GRPC_NETWORK")
+	serveCmd.PersistentFlags().String("grpc-network", "unix", "Network to listen on for gRPC API. Options: tcp, tcp4, tcp6, unix. Env var: K8S_KMS_PLUGIN_SERVE_GRPC_NETWORK")
 	serveCmd.RegisterFlagCompletionFunc("grpc-network", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"tcp", "tcp4", "tcp6", "unix"}, cobra.ShellCompDirectiveNoFileComp
 	})
@@ -221,7 +248,7 @@ func init() {
 	serveCmd.PersistentFlags().Uint16("port", 31400, "TCP Port for gRPC service. Env var: K8S_KMS_PLUGIN_SERVE_PORT.")
 
 	// TLS parameters for the kubernetes facing TCP gRPC API (not unix socket)
-	serveCmd.PersistentFlags().Bool("enable-tls", false, "Enable TLS on the gRPC server.")
+	serveCmd.PersistentFlags().Bool("enable-tls", false, "Enable TLS on the TCP gRPC server. Not compatible when serving on unix socket. Env var: K8S_KMS_PLUGIN_SERVE_ENABLE_TLS")
 	serveCmd.PersistentFlags().String("tls-ca", "certs/ca.crt", "TLS CA cert. Env var: K8S_KMS_PLUGIN_SERVE_TLS_CA.")
 	serveCmd.PersistentFlags().String("tls-key", "certs/tls.key", "TLS server key. Env var: K8S_KMS_PLUGIN_SERVE_TLS_KEY")
 	serveCmd.PersistentFlags().String("tls-certificate", "certs/tls.crt", "TLS server cert. Env var: K8S_KMS_PLUGIN_SERVE_TLS_CERTIFICATE")
@@ -340,13 +367,20 @@ func grpcServe(gl net.Listener, p providers.Provider) (err error) {
 		grpc.UnknownServiceHandler(unknownServiceHandler),
 	}
 	if vprFlgsServe.EnableTLS {
-		// load TLS keys from PEM files.
-		// TODO: add support for private key stored in a TPM ?
-		tlsCreds, err := credentials.NewServerTLSFromFile(vprFlgsServe.ServerTLSCert, vprFlgsServe.ServerTLSKey)
-		if err != nil {
-			return fmt.Errorf("failed to load TLS keys: %w", err)
+		switch vprFlgsServe.GrpcNetwork {
+		case "tcp", "tcp4", "tcp6":
+			// load TLS keys from PEM files.
+			// TODO: add support for private key stored in a TPM ?
+			tlsCreds, err := credentials.NewServerTLSFromFile(vprFlgsServe.ServerTLSCert, vprFlgsServe.ServerTLSKey)
+			if err != nil {
+				return fmt.Errorf("failed to load TLS keys: %w", err)
+			}
+			serverOptions = append(serverOptions, grpc.Creds(tlsCreds))
+		case "unix":
+			errOut := fmt.Errorf("grpcServe: unix gRPC listener does not support TLS")
+			logrus.WithError(errOut).Error("wrong API serving settings")
+			return errOut
 		}
-		serverOptions = append(serverOptions, grpc.Creds(tlsCreds))
 	}
 	gs := grpc.NewServer(serverOptions...)
 

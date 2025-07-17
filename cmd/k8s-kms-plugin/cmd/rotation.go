@@ -309,13 +309,20 @@ func grpcRotation(gl net.Listener, p providers.Provider) (err error) {
 		grpc.UnknownServiceHandler(unknownServiceHandler),
 	}
 	if vprFlgsServe.EnableTLS {
-		// load TLS keys from PEM files.
-		// TODO: add support for private key stored in a TPM ?
-		tlsCreds, err := credentials.NewServerTLSFromFile(vprFlgsServe.ServerTLSCert, vprFlgsServe.ServerTLSKey)
-		if err != nil {
-			return fmt.Errorf("failed to load TLS keys: %w", err)
+		switch vprFlgsServe.GrpcNetwork {
+		case "tcp", "tcp4", "tcp6":
+			// load TLS keys from PEM files.
+			// TODO: add support for private key stored in a TPM ?
+			tlsCreds, err := credentials.NewServerTLSFromFile(vprFlgsServe.ServerTLSCert, vprFlgsServe.ServerTLSKey)
+			if err != nil {
+				return fmt.Errorf("failed to load TLS keys: %w", err)
+			}
+			serverOptions = append(serverOptions, grpc.Creds(tlsCreds))
+		case "unix":
+			errOut := fmt.Errorf("grpcRotation: unix gRPC listener does not support TLS")
+			logrus.WithError(errOut).Error("wrong API serving settings")
+			return errOut
 		}
-		serverOptions = append(serverOptions, grpc.Creds(tlsCreds))
 	}
 	gs := grpc.NewServer(serverOptions...)
 
