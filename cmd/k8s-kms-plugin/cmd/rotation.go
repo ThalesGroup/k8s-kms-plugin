@@ -4,6 +4,8 @@ Copyright © 2025 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"net"
@@ -313,11 +315,40 @@ func grpcRotation(gl net.Listener, p providers.Provider) (err error) {
 		case "tcp", "tcp4", "tcp6":
 			// load TLS keys from PEM files.
 			// TODO: add support for private key stored in a TPM ?
-			tlsCreds, err := credentials.NewServerTLSFromFile(vprFlgsServe.ServerTLSCert, vprFlgsServe.ServerTLSKey)
+			tlsKeypair, err := tls.LoadX509KeyPair(vprFlgsServe.ServerTLSCert, vprFlgsServe.ServerTLSKey)
 			if err != nil {
-				return fmt.Errorf("failed to load TLS keys: %w", err)
+				return fmt.Errorf("grpcRotation: failed to load TLS key pair: %w", err)
 			}
-			serverOptions = append(serverOptions, grpc.Creds(tlsCreds))
+
+			certPool := x509.NewCertPool()
+			caPem, err := os.ReadFile(vprFlgsServe.TLSCaCert)
+			if err != nil {
+				return fmt.Errorf("failed to read CA cert: %w", err)
+			}
+			if ok := certPool.AppendCertsFromPEM(caPem); !ok {
+				return fmt.Errorf("failed to append CA cert to cert pool")
+			}
+
+			tlsConfig := &tls.Config{
+				Certificates: []tls.Certificate{tlsKeypair},
+				MinVersion:   tls.VersionTLS12,
+			}
+
+			if vprFlgsServe.RequireClientCert {
+				clientCAPool := x509.NewCertPool()
+				clientCaPem, err := os.ReadFile(vprFlgsServe.TLSClientCaCert)
+				if err != nil {
+					return fmt.Errorf("failed to read client CA cert: %w", err)
+				}
+				if ok := clientCAPool.AppendCertsFromPEM(clientCaPem); !ok {
+					return fmt.Errorf("failed to append client CA cert")
+				}
+
+				tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
+				tlsConfig.ClientCAs = clientCAPool
+			}
+
+			serverOptions = append(serverOptions, grpc.Creds(credentials.NewTLS(tlsConfig)))
 		case "unix":
 			errOut := fmt.Errorf("grpcRotation: unix gRPC listener does not support TLS")
 			logrus.WithError(errOut).Error("wrong API serving settings")

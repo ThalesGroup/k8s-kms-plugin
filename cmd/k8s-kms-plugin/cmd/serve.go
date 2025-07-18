@@ -13,6 +13,8 @@ package cmd
 //   - gose
 //   - crypto11
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"net"
@@ -43,14 +45,16 @@ import (
 // ViperFlagsServe defines a struct to hold the values of cobra CLI flags and use viper to populate them
 type ViperFlagsServe struct {
 	// gRPC server parameters
-	AllowAny      bool   `mapstructure:"allow-any"`
-	GrpcNetwork   string `mapstructure:"grpc-network"`
-	Host          string `mapstructure:"host"`
-	Port          uint16 `mapstructure:"port"`
-	ServerTLSCert string `mapstructure:"tls-certificate"`
-	ServerTLSKey  string `mapstructure:"tls-key"`
-	CaTLSCert     string `mapstructure:"tls-ca"`
-	EnableTLS     bool   `mapstructure:"enable-tls"`
+	AllowAny          bool   `mapstructure:"allow-any"`
+	GrpcNetwork       string `mapstructure:"grpc-network"`
+	Host              string `mapstructure:"host"`
+	Port              uint16 `mapstructure:"port"`
+	ServerTLSCert     string `mapstructure:"tls-certificate"`
+	ServerTLSKey      string `mapstructure:"tls-key"`
+	TLSCaCert         string `mapstructure:"tls-ca"`
+	EnableTLS         bool   `mapstructure:"enable-tls"`
+	RequireClientCert bool   `mapstructure:"require-client-cert"`
+	TLSClientCaCert   string `mapstructure:"tls-client-ca"`
 
 	// PKCS #11 & KMS plugin parameters
 	Algorithm  string `mapstructure:"algorithm"`
@@ -253,6 +257,10 @@ func init() {
 	serveCmd.PersistentFlags().String("tls-key", "certs/tls.key", "TLS server key. Env var: K8S_KMS_PLUGIN_SERVE_TLS_KEY")
 	serveCmd.PersistentFlags().String("tls-certificate", "certs/tls.crt", "TLS server cert. Env var: K8S_KMS_PLUGIN_SERVE_TLS_CERTIFICATE")
 
+	// mutual TLS client authentication parameters
+	serveCmd.PersistentFlags().Bool("require-client-cert", false, "Require and verify client certificate for mTLS. Env var: K8S_KMS_PLUGIN_SERVE_REQUIRE_CLIENT_CERT")
+	serveCmd.PersistentFlags().String("tls-client-ca", "certs/ca.crt", "TLS CA cert. Env var: K8S_KMS_PLUGIN_SERVE_TLS_CLIENT_CA")
+
 	serveCmd.PersistentFlags().Bool("allow-any", false, "Allow any device (accepts all ids/secrets). Env var: K8S_KMS_PLUGIN_SERVE_ALLOW_ANY")
 
 	// if the user chooses to run k8s-kms-plugin serve with unix socket, then do not configure TCP and TLS settings.
@@ -371,11 +379,40 @@ func grpcServe(gl net.Listener, p providers.Provider) (err error) {
 		case "tcp", "tcp4", "tcp6":
 			// load TLS keys from PEM files.
 			// TODO: add support for private key stored in a TPM ?
-			tlsCreds, err := credentials.NewServerTLSFromFile(vprFlgsServe.ServerTLSCert, vprFlgsServe.ServerTLSKey)
+			tlsKeypair, err := tls.LoadX509KeyPair(vprFlgsServe.ServerTLSCert, vprFlgsServe.ServerTLSKey)
 			if err != nil {
-				return fmt.Errorf("failed to load TLS keys: %w", err)
+				return fmt.Errorf("grpcServe: failed to load TLS key pair: %w", err)
 			}
-			serverOptions = append(serverOptions, grpc.Creds(tlsCreds))
+
+			certPool := x509.NewCertPool()
+			caPem, err := os.ReadFile(vprFlgsServe.TLSCaCert)
+			if err != nil {
+				return fmt.Errorf("failed to read CA cert: %w", err)
+			}
+			if ok := certPool.AppendCertsFromPEM(caPem); !ok {
+				return fmt.Errorf("failed to append CA cert to cert pool")
+			}
+
+			tlsConfig := &tls.Config{
+				Certificates: []tls.Certificate{tlsKeypair},
+				MinVersion:   tls.VersionTLS12,
+			}
+
+			if vprFlgsServe.RequireClientCert {
+				clientCAPool := x509.NewCertPool()
+				clientCaPem, err := os.ReadFile(vprFlgsServe.TLSClientCaCert)
+				if err != nil {
+					return fmt.Errorf("failed to read client CA cert: %w", err)
+				}
+				if ok := clientCAPool.AppendCertsFromPEM(clientCaPem); !ok {
+					return fmt.Errorf("failed to append client CA cert")
+				}
+
+				tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
+				tlsConfig.ClientCAs = clientCAPool
+			}
+
+			serverOptions = append(serverOptions, grpc.Creds(credentials.NewTLS(tlsConfig)))
 		case "unix":
 			errOut := fmt.Errorf("grpcServe: unix gRPC listener does not support TLS")
 			logrus.WithError(errOut).Error("wrong API serving settings")
