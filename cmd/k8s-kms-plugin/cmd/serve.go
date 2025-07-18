@@ -113,19 +113,38 @@ Kubernetes documentation: https://kubernetes.io/docs/tasks/administer-cluster/km
 `,
 	Example: `
 Using flags and serving on unix socket:
-	k8s-kms-plugin serve \
-	    --log-level=info \
-	    --socket /run/user/1000/k8s-kms-plugin.sock \
-	    --p11-lib /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1 \
-	    --p11-label mylabel \
-	    --p11-pin mypin \
-	    --p11-key-label rsa0 \
-	    --algorithm rsa-oaep
+    k8s-kms-plugin serve \
+        --log-level=info \
+        --socket /run/user/1000/k8s-kms-plugin.sock \
+        --p11-lib /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1 \
+        --p11-label mylabel \
+        --p11-pin mypin \
+        --p11-key-label rsa0 \
+        --algorithm rsa-oaep
 
 Using environment variables and configuration file and serving on unix socket:
 	K8S_KMS_PLUGIN_SERVE_P11_PIN="mypin" k8s-kms-plugin serve rotation --config my-kms-plugin-config.yaml
 
 	K8S_KMS_PLUGIN_SERVE_P11_PIN="mypin" k8s-kms-plugin --log-format=json serve rotation --config my-kms-plugin-config.yaml
+
+Using AES-CBC with HMAC authentication and serving on unix socket:
+    k8s-kms-plugin serve  \
+        --log-level=trace  \
+        --socket /run/user/1000/k8s-kms-plugin.sock \
+        --p11-lib /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1 \
+        --p11-label mylabel \
+        --p11-pin mypin \
+        --kek-id 64636138353931326363356537313264 \
+        --hmac-id 30663536623936326235663530363234 \
+        --algorithm aes-cbc
+
+Note:
+As of now (kubernetes "v1.33.1" and kms v0.33.3), the KMSv2 API implementation from Kubernetes **only supports unix socket gRPC** as network connection endpoint:
+* official documentation https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/#configuring-the-kms-provider-kms-v2
+* method "ParseEndpoint" from "k8s.io/kms/pkg/util" in version "v0.33.3" only supports "unix": see
+  * https://pkg.go.dev/k8s.io/kms@v0.33.3/pkg/util#ParseEndpoint
+  * [kms v0.33.3 /pkg/util/util.go#L26](https://github.com/kubernetes/kms/blob/b8a79480db40eda7916f633621690b1ca9993373/pkg/util/util.go#L26)
+The KMSv2 API does not support TCP and TLS. However, the k8s-kms-plugin gRPC API can be expose as plaintext TCP or TLS.
 
 Serving on TCP IPv4 and enabling TLS for the gRPC API:
     k8s-kms-plugin serve  \
@@ -141,17 +160,6 @@ Serving on TCP IPv4 and enabling TLS for the gRPC API:
         --tls-key ~/certs/tls.key \
         --tls-certificate ~/certs/tls.crt \
         --tls-ca ~/certs/ca.crt
-
-Using AES-CBC with HMAC authentication and serving on unix socket:
-    k8s-kms-plugin serve  \
-        --log-level=trace  \
-        --socket /run/user/1000/k8s-kms-plugin.sock \
-        --p11-lib /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1 \
-        --p11-label mylabel \
-        --p11-pin mypin \
-        --kek-id 64636138353931326363356537313264 \
-        --hmac-id 30663536623936326235663530363234 \
-        --algorithm aes-cbc
 `,
 	GroupID: "kmscmdsgrpmain",
 	// Initialize and populate cobra CLI flags values with viper during the Persistent pre-run
@@ -247,6 +255,8 @@ func init() {
 	// unix socket server parameters for the kubernetes facing gRPC API
 	serveCmd.PersistentFlags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_SERVE_KEK_SOCKET")
 
+	// KMSv2 (v0.33.3) only supports unix socket gRPC as network connection endpoint: See ParseEndpoint https://github.com/kubernetes/kms/blob/v0.33.3/pkg/util/util.go#L26
+	// https://github.com/kubernetes/kms/blob/b8a79480db40eda7916f633621690b1ca9993373/pkg/util/util.go#L26
 	// TCP parameters for the kubernetes facing gRPC API
 	serveCmd.PersistentFlags().String("host", "0.0.0.0", "Hostname without port. Env var: K8S_KMS_PLUGIN_SERVE_HOST.")
 	serveCmd.PersistentFlags().Uint16("port", 31400, "TCP Port for gRPC service. Env var: K8S_KMS_PLUGIN_SERVE_PORT.")

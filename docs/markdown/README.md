@@ -2,9 +2,9 @@
 
 This documentation is auto-generated from `k8s-kms-plugin`:
 
-- version `v0.6.0-alpha-17-gfdf0c31`
-- commit `fdf0c3120920280a0716272f299066849fac4630`
-- build date 2025-07-17T17:00:59+00:00.
+- version `v0.6.0-alpha-17-gc95cda7-dirty`
+- commit `c95cda7cf622df6eeea40770ea75df284fb33711`
+- build date 2025-07-18T09:20:02+00:00.
 
 ## Available Command Documentation
 
