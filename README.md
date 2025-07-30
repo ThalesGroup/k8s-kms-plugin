@@ -1,27 +1,147 @@
 # K8S-KMS-Plugin
 
-This microservice implements the Kubernetes KMS protocol as a gRPC service that leverages a remote or local HSM via PKCS11.
+`k8s-kms-plugin` implements the [Kubernetes KMS v2 API](https://pkg.go.dev/k8s.io/kms/apis/v2) protocol as a gRPC service that leverages a remote or local HSM via PKCS11.
 
 This plugin will also run in proxy mode which can connect to a remote plugin service running in a secure network device (Key Managers)
 
-## Requirements
+> **Droping support of KMS v1**: Newer version of the `k8s-kms-plugin` droped support for [Kubernetes KMSv1](https://pkg.go.dev/k8s.io/kms@v0.33.3/apis/v1beta1),
+> as KMSv1 is deprecated in Kubernetes v1.28 and disabled by default since Kubernetes v1.29.
 
-This service is designed for kubernetes clusters that are using version 1.10.0 or higher and implements the KMS API:
+> **Note**: This documentation is under construction and needs to be updated to remove references to KMS v1 and
+> document KMS v2 operations.
 
+- [1. Installation](#1-installation)
+  - [1.1. kubernetes Requierments](#11-kubernetes-requierments)
+  - [1.2. Install `k8s-kms-plugin` From Official Packages](#12-install-k8s-kms-plugin-from-official-packages)
+    - [1.2.1. `apk` Alpine or Wolfi OS packages](#121-apk-alpine-or-wolfi-os-packages)
+    - [1.2.2. `archlinux` packages](#122-archlinux-packages)
+    - [1.2.3. `deb` debian packages](#123-deb-debian-packages)
+    - [1.2.4. `rpm` RPM packages](#124-rpm-rpm-packages)
+    - [1.2.5. Binary](#125-binary)
+  - [1.3. Build `k8s-kms-plugin` locally from Source with `make`](#13-build-k8s-kms-plugin-locally-from-source-with-make)
+    - [1.3.1. Build Requierments](#131-build-requierments)
+    - [1.3.2. Standard x86 Linux Build](#132-standard-x86-linux-build)
+    - [1.3.3. Debug x86 Linux Build](#133-debug-x86-linux-build)
+  - [1.4. Build `k8s-kms-plugin` **locally** from Source with `goreleaser`](#14-build-k8s-kms-plugin-locally-from-source-with-goreleaser)
+- [2. Usage \& User Guides](#2-usage--user-guides)
+  - [2.1. CLI Help Messages](#21-cli-help-messages)
+  - [2.2. CLI Auto Completion for `bash`, `fish`, `zsh`](#22-cli-auto-completion-for-bash-fish-zsh)
+  - [2.3. CLI Auto Generated Documentation](#23-cli-auto-generated-documentation)
+  - [2.4. User Input Priority: CLI \> Env Vars \> Config File \> Default](#24-user-input-priority-cli--env-vars--config-file--default)
+- [3. KMS provider for SoftHsm V2](#3-kms-provider-for-softhsm-v2)
+- [4. KMS provider for TPM2 PKCS11](#4-kms-provider-for-tpm2-pkcs11)
+- [5. Quick Start](#5-quick-start)
+- [6. Deployment scenarios](#6-deployment-scenarios)
+- [7. Development Environment](#7-development-environment)
+- [8. Debug Environment](#8-debug-environment)
+- [9. Vulnerability check](#9-vulnerability-check)
+- [10. Signing artifacts](#10-signing-artifacts)
+- [11. Verifying the authenticity of an artifact](#11-verifying-the-authenticity-of-an-artifact)
+- [12. Verifying the SLSA attestation of a container](#12-verifying-the-slsa-attestation-of-a-container)
+
+## 1. Installation
+### 1.1. kubernetes Requierments
+
+`k8s-kms-plugin` is designed for kubernetes clusters that are using version v1.29 or higher and implements the [KMS v2 API](https://pkg.go.dev/k8s.io/kms/apis/v2). See also:
 https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/
-
-So for development purposes, you'll want a cluster that can be configured to use a KMS gRPC endpoint on your APIServer nodes.
 
 To serve the `k8s-kms-plugin` for encryption operations from Kubernetes, you will need at least one AES key in a PKCS11 provider.
 
-## Build `k8s-kms-plugin` locally with `goreleaser`
+### 1.2. Install `k8s-kms-plugin` From Official Packages
 
-This allows you to test your `goreleaser` Github Action Recipe locally.
+As of now, `k8s-kms-plugin`'s Github Action Build Recipe supports building `apk`, `deb`, `rpm` and `archlinux` for
+Linux x86 platform. Check the different package artefacts from the [releases](https://github.com/ThalesGroup/k8s-kms-plugin/releases)
+tab.
 
-### shell `bash`
+#### 1.2.1. `apk` Alpine or Wolfi OS packages
 
-Follow these instruction to locally build the using the shell bash. I use
-`make get-ldflags` to create `LDFLAGS`.
+```bash
+```
+
+#### 1.2.2. `archlinux` packages
+
+```bash
+```
+
+#### 1.2.3. `deb` debian packages
+
+```bash
+```
+
+#### 1.2.4. `rpm` RPM packages
+
+```bash
+```
+
+#### 1.2.5. Binary
+
+```bash
+```
+
+### 1.3. Build `k8s-kms-plugin` locally from Source with `make`
+
+#### 1.3.1. Build Requierments
+
+You should have `make`, `git` and `go` installed. Review the content of the [`Makefile`](./Makefile) file for more details.
+
+CGO is required to build the plugin: **make sure you are using the right C Library** (glibc or musl) for your target
+environment. Do not build on musl libc if you intend to use the plugin on a non-musl environment (glibc).
+
+Build was tested with:
+
+```bash
+make --version
+```
+```
+GNU Make 4.4.1
+Construit pour x86_64-pc-linux-gnu
+Copyright (C) 1988-2023 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+```
+
+```bash
+go version
+```
+```
+go version go1.23.9 linux/amd64
+```
+
+```bash
+git version
+```
+```
+git version 2.50.1
+```
+
+#### 1.3.2. Standard x86 Linux Build
+
+Run
+
+```bash
+make build
+```
+
+You should get a `k8s-kms-plugin` binary in the current directory.
+
+#### 1.3.3. Debug x86 Linux Build
+
+Run
+
+```bash
+make build-debug
+```
+
+You should get a `k8s-kms-plugin` binary in the current directory.
+
+### 1.4. Build `k8s-kms-plugin` **locally** from Source with `goreleaser`
+
+This section allows you to locally test the [`goreleaser`](https://github.com/goreleaser/goreleaser) Github Action Build
+Recipe. It generates the same artefacts that the one generated by the Github Action CICD pipeline, but locally.
+
+These commands are executed in `bash`. If you use other shells like `fish`, you might need to adjust the environment
+variables export.
 
 ```bash
 export LDFLAGS=$(make get-ldflags)
@@ -29,25 +149,100 @@ export WORKSPACE=/pwd
 export GITHUB_REPOSITORY_OWNER=localfakegithubowner
 ```
 
+As of now, we choose to configure `.goreleaser.yml` so that `goreleaser` gets the content of `LDFLAGS` from an
+environment variable. This allows us to use the same `LDFLAGS` for the `make` build procedure as well as the
+`goreleaser` build, without having to set `LDFLAGS` twice (once in `.goreleaser.yml`, and once in `Makefile`.).
+
+`goreleaser` will fail if you do not provide a value for `GITHUB_REPOSITORY_OWNER`. We suggest using a fake value.
+During a real Github Action run, the value will be provided by the `GITHUB_REPOSITORY_OWNER` environment variable set
+by GA.
+
+`goreleaser` will fail if you do not provide a value for `WORKSPACE`. During a real Github Action run, the value will be
+provided by GA.
+
+Then you can either install and run `goreleaser` locally, or (preferably) you can use `podman` to run `goreleaser`
+inside an interactive container. Below is the `podman` command to run `goreleaser` locally.
+
 ```bash
-podman run -it --rm -v $PWD:/pwd   --workdir /pwd -e LDFLAGS=$LDFLAGS   -e WORKSPACE=$WORKSPACE -e GITHUB_REPOSITORY_OWNER=$GITHUB_REPOSITORY_OWNER  --platform "linux/amd64"  ghcr.io/thalesgroup/goreleaser-glibc-image:golang-1.23.6-bookworm release --clean --snapshot --skip sign,publish,validate,ko,sbom
+podman run -it --rm \
+        -v $PWD:/pwd \
+        --workdir /pwd \
+        -e LDFLAGS=$LDFLAGS \
+        -e WORKSPACE=$WORKSPACE \
+        -e GITHUB_REPOSITORY_OWNER=$GITHUB_REPOSITORY_OWNER \
+        --platform "linux/amd64" \
+        ghcr.io/thalesgroup/goreleaser-glibc-image:golang-1.23.6-bookworm \
+          release \
+            --clean \
+            --snapshot \
+            --skip sign,publish,validate,ko,sbom
 ```
 
-### shell `fish`
+We use a custom [`ghcr.io/thalesgroup/goreleaser-glibc-image`](https://github.com/ThalesGroup/goreleaser-glibc-image/pkgs/container/goreleaser-glibc-image) image to build `k8s-kms-plugin`, because the default [`ghcr.io/goreleaser/goreleaser`](https://github.com/goreleaser/goreleaser/pkgs/container/goreleaser) container image does not use the standard `glibc` libraries,
+but uses MUSL libc (found on Alpine Linux).
+To run on standard linux (not musl), `k8s-kms-plugin` needs to use standard `glibc` libraries as CGO is enabled.
+
+You can also check out [`ghcr.io/goreleaser/goreleaser-cross`](https://github.com/goreleaser/goreleaser-cross/pkgs/container/goreleaser-cross),
+which supports standard `glibc`.
+
+Or you can create your own custom image, based on the examples from https://github.com/ThalesGroup/goreleaser-glibc-image.
+
+## 2. Usage & User Guides
+
+TL;DR: The main commands you need are [`k8s-kms-plugin serve`](./docs/markdown/k8s-kms-plugin_serve.md) and [`k8s-kms-plugin serve rotation`](./docs/markdown/k8s-kms-plugin_serve_rotation.md).
+
+### 2.1. CLI Help Messages
+
+`k8s-kms-plugin` uses the [spf13/cobra](https://github.com/spf13/cobra) CLI framework to generate the help messages.
+We recommend the user to use the `-h` and `--help` flags to get the help messages.
+
+### 2.2. CLI Auto Completion for `bash`, `fish`, `zsh`
+
+`k8s-kms-plugin` supports auto-completion for `bash`, `fish`, `zsh` shells. We recommend to use the auto-completion for
+a better user experience.
+
+Example for `fish`:
 
 ```bash
-set LDFLAGS $(make get-ldflags)
-set WORKSPACE /pwd
-set GITHUB_REPOSITORY_OWNER localfakegithubowner
+k8s-kms-plugin completion fish > ~/.config/fish/completions/k8s-kms-plugin.fish
 ```
+
+### 2.3. CLI Auto Generated Documentation
+
+A static version of the CLI documentation can be generated with the `docs` command:
 
 ```bash
-podman run -it --rm -v $PWD:/pwd   --workdir /pwd -e LDFLAGS=$LDFLAGS   -e WORKSPACE=$WORKSPACE -e GITHUB_REPOSITORY_OWNER=$GITHUB_REPOSITORY_OWNER  --platform "linux/amd64"  ghcr.io/thalesgroup/goreleaser-glibc-image:golang-1.23.6-bookworm release --clean --snapshot --skip sign,publish,validate,ko,sbom
+$ ./k8s-kms-plugin docs -f cli-table-pretty -o docs/txt/
+$ ./k8s-kms-plugin docs -f markdown -o docs/markdown/
 ```
 
-## KMS provider for SoftHsm V2
+A snapshot of the CLI documentation is available here [`docs/markdown/README.md`](./docs/markdown/README.md).
 
-In this mode, we recommend to run the `k8s-kms-plugin` with the GCM algorithm.  
+### 2.4. User Input Priority: CLI > Env Vars > Config File > Default
+
+`k8s-kms-plugin` allows users to configure its settings through multiple sources, with the highest priority given to
+CLI flags, followed by environment variables, and then configuration files.
+The default settings are used if no other sources provide a value.
+
+Each CLI flag (e.g. `--log-level`) has a corresponding environment variable (e.g. `KMS_K8S_PLUGIN_LOG_LEVEL`) and a config file entry (e.g. `log-level` in YAML/TOML/JSON).
+
+A recap of all `k8s-kms-plugin` subcommands, flags, and environment variables is available here [`./docs/markdown/cli-env-var-table.md`](./docs/markdown/cli-env-var-table.md) or here [`./docs/txt/cli-env-var-table.txt`](./docs/txt/cli-env-var-table.txt) (txt).
+
+| User Input Source        | Priority Order                  | Example                             |
+|--------------------------|---------------------------------|-------------------------------------|
+| 1️⃣ CLI Flag             | Highest priority                | `--log-level debug`                 |
+| 2️⃣ Environment Variable | Overrides config file & default | `KMS_K8S_PLUGIN_LOG_LEVEL=trace`    |
+| 3️⃣ Config File          | Overrides default               | `log-level: warn` in YAML/TOML/JSON |
+| 4️⃣ Default Value        | Used if nothing else is set     | `info` (from Cobra init)                 |
+
+Flags are handled by [Cobra](https://github.com/spf13/cobra), environment variables, and config files are handled by
+[Viper](https://github.com/spf13/viper) with some customizations [`viper-patch-sub.go`](./cmd/k8s-kms-plugin/cmd/viper-patch-sub.go)
+to patch the binding between Cobra and Viper.
+
+
+## 3. KMS provider for SoftHsm V2
+
+In this mode, we recommend to run the `k8s-kms-plugin` with the GCM algorithm.
 It provides a better design for authenticated encryption operations :
 
 ```sh
@@ -60,10 +255,10 @@ k8s-kms-plugin serve \
   --provider p11 --p11-lib $MODULE --p11-key-label mykey --p11-label mylabel --p11-pin mypin --enable-server
 ```
 
-## KMS provider for TPM2 PKCS11
+## 4. KMS provider for TPM2 PKCS11
 
 You must know that AES GCM is not supported by the TPM v2 specifications.
-In this mode, we recommend to run the `k8s-kms-plugin` with the CBC-then-HMAC algorithm. 
+In this mode, we recommend to run the `k8s-kms-plugin` with the CBC-then-HMAC algorithm.
 You must provide an HMAC key alongside the AES key for encryption :
 
 ```sh
@@ -76,28 +271,11 @@ k8s-kms-plugin serve \
   --provider p11 --p11-lib $MODULE --p11-key-label cbc0 --p11-hmac-label hmac0 --p11-label mylabel --p11-pin mypin --algorithm aes-cbc --enable-server
 ```
 
-## Quick Start
+## 5. Quick Start
 
 Read the [QUICKSTART.md](QUICKSTART.md).
 
-## Usage
-
-### User Input Priority: CLI > Env Vars > Config File > Default
-
-`k8s-kms-plugin` allows users to configure settings through multiple sources, with the highest priority given to CLI flags, followed by environment variables, and then configuration files. The default settings are used if no other sources provide a value.
-
-Each CLI flag (e.g. `--log-level`) has a corresponding environment variable (e.g. `KMS_K8S_PLUGIN_LOG_LEVEL`) and a config file entry (e.g. `log-level` in YAML/TOML/JSON).
-
-| Priority Order           | Source                              | Example                         |
-|--------------------------|-------------------------------------|---------------------------------|
-| 1️⃣ CLI Flag             | `--log-level debug`                 | Highest priority                |
-| 2️⃣ Environment Variable | `KMS_K8S_PLUGIN_LOG_LEVEL=trace`    | Overrides config file & default |
-| 3️⃣ Config File          | `log-level: warn` in YAML/TOML/JSON | Overrides default               |
-| 4️⃣ Default Value        | `info` (from Cobra)                 | Used if nothing else is set     |
-
-Flags are handled by [Cobra](https://github.com/spf13/cobra), environment variables, and config files are ahhandled by [Viper](https://github.com/spf13/viper).
-
-## Deployment scenarios
+## 6. Deployment scenarios
 
 This plugin is designed to be deployed in 2 configurations
 
@@ -105,16 +283,16 @@ This plugin is designed to be deployed in 2 configurations
 - StandAlone(TODO) - Plugin and PKCS11 library deployed as StaticPod/HostContainer on APIServer nodes, this will require
 coordination with k8s provisioning tools.
 
-## Development Environment
+## 7. Development Environment
 
 `k8s` houses some sample client and server deployments for e2e testing until such time as this plugin is 100% network functional,
- and we can move it to a CICD pattern, as we'll have many actors to coordinate. 
+ and we can move it to a CICD pattern, as we'll have many actors to coordinate.
 
-All apis are defined in the `/apis` dir, and as we iterate on the spec docs, one must then run `make gen` and refactor 
+All apis are defined in the `/apis` dir, and as we iterate on the spec docs, one must then run `make gen` and refactor
 until the 2 stacks come up
 
 Both EST and KMS-Plugin binaries are in the `/cmd` dir
- 
+
 The `Makefile` contains commands for easy execution:
 - `make gen` - generates all apis into gRPC or OpenAPI Servers and Clients
 - `make dev` - loads project into your kubernetes cluster (minikube or GKE will work just fine), and continuously builds and deploys as you develop.
@@ -146,7 +324,7 @@ go mod tidy
 make build
 ```
 
-## Debug Environment
+## 8. Debug Environment
 
 For a remote debug, build the plugin with debug mode :
 
@@ -155,10 +333,10 @@ go get github.com/go-delve/delve/cmd/dlv
 make build-debug
 ```
 
-It will generate a binary `k8s-kms-plugin` that can be used with Delve for debug purpose.  
+It will generate a binary `k8s-kms-plugin` that can be used with Delve for debug purpose.
 Do not use this binary in a production environment.
 
-## Vulnerability check
+## 9. Vulnerability check
 
 ```sh
 $ govulncheck ./...
@@ -167,7 +345,7 @@ Scanning your code and 288 packages across 34 dependent modules for known vulner
 No vulnerabilities found.
 ```
 
-## Signing artifacts
+## 10. Signing artifacts
 
 During the release workflow, certificates and signatures of artifacts are generated.
 They are signed by a tool named cosign using a keyless mode.
@@ -181,7 +359,7 @@ Once you click on one, you can submit a verification code that will redirect you
 
 Do these actions for every authentication links and the signatures and the certificates will be generated with the artifacts in the release.
 
-## Verifying the authenticity of an artifact
+## 11. Verifying the authenticity of an artifact
 
 You need to downloads 3 files : [ _**[file.txt]**_, _**[file].pem**_, _**[file].sig**_]
 
@@ -205,7 +383,7 @@ Or using Podman without installing cosign :
 podman run --rm -it gcr.io/projectsigstore/cosign:v1.13.0 COSIGN_EXPERIMENTAL=1 cosign verify-blob --cert [file]-keyless.pem --signature [file]-keyless.sig --certificate-oidc-issuer "https://github.com/login/oauth" --certificate-identity [ Mail adress of the owner of the repo ] [file]
 ```
 
-## Verifying the SLSA attestation of a container
+## 12. Verifying the SLSA attestation of a container
 
 The image's attestation of provenance has been issued by a specific oidc-issuer that is 'https://token.actions.githubusercontent.com' in this repository.
 In the next command example, it is required to replace digest by the digest of the image that needs to be verified and the owner of the repo.

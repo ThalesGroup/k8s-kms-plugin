@@ -2,9 +2,9 @@
 
 This documentation is auto-generated from `k8s-kms-plugin`:
 
-- version `working-kmsv2-rotation-dirty`
-- commit `6e2c253dba3d885fea6f4c4d78ec26a32dafddff`
-- build date 2025-06-20T16:02:44+00:00.
+- version `v0.6.0-alpha-14-g2c6222b-dirty`
+- commit `2c6222bde64053b12f739af58c1cee97c32863ec`
+- build date 2025-07-31T09:35:04+00:00.
 
 ## Available Command Documentation
 

@@ -101,24 +101,41 @@ func algFromString(s string) (jose.Alg, error) {
 var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Handles Kubernetes KMS v2 requests",
-	Long: `Handles Kubernetes KMS v2 requests without key rotation.
-Use "k8s-kms-plugin serve rotation" subcommand for key rotation support.
-Kubernetes documentation: https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/#configuring-the-kms-provider-kms-v2
+	Long: `Handles Kubernetes KMS v2 requests but do not support key rotation.
+Use "k8s-kms-plugin serve rotation" subcommand to support key rotation.
+Kubernetes KMS documentation: https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/#configuring-the-kms-provider-kms-v2
+
+KMS v2 API: https://pkg.go.dev/k8s.io/kms@v0.33.3/apis/v2
 `,
 	Example: `
-Using flags:
-	k8s-kms-plugin serve \
-	    --log-level=info \
-	    --socket /run/user/1000/k8s-kms-plugin.sock \
-	    --p11-lib /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1 \
-	    --p11-label mylabel \
-	    --p11-pin mypin \
-	    --p11-key-label rsa0 \
-	    --algorithm rsa-oaep
+Using flags and serving on unix socket (gRPC plaintext):
+	k8s-kms-plugin 
+	  serve \
+		--log-level=info \
+		--socket /run/user/1000/k8s-kms-plugin.sock \
+		--p11-lib /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1 \
+		--p11-label mylabel \
+		--p11-pin mypin \
+		--p11-key-label rsa0 \
+		--algorithm rsa-oaep
 
-Using environment variables and configuration file:
-	K8S_KMS_PLUGIN_SERVE_P11_PIN="mypin" k8s-kms-plugin serve rotation --config my-kms-plugin-config.yaml
-	K8S_KMS_PLUGIN_SERVE_P11_PIN="mypin" k8s-kms-plugin --log-format=json serve rotation --config my-kms-plugin-config.yaml
+Using both environment variables and configuration file and serving on unix socket:
+	K8S_KMS_PLUGIN_SERVE_P11_PIN="mypin" k8s-kms-plugin serve --config my-kms-plugin-config.yaml
+
+Using both CLI Flags, environment variables and configuration file and serving on unix socket:
+	K8S_KMS_PLUGIN_SERVE_P11_PIN="mypin" k8s-kms-plugin --log-format=json serve --config my-kms-plugin-config.yaml
+
+Using AES-CBC with HMAC authentication, using CKA_ID, using CLI flags and serving on unix socket:
+	k8s-kms-plugin 
+	  serve \
+		--log-level=trace  \
+		--socket /run/user/1000/k8s-kms-plugin.sock \
+		--p11-lib /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1 \
+		--p11-label mylabel \
+		--p11-pin mypin \
+		--kek-id 64636138353931326363356537313264 \
+		--hmac-id 30663536623936326235663530363234 \
+		--algorithm aes-cbc
 `,
 	GroupID: "kmscmdsgrpmain",
 	// Initialize and populate cobra CLI flags values with viper during the Persistent pre-run

@@ -58,7 +58,7 @@ kos:
     env:
        - CGO_ENABLED=1 # Mandatory for crypto11 pkg or go libraries using C compilator
 
-# Generate different type of packages from binary(ies) generated in build section: apk, deb, rpm 
+# Generate different type of packages from binary(ies) generated in build section: apk, deb, rpm, archlinux
 nfpms:
   - id: '{{ .ProjectName }}'
     package_name: '{{ .ProjectName }}'
@@ -71,6 +71,7 @@ nfpms:
         - apk
         - deb
         - rpm
+        - archlinux
     contents:
         - src: /usr/bin/{{ .ProjectName }}-linux-{{ .Arch }}_{{ .Version }}
           dst: /usr/bin/{{ .ProjectName }}

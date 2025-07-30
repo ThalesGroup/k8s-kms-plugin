@@ -1,6 +1,12 @@
 /*
-Copyright © 2025 NAME HERE <EMAIL ADDRESS>
-*/
+ * Copyright 2025 Thales Group
+ * SPDX-License-Identifier: MIT
+ *
+ * Use of this source code is governed by an MIT-style
+ * license that can be found in the LICENSE file or at
+ * https://opensource.org/licenses/MIT.
+ */
+
 package cmd
 
 import (
@@ -52,15 +58,17 @@ var vprFlgsRotation ViperFlagsRotation
 var rotationCmd = &cobra.Command{
 	Use:   "rotation",
 	Short: "KEK Key rotation for KMS v2",
-	Long: `Handles Kubernetes KMS v2 requests and support KEK key rotation with 1 old KEK key and 1 active KEK key.
+	Long: `Handles Kubernetes KMS v2 requests and support KEK key rotation with x1 old KEK key and x1 active KEK key.
 "k8s-kms-pluginc serve rotation" is very similar to the "k8s-kms-plugin serve" command, but adds key rotation support.
 Refer to the kubernetes KMS v2 documentation for more details about key rotation.
 https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/#developing-a-kms-plugin-gRPC-server-notes-kms-v2
+
+KMS v2 API: https://pkg.go.dev/k8s.io/kms@v0.33.3/apis/v2
 `,
 	Example: `
-Using flags:
+Using flags and serving on unix socket (gRPC plaintext):
 	k8s-kms-plugin \
-		serve \
+	  serve \
 		--log-level=trace \
 		--socket /run/user/1000/k8s-kms-plugin.sock \
 		--p11-lib /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1 \
@@ -68,7 +76,7 @@ Using flags:
 		--p11-pin mypin \
 		--p11-key-label rsa0 \
 		--algorithm rsa-oaep \
-			rotation \
+		  rotation \
 			--old-p11-lib /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1 \
 			--old-p11-label mylabel \
 			--old-p11-pin mypin \
@@ -77,8 +85,10 @@ Using flags:
 			--old-algorithm aes-cbc
 
 Using environment variables and configuration file:
-	K8S_KMS_PLUGIN_SERVE_P11_PIN="mypin" k8s-kms-plugin serve --config my-kms-plugin-config.yaml
-	K8S_KMS_PLUGIN_SERVE_P11_PIN="mypin" k8s-kms-plugin --log-format=json serve --config my-kms-plugin-config.yaml
+	K8S_KMS_PLUGIN_SERVE_P11_PIN="mypin" k8s-kms-plugin serve rotation --config my-kms-plugin-config.yaml
+
+Using both CLI Flags, environment variables and configuration file and serving on unix socket:
+	K8S_KMS_PLUGIN_SERVE_P11_PIN="mypin" k8s-kms-plugin --log-format=json serve rotation --config my-kms-plugin-config.yaml
 	`,
 	// Initialize and populate cobra CLI flags values with viper during the Persistent pre-run
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
