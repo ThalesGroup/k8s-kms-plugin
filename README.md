@@ -229,7 +229,7 @@ Or you can create your own custom image, based on the examples from https://gith
 
 ## 4. Usage & User Guides
 
-TL;DR: The main commands you need are [`k8s-kms-plugin serve`](./docs/markdown/k8s-kms-plugin_serve.md) and [`k8s-kms-plugin serve rotation`](./docs/markdown/k8s-kms-plugin_serve_rotation.md).
+TL;DR: The main commands you need are [`k8s-kms-plugin serve`](./docs/cli-user-interface/markdown/k8s-kms-plugin_serve.md) and [`k8s-kms-plugin serve rotation`](./docs/cli-user-interface/markdown/k8s-kms-plugin_serve_rotation.md).
 
 ### 4.1. CLI Help Messages
 
@@ -252,11 +252,11 @@ k8s-kms-plugin completion fish > ~/.config/fish/completions/k8s-kms-plugin.fish
 A static version of the CLI documentation can be generated with the `docs` command:
 
 ```bash
-$ ./k8s-kms-plugin docs -f cli-table-pretty -o docs/txt/
-$ ./k8s-kms-plugin docs -f markdown -o docs/markdown/
+$ ./k8s-kms-plugin docs -f cli-table-pretty -o docs/cli-user-interface/txt/
+$ ./k8s-kms-plugin docs -f markdown -o docs/cli-user-interface/markdown/
 ```
 
-A snapshot of the CLI documentation is available here [`docs/markdown/README.md`](./docs/markdown/README.md).
+A snapshot of the CLI documentation is available here [`docs/cli-user-interface/markdown/README.md`](./docs/cli-user-interface/markdown/README.md).
 
 ### 4.4. User Input Priority: CLI > Env Vars > Config File > Default
 
@@ -266,7 +266,7 @@ The default settings are used if no other sources provide a value.
 
 Each CLI flag (e.g. `--log-level`) has a corresponding environment variable (e.g. `KMS_K8S_PLUGIN_LOG_LEVEL`) and a config file entry (e.g. `log-level` in YAML/TOML/JSON).
 
-A recap of all `k8s-kms-plugin` subcommands, flags, and environment variables is available here [`./docs/markdown/cli-env-var-table.md`](./docs/markdown/cli-env-var-table.md) or here [`./docs/txt/cli-env-var-table.txt`](./docs/txt/cli-env-var-table.txt) (txt).
+A recap of all `k8s-kms-plugin` subcommands, flags, and environment variables is available here [`./docs/cli-user-interface/markdown/cli-env-var-table.md`](./docs/cli-user-interface/markdown/cli-env-var-table.md) or here [`./docs/cli-user-interface/txt/cli-env-var-table.txt`](./docs/cli-user-interface/txt/cli-env-var-table.txt) (txt).
 
 | User Input Source        | Priority Order                  | Example                             |
 |--------------------------|---------------------------------|-------------------------------------|
