@@ -7,80 +7,120 @@ This plugin will also run in proxy mode which can connect to a remote plugin ser
 > **Droping support of KMS v1**: Newer version of the `k8s-kms-plugin` droped support for [Kubernetes KMSv1](https://pkg.go.dev/k8s.io/kms@v0.33.3/apis/v1beta1),
 > as KMSv1 is deprecated in Kubernetes v1.28 and disabled by default since Kubernetes v1.29.
 
-> **Note**: This documentation is under construction and needs to be updated to remove references to KMS v1 and
+> **Note**: This documentation is under construction and needs to be updated to remove/archive references to KMS v1 and
 > document KMS v2 operations.
 
-- [1. Installation](#1-installation)
-  - [1.1. kubernetes Requierments](#11-kubernetes-requierments)
-  - [1.2. Install `k8s-kms-plugin` From Official Packages](#12-install-k8s-kms-plugin-from-official-packages)
-    - [1.2.1. `apk` Alpine or Wolfi OS packages](#121-apk-alpine-or-wolfi-os-packages)
-    - [1.2.2. `archlinux` packages](#122-archlinux-packages)
-    - [1.2.3. `deb` debian packages](#123-deb-debian-packages)
-    - [1.2.4. `rpm` RPM packages](#124-rpm-rpm-packages)
-    - [1.2.5. Binary](#125-binary)
-  - [1.3. Build `k8s-kms-plugin` locally from Source with `make`](#13-build-k8s-kms-plugin-locally-from-source-with-make)
-    - [1.3.1. Build Requierments](#131-build-requierments)
-    - [1.3.2. Standard x86 Linux Build](#132-standard-x86-linux-build)
-    - [1.3.3. Debug x86 Linux Build](#133-debug-x86-linux-build)
-  - [1.4. Build `k8s-kms-plugin` **locally** from Source with `goreleaser`](#14-build-k8s-kms-plugin-locally-from-source-with-goreleaser)
-- [2. Usage \& User Guides](#2-usage--user-guides)
-  - [2.1. CLI Help Messages](#21-cli-help-messages)
-  - [2.2. CLI Auto Completion for `bash`, `fish`, `zsh`](#22-cli-auto-completion-for-bash-fish-zsh)
-  - [2.3. CLI Auto Generated Documentation](#23-cli-auto-generated-documentation)
-  - [2.4. User Input Priority: CLI \> Env Vars \> Config File \> Default](#24-user-input-priority-cli--env-vars--config-file--default)
-- [3. KMS provider for SoftHsm V2](#3-kms-provider-for-softhsm-v2)
-- [4. KMS provider for TPM2 PKCS11](#4-kms-provider-for-tpm2-pkcs11)
-- [5. Quick Start](#5-quick-start)
-- [6. Deployment scenarios](#6-deployment-scenarios)
-- [7. Development Environment](#7-development-environment)
-- [8. Debug Environment](#8-debug-environment)
-- [9. Vulnerability check](#9-vulnerability-check)
-- [10. Signing artifacts](#10-signing-artifacts)
-- [11. Verifying the authenticity of an artifact](#11-verifying-the-authenticity-of-an-artifact)
-- [12. Verifying the SLSA attestation of a container](#12-verifying-the-slsa-attestation-of-a-container)
+- [1. Definions \& Accronyms](#1-definions--accronyms)
+- [2. Overview](#2-overview)
+  - [2.1. Architecture](#21-architecture)
+  - [2.2. Deployment Scenarios Example](#22-deployment-scenarios-example)
+- [3. Installation](#3-installation)
+  - [3.1. kubernetes Requierments](#31-kubernetes-requierments)
+  - [3.2. Install `k8s-kms-plugin` From Official Packages](#32-install-k8s-kms-plugin-from-official-packages)
+    - [3.2.1. `apk` Alpine or Wolfi OS packages](#321-apk-alpine-or-wolfi-os-packages)
+    - [3.2.2. `archlinux` packages](#322-archlinux-packages)
+    - [3.2.3. `deb` debian packages](#323-deb-debian-packages)
+    - [3.2.4. `rpm` RPM packages](#324-rpm-rpm-packages)
+    - [3.2.5. Binary](#325-binary)
+  - [3.3. Build `k8s-kms-plugin` locally from Source with `make`](#33-build-k8s-kms-plugin-locally-from-source-with-make)
+    - [3.3.1. Build Requierments](#331-build-requierments)
+    - [3.3.2. Standard x86 Linux Build](#332-standard-x86-linux-build)
+    - [3.3.3. Debug x86 Linux Build](#333-debug-x86-linux-build)
+  - [3.4. Build `k8s-kms-plugin` **locally** from Source with `goreleaser`](#34-build-k8s-kms-plugin-locally-from-source-with-goreleaser)
+- [4. Usage \& User Guides](#4-usage--user-guides)
+  - [4.1. CLI Help Messages](#41-cli-help-messages)
+  - [4.2. CLI Auto Completion for `bash`, `fish`, `zsh`](#42-cli-auto-completion-for-bash-fish-zsh)
+  - [4.3. CLI Auto Generated Documentation](#43-cli-auto-generated-documentation)
+  - [4.4. User Input Priority: CLI \> Env Vars \> Config File \> Default](#44-user-input-priority-cli--env-vars--config-file--default)
+- [5. KMS provider for SoftHsm V2](#5-kms-provider-for-softhsm-v2)
+- [6. KMS provider for TPM2 PKCS11](#6-kms-provider-for-tpm2-pkcs11)
+- [7. Quick Start](#7-quick-start)
+- [8. Deployment scenarios](#8-deployment-scenarios)
+- [9. Development Environment](#9-development-environment)
+- [10. Debug Environment](#10-debug-environment)
+- [11. Vulnerability check](#11-vulnerability-check)
+- [12. Signing artifacts](#12-signing-artifacts)
+- [13. Verifying the authenticity of an artifact](#13-verifying-the-authenticity-of-an-artifact)
+- [14. Verifying the SLSA attestation of a container](#14-verifying-the-slsa-attestation-of-a-container)
 
-## 1. Installation
-### 1.1. kubernetes Requierments
+## 1. Definions & Accronyms
+
+| Term        | Definition                            |
+|-------------|---------------------------------------|
+| **DEK**     | Data Encryption Key                   |
+| **HSM**     | Hardware Security Module              |
+| **k3s**     | A Lightweight Kubernetes Distribution |
+| **k8s**     | Kubernetes (short for)                |
+| **KEK**     | Key Encryption Key                    |
+| **KMS**     | Key Management System                 |
+| **PKCS#11** | Public Key Cryptography Standard      |
+| **TPM**     | Trusted Platform Module               |
+
+## 2. Overview
+
+### 2.1. Architecture
+
+The following sequence diagram illustrates the communication between `kubernetes` ([KMS v2 API](https://pkg.go.dev/k8s.io/kms/apis/v2)), `k8s-kms-plugin`, and a [PKCS #11](https://docs.oasis-open.org/pkcs11/pkcs11-base/v3.0/pkcs11-base-v3.0.html) capable device like a TPM or HSM.
+
+<details>
+<summary>k8s-kms-plugin Sequence Diagram</summary>
+
+![](./docs/puml-diagrams/kmsv2-client-server.sqce-diag.svg)
+
+</details>
+
+> This diagram was inspired by those from https://github.com/kubernetes/enhancements/tree/master/keps/sig-auth/3299-kms-v2-improvements
+
+### 2.2. Deployment Scenarios Example
+
+The figure below illustrates several example of how the `k8s-kms-plugin` can be deployed for a Kubernetes Single Node cluster and using an embedded TPM or an HSM as a PKCS #11 capable key store.
+
+![](./docs/images/k8s-kms-plugin-deployment-scenario-examples.svg)
+
+## 3. Installation
+### 3.1. kubernetes Requierments
 
 `k8s-kms-plugin` is designed for kubernetes clusters that are using version v1.29 or higher and implements the [KMS v2 API](https://pkg.go.dev/k8s.io/kms/apis/v2). See also:
 https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/
 
+`k8s-kms-plugin` **does not support KMS v1** which is deprecated in Kubernetes v1.28 and disabled by default since Kubernetes v1.29.
+
 To serve the `k8s-kms-plugin` for encryption operations from Kubernetes, you will need at least one AES key in a PKCS11 provider.
 
-### 1.2. Install `k8s-kms-plugin` From Official Packages
+### 3.2. Install `k8s-kms-plugin` From Official Packages
 
 As of now, `k8s-kms-plugin`'s Github Action Build Recipe supports building `apk`, `deb`, `rpm` and `archlinux` for
 Linux x86 platform. Check the different package artefacts from the [releases](https://github.com/ThalesGroup/k8s-kms-plugin/releases)
 tab.
 
-#### 1.2.1. `apk` Alpine or Wolfi OS packages
+#### 3.2.1. `apk` Alpine or Wolfi OS packages
 
 ```bash
 ```
 
-#### 1.2.2. `archlinux` packages
+#### 3.2.2. `archlinux` packages
 
 ```bash
 ```
 
-#### 1.2.3. `deb` debian packages
+#### 3.2.3. `deb` debian packages
 
 ```bash
 ```
 
-#### 1.2.4. `rpm` RPM packages
+#### 3.2.4. `rpm` RPM packages
 
 ```bash
 ```
 
-#### 1.2.5. Binary
+#### 3.2.5. Binary
 
 ```bash
 ```
 
-### 1.3. Build `k8s-kms-plugin` locally from Source with `make`
+### 3.3. Build `k8s-kms-plugin` locally from Source with `make`
 
-#### 1.3.1. Build Requierments
+#### 3.3.1. Build Requierments
 
 You should have `make`, `git` and `go` installed. Review the content of the [`Makefile`](./Makefile) file for more details.
 
@@ -115,7 +155,7 @@ git version
 git version 2.50.1
 ```
 
-#### 1.3.2. Standard x86 Linux Build
+#### 3.3.2. Standard x86 Linux Build
 
 Run
 
@@ -125,7 +165,7 @@ make build
 
 You should get a `k8s-kms-plugin` binary in the current directory.
 
-#### 1.3.3. Debug x86 Linux Build
+#### 3.3.3. Debug x86 Linux Build
 
 Run
 
@@ -135,7 +175,7 @@ make build-debug
 
 You should get a `k8s-kms-plugin` binary in the current directory.
 
-### 1.4. Build `k8s-kms-plugin` **locally** from Source with `goreleaser`
+### 3.4. Build `k8s-kms-plugin` **locally** from Source with `goreleaser`
 
 This section allows you to locally test the [`goreleaser`](https://github.com/goreleaser/goreleaser) Github Action Build
 Recipe. It generates the same artefacts that the one generated by the Github Action CICD pipeline, but locally.
@@ -187,16 +227,16 @@ which supports standard `glibc`.
 
 Or you can create your own custom image, based on the examples from https://github.com/ThalesGroup/goreleaser-glibc-image.
 
-## 2. Usage & User Guides
+## 4. Usage & User Guides
 
 TL;DR: The main commands you need are [`k8s-kms-plugin serve`](./docs/markdown/k8s-kms-plugin_serve.md) and [`k8s-kms-plugin serve rotation`](./docs/markdown/k8s-kms-plugin_serve_rotation.md).
 
-### 2.1. CLI Help Messages
+### 4.1. CLI Help Messages
 
 `k8s-kms-plugin` uses the [spf13/cobra](https://github.com/spf13/cobra) CLI framework to generate the help messages.
 We recommend the user to use the `-h` and `--help` flags to get the help messages.
 
-### 2.2. CLI Auto Completion for `bash`, `fish`, `zsh`
+### 4.2. CLI Auto Completion for `bash`, `fish`, `zsh`
 
 `k8s-kms-plugin` supports auto-completion for `bash`, `fish`, `zsh` shells. We recommend to use the auto-completion for
 a better user experience.
@@ -207,7 +247,7 @@ Example for `fish`:
 k8s-kms-plugin completion fish > ~/.config/fish/completions/k8s-kms-plugin.fish
 ```
 
-### 2.3. CLI Auto Generated Documentation
+### 4.3. CLI Auto Generated Documentation
 
 A static version of the CLI documentation can be generated with the `docs` command:
 
@@ -218,7 +258,7 @@ $ ./k8s-kms-plugin docs -f markdown -o docs/markdown/
 
 A snapshot of the CLI documentation is available here [`docs/markdown/README.md`](./docs/markdown/README.md).
 
-### 2.4. User Input Priority: CLI > Env Vars > Config File > Default
+### 4.4. User Input Priority: CLI > Env Vars > Config File > Default
 
 `k8s-kms-plugin` allows users to configure its settings through multiple sources, with the highest priority given to
 CLI flags, followed by environment variables, and then configuration files.
@@ -233,14 +273,14 @@ A recap of all `k8s-kms-plugin` subcommands, flags, and environment variables is
 | 1️⃣ CLI Flag             | Highest priority                | `--log-level debug`                 |
 | 2️⃣ Environment Variable | Overrides config file & default | `KMS_K8S_PLUGIN_LOG_LEVEL=trace`    |
 | 3️⃣ Config File          | Overrides default               | `log-level: warn` in YAML/TOML/JSON |
-| 4️⃣ Default Value        | Used if nothing else is set     | `info` (from Cobra init)                 |
+| 4️⃣ Default Value        | Used if nothing else is set     | `info` (from Cobra init)            |
 
 Flags are handled by [Cobra](https://github.com/spf13/cobra), environment variables, and config files are handled by
 [Viper](https://github.com/spf13/viper) with some customizations [`viper-patch-sub.go`](./cmd/k8s-kms-plugin/cmd/viper-patch-sub.go)
 to patch the binding between Cobra and Viper.
 
 
-## 3. KMS provider for SoftHsm V2
+## 5. KMS provider for SoftHsm V2
 
 In this mode, we recommend to run the `k8s-kms-plugin` with the GCM algorithm.
 It provides a better design for authenticated encryption operations :
@@ -255,7 +295,7 @@ k8s-kms-plugin serve \
   --provider p11 --p11-lib $MODULE --p11-key-label mykey --p11-label mylabel --p11-pin mypin --enable-server
 ```
 
-## 4. KMS provider for TPM2 PKCS11
+## 6. KMS provider for TPM2 PKCS11
 
 You must know that AES GCM is not supported by the TPM v2 specifications.
 In this mode, we recommend to run the `k8s-kms-plugin` with the CBC-then-HMAC algorithm.
@@ -271,11 +311,11 @@ k8s-kms-plugin serve \
   --provider p11 --p11-lib $MODULE --p11-key-label cbc0 --p11-hmac-label hmac0 --p11-label mylabel --p11-pin mypin --algorithm aes-cbc --enable-server
 ```
 
-## 5. Quick Start
+## 7. Quick Start
 
 Read the [QUICKSTART.md](QUICKSTART.md).
 
-## 6. Deployment scenarios
+## 8. Deployment scenarios
 
 This plugin is designed to be deployed in 2 configurations
 
@@ -283,7 +323,7 @@ This plugin is designed to be deployed in 2 configurations
 - StandAlone(TODO) - Plugin and PKCS11 library deployed as StaticPod/HostContainer on APIServer nodes, this will require
 coordination with k8s provisioning tools.
 
-## 7. Development Environment
+## 9. Development Environment
 
 `k8s` houses some sample client and server deployments for e2e testing until such time as this plugin is 100% network functional,
  and we can move it to a CICD pattern, as we'll have many actors to coordinate.
@@ -324,7 +364,7 @@ go mod tidy
 make build
 ```
 
-## 8. Debug Environment
+## 10. Debug Environment
 
 For a remote debug, build the plugin with debug mode :
 
@@ -336,7 +376,7 @@ make build-debug
 It will generate a binary `k8s-kms-plugin` that can be used with Delve for debug purpose.
 Do not use this binary in a production environment.
 
-## 9. Vulnerability check
+## 11. Vulnerability check
 
 ```sh
 $ govulncheck ./...
@@ -345,7 +385,7 @@ Scanning your code and 288 packages across 34 dependent modules for known vulner
 No vulnerabilities found.
 ```
 
-## 10. Signing artifacts
+## 12. Signing artifacts
 
 During the release workflow, certificates and signatures of artifacts are generated.
 They are signed by a tool named cosign using a keyless mode.
@@ -359,7 +399,7 @@ Once you click on one, you can submit a verification code that will redirect you
 
 Do these actions for every authentication links and the signatures and the certificates will be generated with the artifacts in the release.
 
-## 11. Verifying the authenticity of an artifact
+## 13. Verifying the authenticity of an artifact
 
 You need to downloads 3 files : [ _**[file.txt]**_, _**[file].pem**_, _**[file].sig**_]
 
@@ -383,7 +423,7 @@ Or using Podman without installing cosign :
 podman run --rm -it gcr.io/projectsigstore/cosign:v1.13.0 COSIGN_EXPERIMENTAL=1 cosign verify-blob --cert [file]-keyless.pem --signature [file]-keyless.sig --certificate-oidc-issuer "https://github.com/login/oauth" --certificate-identity [ Mail adress of the owner of the repo ] [file]
 ```
 
-## 12. Verifying the SLSA attestation of a container
+## 14. Verifying the SLSA attestation of a container
 
 The image's attestation of provenance has been issued by a specific oidc-issuer that is 'https://token.actions.githubusercontent.com' in this repository.
 In the next command example, it is required to replace digest by the digest of the image that needs to be verified and the owner of the repo.
