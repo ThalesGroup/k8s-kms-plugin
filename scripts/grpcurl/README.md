@@ -1,0 +1,23 @@
+The `grpcurl-roundtrip-test.sh` script allows you to mimic and test the
+communication between the `k8s-kms-plugin` and the `kubernetes` KMS API server.
+
+The script tests a `StatusRequest`, then an `EncryptRequest` and finally a
+`DecryptRequest`.
+
+This assume a `k8s-kms-plugin serve` is running without errors and listening
+on this unix socket `/run/user/1000/k8s-kms-plugin.sock`.
+
+```bash
+./grpcurl-roundtrip-test.sh "Hello world" /run/user/1000/k8s-kms-plugin.sock
+```
+```
+🔐 Input plaintext: Hello world
+🔐 Base64 encoded: SGVsbG8gd29ybGQ=
+🧾 key_id from Status: abcd
+🗄️  Ciphertext (base64): ZXlKaGJHY2lPaUpTVTBFdFQwRkZVQ0lzSW10cFpDSTZJamd3TkRFME1qQTFaR05qT1dKbU9XUTRaV1prWkdRMk5XUmpPVE15TWpnM1lURm1aamRsTUdZd1pUTmlNRGxqTldWaE1UWmpPVEU1TW1FMU1HVXdOellpTENKMGVYQWlPaUpLVjFRaUxDSmpkSGtpT2lKS1YxUWlMQ0psYm1NaU9pSkJNalUyUjBOTkluMC5wUktUOHJVTWF3bER4eTItR3h2TTVUVHR4aDA3TTg2dWpNZUdPR3VWeXR5LVp2bGdjMmRIRVVnOXFEUnQwWFE4NkZwTE8yR3FTOTFqMVlNYk1NcTc2bkJYVUFjRnlBS3Bhb240eVhSS2U2eTF6NFY5YmZQaTNYNzhQaDlTMlhuTnJBaTdCSDVsRXlMNDJqbjBpSlFGVU05U3EzMkl3TmtYLWNlSnlwckdmQTVhcTJ3Y3VBd1Uxc1MzU2hPc1FwY2xaVE9DYnZnem5tYWw2bHdnTlNOa21ad2xWaGxhaU56YVF5SzFndWpZeU05eExmZEVza2Zaa01GMVB5U1F6VnNRT0tWckplM2Y4a3NWeGE5MmZRb0FDRGtzczF1aVVYR0NRRXVZR0puQV8wUm1TMEhzSEVmNGhDdG1jRmdTcEduajlVWjZaMkxscGVabUEyYlIzWXpsUU90T0hqWmZWVkROOHRNMUV1OEpBdXlobE05X1VNeWRZNlJBVkk1LUdRUmJ6QVpKQUkyX0h4Vlk2YU0zODVLVjJaaVp0VlZnSFQ5bkhIOHFvMVRyWlYweElDTjJ2VzJIRlJfX2M0LVpzR21JSHJXMWZycHhYeDlSVkRhSTEwRWJwMlRXR3R5Rkx6M21OTExNdlBmcXVuVWZjTVdhMFFNSVFYcHdZclJQZ3RFUmpPdktFMkwta3o0ZUxzWjhyd1J6Q2F4TlV2YnY2Yy12Q3JETnlFb0lKSWlyX1NaeGR4em91UTRfcFFFd2pVVHBwZ0hLQnBETTRFeTNTdzNXT2VkMnZlVU1rNXIzQk5zajNfRUhRVEM3cTB3Qjdpd0tTMW1CaGItMDRWODhBQ1gtWFZfRXp1cW1lQnRrSGlIWXlVUGVILU16R2o2X3JGcVF5STJFVXEzZGJycy5UUnF5ZlNyQVN2eXhhRGNsLllRZWplMGFTYTk0TnRxUS5ZSzc5MUY3b0JaLUt4SGZmMFhMNXpB
+🔓 Decrypted text: Hello world
+✅ Round-trip encryption/decryption successful!
+```
+
+If the script is successful, it means that the `k8s-kms-plugin` and encrypt and
+decrypt operations are working correctly.
