@@ -60,6 +60,18 @@ This plugin will also run in proxy mode which can connect to a remote plugin ser
 
 ### 2.1. Architecture
 
+The [`k8s-kms-plugin`](https://github.com/ThalesGroup/k8s-kms-plugin) uses `gose`  and `crypto11`:
+
+- [github.com/ThalesGroup/gose](https://github.com/ThalesGroup/gose): support in GoLang for JOSE JSON Objects Signing and Encryption;
+- [github.com/ThalesGroup/crypto11](https://github.com/ThalesGroup/crypto11): Implements crypto.Signer abd crypto.Decrypter for PKCS#11 devices;
+- [k8s.io/kms/apis/v2](https://pkg.go.dev/k8s.io/kms/apis/v2) (sources : https://github.com/kubernetes/kms): KMS v2 API & gRPC protobuf API files.
+
+> Note: We will work on providing a full nested SBOM later.
+
+Figure below sums up the main dependencies of `k8s-kms-plugin`:
+
+![](./docs/images/libs-imports-gose-crypto11-k8s-kms-plugin.svg)
+
 The following sequence diagram illustrates the communication between `kubernetes` ([KMS v2 API](https://pkg.go.dev/k8s.io/kms/apis/v2)), `k8s-kms-plugin`, and a [PKCS #11](https://docs.oasis-open.org/pkcs11/pkcs11-base/v3.0/pkcs11-base-v3.0.html) capable device like a TPM or HSM.
 
 <details>
