@@ -14,8 +14,10 @@ fi
 
 API_PROTO_URL="https://raw.githubusercontent.com/kubernetes/kms/refs/tags/v0.33.3/apis/v2/api.proto"
 if [[ ! -f api.proto ]]; then
-  echo "Downloading protobufer API file ${API_PROTO_URL}..."
+  echo "api.proto file not found. Downloading protobufer API file from ${API_PROTO_URL}..."
   curl -sSL -o api.proto "${API_PROTO_URL}"
+else
+  echo "Using existing api.proto. If you want to update it, please remove this file."
 fi
 
 # ---- Parse user input ----
