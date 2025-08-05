@@ -1,21 +1,26 @@
-# K8S-KMS-Plugin
+# `k8s-kms-plugin` 🔐
 
-`k8s-kms-plugin` implements the [Kubernetes KMS v2 API](https://pkg.go.dev/k8s.io/kms/apis/v2) protocol as a gRPC service that leverages a remote or local HSM via PKCS11.
+[![Licence](https://img.shields.io/github/license/Ileriayo/markdown-badges?style=for-the-badge)](./LICENSE)
+[![goreleaser](https://github.com/ThalesGroup/k8s-kms-plugin/actions/workflows/Goreleaser.yaml/badge.svg)](https://github.com/ThalesGroup/k8s-kms-plugin/actions/workflows/Goreleaser.yaml)
+
+`k8s-kms-plugin serve` implements the [Kubernetes KMS v2 API](https://pkg.go.dev/k8s.io/kms/apis/v2) protocol as a gRPC service that leverages a remote or local HSM via PKCS11.
+`k8s-kms-plugin serve rotation` supports key rotation operations.
 
 This plugin will also run in proxy mode which can connect to a remote plugin service running in a secure network device (Key Managers)
 
-> **Droping support of KMS v1**: Newer version of the `k8s-kms-plugin` droped support for [Kubernetes KMSv1](https://pkg.go.dev/k8s.io/kms@v0.33.3/apis/v1beta1),
+> ⚠️ **Droping support of KMS v1**: Newer version of the `k8s-kms-plugin` droped support for [Kubernetes KMSv1](https://pkg.go.dev/k8s.io/kms@v0.33.3/apis/v1beta1),
 > as KMSv1 is deprecated in Kubernetes v1.28 and disabled by default since Kubernetes v1.29.
 
-> **Note**: This documentation is under construction and needs to be updated to remove/archive references to KMS v1 and
+> 🚧 **Note**: This documentation is under construction and needs to be updated to remove/archive references to KMS v1 and
 > document KMS v2 operations.
 
-- [1. Definions \& Accronyms](#1-definions--accronyms)
-- [2. Overview](#2-overview)
+- [1. Definions \& Accronyms 🔎](#1-definions--accronyms-)
+- [2. Overview 🔭](#2-overview-)
   - [2.1. Architecture](#21-architecture)
-  - [2.2. Deployment Scenarios Example](#22-deployment-scenarios-example)
-- [3. Installation](#3-installation)
+  - [2.2. Deployment Scenarios Examples](#22-deployment-scenarios-examples)
+- [3. Installation 🔧](#3-installation-)
   - [3.1. kubernetes Requierments](#31-kubernetes-requierments)
+    - [3.1.1. `k3s` kubernetes example](#311-k3s-kubernetes-example)
   - [3.2. Install `k8s-kms-plugin` From Official Packages](#32-install-k8s-kms-plugin-from-official-packages)
     - [3.2.1. `apk` Alpine or Wolfi OS packages](#321-apk-alpine-or-wolfi-os-packages)
     - [3.2.2. `archlinux` packages](#322-archlinux-packages)
@@ -27,36 +32,36 @@ This plugin will also run in proxy mode which can connect to a remote plugin ser
     - [3.3.2. Standard x86 Linux Build](#332-standard-x86-linux-build)
     - [3.3.3. Debug x86 Linux Build](#333-debug-x86-linux-build)
   - [3.4. Build `k8s-kms-plugin` **locally** from Source with `goreleaser`](#34-build-k8s-kms-plugin-locally-from-source-with-goreleaser)
-- [4. Usage \& User Guides](#4-usage--user-guides)
+- [4. Documentation, Usage \& User Guides 📚](#4-documentation-usage--user-guides-)
   - [4.1. CLI Help Messages](#41-cli-help-messages)
   - [4.2. CLI Auto Completion for `bash`, `fish`, `zsh`](#42-cli-auto-completion-for-bash-fish-zsh)
   - [4.3. CLI Auto Generated Documentation](#43-cli-auto-generated-documentation)
   - [4.4. User Input Priority: CLI \> Env Vars \> Config File \> Default](#44-user-input-priority-cli--env-vars--config-file--default)
-- [5. KMS provider for SoftHsm V2](#5-kms-provider-for-softhsm-v2)
-- [6. KMS provider for TPM2 PKCS11](#6-kms-provider-for-tpm2-pkcs11)
-- [7. Quick Start](#7-quick-start)
-- [8. Deployment scenarios](#8-deployment-scenarios)
-- [9. Development Environment](#9-development-environment)
-- [10. Debug Environment](#10-debug-environment)
-- [11. Vulnerability check](#11-vulnerability-check)
-- [12. Signing artifacts](#12-signing-artifacts)
-- [13. Verifying the authenticity of an artifact](#13-verifying-the-authenticity-of-an-artifact)
-- [14. Verifying the SLSA attestation of a container](#14-verifying-the-slsa-attestation-of-a-container)
+  - [4.5. 🚤 Quick Start 🚀](#45--quick-start-)
+  - [4.6. HSM \& TPM Supported Platforms](#46-hsm--tpm-supported-platforms)
+- [5. Development Environment 🔬](#5-development-environment-)
+- [6. Debug Environment 🐛](#6-debug-environment-)
+  - [6.1. `delve` Remote Debug](#61-delve-remote-debug)
+  - [6.2. `vscode` Debug](#62-vscode-debug)
+- [7. Vulnerability check 💣](#7-vulnerability-check-)
+- [8. Signing artifacts 📝](#8-signing-artifacts-)
+- [9. Verifying the authenticity of an artifact 📝🔍](#9-verifying-the-authenticity-of-an-artifact-)
+- [10. Verifying the SLSA attestation of a container](#10-verifying-the-slsa-attestation-of-a-container)
 
-## 1. Definions & Accronyms
+## 1. Definions & Accronyms 🔎
 
-| Term        | Definition                            |
-|-------------|---------------------------------------|
-| **DEK**     | Data Encryption Key                   |
-| **HSM**     | Hardware Security Module              |
-| **k3s**     | A Lightweight Kubernetes Distribution |
-| **k8s**     | Kubernetes (short for)                |
-| **KEK**     | Key Encryption Key                    |
-| **KMS**     | Key Management System                 |
-| **PKCS#11** | Public Key Cryptography Standard      |
-| **TPM**     | Trusted Platform Module               |
+| Term         | Definition                            |
+|--------------|---------------------------------------|
+| **DEK**      | Data Encryption Key                   |
+| **HSM**      | Hardware Security Module              |
+| **k3s**      | A Lightweight Kubernetes Distribution |
+| **k8s**      | Kubernetes (short for)                |
+| **KEK**      | Key Encryption Key                    |
+| **KMS**      | Key Management System                 |
+| **PKCS #11** | Public Key Cryptography Standard #11  |
+| **TPM**      | Trusted Platform Module               |
 
-## 2. Overview
+## 2. Overview 🔭
 
 ### 2.1. Architecture
 
@@ -64,13 +69,15 @@ The [`k8s-kms-plugin`](https://github.com/ThalesGroup/k8s-kms-plugin) uses `gose
 
 - [github.com/ThalesGroup/gose](https://github.com/ThalesGroup/gose): support in GoLang for JOSE JSON Objects Signing and Encryption;
 - [github.com/ThalesGroup/crypto11](https://github.com/ThalesGroup/crypto11): Implements crypto.Signer abd crypto.Decrypter for PKCS#11 devices;
-- [k8s.io/kms/apis/v2](https://pkg.go.dev/k8s.io/kms/apis/v2) (sources : https://github.com/kubernetes/kms): KMS v2 API & gRPC protobuf API files.
+- [k8s.io/kms/apis/v2](https://pkg.go.dev/k8s.io/kms/apis/v2) (source code: https://github.com/kubernetes/kms): KMS v2 API & gRPC protobuf API files.
 
-> Note: We will work on providing a full nested SBOM later.
+> 🚧 Note: We will work on providing a full nested SBOM later.
 
 Figure below sums up the main dependencies of `k8s-kms-plugin`:
 
 ![](./docs/images/libs-imports-gose-crypto11-k8s-kms-plugin.svg)
+
+### 2.2. Deployment Scenarios Examples
 
 The following sequence diagram illustrates the communication between `kubernetes` ([KMS v2 API](https://pkg.go.dev/k8s.io/kms/apis/v2)), `k8s-kms-plugin`, and a [PKCS #11](https://docs.oasis-open.org/pkcs11/pkcs11-base/v3.0/pkcs11-base-v3.0.html) capable device like a TPM or HSM.
 
@@ -83,21 +90,51 @@ The following sequence diagram illustrates the communication between `kubernetes
 
 > This diagram was inspired by those from https://github.com/kubernetes/enhancements/tree/master/keps/sig-auth/3299-kms-v2-improvements
 
-### 2.2. Deployment Scenarios Example
-
 The figure below illustrates several example of how the `k8s-kms-plugin` can be deployed for a Kubernetes Single Node cluster and using an embedded TPM or an HSM as a PKCS #11 capable key store.
 
 ![](./docs/images/k8s-kms-plugin-deployment-scenario-examples.svg)
 
-## 3. Installation
+## 3. Installation 🔧
+
 ### 3.1. kubernetes Requierments
 
 `k8s-kms-plugin` is designed for kubernetes clusters that are using version v1.29 or higher and implements the [KMS v2 API](https://pkg.go.dev/k8s.io/kms/apis/v2). See also:
 https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/
 
-`k8s-kms-plugin` **does not support KMS v1** which is deprecated in Kubernetes v1.28 and disabled by default since Kubernetes v1.29.
+⚠️ `k8s-kms-plugin` **does not support KMS v1** which is deprecated in Kubernetes v1.28 and disabled by default since Kubernetes v1.29.
 
-To serve the `k8s-kms-plugin` for encryption operations from Kubernetes, you will need at least one AES key in a PKCS11 provider.
+To serve the `k8s-kms-plugin` for encryption operations from Kubernetes, you will need at least one AES or RSA key in a supported PKCS #11 provider.
+
+#### 3.1.1. `k3s` kubernetes example
+
+We use `k3s` as an example of a Kubernetes distribution that supports [KMS v2](https://pkg.go.dev/k8s.io/kms/apis/v2).
+
+Assuming you have configured a PKCS #11 TPM or HSM, you can start the `k8s-kms-plugin`:
+
+```bash
+k8s-kms-plugin \
+  serve \
+    --log-level=trace \
+    --socket /run/user/1000/k8s-kms-plugin.sock \
+    --p11-lib /usr/lib64/pkcs11/libtpm2_pkcs11.so \
+    --p11-label mylabel \
+    --p11-pin mypin \
+    --kek-id 33653932616130656634343238346163 \
+    --algorithm rsa-oaep
+```
+
+> This example uses [`Software TPM Emulator`](https://github.com/stefanberger/swtpm).
+
+Then review the content of file [`encryption-conf-kmsv2.yaml`](./deployments/k8s/encryption-conf-kmsv2.yaml).
+Make sure `resources.providers.kms.endpoint` points to the same unix socket file of the running `k8s-kms-plugin`.
+
+Then install `k3s` with the following command:
+
+```bash
+curl -sfL https://get.k3s.io | K3S_DEBUG=true INSTALL_K3S_VERSION=v1.33.1+k3s1 sh -s - \
+  --write-kubeconfig-mode 660 \
+  --kube-apiserver-arg=encryption-provider-config=$HOME/k8s-kms-plugin/deployments/k8s/encryption-conf-kmsv2.yaml
+```
 
 ### 3.2. Install `k8s-kms-plugin` From Official Packages
 
@@ -136,7 +173,7 @@ tab.
 
 You should have `make`, `git` and `go` installed. Review the content of the [`Makefile`](./Makefile) file for more details.
 
-CGO is required to build the plugin: **make sure you are using the right C Library** (glibc or musl) for your target
+**`CGO`** is required to build the plugin: **make sure you are using the right C Library** (glibc or musl) for your target
 environment. Do not build on musl libc if you intend to use the plugin on a non-musl environment (glibc).
 
 Build was tested with:
@@ -153,12 +190,16 @@ This is free software: you are free to change and redistribute it.
 There is NO WARRANTY, to the extent permitted by law.
 ```
 
+GoLang
+
 ```bash
 go version
 ```
 ```
 go version go1.23.9 linux/amd64
 ```
+
+Git
 
 ```bash
 git version
@@ -239,9 +280,9 @@ which supports standard `glibc`.
 
 Or you can create your own custom image, based on the examples from https://github.com/ThalesGroup/goreleaser-glibc-image.
 
-## 4. Usage & User Guides
+## 4. Documentation, Usage & User Guides 📚
 
-TL;DR: The main commands you need are [`k8s-kms-plugin serve`](./docs/cli-user-interface/markdown/k8s-kms-plugin_serve.md) and [`k8s-kms-plugin serve rotation`](./docs/cli-user-interface/markdown/k8s-kms-plugin_serve_rotation.md).
+🐎 **TL;DR**: The main commands you need are [`k8s-kms-plugin serve`](./docs/cli-user-interface/markdown/k8s-kms-plugin_serve.md) and [`k8s-kms-plugin serve rotation`](./docs/cli-user-interface/markdown/k8s-kms-plugin_serve_rotation.md).
 
 ### 4.1. CLI Help Messages
 
@@ -253,6 +294,8 @@ We recommend the user to use the `-h` and `--help` flags to get the help message
 `k8s-kms-plugin` supports auto-completion for `bash`, `fish`, `zsh` shells. We recommend to use the auto-completion for
 a better user experience.
 
+See details: [`k8s-kms-plugin completion`](./docs/cli-user-interface/markdown/k8s-kms-plugin_completion.md)
+
 Example for `fish`:
 
 ```bash
@@ -261,14 +304,16 @@ k8s-kms-plugin completion fish > ~/.config/fish/completions/k8s-kms-plugin.fish
 
 ### 4.3. CLI Auto Generated Documentation
 
-A static version of the CLI documentation can be generated with the `docs` command:
+A snapshot of the `k8s-kms-plugin` CLI documentation is available here [`docs/cli-user-interface/markdown/README.md`](./docs/cli-user-interface/markdown/README.md).
+
+> _Auto generated_ documentation files are marked with footer `###### Auto generated by spf13/cobra on 31-Jul-2025` to indicate that they are auto-generated.
+
+The CLI documentation can be generated with the `k8s-kms-plugin docs` command:
 
 ```bash
-$ ./k8s-kms-plugin docs -f cli-table-pretty -o docs/cli-user-interface/txt/
-$ ./k8s-kms-plugin docs -f markdown -o docs/cli-user-interface/markdown/
+$ k8s-kms-plugin docs -f cli-table-pretty -o docs/cli-user-interface/txt/
+$ k8s-kms-plugin docs -f markdown -o docs/cli-user-interface/markdown/
 ```
-
-A snapshot of the CLI documentation is available here [`docs/cli-user-interface/markdown/README.md`](./docs/cli-user-interface/markdown/README.md).
 
 ### 4.4. User Input Priority: CLI > Env Vars > Config File > Default
 
@@ -291,54 +336,36 @@ Flags are handled by [Cobra](https://github.com/spf13/cobra), environment variab
 [Viper](https://github.com/spf13/viper) with some customizations [`viper-patch-sub.go`](./cmd/k8s-kms-plugin/cmd/viper-patch-sub.go)
 to patch the binding between Cobra and Viper.
 
+### 4.5. 🚤 Quick Start 🚀
 
-## 5. KMS provider for SoftHsm V2
+For a quick start experience, try the `k8s-kms-plugin` with software (virtual) HSM such as:
 
-In this mode, we recommend to run the `k8s-kms-plugin` with the GCM algorithm.
-It provides a better design for authenticated encryption operations :
+- [SoftHSMv2 & `k8s-kms-plugin`](./docs/softhsm-v2.md)
+- [Software TPM Emulator & `k8s-kms-plugin`](./docs/software-tpm-emulator.md)
 
-```sh
-# debian
-export MODULE="/usr/lib/softhsm/libsofthsm2.so"
-# redhat
-export MODULE="/usr/lib64/pkcs11/libsofthsm2.so"
-# serve
-k8s-kms-plugin serve \
-  --provider p11 --p11-lib $MODULE --p11-key-label mykey --p11-label mylabel --p11-pin mypin --enable-server
-```
+### 4.6. HSM & TPM Supported Platforms
 
-## 6. KMS provider for TPM2 PKCS11
+> 🚧 **Note**: This section will improve with reference to specific `k8s-kms-plugin` version once
+> the release & CICD are set up.
 
-You must know that AES GCM is not supported by the TPM v2 specifications.
-In this mode, we recommend to run the `k8s-kms-plugin` with the CBC-then-HMAC algorithm.
-You must provide an HMAC key alongside the AES key for encryption :
+The following table sums up the HSMs or TPMs that has been _officially_ tested & confirmed to work
+with the `k8s-kms-plugin`. This list is not exhaustive: you can contribute to it, as other HSM
+devices or virtual HSM might work with the `k8s-kms-plugin`.
 
-```sh
-# debian
-export MODULE="/usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1"
-# redhat
-export MODULE="/usr/lib64/pkcs11/libtpm2_pkcs11.so"
-# serve
-k8s-kms-plugin serve \
-  --provider p11 --p11-lib $MODULE --p11-key-label cbc0 --p11-hmac-label hmac0 --p11-label mylabel --p11-pin mypin --algorithm aes-cbc --enable-server
-```
+| [`k8s-kms-plugin` version `XX`]()                                                                  | HSM or TPM   | Form factor  | AES GCM          | AES CBC HMAC     | RSA OAEP         | Comment                               | Docs Details                            |
+|----------------------------------------------------------------------------------------------------|--------------|--------------|------------------|------------------|------------------|---------------------------------------|-----------------------------------------|
+| [`SoftHSMv2`](https://github.com/softhsm/SoftHSMv2)                                                | HSM PKCS #11 | Software     | ✅Success         | 🚫not applicable | 🚫not applicable | softhsm does not support AES CBC HMAC | [Link](./docs/softhsm-v2.md)            |
+| [`Software TPM Emulator`](https://github.com/stefanberger/swtpm)                                   | TPM PKCS #11 | Software     | 🚫not applicable | ✅Success         | ✅Success         | vTPM 2.0 does not support AEG GCM     | [Link](./docs/software-tpm-emulator.md) |
+| [Thales eToken Fusion](https://cpl.thalesgroup.com/access-management/authenticators/etoken-fusion) | HSM PKCS #11 | Hardware USB | ❔Not Tested      | ❔Not Tested      | ✅Success         |                                       | [Link](./docs/thales-etoken-fusion.md)  |
+| [yubico YubiHSM 2](https://docs.yubico.com/hardware/yubihsm-2/hsm-2-user-guide/index.html)         | HSM PKCS #11 | Hardware USB | ❔Not Tested      | ❔Not Tested      | ✅Success         | RSA 4096 tested                       | [Link](./docs/yubico-yubihsm2.md)       |
 
-## 7. Quick Start
+## 5. Development Environment 🔬
 
-Read the [QUICKSTART.md](QUICKSTART.md).
-
-## 8. Deployment scenarios
-
-This plugin is designed to be deployed in 2 configurations
-
-- Client/Server - `k8s-kms-plugin` in `client` mode will `enroll` to an external `k8s-kms-plugin` running in `serve` mode
-- StandAlone(TODO) - Plugin and PKCS11 library deployed as StaticPod/HostContainer on APIServer nodes, this will require
-coordination with k8s provisioning tools.
-
-## 9. Development Environment
+> 🚧 **TODO**: This section needs to be reworked, as part of this is explanation
+> are outdated.
 
 `k8s` houses some sample client and server deployments for e2e testing until such time as this plugin is 100% network functional,
- and we can move it to a CICD pattern, as we'll have many actors to coordinate.
+and we can move it to a CICD pattern, as we'll have many actors to coordinate.
 
 All apis are defined in the `/apis` dir, and as we iterate on the spec docs, one must then run `make gen` and refactor
 until the 2 stacks come up
@@ -376,7 +403,9 @@ go mod tidy
 make build
 ```
 
-## 10. Debug Environment
+## 6. Debug Environment 🐛
+
+### 6.1. `delve` Remote Debug
 
 For a remote debug, build the plugin with debug mode :
 
@@ -388,7 +417,11 @@ make build-debug
 It will generate a binary `k8s-kms-plugin` that can be used with Delve for debug purpose.
 Do not use this binary in a production environment.
 
-## 11. Vulnerability check
+### 6.2. `vscode` Debug
+
+## 7. Vulnerability check 💣
+
+> 🚧 TODO: This will be done via CICD
 
 ```sh
 $ govulncheck ./...
@@ -397,7 +430,9 @@ Scanning your code and 288 packages across 34 dependent modules for known vulner
 No vulnerabilities found.
 ```
 
-## 12. Signing artifacts
+## 8. Signing artifacts 📝
+
+> 🚧 TODO: This section needs to be updated.
 
 During the release workflow, certificates and signatures of artifacts are generated.
 They are signed by a tool named cosign using a keyless mode.
@@ -411,7 +446,9 @@ Once you click on one, you can submit a verification code that will redirect you
 
 Do these actions for every authentication links and the signatures and the certificates will be generated with the artifacts in the release.
 
-## 13. Verifying the authenticity of an artifact
+## 9. Verifying the authenticity of an artifact 📝🔍
+
+> 🚧 TODO: This section needs to be updated.
 
 You need to downloads 3 files : [ _**[file.txt]**_, _**[file].pem**_, _**[file].sig**_]
 
@@ -435,15 +472,17 @@ Or using Podman without installing cosign :
 podman run --rm -it gcr.io/projectsigstore/cosign:v1.13.0 COSIGN_EXPERIMENTAL=1 cosign verify-blob --cert [file]-keyless.pem --signature [file]-keyless.sig --certificate-oidc-issuer "https://github.com/login/oauth" --certificate-identity [ Mail adress of the owner of the repo ] [file]
 ```
 
-## 14. Verifying the SLSA attestation of a container
+## 10. Verifying the SLSA attestation of a container
+
+> 🚧 TODO: This section needs to be updated.
 
 The image's attestation of provenance has been issued by a specific oidc-issuer that is 'https://token.actions.githubusercontent.com' in this repository.
 In the next command example, it is required to replace digest by the digest of the image that needs to be verified and the owner of the repo.
 
 ```bash
-cosign verify-attestation --type slsaprovenance \
+cosign verify-attestation \
+      --type slsaprovenance \
       --certificate-identity-regexp="https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@refs/tags/*" \
       --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
       ghcr.io/OWNER/k8s-kms-plugin@digest | jq .payload -r | base64 --decode | jq
-
 ```
