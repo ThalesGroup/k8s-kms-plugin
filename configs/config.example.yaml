@@ -17,15 +17,15 @@ k8s-kms-plugin:
     allow-any: false
 
     ## TLS settings
+    enable-tls: true
+    host: "127.0.0.1"
+    port: 8080
     tls-ca: "certs/ca.crt"
     tls-key: "certs/tls.key"
     tls-certificate: "certs/tls.crt"
+    tls-client-ca: "certs/client-ca.crt"
 
     ## Server settings
-    disable-socket: false
-    enable-server: true
-    host: "127.0.0.1"
-    port: 8080
     socket: "/var/run/kms-plugin.sock"
     
     ## KMS settings
