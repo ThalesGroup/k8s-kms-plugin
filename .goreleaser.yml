@@ -69,7 +69,7 @@ nfpms:
     maintainer: Thales Open Source <oss@thalesgroup.com>
     description: |-
       gRPC service that leverages a remote or local HSM/TPM to encrypt Kubernetes data at-rest with KMS v2. 
-    builds:
+    ids:
       - k8s-kms-plugin # need to use the same id that the build id 
     formats:
         - apk
