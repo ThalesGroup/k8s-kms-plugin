@@ -1,4 +1,5 @@
 # k8s-kms-plugin configuration file example
+# you need to adapt it to your needs
   
 k8s-kms-plugin:
   # Cobra root flags
@@ -16,7 +17,7 @@ k8s-kms-plugin:
     algorithm: "rsa-oaep"
     allow-any: false
 
-    ## TLS settings
+    ## TLS server settings (mutually exclusive with socket)
     enable-tls: true
     host: "127.0.0.1"
     port: 8080
@@ -25,7 +26,7 @@ k8s-kms-plugin:
     tls-certificate: "certs/tls.crt"
     tls-client-ca: "certs/client-ca.crt"
 
-    ## Server settings
+    ## Unix socket settings (mutually exclusive with enable-tls)
     socket: "/var/run/kms-plugin.sock"
     
     ## KMS settings

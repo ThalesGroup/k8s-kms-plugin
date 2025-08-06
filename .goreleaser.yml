@@ -25,7 +25,7 @@ gitlab_urls:
 # Build the binary for different architectures
 builds:
   - id: k8s-kms-plugin
-    binary: '{{ .ProjectName }}-linux-{{ .Arch }}_{{ .Version }}'
+    binary: '{{ .ProjectName }}_linux_{{ .Arch }}_{{ .Version }}'
     no_unique_dist_dir: true
     main: ./cmd/{{ .ProjectName }}/main.go
     
@@ -64,7 +64,11 @@ nfpms:
     package_name: '{{ .ProjectName }}'
     file_name_template:  "{{ .ConventionalFileName }}"
     license: "Apache License 2.0"
-    maintainer: ThalesGroup
+    vendor: "ThalesGroup"
+    homepage: https://github.com/ThalesGroup/k8s-kms-plugin
+    maintainer: Thales Open Source <oss@thalesgroup.com>
+    description: |-
+      gRPC service that leverages a remote or local HSM/TPM to encrypt Kubernetes data at-rest with KMS v2. 
     builds:
       - k8s-kms-plugin # need to use the same id that the build id 
     formats:
@@ -72,10 +76,16 @@ nfpms:
         - deb
         - rpm
         - archlinux
+    bindir: /usr/bin
     contents:
-        - src: /usr/bin/{{ .ProjectName }}-linux-{{ .Arch }}_{{ .Version }}
+        - src: /usr/bin/{{ .ProjectName }}_linux_{{ .Arch }}_{{ .Version }}
           dst: /usr/bin/{{ .ProjectName }}
           type: "symlink"
+        - src: configs/config.example.yaml
+          dst: /etc/{{ .ProjectName }}/{{ .ProjectName }}.config.example.yaml
+          type: "config"
+        - src: deployments/k8s/encryption-conf-kmsv2-unix-socket.yaml
+          dst: /etc/{{ .ProjectName }}/kubernetes/manifest/encryption-conf-kmsv2-unix-socket.example.yaml
 
 
 # Define caracteristics of binary artifacts

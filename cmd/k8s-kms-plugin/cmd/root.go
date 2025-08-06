@@ -105,7 +105,7 @@ func init() {
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "k8s-kms-plugin.config.yaml", "ConfigFile. Env var: K8S_KMS_PLUGIN_CONFIG_FILE")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "/etc/k8s-kms-plugin/k8s-kms-plugin.config.yaml", "ConfigFile. Env var: K8S_KMS_PLUGIN_CONFIG_FILE")
 
 	// logging level
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Set logrus.SetLevel to \"debug\". This is equivalent to using --log-level=debug. Flags --log-level and --debug flag are mutually exclusive. Env var: K8S_KMS_PLUGIN_DEBUG.")
