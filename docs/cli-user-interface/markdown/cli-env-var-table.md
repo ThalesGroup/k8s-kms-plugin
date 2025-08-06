@@ -10,7 +10,7 @@
 | k8s-kms-plugin decrypt-csr | --timeout |  | K8S_KMS_PLUGIN_DECRYPT_CSR_TIMEOUT | k8s-kms-plugin.decrypt-csr.timeout | 30s | duration | false | KMS timeout. Env var: K8S_KMS_PLUGIN_DECRYPT_CSR_TIMEOUT |
 | k8s-kms-plugin docs | --format | -f | K8S_KMS_PLUGIN_DOCS_FORMAT | k8s-kms-plugin.docs.format | markdown | string | false | Docs Output format. Prefered is markdown. Supported formats: markdown, man, rst, yaml, cli-table-csv, cli-table-pretty, cli-table-html, all. |
 | k8s-kms-plugin docs | --help | -h | K8S_KMS_PLUGIN_DOCS_HELP | k8s-kms-plugin.docs.help | false | bool | false | help for docs |
-| k8s-kms-plugin docs | --output-dir | -o | K8S_KMS_PLUGIN_DOCS_OUTPUT_DIR | k8s-kms-plugin.docs.output-dir | /tmp/k8s-kms-plugin-docs-2025-07-31T11:35:09+02:00 | string | false | Output directory |
+| k8s-kms-plugin docs | --output-dir | -o | K8S_KMS_PLUGIN_DOCS_OUTPUT_DIR | k8s-kms-plugin.docs.output-dir | /tmp/k8s-kms-plugin-docs-2025-08-06T11:09:09+02:00 | string | false | Output directory |
 | k8s-kms-plugin generate-kek | --kek-id |  | K8S_KMS_PLUGIN_GENERATE_KEK_KEK_ID | k8s-kms-plugin.generate-kek.kek-id | a37807cd-6d1a-4d75-813a-e120f30176f7 | string | false | Key ID for KMS KEK. Env var: K8S_KMS_PLUGIN_GENERATE_KEK_KEK_ID |
 | k8s-kms-plugin generate-kek | --socket |  | K8S_KMS_PLUGIN_GENERATE_KEK_SOCKET | k8s-kms-plugin.generate-kek.socket | /tmp/run/hsm-plugin-server.sock | string | false | Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_GENERATE_KEK_SOCKET |
 | k8s-kms-plugin generate-kek | --timeout |  | K8S_KMS_PLUGIN_GENERATE_KEK_TIMEOUT | k8s-kms-plugin.generate-kek.timeout | 30s | duration | false | KMS timeout. Env var: K8S_KMS_PLUGIN_GENERATE_KEK_TIMEOUT |
@@ -21,8 +21,8 @@
 | k8s-kms-plugin serve | --allow-any |  | K8S_KMS_PLUGIN_SERVE_ALLOW_ANY | k8s-kms-plugin.serve.allow-any | false | bool | true | Allow any device (accepts all ids/secrets). Env var: K8S_KMS_PLUGIN_SERVE_ALLOW_ANY |
 | k8s-kms-plugin serve | --auto-create |  | K8S_KMS_PLUGIN_SERVE_AUTO_CREATE | k8s-kms-plugin.serve.auto-create | false | bool | true | Auto create the keys if needed. Env var: K8S_KMS_PLUGIN_SERVE_AUTO_CREATE. |
 | k8s-kms-plugin serve | --ca-id |  | K8S_KMS_PLUGIN_SERVE_CA_ID | k8s-kms-plugin.serve.ca-id | 1c3d30d5-dfa8-4167-a9f9-2c768464181b | string | true | Cert ID for CA Cert record. Env var: K8S_KMS_PLUGIN_SERVE_CA_ID |
-| k8s-kms-plugin serve | --disable-socket |  | K8S_KMS_PLUGIN_SERVE_DISABLE_SOCKET | k8s-kms-plugin.serve.disable-socket | false | bool | true | Disable socket based server. Env var: K8S_KMS_PLUGIN_SERVE_DISABLE_SOCKET. |
-| k8s-kms-plugin serve | --enable-server |  | K8S_KMS_PLUGIN_SERVE_ENABLE_SERVER | k8s-kms-plugin.serve.enable-server | false | bool | true | Enable TLS based server. Env var: K8S_KMS_PLUGIN_SERVE_ENABLE_SERVER. |
+| k8s-kms-plugin serve | --enable-tls |  | K8S_KMS_PLUGIN_SERVE_ENABLE_TLS | k8s-kms-plugin.serve.enable-tls | false | bool | true | Enable TLS on the TCP gRPC server. Not compatible when serving on unix socket. Env var: K8S_KMS_PLUGIN_SERVE_ENABLE_TLS |
+| k8s-kms-plugin serve | --grpc-network |  | K8S_KMS_PLUGIN_SERVE_GRPC_NETWORK | k8s-kms-plugin.serve.grpc-network | unix | string | true | Network to listen on for gRPC API. Options: tcp, tcp4, tcp6, unix. Env var: K8S_KMS_PLUGIN_SERVE_GRPC_NETWORK |
 | k8s-kms-plugin serve | --hmac-id |  | K8S_KMS_PLUGIN_SERVE_HMAC_ID | k8s-kms-plugin.serve.hmac-id |  | string | true | Key ID CKA_ID for KMS HMAC. Env var: K8S_KMS_PLUGIN_SERVE_HMAC_ID |
 | k8s-kms-plugin serve | --host |  | K8S_KMS_PLUGIN_SERVE_HOST | k8s-kms-plugin.serve.host | 0.0.0.0 | string | true | Hostname without port. Env var: K8S_KMS_PLUGIN_SERVE_HOST. |
 | k8s-kms-plugin serve | --kek-id |  | K8S_KMS_PLUGIN_SERVE_KEK_ID | k8s-kms-plugin.serve.kek-id |  | string | true | Key ID CKA_ID for KMS KEK. Env var: K8S_KMS_PLUGIN_SERVE_KEK_ID |
@@ -35,9 +35,11 @@
 | k8s-kms-plugin serve | --p11-slot |  | K8S_KMS_PLUGIN_SERVE_P11_SLOT | k8s-kms-plugin.serve.p11-slot | 0 | int | true | P11 token slot. Env var: K8S_KMS_PLUGIN_SERVE_P11_SLOT |
 | k8s-kms-plugin serve | --port |  | K8S_KMS_PLUGIN_SERVE_PORT | k8s-kms-plugin.serve.port | 31400 | uint16 | true | TCP Port for gRPC service. Env var: K8S_KMS_PLUGIN_SERVE_PORT. |
 | k8s-kms-plugin serve | --provider |  | K8S_KMS_PLUGIN_SERVE_PROVIDER | k8s-kms-plugin.serve.provider | p11 | string | true | Provider. Possible values: p11, softhsm, luna, dpod. Env var: K8S_KMS_PLUGIN_SERVE_PROVIDER. |
+| k8s-kms-plugin serve | --require-client-cert |  | K8S_KMS_PLUGIN_SERVE_REQUIRE_CLIENT_CERT | k8s-kms-plugin.serve.require-client-cert | false | bool | true | Require and verify client certificate for mTLS. Env var: K8S_KMS_PLUGIN_SERVE_REQUIRE_CLIENT_CERT |
 | k8s-kms-plugin serve | --socket |  | K8S_KMS_PLUGIN_SERVE_SOCKET | k8s-kms-plugin.serve.socket | /tmp/run/hsm-plugin-server.sock | string | true | Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_SERVE_KEK_SOCKET |
 | k8s-kms-plugin serve | --tls-ca |  | K8S_KMS_PLUGIN_SERVE_TLS_CA | k8s-kms-plugin.serve.tls-ca | certs/ca.crt | string | true | TLS CA cert. Env var: K8S_KMS_PLUGIN_SERVE_TLS_CA. |
 | k8s-kms-plugin serve | --tls-certificate |  | K8S_KMS_PLUGIN_SERVE_TLS_CERTIFICATE | k8s-kms-plugin.serve.tls-certificate | certs/tls.crt | string | true | TLS server cert. Env var: K8S_KMS_PLUGIN_SERVE_TLS_CERTIFICATE |
+| k8s-kms-plugin serve | --tls-client-ca |  | K8S_KMS_PLUGIN_SERVE_TLS_CLIENT_CA | k8s-kms-plugin.serve.tls-client-ca | certs/ca.crt | string | true | TLS CA cert. Env var: K8S_KMS_PLUGIN_SERVE_TLS_CLIENT_CA |
 | k8s-kms-plugin serve | --tls-key |  | K8S_KMS_PLUGIN_SERVE_TLS_KEY | k8s-kms-plugin.serve.tls-key | certs/tls.key | string | true | TLS server key. Env var: K8S_KMS_PLUGIN_SERVE_TLS_KEY |
 | k8s-kms-plugin serve rotation | --old-algorithm |  | K8S_KMS_PLUGIN_SERVE_ROTATION_OLD_ALGORITHM | k8s-kms-plugin.serve.rotation.old-algorithm |  | string | false | Set the algorithm for the old KEK |
 | k8s-kms-plugin serve rotation | --old-ca-id |  | K8S_KMS_PLUGIN_SERVE_ROTATION_OLD_CA_ID | k8s-kms-plugin.serve.rotation.old-ca-id |  | string | false | Cert ID for old CA Cert record |

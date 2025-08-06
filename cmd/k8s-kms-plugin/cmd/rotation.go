@@ -10,7 +10,10 @@
 package cmd
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"strconv"
@@ -24,6 +27,7 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 	k8skmsv2 "k8s.io/kms/apis/v2"
 )
@@ -127,26 +131,28 @@ Using both CLI Flags, environment variables and configuration file and serving o
 			logrus.WithField("cobra-cmd", cmd.Use).WithError(err).Fatal("failed to initialize rotated provider for old KEK")
 		}
 
-		if err != nil {
-			logrus.WithField("cobra-cmd", cmd.Use).WithError(err).Fatal("failed to initialize provider for new KEK")
-		}
-
 		// gRPC server
 		g := new(errgroup.Group)
 		var grpcTCP, grpcUNIX net.Listener
 
-		if vprFlgsServe.EnableTCP {
+		switch vprFlgsServe.GrpcNetwork {
+		case "tcp", "tcp4", "tcp6":
+			if cmd.Flags().Lookup("socket").Changed {
+				errOut := fmt.Errorf("do not set the unix --socket flag when flag --grpc-network or K8S_KMS_PLUGIN_SERVE_GRPC_NETWORK is set to tcp*")
+				logrus.WithField("cobra-cmd", cmd.Use).
+					WithError(errOut).
+					Error("wrong user cli input")
+				return errOut
+			}
 			// vprFlgsServe.Port needs to be converted from uint16 to string
 			grpcAddr := net.JoinHostPort(vprFlgsServe.Host, strconv.FormatUint(uint64(vprFlgsServe.Port), 10))
 
-			if grpcTCP, err = net.Listen("tcp", grpcAddr); err != nil {
+			if grpcTCP, err = net.Listen(vprFlgsServe.GrpcNetwork, grpcAddr); err != nil {
 				return
 			}
 
 			g.Go(func() error { return grpcRotation(grpcTCP, p) })
-		}
-
-		if !vprFlgsServe.DisableSocket {
+		case "unix":
 			_ = os.Remove(vprFlgsServe.SocketPath)
 			if grpcUNIX, err = net.Listen("unix", vprFlgsServe.SocketPath); err != nil {
 				return
@@ -157,6 +163,12 @@ Using both CLI Flags, environment variables and configuration file and serving o
 			// access to the socket.
 			os.Chmod(vprFlgsServe.SocketPath, 0775)
 			g.Go(func() error { return grpcRotation(grpcUNIX, p) })
+		default:
+			errOut := fmt.Errorf("unknown gRPC network listener type: %q", vprFlgsServe.GrpcNetwork)
+			logrus.WithField("cobra-cmd", cmd.Use).
+				WithError(errOut).
+				Error("unknown gRPC network listener type")
+			return errOut
 		}
 
 		if err = g.Wait(); err != nil {
@@ -308,13 +320,71 @@ func grpcRotation(gl net.Listener, p providers.Provider) (err error) {
 		grpc.UnaryInterceptor(p.UnaryInterceptor),
 		grpc.UnknownServiceHandler(unknownServiceHandler),
 	}
+	if vprFlgsServe.EnableTLS {
+		switch vprFlgsServe.GrpcNetwork {
+		case "tcp", "tcp4", "tcp6":
+			// load TLS keys from PEM files.
+			// TODO: add support for private key stored in a TPM ?
+			tlsKeypair, err := tls.LoadX509KeyPair(vprFlgsServe.ServerTLSCert, vprFlgsServe.ServerTLSKey)
+			if err != nil {
+				return fmt.Errorf("grpcRotation: failed to load TLS key pair: %w", err)
+			}
+
+			certPool := x509.NewCertPool()
+			caPem, err := os.ReadFile(vprFlgsServe.TLSCaCert)
+			if err != nil {
+				return fmt.Errorf("failed to read CA cert: %w", err)
+			}
+			if ok := certPool.AppendCertsFromPEM(caPem); !ok {
+				return fmt.Errorf("failed to append CA cert to cert pool")
+			}
+
+			tlsConfig := &tls.Config{
+				Certificates: []tls.Certificate{tlsKeypair},
+				MinVersion:   tls.VersionTLS12,
+			}
+
+			if vprFlgsServe.RequireClientCert {
+				clientCAPool := x509.NewCertPool()
+				clientCaPem, err := os.ReadFile(vprFlgsServe.TLSClientCaCert)
+				if err != nil {
+					return fmt.Errorf("failed to read client CA cert: %w", err)
+				}
+				if ok := clientCAPool.AppendCertsFromPEM(clientCaPem); !ok {
+					return fmt.Errorf("failed to append client CA cert")
+				}
+
+				tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
+				tlsConfig.ClientCAs = clientCAPool
+			}
+
+			serverOptions = append(serverOptions, grpc.Creds(credentials.NewTLS(tlsConfig)))
+		case "unix":
+			errOut := fmt.Errorf("grpcRotation: unix gRPC listener does not support TLS")
+			logrus.WithError(errOut).Error("wrong API serving settings")
+			return errOut
+		}
+	}
 	gs := grpc.NewServer(serverOptions...)
 
 	k8skmsv2.RegisterKeyManagementServiceServer(gs, p)
 	reflection.Register(gs)
 
-	logrus.Infof("Serving on socket: %s", gl.Addr().String())
-	logrus.Debugf("grpcRotation: value of grpcPort user input: %d", vprFlgsServe.Port)
+	switch vprFlgsServe.GrpcNetwork {
+	case "tcp", "tcp4", "tcp6":
+		logrus.WithField("endpoint", gl.Addr().String()).
+			Infof("serving k8s facing KMSv2 API on TCP: %s", gl.Addr().String())
+		if vprFlgsServe.EnableTLS {
+			logrus.Trace("TLS is enabled on gRPC server")
+		}
+	case "unix":
+		logrus.WithField("endpoint", gl.Addr().String()).
+			Infof("serving k8s facing KMSv2 API on unix socket: %s", gl.Addr().String())
+	default:
+		err = fmt.Errorf("unknown gRPC network listener type: %q", vprFlgsServe.GrpcNetwork)
+		logrus.WithError(err).Error("unknown gRPC network listener type")
+		return
+	}
 
 START:
 	if err = gs.Serve(gl); err != nil {
