@@ -37,7 +37,7 @@ k8s-kms-plugin:
     p11-lib: "/usr/local/lib/softhsm/libsofthsm2.so"
     p11-label: "my-current-label"
     p11-slot: 0
-    p11-pin: "1234" # This is a secret, you set this with an environment variable K8S_KMS_PLUGIN_P11_PIN instead of the configuration file
+    p11-pin: "1234" # This is a secret, you set this with an environment variable K8S_KMS_PLUGIN_SERVE_P11_PIN instead of the configuration file
   
   version:
     # Format of the version output. One of 'yaml' or 'json'.

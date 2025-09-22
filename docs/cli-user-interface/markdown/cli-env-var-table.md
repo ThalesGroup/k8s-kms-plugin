@@ -10,7 +10,7 @@
 | k8s-kms-plugin decrypt-csr | --timeout |  | K8S_KMS_PLUGIN_DECRYPT_CSR_TIMEOUT | k8s-kms-plugin.decrypt-csr.timeout | 30s | duration | false | KMS timeout. Env var: K8S_KMS_PLUGIN_DECRYPT_CSR_TIMEOUT |
 | k8s-kms-plugin docs | --format | -f | K8S_KMS_PLUGIN_DOCS_FORMAT | k8s-kms-plugin.docs.format | markdown | string | false | Docs Output format. Prefered is markdown. Supported formats: markdown, man, rst, yaml, cli-table-csv, cli-table-pretty, cli-table-html, all. |
 | k8s-kms-plugin docs | --help | -h | K8S_KMS_PLUGIN_DOCS_HELP | k8s-kms-plugin.docs.help | false | bool | false | help for docs |
-| k8s-kms-plugin docs | --output-dir | -o | K8S_KMS_PLUGIN_DOCS_OUTPUT_DIR | k8s-kms-plugin.docs.output-dir | /tmp/k8s-kms-plugin-docs-2025-07-18T17:43:52+02:00 | string | false | Output directory |
+| k8s-kms-plugin docs | --output-dir | -o | K8S_KMS_PLUGIN_DOCS_OUTPUT_DIR | k8s-kms-plugin.docs.output-dir | /tmp/k8s-kms-plugin-docs-2025-09-22T14:24:02+02:00 | string | false | Output directory |
 | k8s-kms-plugin generate-kek | --kek-id |  | K8S_KMS_PLUGIN_GENERATE_KEK_KEK_ID | k8s-kms-plugin.generate-kek.kek-id | a37807cd-6d1a-4d75-813a-e120f30176f7 | string | false | Key ID for KMS KEK. Env var: K8S_KMS_PLUGIN_GENERATE_KEK_KEK_ID |
 | k8s-kms-plugin generate-kek | --socket |  | K8S_KMS_PLUGIN_GENERATE_KEK_SOCKET | k8s-kms-plugin.generate-kek.socket | /tmp/run/hsm-plugin-server.sock | string | false | Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_GENERATE_KEK_SOCKET |
 | k8s-kms-plugin generate-kek | --timeout |  | K8S_KMS_PLUGIN_GENERATE_KEK_TIMEOUT | k8s-kms-plugin.generate-kek.timeout | 30s | duration | false | KMS timeout. Env var: K8S_KMS_PLUGIN_GENERATE_KEK_TIMEOUT |

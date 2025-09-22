@@ -1,6 +1,12 @@
 /*
-Copyright © 2025 NAME HERE <EMAIL ADDRESS>
-*/
+ * Copyright 2025 Thales Group
+ * SPDX-License-Identifier: MIT
+ *
+ * Use of this source code is governed by an MIT-style
+ * license that can be found in the LICENSE file or at
+ * https://opensource.org/licenses/MIT.
+ */
+
 package cmd
 
 import (
@@ -64,7 +70,7 @@ https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/#developing-a-k
 	Example: `
 Using flags:
 	k8s-kms-plugin \
-		serve \
+	  serve \
 		--log-level=trace \
 		--socket /run/user/1000/k8s-kms-plugin.sock \
 		--p11-lib /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1 \

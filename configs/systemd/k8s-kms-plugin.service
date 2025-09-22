@@ -1,0 +1,13 @@
+# This file is under construction
+[Unit]
+Description=run k8s-kms-plugin server
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/k8s-kms-plugin serve
+Restart=always
+User=nobody
+Group=nogroup
+
+[Install]
+WantedBy=multi-user.target

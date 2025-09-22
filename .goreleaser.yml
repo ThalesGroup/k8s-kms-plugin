@@ -25,7 +25,7 @@ gitlab_urls:
 # Build the binary for different architectures
 builds:
   - id: k8s-kms-plugin
-    binary: '{{ .ProjectName }}-linux-{{ .Arch }}_{{ .Version }}'
+    binary: '{{ .ProjectName }}_linux_{{ .Arch }}_{{ .Version }}'
     no_unique_dist_dir: true
     main: ./cmd/{{ .ProjectName }}/main.go
     
@@ -58,24 +58,42 @@ kos:
     env:
        - CGO_ENABLED=1 # Mandatory for crypto11 pkg or go libraries using C compilator
 
-# Generate different type of packages from binary(ies) generated in build section: apk, deb, rpm 
+# Generate different type of packages from binary(ies) generated in build section: apk, deb, rpm, archlinux
 nfpms:
   - id: '{{ .ProjectName }}'
     package_name: '{{ .ProjectName }}'
     file_name_template:  "{{ .ConventionalFileName }}"
     license: "Apache License 2.0"
-    maintainer: ThalesGroup
-    builds:
+    vendor: "ThalesGroup"
+    homepage: https://github.com/ThalesGroup/k8s-kms-plugin
+    maintainer: Thales Open Source <oss@thalesgroup.com>
+    description: |-
+      gRPC service that leverages a remote or local HSM/TPM to encrypt Kubernetes data at-rest with KMS v2. 
+    ids:
       - k8s-kms-plugin # need to use the same id that the build id 
     formats:
         - apk
         - deb
         - rpm
+        - archlinux
+    bindir: /usr/bin
     contents:
-        - src: /usr/bin/{{ .ProjectName }}-linux-{{ .Arch }}_{{ .Version }}
+        # create a symlink with a simpler shorter name for the binary
+        - src: /usr/bin/{{ .ProjectName }}_linux_{{ .Arch }}_{{ .Version }}
           dst: /usr/bin/{{ .ProjectName }}
           type: "symlink"
-
+        # gives an example of configuration file for the k8s-kms-plugin, this is usefull to run it as a daemon for example
+        - src: configs/config.example.yaml
+          dst: /etc/{{ .ProjectName }}/{{ .ProjectName }}.config.example.yaml
+          type: "config"
+        # gives an example of a kubernetes manifest for kms provider
+        - src: deployments/k8s/encryption-conf-kmsv2-unix-socket.yaml
+          dst: /etc/{{ .ProjectName }}/kubernetes/manifest/encryption-conf-kmsv2-unix-socket.example.yaml
+          type: "config"
+        # gives an example of systemd file
+        - src: configs/systemd/k8s-kms-plugin.service
+          dst: /lib/systemd/system/{{ .ProjectName }}.service
+          type: config
 
 # Define caracteristics of binary artifacts
 # Generate zip and tar archives from binary(ies) generated in the build section

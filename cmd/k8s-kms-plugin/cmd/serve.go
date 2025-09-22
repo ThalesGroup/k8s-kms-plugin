@@ -107,36 +107,41 @@ func algFromString(s string) (jose.Alg, error) {
 var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Handles Kubernetes KMS v2 requests",
-	Long: `Handles Kubernetes KMS v2 requests without key rotation.
-Use "k8s-kms-plugin serve rotation" subcommand for key rotation support.
-Kubernetes documentation: https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/#configuring-the-kms-provider-kms-v2
+	Long: `Handles Kubernetes KMS v2 requests but do not support key rotation.
+Use "k8s-kms-plugin serve rotation" subcommand to support key rotation.
+Kubernetes KMS documentation: https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/#configuring-the-kms-provider-kms-v2
+
+KMS v2 API: https://pkg.go.dev/k8s.io/kms@v0.33.3/apis/v2
 `,
 	Example: `
-Using flags and serving on unix socket:
-    k8s-kms-plugin serve \
-        --log-level=info \
-        --socket /run/user/1000/k8s-kms-plugin.sock \
-        --p11-lib /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1 \
-        --p11-label mylabel \
-        --p11-pin mypin \
-        --p11-key-label rsa0 \
-        --algorithm rsa-oaep
+Using flags and serving on unix socket (gRPC plaintext):
+	k8s-kms-plugin 
+	  serve \
+		--log-level=info \
+		--socket /run/user/1000/k8s-kms-plugin.sock \
+		--p11-lib /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1 \
+		--p11-label mylabel \
+		--p11-pin mypin \
+		--p11-key-label rsa0 \
+		--algorithm rsa-oaep
 
-Using environment variables and configuration file and serving on unix socket:
-	K8S_KMS_PLUGIN_SERVE_P11_PIN="mypin" k8s-kms-plugin serve rotation --config my-kms-plugin-config.yaml
+Using both environment variables and configuration file and serving on unix socket:
+	K8S_KMS_PLUGIN_SERVE_P11_PIN="mypin" k8s-kms-plugin serve --config my-kms-plugin-config.yaml
 
-	K8S_KMS_PLUGIN_SERVE_P11_PIN="mypin" k8s-kms-plugin --log-format=json serve rotation --config my-kms-plugin-config.yaml
+Using both CLI Flags, environment variables and configuration file and serving on unix socket:
+	K8S_KMS_PLUGIN_SERVE_P11_PIN="mypin" k8s-kms-plugin --log-format=json serve --config my-kms-plugin-config.yaml
 
-Using AES-CBC with HMAC authentication and serving on unix socket:
-    k8s-kms-plugin serve  \
-        --log-level=trace  \
-        --socket /run/user/1000/k8s-kms-plugin.sock \
-        --p11-lib /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1 \
-        --p11-label mylabel \
-        --p11-pin mypin \
-        --kek-id 64636138353931326363356537313264 \
-        --hmac-id 30663536623936326235663530363234 \
-        --algorithm aes-cbc
+Using AES-CBC with HMAC authentication, using CKA_ID, using CLI flags and serving on unix socket:
+	k8s-kms-plugin 
+	  serve \
+		--log-level=trace  \
+		--socket /run/user/1000/k8s-kms-plugin.sock \
+		--p11-lib /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1 \
+		--p11-label mylabel \
+		--p11-pin mypin \
+		--kek-id 64636138353931326363356537313264 \
+		--hmac-id 30663536623936326235663530363234 \
+		--algorithm aes-cbc
 
 Note:
 As of now (kubernetes "v1.33.1" and kms v0.33.3), the KMSv2 API implementation from Kubernetes **only supports unix socket gRPC** as network connection endpoint:
@@ -147,7 +152,8 @@ As of now (kubernetes "v1.33.1" and kms v0.33.3), the KMSv2 API implementation f
 The KMSv2 API does not support TCP and TLS. However, the k8s-kms-plugin gRPC API can be expose as plaintext TCP or TLS.
 
 Serving on TCP IPv4 and enabling TLS for the gRPC API:
-    k8s-kms-plugin serve  \
+    k8s-kms-plugin
+	  serve \
         --log-level=trace  \
         --p11-lib  /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1  \
         --p11-label  mylabel  \
@@ -299,6 +305,7 @@ func init() {
 	serveCmd.PersistentFlags().String("p11-pin", "", "P11 Pin. Env var: K8S_KMS_PLUGIN_SERVE_P11_PIN")
 	serveCmd.PersistentFlags().Int("p11-slot", 0, "P11 token slot. Env var: K8S_KMS_PLUGIN_SERVE_P11_SLOT")
 	// Provider
+	serveCmd.PersistentFlags().String("provider", "p11", "Provider. Possible values: p11, softhsm, luna, dpod. Env var: K8S_KMS_PLUGIN_SERVE_PROVIDER.")
 	serveCmd.PersistentFlags().String("provider", "p11", "Provider. Possible values: p11, softhsm, luna, dpod. Env var: K8S_KMS_PLUGIN_SERVE_PROVIDER.")
 	serveCmd.RegisterFlagCompletionFunc("provider", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"p11", "softhsm", "luna", "dpod"}, cobra.ShellCompDirectiveNoFileComp
