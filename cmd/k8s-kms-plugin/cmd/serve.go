@@ -111,7 +111,7 @@ var serveCmd = &cobra.Command{
 Use "k8s-kms-plugin serve rotation" subcommand to support key rotation.
 Kubernetes KMS documentation: https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/#configuring-the-kms-provider-kms-v2
 
-KMS v2 API: https://pkg.go.dev/k8s.io/kms@v0.33.3/apis/v2
+KMS v2 API: https://pkg.go.dev/k8s.io/kms@v0.33.5/apis/v2
 `,
 	Example: `
 Using flags and serving on unix socket (gRPC plaintext):
