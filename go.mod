@@ -46,15 +46,14 @@ require (
 	github.com/ThalesGroup/crypto11 v1.4.1
 	github.com/ThalesGroup/gose v0.10.0
 	github.com/hashicorp/go-version v1.7.0
-	k8s.io/kms v0.33.5
+	k8s.io/kms v0.34.1
 )
 
 require (
-	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
+	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
 
 // TODO: remove this replace statement once the update to go1.24.5 is completed on the crypto11 repo
@@ -70,6 +69,6 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250908214217-97024824d090 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250908214217-97024824d090 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250922171735-9219d122eba9 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250922171735-9219d122eba9 // indirect
 )

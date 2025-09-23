@@ -150,6 +150,10 @@ func IsPKCS11AuthenticationError(err error) bool {
 // Istio Related Fields:
 // - cid: Certificate Identifier used in Istio operations.
 type P11 struct {
+	// Starting with [KMS v0.34.0](https://github.com/kubernetes/kms/tree/v0.34.0/apis/v2), the KMS maintainers stoped to use https://github.com/gogo/protobuf to generate protobuf files, as it is deprecated.
+	// KMS v0.34.0 and later uses official https://github.com/protocolbuffers/protobuf-go. This demands that the gRPC server embeds UnimplementedKeyManagementServiceServer to automatically satisfy method mustEmbedUnimplementedKeyManagementServiceServer()
+	k8skmsv2.UnimplementedKeyManagementServiceServer
+
 	// active KEK parameters
 	createKey    bool                         // Indicates whether the k8s-kms-plugin should create a new key. TODO: explain the use case of when should the k8s-kms-plugin create the key, or create a new cobra command
 	config       *crypto11.Config             // Active configuration for the crypto11 library
