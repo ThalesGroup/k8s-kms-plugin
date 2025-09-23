@@ -46,10 +46,11 @@ require (
 	github.com/ThalesGroup/crypto11 v1.4.1
 	github.com/ThalesGroup/gose v0.10.0
 	github.com/hashicorp/go-version v1.7.0
-	k8s.io/kms v0.34.1
+	k8s.io/kms v0.33.5
 )
 
 require (
+	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
