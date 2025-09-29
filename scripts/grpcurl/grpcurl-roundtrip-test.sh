@@ -12,7 +12,7 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 1
 fi
 
-API_PROTO_URL="https://raw.githubusercontent.com/kubernetes/kms/refs/tags/v0.33.3/apis/v2/api.proto"
+API_PROTO_URL="https://raw.githubusercontent.com/kubernetes/kms/refs/tags/v0.34.1/apis/v2/api.proto"
 if [[ ! -f api.proto ]]; then
   echo "api.proto file not found. Downloading protobufer API file from ${API_PROTO_URL}..."
   curl -sSL -o api.proto "${API_PROTO_URL}"
