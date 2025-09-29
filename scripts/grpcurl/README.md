@@ -1,5 +1,7 @@
-The `grpcurl-roundtrip-test.sh` script allows you to mimic and test the
-communication between the `k8s-kms-plugin` and the `kubernetes` KMS API server.
+# Unix Socket
+
+The [`grpcurl-unix-roundtrip-test.sh`](./grpcurl-unix-roundtrip-test.sh) script allows you to mimic and test the
+communication between the `k8s-kms-plugin` and the `kubernetes` KMS v2 API server.
 
 The script tests a [`StatusRequest`](https://pkg.go.dev/k8s.io/kms/apis/v2#StatusRequest), then an [`EncryptRequest`](https://pkg.go.dev/k8s.io/kms/apis/v2#EncryptRequest) and finally a [`DecryptRequest`](https://pkg.go.dev/k8s.io/kms/apis/v2#DecryptRequest).
 
@@ -49,4 +51,222 @@ VERBOSE=true ./grpcurl-roundtrip-test.sh 'hello world' /run/user/1000/k8s-kms-pl
 }
 🔓 Decrypted text: hello world
 ✅ Round-trip encryption/decryption successful!
+```
+
+# [experimental feature] TCP gRPC API
+
+As of Kubernetes `v1.33.1` and KMS `v0.33.3`, the KMSv2 API implementation from Kubernetes **only supports unix socket gRPC** as network connection endpoint:
+* official documentation https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/#configuring-the-kms-provider-kms-v2
+* method `ParseEndpoint` from `k8s.io/kms/pkg/util` in version `v0.33.3` only supports `unix`: see
+  * https://pkg.go.dev/k8s.io/kms@v0.33.3/pkg/util#ParseEndpoint
+  * [kms v0.33.3 /pkg/util/util.go#L26](https://github.com/kubernetes/kms/blob/b8a79480db40eda7916f633621690b1ca9993373/pkg/util/util.go#L26)
+
+The KMSv2 API does not support TCP and TLS.
+
+However, the `k8s-kms-plugin` gRPC API can be expose as plaintext TCP or TLS. This is an experimental feature since k8s does not support for now. But maybe in the future, the GRPC API KMS will support TCP and TLS. When this hapens, the `k8s-kms-plugin`  will be ready.
+
+## Test with dummy certificates
+
+If you do not have certificates available for testing this experimental feature, use this script [`generate-self-signed-cert.sh`](../tls/generate-self-signed-cert.sh) to generate a dummy self-signed root CA, client and server certificates and corresponding private keys.
+
+[`generate-self-signed-cert.sh`](../tls/generate-self-signed-cert.sh) will generate the following files:
+
+```
+./generate-self-signed-cert.sh 
+
+🔧 Generating root CA...
+🔧 Generating server TLS certificate...
+Certificate request self-signature ok
+subject=CN = kms-server.local
+🔧 Generating client TLS certificate for mTLS...
+Certificate request self-signature ok
+subject=CN = kms-client
+✅ All certificates generated in ./certs:
+ca.crt
+ca.key
+ca.srl
+client.cnf
+client.crt
+client.csr
+client.key
+server.cnf
+tls.crt
+tls.csr
+tls.key
+```
+
+## Run `k8s-kms-plugin serve` with TCP gRPC API & TLS (no mutual TLS)
+
+We use the dummy certificates generated at the previous step.
+
+```bash
+k8s-kms-plugin \
+  serve  \
+    --log-level=trace  \
+    --p11-lib /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1 \
+    --p11-label mylabel  \
+    --p11-pin mypin  \
+    --kek-id  64636138353931326363356537313264 \
+    --hmac-id 30663536623936326235663530363234 \
+    --algorithm aes-cbc \
+    --grpc-network tcp4 \
+    --host 127.0.0.1 \
+    --port 8842 \
+    --enable-tls \
+    --tls-key ~/certs/tls.key \
+    --tls-certificate ~/certs/tls.crt \
+    --tls-ca ~/certs/ca.crt
+```
+
+### StatusRequest
+
+TCP + insecure TLS
+
+```bash
+grpcurl \
+  -insecure \
+  -proto api.proto \
+  -d '{}' \
+  127.0.0.1:8842 \
+  v2.KeyManagementService.Status
+```
+
+Answer:
+
+```json
+{
+  "version": "v2",
+  "healthz": "ok",
+  "keyId": "64636138353931326363356537313264"
+}
+```
+
+If you have the root CA certificate, you can use it with `grpcurl` to verify the server:
+
+```bash
+grpcurl \
+  -cacert ~/certs/ca.crt \
+  -proto api.proto \
+  -d '{}' \
+  127.0.0.1:8842 \
+  v2.KeyManagementService.Status
+```
+
+### EncryptRequest
+
+TCP + insecure TLS
+
+```bash
+grpcurl \
+  -insecure \
+  -proto api.proto \
+  -d '{"plaintext": "aGVsbG8gd29ybGQ=", "uid": "mock-123"}' \
+  127.0.0.1:8842 \
+  v2.KeyManagementService.Encrypt
+```
+
+answer:
+
+```json
+{
+  "ciphertext": "ZXlKaGJHY2lPaUpCTWpVMlEwSkRJaXdpYTJsa0lqb2lOalEyTXpZeE16Z3pOVE01TXpFek1qWXpOak16TlRZMU16Y3pNVE15TmpRaUxDSjBlWEFpT2lKS1YxUWlMQ0pqZEhraU9pSktWMVFpTENKZmRHaGhiR1Z6WDJGaFpDSTZJa0ZCUVVGQlFVRkJRVUZ6SWl3aVpXNWpJam9pUVRJMU5rTkNReUo5Li5vWFE1bjJkb1B3QnpEVkJkY1pRTDlnLjF5RWpxZTFxM0JwZnFjR2RTNlFVVGcuRnlOU1ZtMll1SGtSODBsRGlENUdDRXQ2cEZaSjVSeFhOczNwYmJUeXpPNA==",
+  "keyId": "64636138353931326363356537313264"
+}
+```
+
+Instead of using `grpcurl -insecure`, you can also use `grpcurl` with the root CA certificate to verify the server with `-cacert ~/certs/ca.crt`, similar to the `StatusRequest` example.
+
+### DecryptRequest
+
+TCP + insecure TLS
+
+```bash
+grpcurl \
+  -insecure \
+  -proto api.proto \
+  -d '{"ciphertext": "ZXlKaGJHY2lPaUpCTWpVMlEwSkRJaXdpYTJsa0lqb2lOalEyTXpZeE16Z3pOVE01TXpFek1qWXpOak16TlRZMU16Y3pNVE15TmpRaUxDSjBlWEFpT2lKS1YxUWlMQ0pqZEhraU9pSktWMVFpTENKZmRHaGhiR1Z6WDJGaFpDSTZJa0ZCUVVGQlFVRkJRVUZ6SWl3aVpXNWpJam9pUVRJMU5rTkNReUo5Li5vWFE1bjJkb1B3QnpEVkJkY1pRTDlnLjF5RWpxZTFxM0JwZnFjR2RTNlFVVGcuRnlOU1ZtMll1SGtSODBsRGlENUdDRXQ2cEZaSjVSeFhOczNwYmJUeXpPNA==", "uid": "test-dec-1", "key_id":"64636138353931326363356537313264"}' \
+  127.0.0.1:8842 \
+  v2.KeyManagementService.Decrypt
+```
+
+answer:
+
+```json
+{
+  "plaintext": "aGVsbG8gd29ybGQ="
+}
+```
+
+Instead of using `grpcurl -insecure`, you can also use `grpcurl` with the root CA certificate to verify the server with `-cacert ~/certs/ca.crt`, similar to the `StatusRequest` example.
+
+## Run `k8s-kms-plugin serve` with TCP gRPC API & mutual TLS Enabled
+
+```bash
+k8s-kms-plugin \
+  serve  \
+    --log-level=trace  \
+    --p11-lib /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1 \
+    --p11-label mylabel  \
+    --p11-pin mypin  \
+    --kek-id  64636138353931326363356537313264 \
+    --hmac-id 30663536623936326235663530363234 \
+    --algorithm aes-cbc \
+    --grpc-network tcp4 \
+    --host 127.0.0.1 \
+    --port 8842 \
+    --enable-tls \
+    --tls-key ~/certs/tls.key \
+    --tls-certificate ~/certs/tls.crt \
+    --tls-ca ~/certs/ca.crt \
+    --require-client-cert true \
+    --tls-client-ca ~/certs/ca.crt
+```
+
+### StatusRequest
+
+TCP + mutual TLS
+
+```bash
+grpcurl \
+  -cacert ~/certs/ca.crt \
+  -cert ~/certs/client.crt \
+  -key ~/certs/client.key \
+  -proto api.proto \
+  -d '{}' \
+  127.0.0.1:8842 \
+  v2.KeyManagementService.Status
+```
+
+The EncryptRequest and DecryptRequest examples are the same as the previous sections. Only you need to add to `grpcurl` the client certieficate and key.
+
+## Run `k8s-kms-plugin serve` with TCP gRPC API but no TLS
+
+The principle is the same as the previous section, but without the `--enable-tls` flag. So the gRPC API is plaintext TCP.
+
+```bash
+k8s-kms-plugin \
+  serve  \
+    --log-level=trace  \
+    --p11-lib /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1 \
+    --p11-label mylabel  \
+    --p11-pin mypin  \
+    --kek-id  64636138353931326363356537313264 \
+    --hmac-id 30663536623936326235663530363234 \
+    --algorithm aes-cbc \
+    --grpc-network tcp4 \
+    --host 127.0.0.1 \
+    --port 8842
+```
+
+### StatusRequest
+
+TCP plaintext (no TLS): principally the same as the previous section, only you use grpcurl with `-plaintext` option.
+
+```bash
+grpcurl \
+  -plaintext \
+  -proto api.proto \
+  -d '{}' \
+  127.0.0.1:8842 \
+  v2.KeyManagementService.Status
 ```
