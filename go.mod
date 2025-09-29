@@ -1,6 +1,6 @@
 module github.com/ThalesGroup/k8s-kms-plugin
 
-go 1.24.5
+go 1.25.1
 
 require (
 	github.com/golang/protobuf v1.5.4
@@ -50,17 +50,17 @@ require (
 )
 
 require (
-	github.com/mattn/go-runewidth v0.0.16 // indirect
-	github.com/rivo/uniseg v0.4.7 // indirect
+	github.com/clipperhouse/uax29/v2 v2.2.0 // indirect
+	github.com/mattn/go-runewidth v0.0.19 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
 
-// TODO: remove this replace statement once the update to go1.24.5 is completed on the crypto11 repo
-replace github.com/ThalesGroup/crypto11 v1.4.1 => github.com/ThalesGroup/crypto11 v1.4.1-0.20250806122227-83c900c1c031
+// TODO: remove this replace statement once the update to go1.25.1 is completed on the crypto11 repo
+replace github.com/ThalesGroup/crypto11 v1.4.1 => github.com/ThalesGroup/crypto11 v1.4.1-0.20250923152205-cae7391bcc9c
 
-// TODO: remove this replace statement once the update to go1.24.5 is completed on the gose repo
-replace github.com/ThalesGroup/gose v0.10.0 => github.com/ThalesGroup/gose v0.10.1-0.20250806121411-8f3ea7930d91
+// TODO: remove this replace statement once the update to go1.25.1 is completed on the gose repo
+replace github.com/ThalesGroup/gose v0.10.0 => github.com/ThalesGroup/gose v0.10.1-0.20250923151604-988cef4a1a51
 
 require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect

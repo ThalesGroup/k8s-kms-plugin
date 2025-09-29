@@ -343,7 +343,7 @@ podman run -it --rm \
         -e WORKSPACE=$WORKSPACE \
         -e GITHUB_REPOSITORY_OWNER=$GITHUB_REPOSITORY_OWNER \
         --platform "linux/amd64" \
-        ghcr.io/thalesgroup/goreleaser-glibc-image:golang-1.24.5-bookworm \
+        ghcr.io/thalesgroup/goreleaser-glibc-image:golang-1.25.1-bookworm \
           release \
             --clean \
             --snapshot \
