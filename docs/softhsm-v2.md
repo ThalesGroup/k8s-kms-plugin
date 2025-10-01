@@ -61,11 +61,11 @@ export MODULE="/usr/lib/softhsm/libsofthsm2.so"
 export MODULE="/usr/lib64/pkcs11/libsofthsm2.so"
 ```
 
-Create an AES encryption key (KEK):
+Create an AES encryption key (KEK) with a user provided ID:
 
 ```sh
 # aes kek
-pkcs11-tool --module $MODULE --token-label mylabel --pin mypin --keygen --key-type aes:16 --label aes00softhsm
+pkcs11-tool --module $MODULE --token-label mylabel --pin mypin --keygen --key-type aes:16 --label aes00softhsm --id aa22334455bc
 ```
 
 List objects:
