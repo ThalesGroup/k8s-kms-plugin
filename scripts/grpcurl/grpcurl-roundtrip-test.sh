@@ -44,6 +44,7 @@ echo "🔐 Input plaintext: $PLAINTEXT"
 echo "🔐 Base64 encoded: $PLAINTEXT_BASE64"
 
 # ---- Get key_id from Status ----
+echo "ℹ️  Status request test"
 STATUS_RESPONSE=$(grpcurl \
   -plaintext \
   -proto api.proto \
@@ -58,6 +59,7 @@ KEY_ID=$(echo "$STATUS_RESPONSE" | jq -r .keyId)
 echo "🧾 key_id from Status: $KEY_ID"
 
 # ---- Encrypt ----
+echo "ℹ️  Encrypt request test"
 ENCRYPT_RESPONSE=$(grpcurl \
   -plaintext \
   -proto api.proto \
@@ -72,6 +74,7 @@ CIPHERTEXT=$(echo "$ENCRYPT_RESPONSE" | jq -r .ciphertext)
 echo "🗄️  Ciphertext (base64): $CIPHERTEXT"
 
 # ---- Decrypt ----
+echo "ℹ️  Decrypt request test"
 DECRYPT_RESPONSE=$(grpcurl \
   -plaintext \
   -proto api.proto \

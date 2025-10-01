@@ -46,9 +46,9 @@ type ViperFlagsRotation struct {
 
 	// CKA_ID and CKA_LABEL
 	OldDekKeyLabel  string `mapstructure:"old-p11-key-label"`
-	OldHmacKeyID    string `mapstructure:"old-hmac-id"`
+	OldHmacKeyID    string `mapstructure:"old-p11-hmac-id"`
 	OldHmacKeyLabel string `mapstructure:"old-p11-hmac-label"`
-	OldKekKeyID     string `mapstructure:"old-kek-id"`
+	OldKekKeyID     string `mapstructure:"old-p11-key-id"`
 }
 
 // Declare the viper CLI flag values buffer
@@ -80,8 +80,8 @@ Using flags and serving on unix socket (gRPC plaintext):
 			--old-p11-lib /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1 \
 			--old-p11-label mylabel \
 			--old-p11-pin mypin \
-			--old-kek-id 64636138353931326363356537313264 \
-			--old-hmac-id 30663536623936326235663530363234 \
+			--old-p11-key-id 64636138353931326363356537313264 \
+			--old-p11-hmac-id 30663536623936326235663530363234 \
 			--old-algorithm aes-cbc
 
 Using environment variables and configuration file:
@@ -182,17 +182,17 @@ func init() {
 	rotationCmd.Flags().String("old-provider", "p11", "Provider for old KEK")
 	rotationCmd.Flags().String("old-socket", "", "Unix socket path for old KEK")
 	rotationCmd.Flags().String("old-p11-key-label", "", "Key Label CKA_LABEL for old KEK")
-	rotationCmd.Flags().String("old-hmac-id", "", "Key ID CKA_ID for old KEK HMAC")
+	rotationCmd.Flags().String("old-p11-hmac-id", "", "Key ID CKA_ID for old KEK HMAC")
 	rotationCmd.Flags().String("old-p11-hmac-label", "", "Key Label CKA_LABEL for old KEK HMAC")
-	rotationCmd.Flags().String("old-kek-id", "", "Key ID CKA_ID for old KEK")
+	rotationCmd.Flags().String("old-p11-key-id", "", "Key ID CKA_ID for old KEK")
 
 	// At least one of the old KEK CKA_ID or old CKA_LABEL must be provided by the user
-	rotationCmd.MarkFlagsOneRequired("old-kek-id", "old-p11-key-label")
+	rotationCmd.MarkFlagsOneRequired("old-p11-key-id", "old-p11-key-label")
 
 	// To prevent mismatch between user provided CKA_ID and user provided CKA_LABEL, flags are Mutually Exclusive.
 	// NewP11 make sure to retrieve the ID by label, or label by ID.
-	rotationCmd.MarkFlagsMutuallyExclusive("old-kek-id", "old-p11-key-label")
-	rotationCmd.MarkFlagsMutuallyExclusive("old-hmac-id", "old-p11-hmac-label")
+	rotationCmd.MarkFlagsMutuallyExclusive("old-p11-key-id", "old-p11-key-label")
+	rotationCmd.MarkFlagsMutuallyExclusive("old-p11-hmac-id", "old-p11-hmac-label")
 }
 
 func initRotatedProvider() (pRot providers.Provider, err error) {

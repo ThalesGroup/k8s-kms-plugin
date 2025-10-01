@@ -82,7 +82,7 @@ sudo k8s-kms-plugin \
       --p11-lib /usr/lib64/pkcs11/libeTPkcs11.so \
       --p11-label "My Token" \
       --p11-pin "0000000000" \
-      --kek-id 1212abab \
+      --p11-key-id 1212abab \
       --algorithm rsa-oaep
 ```
 

@@ -213,7 +213,7 @@ type P11 struct {
 // the error value is not nil, the P11 instance is not valid and should not
 // be used.
 func NewP11(
-	// active KEK parameters
+// active KEK parameters
 	config *crypto11.Config,
 	createKey bool,
 	kekkeyid string,
@@ -222,7 +222,7 @@ func NewP11(
 	hmacCkaId string,
 	algorithm jose.Alg,
 
-	// key rotation
+// key rotation
 	isKeyRotation bool,
 	oldConfig *crypto11.Config,
 	oldKekkeyid string,
@@ -256,37 +256,6 @@ func NewP11(
 		}
 	}
 
-	// in case the user provide the CKA_ID or the CKA_LABEL of HMAC key
-	if p.algorithm == jose.AlgA256CBC {
-		if hmacCkaId == "" && hmacKeyLabel != "" { // get id by label
-			// active HMAC
-			p.hmacCkaLabel = hmacKeyLabel
-
-			if p.hmacCkaId, err = FindCkaAttrByIdOrLabel(p.ctx, p.algorithm, crypto11.CkaId, nil, []byte(p.hmacCkaLabel)); err != nil {
-				logrus.WithError(err).Error("NewP11: failed to find HMAC CKA_ID by label")
-				return nil, err
-			}
-
-		} else if hmacCkaId != "" && hmacKeyLabel == "" { // get label by id
-			p.SetHmacKeyIdString(hmacCkaId)
-
-			var labelBuf []byte
-			if labelBuf, err = FindCkaAttrByIdOrLabel(p.ctx, p.algorithm, crypto11.CkaLabel, p.hmacCkaId, nil); err != nil {
-				logrus.WithError(err).Error("NewP11: failed to find HMAC CKA_LABEL by ID")
-				return nil, err
-			}
-
-			p.hmacCkaLabel = string(labelBuf)
-
-		} else if hmacCkaId == "" && hmacKeyLabel == "" {
-			logrus.WithError(err).Errorf("NewP11: hmacCkaId and hmacKeyLabel are both empty, please provide one of them")
-			return nil, fmt.Errorf("NewP11: hmacCkaId and hmacKeyLabel are both empty, please provide one of them")
-		} else {
-			logrus.WithError(err).Errorf("NewP11: both hmacCkaId and hmacKeyLabel are provided, please provide only one")
-			return nil, fmt.Errorf("NewP11: both hmacCkaId and hmacKeyLabel are provided, please provide only one")
-		}
-	}
-
 	// Case: Attempt to discover KEK ID (CKA_ID) by Key label (CKA_LABEL)
 	// From the CLI's user input perspective, the kekkeyid (CKA_ID) and k8sKekLabel (CKA_LABEL)
 	// should be marked as MarkFlagsMutuallyExclusive and MarkFlagsOneRequired.
@@ -295,32 +264,20 @@ func NewP11(
 	// EncryptRequest.KeyId should use a unique identifier: pkcs11.CKA_ID is a unique identifier.
 	// If the user set the k8sKekLabel flag (CKA_LABEL), then the kekkeyid (CKA_ID) is retrieved by
 	// the k8sKekLabel.
-	if kekkeyid == "" && k8sKekLabel != "" {
-		logrus.Tracef("NewP11: kek key id (CKA_ID) is empty. Find CKA_ID by CKA_LABEL %s", k8sKekLabel)
-		p.kekCkaLabel = k8sKekLabel
-
-		if p.kekCkaId, err = FindCkaAttrByIdOrLabel(p.ctx, p.algorithm, crypto11.CkaId, nil, []byte(p.kekCkaLabel)); err != nil {
-			logrus.WithError(err).Error("NewP11: failed to find KEK CKA_ID by CKA_LABEL")
-			return nil, err
-		}
+	// CKA_ID is mandatory to provide the KEK ID to the status requests from Kubernetes' Status
+	// Request, so we need to retrieve it mandatorily from the HSM if provided empty.
+	// TODO USE SetKekKeyIdString instead of conversions in the method
+	p.kekCkaId, p.kekCkaLabel, err = GetKeyIdAndLabel(p, kekkeyid, k8sKekLabel)
+	if err != nil {
+		return
 	}
 
-	// Case: KEK ID already provided by user at startup with flag --kek-id
-	// If k8sKekLabel is empty but kekkeyid is not nil, we can get the key label by the key id. But
-	// the only purpose of this is for logging messages, as the CKA_LABEL is not use in the KMS v2
-	// API calls.
-	// But we could use EncryptResponse.Annotations and DecryptRequest.Annotations to store
-	// the value of the key label CKA_LABEL.
-	if kekkeyid != "" && k8sKekLabel == "" {
-		logrus.Tracef("NewP11: k8sKekLabel (CKA_LABEL) is empty but kekkeyid (CKA_ID) is not empty. Find CKA_LABEL by CKA_ID %s", kekkeyid)
-		p.SetKekKeyIdString(kekkeyid)
-
-		var labelBuf []byte
-		if labelBuf, err = FindCkaAttrByIdOrLabel(p.ctx, p.algorithm, crypto11.CkaLabel, p.kekCkaId, nil); err != nil {
-			logrus.WithError(err).Error("NewP11: failed to find KEK CKA_LABEL by CKA_ID")
-			return nil, err
+	// in case the user provide the CKA_ID or the CKA_LABEL of HMAC key
+	if p.algorithm == jose.AlgA256CBC {
+		p.hmacCkaId, p.hmacCkaLabel, err = GetKeyIdAndLabel(p, hmacCkaId, hmacKeyLabel)
+		if err != nil {
+			return
 		}
-		p.kekCkaLabel = string(labelBuf)
 	}
 
 	// key rotation
@@ -791,6 +748,8 @@ func (p *P11) decryptWithContext(req *k8skmsv2.DecryptRequest, isRotation bool) 
 
 			// create decryptor
 			decryptor := gose.NewJweRsaKeyEncryptionDecryptorImpl(store)
+			// TODO deleteme
+
 			// decrypt
 			out, _, err = decryptor.Decrypt(string(req.GetCiphertext()), crypto.SHA256)
 			if err != nil {
@@ -849,10 +808,12 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 				return
 			}
 			var aek gose.AeadEncryptionKey
+			// TODO investigate why the aek result does not have a kid
 			if aek, err = p.makeAeadKey(rng, kek); err != nil {
 				logrus.WithError(err).Errorf("Encrypt: cannot create an aead key")
 				return
 			}
+
 			encryptor = gose.NewJweDirectEncryptorAead(aek, p.config.UseGCMIVFromHSM)
 			// output is the marshalled jwe
 			if out, err = encryptor.Encrypt(req.GetPlaintext(), nil); err != nil {
@@ -899,7 +860,7 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 			}
 			var hash hash.Hash
 			if hash, err = hmacp11Key.NewHMAC(pkcs11.CKM_SHA256_HMAC, 0); err != nil {
-				return nil, fmt.Errorf("error initializing SHA256 with key '%s': %v", p.hmacCkaLabel, err)
+				return nil, fmt.Errorf("error initializing CKM_SHA256_HMAC with key '%s': %v", p.hmacCkaLabel, err)
 			}
 			hmacKey := gose.NewHmacShaCryptor(p.hmacCkaLabel, hash)
 			// encryptor
@@ -1005,6 +966,9 @@ func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.
 	}
 
 	resp, err = handler(ctx, req)
+	if err != nil {
+		logrus.Error(err)
+	}
 	return resp, err
 }
 
@@ -1025,8 +989,18 @@ func (p *P11) Status(ctx context.Context, request *k8skmsv2.StatusRequest) (stat
 		return
 	}
 
-	// TODO: consider only testing the length of the KEK ID and not the nil check
 	if len(p.kekCkaId) == 0 {
+		var e error
+		secretKey, e := p.ctx.FindKey(nil, []byte("aes00softhsm"))
+		if e != nil {
+			print(e.Error())
+		}
+		print(secretKey)
+		a, myerr := p.ctx.GetAttribute(secretKey, pkcs11.CKA_ID)
+		if myerr != nil {
+			print(myerr.Error())
+		}
+		print(string(a.Value))
 		err = errors.New("KEK ID is empty")
 		logrus.WithError(err).Error("p11 Status: error due to missing KEK ID")
 		return
@@ -1070,13 +1044,13 @@ func FindCkaAttrByIdOrLabel(ctx *crypto11.Context, algorithm jose.Alg, ckaAttr c
 	var outBuf []byte // output buffers
 
 	if ( // find ID by label
-	(len(id) == 0) &&
-		(label != nil || len(label) > 0) &&
-		(ckaAttr == crypto11.CkaId)) ||
+		(len(id) == 0) &&
+			(label != nil || len(label) > 0) &&
+			(ckaAttr == crypto11.CkaId)) ||
 		( // find label by ID
-		(id != nil || len(id) > 0) &&
-			(len(label) == 0) &&
-			(ckaAttr == crypto11.CkaLabel)) {
+			(id != nil || len(id) > 0) &&
+				(len(label) == 0) &&
+				(ckaAttr == crypto11.CkaLabel)) {
 
 		var err error
 		switch algorithm {
@@ -1119,4 +1093,60 @@ func FindCkaAttrByIdOrLabel(ctx *crypto11.Context, algorithm jose.Alg, ckaAttr c
 	}
 
 	return outBuf, nil
+}
+
+// GetKeyIdAndLabel checks the CKA_ID and CKA_LABEL of a key from the P11 provider, and returns
+// both of the value from one or the other.
+// Indeed, Key ID and Key Label are mutually exclusive and at least one must be provided.
+// If the Key ID is provided only, this function retrieves the label of the key.
+// If the Key Label is provided, this function retrieves the ID of the key.
+// If the key Label is provided and the key is retrieved without a Key ID from the HSM, the process
+// exits with a fatal error. Indeed, the K8S KMS v2 protocol requires a Key ID (CKA_ID) for status
+// requests.
+func GetKeyIdAndLabel(p *P11, keyId string, keyLabel string) (resultKeyId []byte, resultKeyLabel string, err error) {
+	var resultKeyLabelBytes []byte
+	if keyId == "" && keyLabel != "" {
+		logrus.Tracef("NewP11: key id (CKA_ID) is empty. Find CKA_ID by CKA_LABEL %s", keyLabel)
+		resultKeyLabel = keyLabel
+
+		keyLabelBytes := []byte(keyLabel)
+		resultKeyId, err = FindCkaAttrByIdOrLabel(p.ctx, p.algorithm, crypto11.CkaId, nil, keyLabelBytes)
+		if err != nil {
+			logrus.WithError(err).Errorf("NewP11: failed to find key CKA_ID by CKA_LABEL '%s'", resultKeyLabel)
+			return nil, "", err
+		}
+
+		// panic error if the CKA_ID if the key, found using its label, is empty.
+		if len(resultKeyId) == 0 {
+			logrus.Fatalf("NewP11: Fatal error : key ID (CKA_ID) empty for key label (CKA_LABEL) '%s'. k8s-kms-plugin only supports keys with a CKA_ID in HSM", keyLabel)
+		}
+	} else if keyId != "" && keyLabel == "" {
+		// Case: KEK ID already provided by user at startup with flag --p11-key-id
+		// If k8sKekLabel is empty but kekkeyid is not nil, we can get the key label by the key id. But
+		// the only purpose of this is for logging messages, as the CKA_LABEL is not use in the KMS v2
+		// API calls.
+		// But we could use EncryptResponse.Annotations and DecryptRequest.Annotations to store
+		// the value of the key label CKA_LABEL.
+		logrus.Tracef("NewP11: key label (CKA_LABEL) is empty but key id (CKA_ID) is not empty. Find CKA_LABEL by CKA_ID %s", keyId)
+		resultKeyId, err = hex.DecodeString(keyId)
+		if err != nil {
+			return nil, "", fmt.Errorf("NewP11: cannot decode string CKA_ID into hex expected format '%s': %w", keyId, err)
+		}
+
+		if resultKeyLabelBytes, err = FindCkaAttrByIdOrLabel(p.ctx, p.algorithm, crypto11.CkaLabel, resultKeyId, nil); err != nil {
+			logrus.WithError(err).Error("NewP11: failed to find key CKA_LABEL by CKA_ID '%s'", resultKeyId)
+			return nil, "", err
+		}
+		resultKeyLabel = string(resultKeyLabelBytes)
+	} else if keyId == "" && keyLabel == "" {
+		errMsg := "NewP11: key ID (CKA_ID) and key label (CKA_LABEL) are both empty, please provide one of them"
+		logrus.WithError(err).Errorf(errMsg)
+		return nil, "", fmt.Errorf(errMsg)
+	} else {
+		errMsg := "NewP11: both key ID (CKA_ID) and key label (CKA_LABEL) are provided, please provide only one"
+		logrus.WithError(err).Errorf(errMsg)
+		return nil, "", fmt.Errorf(errMsg)
+	}
+
+	return
 }

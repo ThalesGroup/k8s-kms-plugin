@@ -61,11 +61,12 @@ export MODULE="/usr/lib/softhsm/libsofthsm2.so"
 export MODULE="/usr/lib64/pkcs11/libsofthsm2.so"
 ```
 
-Create an AES encryption key (KEK):
+Create an AES encryption key (KEK) **using an ID**.
+The ID is mandatory to work with the K8S KMS v2 protocol :
 
 ```sh
 # aes kek
-pkcs11-tool --module $MODULE --token-label mylabel --pin mypin --keygen --key-type aes:16 --label aes00softhsm
+pkcs11-tool --module $MODULE --token-label mylabel --pin mypin --keygen --key-type aes:16 --label aes01softhsm --id $(head -c 8 /dev/urandom | xxd -p)
 ```
 
 List objects:
@@ -105,7 +106,7 @@ k8s-kms-plugin \
     --algorithm aes-gcm
 ```
 
-Alternatively, you can use `--kek-id` (PKCS #11 CKA_ID) instead of `--p11-key-label` (PKCS #11 CKA_LABEL).
+Alternatively, you can use `--p11-key-id` (PKCS #11 CKA_ID) instead of `--p11-key-label` (PKCS #11 CKA_LABEL).
 
 ```sh
 SOCKET="/run/user/$(id -u $USER)/k8s-kms-plugin.sock"
@@ -117,7 +118,7 @@ k8s-kms-plugin \
     --p11-lib $MODULE \
     --p11-label mylabel \
     --p11-pin mypin \
-    --kek-id  aa22334455bc \
+    --p11-key-id aa22334455bc \
     --algorithm aes-gcm
 ```
 
