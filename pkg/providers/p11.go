@@ -7,6 +7,15 @@
  * https://opensource.org/licenses/MIT.
  */
 
+/*
+ * Copyright 2025 Thales Group
+ * SPDX-License-Identifier: MIT
+ *
+ * Use of this source code is governed by an MIT-style
+ * license that can be found in the LICENSE file or at
+ * https://opensource.org/licenses/MIT.
+ */
+
 package providers
 
 import (
@@ -228,7 +237,7 @@ func NewP11(
 		createKey: createKey,
 		algorithm: algorithm,
 
-		// key rotation
+		// only in case of key rotation
 		oldConfig:    oldConfig,
 		oldAlgorithm: oldAlgorithm,
 	}
@@ -496,7 +505,7 @@ func (p *P11) SetDecryptors(decryptors map[string]gose.JweDecryptor) error {
 	return nil
 }
 
-// SetContext sets the context.
+// SetContext sets the PKCS#11 context.
 func (p *P11) SetContext(ctx *crypto11.Context) error {
 	if ctx == nil {
 		return fmt.Errorf("SetContext: ctx is nil")
@@ -624,6 +633,7 @@ func (p *P11) Decrypt(ctx context.Context, req *k8skmsv2.DecryptRequest) (resp *
 		return nil, fmt.Errorf("Decrypt: unknown key ID: %s", req.GetKeyId())
 	}
 
+	// decrypt with PKCS#11 context
 	out, err = p.decryptWithContext(req, isRotation)
 	if err != nil {
 		logrus.WithError(err).Error("error while decrypting with old key")
@@ -636,7 +646,7 @@ func (p *P11) Decrypt(ctx context.Context, req *k8skmsv2.DecryptRequest) (resp *
 	return
 }
 
-// decryptWithContext performs decryption using the provided context, DecryptRequest and decryptor map.
+// decryptWithContext performs decryption using the provided PKCS#11 context, DecryptRequest and decryptor map.
 //
 // The method takes into account if the key has been rotated and decrypts the
 // ciphertext accordingly.
@@ -759,6 +769,7 @@ func (p *P11) decryptWithContext(req *k8skmsv2.DecryptRequest, isRotation bool) 
 			}
 		case jose.AlgRSAOAEP:
 			logrus.Tracef("p11:Decrypt case %s", jose.AlgRSAOAEP)
+			logrus.Tracef("p11:Decrypt case %s", jose.AlgRSAOAEP)
 			// load pkcs11 context
 			var rsaKeyPair crypto11.SignerDecrypter
 			if rsaKeyPair, err = actualCtx.FindRSAKeyPair(reqKekKeyIdByteA, nil); err != nil {
@@ -819,6 +830,7 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 		switch p.algorithm {
 		case jose.AlgA256GCM:
 			logrus.Tracef("p11:Encrypt case %s", jose.AlgA256GCM)
+			logrus.Tracef("p11:Encrypt case %s", jose.AlgA256GCM)
 			// Find the KEK in the KMS
 			var kek *crypto11.SecretKey
 			if kek, err = p.ctx.FindKey(p.kekCkaId, p.GetKekCkaLabelByteA()); nil != err {
@@ -849,6 +861,7 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 			}
 
 		case jose.AlgA256CBC:
+			logrus.Tracef("p11:Encrypt case %s", jose.AlgA256CBC)
 			logrus.Tracef("p11:Encrypt case %s", jose.AlgA256CBC)
 			// Find the KEK in the KMS
 			var kek *crypto11.SecretKey
@@ -900,6 +913,7 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 			}
 
 		case jose.AlgRSAOAEP:
+			logrus.Tracef("p11:Encrypt case %s", jose.AlgRSAOAEP)
 			logrus.Tracef("p11:Encrypt case %s", jose.AlgRSAOAEP)
 			//TODO generate a jwk with the kid of the public key. Ex :
 			//      {"kty":"EC",

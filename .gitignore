@@ -9,6 +9,7 @@ generated/
 deployed.json
 .socket
 k8s-kms-plugin
+!k8s-kms-plugin/
 
 # dev
 pkg/crypto11
