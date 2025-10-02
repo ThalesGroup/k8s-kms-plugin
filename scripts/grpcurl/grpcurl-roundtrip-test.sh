@@ -42,6 +42,7 @@ fi
 PLAINTEXT_BASE64=$(echo -n "$PLAINTEXT" | base64)
 echo "🔐 Input plaintext: $PLAINTEXT"
 echo "🔐 Base64 encoded: $PLAINTEXT_BASE64"
+echo ""
 
 # ---- Get key_id from Status ----
 echo "ℹ️  Status request test"
@@ -53,7 +54,7 @@ STATUS_RESPONSE=$(grpcurl \
   unix://"$SOCKET" \
   v2.KeyManagementService.Status)
 
-[[ "$VERBOSE" == true ]] && echo -e "📦 Full Status response:\n$STATUS_RESPONSE"
+[[ "$VERBOSE" == true ]] && echo -e "📦 Full Status response JSON:\n$STATUS_RESPONSE"
 
 KEY_ID=$(echo "$STATUS_RESPONSE" | jq -r .keyId)
 echo "🧾 key_id from Status: $KEY_ID"
@@ -68,10 +69,13 @@ ENCRYPT_RESPONSE=$(grpcurl \
   unix://"$SOCKET" \
   v2.KeyManagementService.Encrypt)
 
-[[ "$VERBOSE" == true ]] && echo -e "📦 Full Encrypt response:\n$ENCRYPT_RESPONSE"
+[[ "$VERBOSE" == true ]] && echo -e "📦 Full Encrypt response JSON:\n$ENCRYPT_RESPONSE"
 
+echo ""
 CIPHERTEXT=$(echo "$ENCRYPT_RESPONSE" | jq -r .ciphertext)
-echo "🗄️  Ciphertext (base64): $CIPHERTEXT"
+echo "🗄️  Ciphertext JWE only (base64): $CIPHERTEXT"
+echo "Full Encrypt response JSON base64 encoded: use this in the grpcurl-roundtrip-key-rotation.sh script:"
+echo "$ENCRYPT_RESPONSE" | base64
 
 # ---- Decrypt ----
 echo "ℹ️  Decrypt request test"
@@ -83,11 +87,12 @@ DECRYPT_RESPONSE=$(grpcurl \
   unix://"$SOCKET" \
   v2.KeyManagementService.Decrypt)
 
-[[ "$VERBOSE" == true ]] && echo -e "📦 Full Decrypt response:\n$DECRYPT_RESPONSE"
+[[ "$VERBOSE" == true ]] && echo -e "📦 Full Decrypt response JSON:\n$DECRYPT_RESPONSE"
 
 DECRYPTED_BASE64=$(echo "$DECRYPT_RESPONSE" | jq -r .plaintext)
 DECRYPTED_TEXT=$(echo "$DECRYPTED_BASE64" | base64 -d)
 
+echo ""
 echo "🔓 Decrypted text: $DECRYPTED_TEXT"
 
 # ---- Compare ----
