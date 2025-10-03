@@ -56,6 +56,7 @@ Find the PKCS#11 module path:
 # for debian
 export MODULE="/usr/lib/softhsm/libsofthsm2.so"
 ```
+
 ```sh
 # for redhat
 export MODULE="/usr/lib64/pkcs11/libsofthsm2.so"

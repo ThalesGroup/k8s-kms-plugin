@@ -80,8 +80,8 @@ dev:
 
 ## Docs
 doc:
-		@go run cmd/k8s-kms-plugin/main.go docs --output-dir docs/cli-user-interface/markdown/
-		@go run cmd/k8s-kms-plugin/main.go docs --output-dir docs/cli-user-interface/txt/ --format cli-table-pretty
+		@go run $(GO_LDFLAGS) cmd/k8s-kms-plugin/main.go docs --output-dir docs/cli-user-interface/markdown/
+		@go run $(GO_LDFLAGS) cmd/k8s-kms-plugin/main.go docs --output-dir docs/cli-user-interface/txt/ --format cli-table-pretty
 
 ## Testing
 

@@ -213,7 +213,7 @@ type P11 struct {
 // the error value is not nil, the P11 instance is not valid and should not
 // be used.
 func NewP11(
-// active KEK parameters
+	// active KEK parameters
 	config *crypto11.Config,
 	createKey bool,
 	kekkeyid string,
@@ -222,7 +222,7 @@ func NewP11(
 	hmacCkaId string,
 	algorithm jose.Alg,
 
-// key rotation
+	// key rotation
 	isKeyRotation bool,
 	oldConfig *crypto11.Config,
 	oldKekkeyid string,
@@ -748,7 +748,6 @@ func (p *P11) decryptWithContext(req *k8skmsv2.DecryptRequest, isRotation bool) 
 
 			// create decryptor
 			decryptor := gose.NewJweRsaKeyEncryptionDecryptorImpl(store)
-			// TODO deleteme
 
 			// decrypt
 			out, _, err = decryptor.Decrypt(string(req.GetCiphertext()), crypto.SHA256)
@@ -990,17 +989,6 @@ func (p *P11) Status(ctx context.Context, request *k8skmsv2.StatusRequest) (stat
 	}
 
 	if len(p.kekCkaId) == 0 {
-		var e error
-		secretKey, e := p.ctx.FindKey(nil, []byte("aes00softhsm"))
-		if e != nil {
-			print(e.Error())
-		}
-		print(secretKey)
-		a, myerr := p.ctx.GetAttribute(secretKey, pkcs11.CKA_ID)
-		if myerr != nil {
-			print(myerr.Error())
-		}
-		print(string(a.Value))
 		err = errors.New("KEK ID is empty")
 		logrus.WithError(err).Error("p11 Status: error due to missing KEK ID")
 		return
@@ -1039,18 +1027,18 @@ type keyGenerationParameters struct {
 	cipher *crypto11.SymmetricCipher
 }
 
-// Find a CKA attribute like CKA_ID or CKA_LABEL by id or by label.
+// FindCkaAttrByIdOrLabel find a CKA attribute like CKA_ID or CKA_LABEL by id or by label.
 func FindCkaAttrByIdOrLabel(ctx *crypto11.Context, algorithm jose.Alg, ckaAttr crypto11.AttributeType, id, label []byte) ([]byte, error) {
 	var outBuf []byte // output buffers
 
 	if ( // find ID by label
-		(len(id) == 0) &&
-			(label != nil || len(label) > 0) &&
-			(ckaAttr == crypto11.CkaId)) ||
+	(len(id) == 0) &&
+		(label != nil || len(label) > 0) &&
+		(ckaAttr == crypto11.CkaId)) ||
 		( // find label by ID
-			(id != nil || len(id) > 0) &&
-				(len(label) == 0) &&
-				(ckaAttr == crypto11.CkaLabel)) {
+		(id != nil || len(id) > 0) &&
+			(len(label) == 0) &&
+			(ckaAttr == crypto11.CkaLabel)) {
 
 		var err error
 		switch algorithm {
