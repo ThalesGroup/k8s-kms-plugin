@@ -1,4 +1,4 @@
-| Command | Flag (long) | Flag (short) | Env Var | Viper Key | Default | Type | Persistent Flag | Usage |
+| Command | Flags (long) | Flags (short) | Env Var | Config File Keys | Default Value | Type | Persistent Flag | Usage |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | k8s-kms-plugin | --config |  | K8S_KMS_PLUGIN_CONFIG | k8s-kms-plugin.config | k8s-kms-plugin.config.yaml | string | true | ConfigFile. Env var: K8S_KMS_PLUGIN_CONFIG_FILE |
 | k8s-kms-plugin | --debug |  | K8S_KMS_PLUGIN_DEBUG | k8s-kms-plugin.debug | false | bool | true | Set logrus.SetLevel to "debug". This is equivalent to using --log-level=debug. Flags --log-level and --debug flag are mutually exclusive. Env var: K8S_KMS_PLUGIN_DEBUG. |
@@ -10,7 +10,7 @@
 | k8s-kms-plugin decrypt-csr | --timeout |  | K8S_KMS_PLUGIN_DECRYPT_CSR_TIMEOUT | k8s-kms-plugin.decrypt-csr.timeout | 30s | duration | false | KMS timeout. Env var: K8S_KMS_PLUGIN_DECRYPT_CSR_TIMEOUT |
 | k8s-kms-plugin docs | --format | -f | K8S_KMS_PLUGIN_DOCS_FORMAT | k8s-kms-plugin.docs.format | markdown | string | false | Docs Output format. Prefered is markdown. Supported formats: markdown, man, rst, yaml, cli-table-csv, cli-table-pretty, cli-table-html, all. |
 | k8s-kms-plugin docs | --help | -h | K8S_KMS_PLUGIN_DOCS_HELP | k8s-kms-plugin.docs.help | false | bool | false | help for docs |
-| k8s-kms-plugin docs | --output-dir | -o | K8S_KMS_PLUGIN_DOCS_OUTPUT_DIR | k8s-kms-plugin.docs.output-dir | /tmp/k8s-kms-plugin-docs-2025-07-31T11:35:09+02:00 | string | false | Output directory |
+| k8s-kms-plugin docs | --output-dir | -o | K8S_KMS_PLUGIN_DOCS_OUTPUT_DIR | k8s-kms-plugin.docs.output-dir | /tmp/k8s-kms-plugin-docs-2025-10-03T11:28:59+02:00 | string | false | Output directory |
 | k8s-kms-plugin generate-kek | --kek-id |  | K8S_KMS_PLUGIN_GENERATE_KEK_KEK_ID | k8s-kms-plugin.generate-kek.kek-id | a37807cd-6d1a-4d75-813a-e120f30176f7 | string | false | Key ID for KMS KEK. Env var: K8S_KMS_PLUGIN_GENERATE_KEK_KEK_ID |
 | k8s-kms-plugin generate-kek | --socket |  | K8S_KMS_PLUGIN_GENERATE_KEK_SOCKET | k8s-kms-plugin.generate-kek.socket | /tmp/run/hsm-plugin-server.sock | string | false | Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_GENERATE_KEK_SOCKET |
 | k8s-kms-plugin generate-kek | --timeout |  | K8S_KMS_PLUGIN_GENERATE_KEK_TIMEOUT | k8s-kms-plugin.generate-kek.timeout | 30s | duration | false | KMS timeout. Env var: K8S_KMS_PLUGIN_GENERATE_KEK_TIMEOUT |
@@ -63,4 +63,4 @@
 | k8s-kms-plugin verify-cert | --timeout |  | K8S_KMS_PLUGIN_VERIFY_CERT_TIMEOUT | k8s-kms-plugin.verify-cert.timeout | 10s | duration | false | KMS timeout. Env var: K8S_KMS_PLUGIN_VERIFY_CERT_TIMEOUT |
 | k8s-kms-plugin version | --output | -o | K8S_KMS_PLUGIN_VERSION_OUTPUT | k8s-kms-plugin.version.output |  | string | false | Format of the version output. One of 'yaml' or 'json'. Env var: K8S_KMS_PLUGIN_VERSION_OUTPUT |
 | k8s-kms-plugin version | --pretty | -P | K8S_KMS_PLUGIN_VERSION_PRETTY | k8s-kms-plugin.version.pretty | true | bool | false | Activate pretty print output for JSON. Env var: K8S_KMS_PLUGIN_VERSION_PRETTY |
-| Command | Flag (long) | Flag (short) | Env Var | Viper Key | Default | Type | Persistent Flag | Usage |
+| Command | Flags (long) | Flags (short) | Env Var | Config File Keys | Default Value | Type | Persistent Flag | Usage |

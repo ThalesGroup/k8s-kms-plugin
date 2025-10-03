@@ -17,15 +17,16 @@ k8s-kms-plugin:
     allow-any: false
 
     ## TLS settings
-    tls-ca: "certs/ca.crt"
-    tls-key: "certs/tls.key"
-    tls-certificate: "certs/tls.crt"
+    ## Note: these TLS and server settings will soon be modified when the k8s-kms-plugin will support both unix socket and TCP+TLS for its gRPC API.
+    #tls-ca: "certs/ca.crt"
+    #tls-key: "certs/tls.key"
+    #tls-certificate: "certs/tls.crt"
 
     ## Server settings
-    disable-socket: false
-    enable-server: true
-    host: "127.0.0.1"
-    port: 8080
+    #disable-socket: false
+    #enable-server: true
+    #host: "127.0.0.1"
+    #port: 8080
     socket: "/var/run/kms-plugin.sock"
     
     ## KMS settings
