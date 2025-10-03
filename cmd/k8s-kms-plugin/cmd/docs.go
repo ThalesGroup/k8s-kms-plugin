@@ -96,11 +96,11 @@ func getFlagTable(c *cobra.Command, format string) string {
 	// Create the header with the columns
 	t.AppendHeader(table.Row{
 		"Command",
-		"Flag (long)",
-		"Flag (short)",
+		"Flags (long)",
+		"Flags (short)",
 		"Env Var",
-		"Viper Key",
-		"Default",
+		"Config File Keys",
+		"Default Value",
 		"Type",
 		"Persistent Flag",
 		"Usage",
@@ -108,11 +108,11 @@ func getFlagTable(c *cobra.Command, format string) string {
 
 	t.AppendFooter(table.Row{
 		"Command",
-		"Flag (long)",
-		"Flag (short)",
+		"Flags (long)",
+		"Flags (short)",
 		"Env Var",
-		"Viper Key",
-		"Default",
+		"Config File Keys",
+		"Default Value",
 		"Type",
 		"Persistent Flag",
 		"Usage",
