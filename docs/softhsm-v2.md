@@ -85,7 +85,7 @@ Secret Key Object; AES length 16
 warning: PKCS11 function C_GetAttributeValue(VALUE) failed: rv = CKR_ATTRIBUTE_SENSITIVE (0x11)
 
   label:      aes00softhsm
-  ID:         aa22334455bc
+  ID:         d73f87d08873be56
   Usage:      encrypt, decrypt, verify, wrap, unwrap
   Access:     never extractable, local
 ```
@@ -119,7 +119,7 @@ k8s-kms-plugin \
     --p11-lib $MODULE \
     --p11-label mylabel \
     --p11-pin mypin \
-    --p11-key-id aa22334455bc \
+    --p11-key-id d73f87d08873be56 \
     --algorithm aes-gcm
 ```
 
@@ -133,7 +133,7 @@ You can validate Encryption and Decryption are working by using [`grpcurl-roundt
 ./grpcurl-roundtrip-test.sh 'hello world' /run/user/1000/k8s-kms-plugin.sock
 🔐 Input plaintext: hello world
 🔐 Base64 encoded: aGVsbG8gd29ybGQ=
-🧾 key_id from Status: aa22334455bc
+🧾 key_id from Status: d73f87d08873be56
 🗄️  Ciphertext (base64): ZXlKaGJHY2lPaUprYVhJaUxDSnJhV1FpT2lKaFpYTXdNSE52Wm5Sb2MyMGlMQ0psYm1NaU9pSkJNalUyUjBOTkluMC4uSVZ6Y0RtSUpsTjF4dTVlQzJKVmFhZy5EZVg2MnRxMVlZaVN6QjgucFU3SG1zUTZUeGRvRXZvLXBFUlZ3UQ==
 🔓 Decrypted text: hello world
 ✅ Round-trip encryption/decryption successful!
