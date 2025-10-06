@@ -43,8 +43,8 @@ require (
 )
 
 require (
-	github.com/ThalesGroup/crypto11 v1.4.1
-	github.com/ThalesGroup/gose v0.10.0
+	github.com/ThalesGroup/crypto11 v1.6.0
+	github.com/ThalesGroup/gose v0.12.0
 	github.com/hashicorp/go-version v1.7.0
 	k8s.io/kms v0.34.1
 )
@@ -55,12 +55,6 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
-
-// TODO: remove this replace statement once the update to go1.25.1 is completed on the crypto11 repo
-replace github.com/ThalesGroup/crypto11 v1.4.1 => github.com/ThalesGroup/crypto11 v1.4.1-0.20250923152205-cae7391bcc9c
-
-// TODO: remove this replace statement once the update to go1.25.1 is completed on the gose repo
-replace github.com/ThalesGroup/gose v0.10.0 => github.com/ThalesGroup/gose v0.10.1-0.20250923151604-988cef4a1a51
 
 require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect

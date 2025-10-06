@@ -70,9 +70,9 @@ type ViperFlagsServe struct {
 	// PKCS #11 CKA_ID and CKA_LABEL of active KEK key
 	CreateKey    bool   `mapstructure:"auto-create"`
 	DekKeyLabel  string `mapstructure:"p11-key-label"`  // active DEK key CKA_LABEL
-	HmacKeyID    string `mapstructure:"hmac-id"`        // active HMAC key CKA_ID
+	HmacKeyID    string `mapstructure:"p11-hmac-id"`    // active HMAC key CKA_ID
 	HmacKeyLabel string `mapstructure:"p11-hmac-label"` // active HMAC key CKA_LABEL
-	KekKeyID     string `mapstructure:"kek-id"`         // active KEK key CKA_ID
+	KekKeyID     string `mapstructure:"p11-key-id"`     // active KEK key CKA_ID
 }
 
 // Declare the viper CLI flag values buffer
@@ -111,7 +111,7 @@ var serveCmd = &cobra.Command{
 Use "k8s-kms-plugin serve rotation" subcommand to support key rotation.
 Kubernetes KMS documentation: https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/#configuring-the-kms-provider-kms-v2
 
-KMS v2 API: https://pkg.go.dev/k8s.io/kms@v0.33.5/apis/v2
+KMS v2 API: https://pkg.go.dev/k8s.io/kms@v0.34.1/apis/v2
 `,
 	Example: `
 Using flags and serving on unix socket (gRPC plaintext):
@@ -139,8 +139,8 @@ Using AES-CBC with HMAC authentication, using CKA_ID, using CLI flags and servin
 		--p11-lib /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1 \
 		--p11-label mylabel \
 		--p11-pin mypin \
-		--kek-id 64636138353931326363356537313264 \
-		--hmac-id 30663536623936326235663530363234 \
+		--p11-key-id 64636138353931326363356537313264 \
+		--p11-hmac-id 30663536623936326235663530363234 \
 		--algorithm aes-cbc
 
 Note:
@@ -158,7 +158,7 @@ Serving on TCP IPv4 and enabling TLS for the gRPC API:
         --p11-lib  /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1  \
         --p11-label  mylabel  \
         --p11-pin  mypin  \
-        --kek-id  123abc  \
+        --p11-key-id  123abc  \
         --algorithm  rsa-oaep \
         --grpc-network tcp4 \
         --port 8842 \
@@ -297,8 +297,8 @@ func init() {
 	serveCmd.PersistentFlags().Bool("auto-create", false, "Auto create the keys if needed. Env var: K8S_KMS_PLUGIN_SERVE_AUTO_CREATE.")
 	serveCmd.PersistentFlags().String("p11-key-label", "", "Key Label CKA_LABEL to use for encrypt/decrypt. Env var: K8S_KMS_PLUGIN_SERVE_P11_KEY_LABEL.")
 	serveCmd.PersistentFlags().String("p11-hmac-label", "", "Key Label CKA_LABEL to use for sha based verifications. Env var: K8S_KMS_PLUGIN_SERVE_P11_HMAC_LABEL.")
-	serveCmd.PersistentFlags().String("kek-id", "", "Key ID CKA_ID for KMS KEK. Env var: K8S_KMS_PLUGIN_SERVE_KEK_ID")
-	serveCmd.PersistentFlags().String("hmac-id", "", "Key ID CKA_ID for KMS HMAC. Env var: K8S_KMS_PLUGIN_SERVE_HMAC_ID")
+	serveCmd.PersistentFlags().String("p11-key-id", "", "Key ID CKA_ID for KMS KEK. Env var: K8S_KMS_PLUGIN_SERVE_KEK_ID")
+	serveCmd.PersistentFlags().String("p11-hmac-id", "", "Key ID CKA_ID for KMS HMAC. Env var: K8S_KMS_PLUGIN_SERVE_HMAC_ID")
 	serveCmd.PersistentFlags().StringP("native-path", "p", ".keys", "Path to key store for native provider(Files only). Env var: K8S_KMS_PLUGIN_SERVE_NATIVE_PATH.")
 	serveCmd.PersistentFlags().String("p11-label", "", "P11 token label. Env var: K8S_KMS_PLUGIN_SERVE_P11_TOKEN")
 	serveCmd.PersistentFlags().String("p11-lib", "", "Path to p11 library/client. Env var: K8S_KMS_PLUGIN_SERVE_P11_LIB")
@@ -311,12 +311,12 @@ func init() {
 	})
 
 	// At least one of KEK CKA_ID or CKA_LABEL must be provided by the user
-	serveCmd.MarkFlagsOneRequired("kek-id", "p11-key-label")
+	serveCmd.MarkFlagsOneRequired("p11-key-id", "p11-key-label")
 
 	// To prevent mismatch between user provided CKA_ID and user provided CKA_LABEL, flags are Mutually Exclusive.
 	// NewP11 make sure to retrieve the ID by label, or label by ID.
-	serveCmd.MarkFlagsMutuallyExclusive("kek-id", "p11-key-label")
-	serveCmd.MarkFlagsMutuallyExclusive("hmac-id", "p11-hmac-label")
+	serveCmd.MarkFlagsMutuallyExclusive("p11-key-id", "p11-key-label")
+	serveCmd.MarkFlagsMutuallyExclusive("p11-hmac-id", "p11-hmac-label")
 }
 
 func initProvider() (p providers.Provider, err error) {

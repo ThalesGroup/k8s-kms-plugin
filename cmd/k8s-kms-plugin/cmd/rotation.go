@@ -50,9 +50,9 @@ type ViperFlagsRotation struct {
 
 	// CKA_ID and CKA_LABEL
 	OldDekKeyLabel  string `mapstructure:"old-p11-key-label"`
-	OldHmacKeyID    string `mapstructure:"old-hmac-id"`
+	OldHmacKeyID    string `mapstructure:"old-p11-hmac-id"`
 	OldHmacKeyLabel string `mapstructure:"old-p11-hmac-label"`
-	OldKekKeyID     string `mapstructure:"old-kek-id"`
+	OldKekKeyID     string `mapstructure:"old-p11-key-id"`
 }
 
 // Declare the viper CLI flag values buffer
@@ -62,12 +62,12 @@ var vprFlgsRotation ViperFlagsRotation
 var rotationCmd = &cobra.Command{
 	Use:   "rotation",
 	Short: "KEK Key rotation for KMS v2",
-	Long: `Handles Kubernetes KMS v2 requests and support KEK key rotation with 1 old KEK key and 1 active KEK key.
+	Long: `Handles Kubernetes KMS v2 requests and support KEK key rotation with x1 old KEK key and x1 active KEK key.
 "k8s-kms-pluginc serve rotation" is very similar to the "k8s-kms-plugin serve" command, but adds key rotation support.
 Refer to the kubernetes KMS v2 documentation for more details about key rotation.
 https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/#developing-a-kms-plugin-gRPC-server-notes-kms-v2
 
-KMS v2 API: https://pkg.go.dev/k8s.io/kms@v0.33.5/apis/v2
+KMS v2 API: https://pkg.go.dev/k8s.io/kms@v0.34.1/apis/v2
 `,
 	Example: `
 Using flags and serving on unix socket (gRPC plaintext):
@@ -80,19 +80,19 @@ Using flags and serving on unix socket (gRPC plaintext):
 		--p11-pin mypin \
 		--p11-key-label rsa0 \
 		--algorithm rsa-oaep \
-			rotation \
+		  rotation \
 			--old-p11-lib /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1 \
 			--old-p11-label mylabel \
 			--old-p11-pin mypin \
-			--old-kek-id 64636138353931326363356537313264 \
-			--old-hmac-id 30663536623936326235663530363234 \
+			--old-p11-key-id 64636138353931326363356537313264 \
+			--old-p11-hmac-id 30663536623936326235663530363234 \
 			--old-algorithm aes-cbc
 
 Using environment variables and configuration file:
-	K8S_KMS_PLUGIN_SERVE_P11_PIN="mypin" k8s-kms-plugin serve --config my-kms-plugin-config.yaml
+	K8S_KMS_PLUGIN_SERVE_P11_PIN="mypin" k8s-kms-plugin serve rotation --config my-kms-plugin-config.yaml
 
 Using both CLI Flags, environment variables and configuration file and serving on unix socket:
-	K8S_KMS_PLUGIN_SERVE_P11_PIN="mypin" k8s-kms-plugin --log-format=json serve --config my-kms-plugin-config.yaml
+	K8S_KMS_PLUGIN_SERVE_P11_PIN="mypin" k8s-kms-plugin --log-format=json serve rotation --config my-kms-plugin-config.yaml
 	`,
 	// Initialize and populate cobra CLI flags values with viper during the Persistent pre-run
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
@@ -194,17 +194,17 @@ func init() {
 	rotationCmd.Flags().String("old-provider", "p11", "Provider for old KEK")
 	rotationCmd.Flags().String("old-socket", "", "Unix socket path for old KEK")
 	rotationCmd.Flags().String("old-p11-key-label", "", "Key Label CKA_LABEL for old KEK")
-	rotationCmd.Flags().String("old-hmac-id", "", "Key ID CKA_ID for old KEK HMAC")
+	rotationCmd.Flags().String("old-p11-hmac-id", "", "Key ID CKA_ID for old KEK HMAC")
 	rotationCmd.Flags().String("old-p11-hmac-label", "", "Key Label CKA_LABEL for old KEK HMAC")
-	rotationCmd.Flags().String("old-kek-id", "", "Key ID CKA_ID for old KEK")
+	rotationCmd.Flags().String("old-p11-key-id", "", "Key ID CKA_ID for old KEK")
 
 	// At least one of the old KEK CKA_ID or old CKA_LABEL must be provided by the user
-	rotationCmd.MarkFlagsOneRequired("old-kek-id", "old-p11-key-label")
+	rotationCmd.MarkFlagsOneRequired("old-p11-key-id", "old-p11-key-label")
 
 	// To prevent mismatch between user provided CKA_ID and user provided CKA_LABEL, flags are Mutually Exclusive.
 	// NewP11 make sure to retrieve the ID by label, or label by ID.
-	rotationCmd.MarkFlagsMutuallyExclusive("old-kek-id", "old-p11-key-label")
-	rotationCmd.MarkFlagsMutuallyExclusive("old-hmac-id", "old-p11-hmac-label")
+	rotationCmd.MarkFlagsMutuallyExclusive("old-p11-key-id", "old-p11-key-label")
+	rotationCmd.MarkFlagsMutuallyExclusive("old-p11-hmac-id", "old-p11-hmac-label")
 }
 
 func initRotatedProvider() (pRot providers.Provider, err error) {

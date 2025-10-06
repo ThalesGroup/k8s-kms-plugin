@@ -61,11 +61,12 @@ export MODULE="/usr/lib/softhsm/libsofthsm2.so"
 export MODULE="/usr/lib64/pkcs11/libsofthsm2.so"
 ```
 
-Create an AES encryption key (KEK):
+Create an AES encryption key (KEK) **using an ID**.
+The ID is mandatory to work with the K8S KMS v2 protocol :
 
 ```sh
 # aes kek
-pkcs11-tool --module $MODULE --token-label mylabel --pin mypin --keygen --key-type aes:16 --label aes00softhsm
+pkcs11-tool --module $MODULE --token-label mylabel --pin mypin --keygen --key-type aes:16 --label aes01softhsm --id $(head -c 8 /dev/urandom | xxd -p)
 ```
 
 List objects:
@@ -83,7 +84,7 @@ Secret Key Object; AES length 16
 warning: PKCS11 function C_GetAttributeValue(VALUE) failed: rv = CKR_ATTRIBUTE_SENSITIVE (0x11)
 
   label:      aes00softhsm
-  ID:         aa22334455bc
+  ID:         d73f87d08873be56
   Usage:      encrypt, decrypt, verify, wrap, unwrap
   Access:     never extractable, local
 ```
@@ -105,7 +106,7 @@ k8s-kms-plugin \
     --algorithm aes-gcm
 ```
 
-Alternatively, you can use `--kek-id` (PKCS #11 CKA_ID) instead of `--p11-key-label` (PKCS #11 CKA_LABEL).
+Alternatively, you can use `--p11-key-id` (PKCS #11 CKA_ID) instead of `--p11-key-label` (PKCS #11 CKA_LABEL).
 
 ```sh
 SOCKET="/run/user/$(id -u $USER)/k8s-kms-plugin.sock"
@@ -117,7 +118,7 @@ k8s-kms-plugin \
     --p11-lib $MODULE \
     --p11-label mylabel \
     --p11-pin mypin \
-    --kek-id  aa22334455bc \
+    --p11-key-id d73f87d08873be56 \
     --algorithm aes-gcm
 ```
 
@@ -131,7 +132,7 @@ You can validate Encryption and Decryption are working by using [`grpcurl-roundt
 ./grpcurl-roundtrip-test.sh 'hello world' /run/user/1000/k8s-kms-plugin.sock
 🔐 Input plaintext: hello world
 🔐 Base64 encoded: aGVsbG8gd29ybGQ=
-🧾 key_id from Status: aa22334455bc
+🧾 key_id from Status: d73f87d08873be56
 🗄️  Ciphertext (base64): ZXlKaGJHY2lPaUprYVhJaUxDSnJhV1FpT2lKaFpYTXdNSE52Wm5Sb2MyMGlMQ0psYm1NaU9pSkJNalUyUjBOTkluMC4uSVZ6Y0RtSUpsTjF4dTVlQzJKVmFhZy5EZVg2MnRxMVlZaVN6QjgucFU3SG1zUTZUeGRvRXZvLXBFUlZ3UQ==
 🔓 Decrypted text: hello world
 ✅ Round-trip encryption/decryption successful!

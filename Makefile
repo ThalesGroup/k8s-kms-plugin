@@ -78,6 +78,11 @@ run-test:
 dev:
 		@skaffold dev --port-forward=true
 
+## Docs
+doc:
+		@go run $(GO_LDFLAGS) cmd/k8s-kms-plugin/main.go docs --output-dir docs/cli-user-interface/markdown/
+		@go run $(GO_LDFLAGS) cmd/k8s-kms-plugin/main.go docs --output-dir docs/cli-user-interface/txt/ --format cli-table-pretty
+
 ## Testing
 
 p11tool-list:

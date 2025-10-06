@@ -4,9 +4,11 @@ Handles Kubernetes KMS v2 requests
 
 ### Synopsis
 
-Handles Kubernetes KMS v2 requests without key rotation.
-Use "k8s-kms-plugin serve rotation" subcommand for key rotation support.
-Kubernetes documentation: https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/#configuring-the-kms-provider-kms-v2
+Handles Kubernetes KMS v2 requests but do not support key rotation.
+Use "k8s-kms-plugin serve rotation" subcommand to support key rotation.
+Kubernetes KMS documentation: https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/#configuring-the-kms-provider-kms-v2
+
+KMS v2 API: https://pkg.go.dev/k8s.io/kms@v0.34.1/apis/v2
 
 
 ```
@@ -17,31 +19,34 @@ k8s-kms-plugin serve [flags]
 
 ```
 
-Using flags and serving on unix socket:
-    k8s-kms-plugin serve \
-        --log-level=info \
-        --socket /run/user/1000/k8s-kms-plugin.sock \
-        --p11-lib /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1 \
-        --p11-label mylabel \
-        --p11-pin mypin \
-        --p11-key-label rsa0 \
-        --algorithm rsa-oaep
+Using flags and serving on unix socket (gRPC plaintext):
+	k8s-kms-plugin 
+	  serve \
+		--log-level=info \
+		--socket /run/user/1000/k8s-kms-plugin.sock \
+		--p11-lib /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1 \
+		--p11-label mylabel \
+		--p11-pin mypin \
+		--p11-key-label rsa0 \
+		--algorithm rsa-oaep
 
-Using environment variables and configuration file and serving on unix socket:
-	K8S_KMS_PLUGIN_SERVE_P11_PIN="mypin" k8s-kms-plugin serve rotation --config my-kms-plugin-config.yaml
+Using both environment variables and configuration file and serving on unix socket:
+	K8S_KMS_PLUGIN_SERVE_P11_PIN="mypin" k8s-kms-plugin serve --config my-kms-plugin-config.yaml
 
-	K8S_KMS_PLUGIN_SERVE_P11_PIN="mypin" k8s-kms-plugin --log-format=json serve rotation --config my-kms-plugin-config.yaml
+Using both CLI Flags, environment variables and configuration file and serving on unix socket:
+	K8S_KMS_PLUGIN_SERVE_P11_PIN="mypin" k8s-kms-plugin --log-format=json serve --config my-kms-plugin-config.yaml
 
-Using AES-CBC with HMAC authentication and serving on unix socket:
-    k8s-kms-plugin serve  \
-        --log-level=trace  \
-        --socket /run/user/1000/k8s-kms-plugin.sock \
-        --p11-lib /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1 \
-        --p11-label mylabel \
-        --p11-pin mypin \
-        --kek-id 64636138353931326363356537313264 \
-        --hmac-id 30663536623936326235663530363234 \
-        --algorithm aes-cbc
+Using AES-CBC with HMAC authentication, using CKA_ID, using CLI flags and serving on unix socket:
+	k8s-kms-plugin 
+	  serve \
+		--log-level=trace  \
+		--socket /run/user/1000/k8s-kms-plugin.sock \
+		--p11-lib /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1 \
+		--p11-label mylabel \
+		--p11-pin mypin \
+		--p11-key-id 64636138353931326363356537313264 \
+		--p11-hmac-id 30663536623936326235663530363234 \
+		--algorithm aes-cbc
 
 Note:
 As of now (kubernetes "v1.33.1" and kms v0.33.3), the KMSv2 API implementation from Kubernetes **only supports unix socket gRPC** as network connection endpoint:
@@ -52,12 +57,13 @@ As of now (kubernetes "v1.33.1" and kms v0.33.3), the KMSv2 API implementation f
 The KMSv2 API does not support TCP and TLS. However, the k8s-kms-plugin gRPC API can be expose as plaintext TCP or TLS.
 
 Serving on TCP IPv4 and enabling TLS for the gRPC API:
-    k8s-kms-plugin serve  \
+    k8s-kms-plugin
+	  serve \
         --log-level=trace  \
         --p11-lib  /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1  \
         --p11-label  mylabel  \
         --p11-pin  mypin  \
-        --kek-id  123abc  \
+        --p11-key-id  123abc  \
         --algorithm  rsa-oaep \
         --grpc-network tcp4 \
         --port 8842 \
@@ -78,11 +84,11 @@ Serving on TCP IPv4 and enabling TLS for the gRPC API:
       --enable-tls               Enable TLS on the TCP gRPC server. Not compatible when serving on unix socket. Env var: K8S_KMS_PLUGIN_SERVE_ENABLE_TLS
       --grpc-network string      Network to listen on for gRPC API. Options: tcp, tcp4, tcp6, unix. Env var: K8S_KMS_PLUGIN_SERVE_GRPC_NETWORK (default "unix")
   -h, --help                     help for serve
-      --hmac-id string           Key ID CKA_ID for KMS HMAC. Env var: K8S_KMS_PLUGIN_SERVE_HMAC_ID
       --host string              Hostname without port. Env var: K8S_KMS_PLUGIN_SERVE_HOST. (default "0.0.0.0")
-      --kek-id string            Key ID CKA_ID for KMS KEK. Env var: K8S_KMS_PLUGIN_SERVE_KEK_ID
   -p, --native-path string       Path to key store for native provider(Files only). Env var: K8S_KMS_PLUGIN_SERVE_NATIVE_PATH. (default ".keys")
+      --p11-hmac-id string       Key ID CKA_ID for KMS HMAC. Env var: K8S_KMS_PLUGIN_SERVE_HMAC_ID
       --p11-hmac-label string    Key Label CKA_LABEL to use for sha based verifications. Env var: K8S_KMS_PLUGIN_SERVE_P11_HMAC_LABEL.
+      --p11-key-id string        Key ID CKA_ID for KMS KEK. Env var: K8S_KMS_PLUGIN_SERVE_KEK_ID
       --p11-key-label string     Key Label CKA_LABEL to use for encrypt/decrypt. Env var: K8S_KMS_PLUGIN_SERVE_P11_KEY_LABEL.
       --p11-label string         P11 token label. Env var: K8S_KMS_PLUGIN_SERVE_P11_TOKEN
       --p11-lib string           Path to p11 library/client. Env var: K8S_KMS_PLUGIN_SERVE_P11_LIB
@@ -112,4 +118,4 @@ Serving on TCP IPv4 and enabling TLS for the gRPC API:
 * [k8s-kms-plugin](k8s-kms-plugin.md)	 - Thales KMS Server for K8S
 * [k8s-kms-plugin serve rotation](k8s-kms-plugin_serve_rotation.md)	 - KEK Key rotation for KMS v2
 
-###### Auto generated by spf13/cobra on 22-Sep-2025
+###### Auto generated by spf13/cobra on 6-Oct-2025

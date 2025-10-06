@@ -36,10 +36,10 @@ github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/DATA-DOG/go-sqlmock v1.5.0/go.mod h1:f/Ixk793poVmq4qj/V1dPUg2JEAKC73Q5eFN3EC/SaM=
 github.com/PuerkitoBio/goquery v1.5.1/go.mod h1:GsLWisAFVj4WgDibEWF4pvYnkVQBpKBKeU+7zCJoLcc=
-github.com/ThalesGroup/crypto11 v1.4.1-0.20250923152205-cae7391bcc9c h1:DUMBhpjVvzc3Wif4tJJ9k24yl1HKRuQsTVsZOnDy00E=
-github.com/ThalesGroup/crypto11 v1.4.1-0.20250923152205-cae7391bcc9c/go.mod h1:H6LRjN5R5SHxTrLqGNteisLDI0/IC6+SGx1pHtbwizE=
-github.com/ThalesGroup/gose v0.10.1-0.20250923151604-988cef4a1a51 h1:E3kWUWbZG3PpMmDChBPqvzEMTlZ4ClGvNUVIn7Aqg0I=
-github.com/ThalesGroup/gose v0.10.1-0.20250923151604-988cef4a1a51/go.mod h1:n6fJefgoWLdnBle4UUkHZMKWCNoW2aV+R+7O5sLN5ec=
+github.com/ThalesGroup/crypto11 v1.6.0 h1:Og9EMn44fBS4GNnGnH1aqHnF2wL6F7IU/RhpJajWX/4=
+github.com/ThalesGroup/crypto11 v1.6.0/go.mod h1:H6LRjN5R5SHxTrLqGNteisLDI0/IC6+SGx1pHtbwizE=
+github.com/ThalesGroup/gose v0.12.0 h1:JF8Z9GdHwt/X/JxcPiKH+yq4dlJhgCPGxKXtS7zOLeA=
+github.com/ThalesGroup/gose v0.12.0/go.mod h1:n6fJefgoWLdnBle4UUkHZMKWCNoW2aV+R+7O5sLN5ec=
 github.com/andybalholm/cascadia v1.1.0/go.mod h1:GsXiBklL0woXo1j/WYWtSYYC4ouU9PqHO0sqidkEA4Y=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=

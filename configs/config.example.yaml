@@ -12,33 +12,48 @@ k8s-kms-plugin:
   
   # Cobra subcommands
   serve:
-    ## algorithm possible values: aes-gcm, aes-cbc, rsa-oaep
-    algorithm: "rsa-oaep"
-    allow-any: false
 
-    ## TLS settings
-    tls-ca: "certs/ca.crt"
-    tls-key: "certs/tls.key"
-    tls-certificate: "certs/tls.crt"
-
-    ## Server settings
-    disable-socket: false
-    enable-server: true
-    host: "127.0.0.1"
-    port: 8080
+    ## Unix socket communication of the gRPC server
     socket: "/var/run/kms-plugin.sock"
-    
+    #allow-any: false # OPTIONAL allow any device connexion
+
     ## KMS settings
-    ### provider possible values: p11, softhsm, luna, dpod.
-    provider: "p11"
-    kek-id: "my-key"
-    ca-id: "my-ca"
-    
+    ### HSM related configurations
+    provider: "p11" # provider possible values: p11, softhsm, luna, dpod.
     p11-lib: "/usr/local/lib/softhsm/libsofthsm2.so"
-    p11-label: "my-current-label"
-    p11-slot: 0
+    p11-label: "my-token-label"
     p11-pin: "1234" # This is a secret, you set this with an environment variable K8S_KMS_PLUGIN_SERVE_P11_PIN instead of the configuration file
-  
+    #p11-slot: 0 # OPTIONAL token slot index for the HSM
+
+    ### KEK related configurations
+    algorithm: "rsa-oaep" # Algorithm possible values: aes-gcm, aes-cbc, rsa-oaep
+    p11-key-label: "my-key" # label of the kek inside the targeted token slot. MUST match the mechanism of the algorithm.
+    #p11-key-id: aa22334455bc # KEK ID is mutually exclusive with 'p11-key-label'. Provide one or the other.
+    # use hmac configurations for aes-cbc algorithm, to apply hmac authentication
+    #p11-hmac-label: "my-hmac-key-for-cbc"
+    #p11-hmac-id: 49c6b305210f # HMAC ID is mutually exclusive with 'p11-hmac-label'. Provide one or the other.
+
+    ## Key rotation settings
+    ## If this section is uncommented, the k8s-kms-plugin will start by rotating your kek.
+    ## The old key information will be used to rotate the kek with the new one given in the 'serve' section.
+    #rotation:
+      #old-p11-key-label: "old-key-label" # label of the previous key used to encrypt your data
+      #old-p11-key-id: "7c7ce2d85d63" # KEK ID is mutually exclusive with 'ols-p11-key-label'. Provide one or the other.
+      ## use hmac configurations for aes-cbc algorithm.
+      #old-p11-hmac-id: "my-hmac-key-for-cbc"
+      #old-p11-hmac-label: "a72d4a0059ac"
+
+    ## TLS settings for Istio PKI
+    #tls-ca: "certs/ca.crt"
+    #tls-key: "certs/tls.key"
+    #tls-certificate: "certs/tls.crt"
+
+    ## TLS Server related settings
+    #enable-server: true
+    #disable-socket: false
+    #host: "127.0.0.1"
+    #port: 8080
+
   version:
     # Format of the version output. One of 'yaml' or 'json'.
     output: "json"
