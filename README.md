@@ -14,6 +14,15 @@ This plugin will also run in proxy mode which can connect to a remote plugin ser
 > 🚧 **Note**: This documentation is under construction and needs to be updated to remove/archive references to KMS v1 and
 > document KMS v2 operations.
 
+# 🚤 Quick Start 🚀
+
+TL;DR: For a quick start experience, try the `k8s-kms-plugin` with software (virtual) HSM such as:
+
+- [SoftHSMv2 & `k8s-kms-plugin`](./docs/softhsm-v2.md)
+- [Software TPM Emulator & `k8s-kms-plugin`](./docs/software-tpm-emulator.md)
+
+# Table of Contents
+
 - [1. Definions \& Accronyms 🔎](#1-definions--accronyms-)
 - [2. Overview 🔭](#2-overview-)
   - [2.1. Architecture](#21-architecture)
