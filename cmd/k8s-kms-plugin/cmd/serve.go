@@ -210,44 +210,44 @@ func init() {
 	// because we use Viper to retrieve the values of the flags.
 
 	// unix socket server options
-	serveCmd.PersistentFlags().Bool("disable-socket", false, "Disable socket based server. Env var: K8S_KMS_PLUGIN_SERVE_DISABLE_SOCKET.")
+	serveCmd.PersistentFlags().Bool("disable-socket", false, "Disable socket based server.")
 
 	// tcp server options
-	serveCmd.PersistentFlags().Bool("enable-server", false, "Enable TLS based server. Env var: K8S_KMS_PLUGIN_SERVE_ENABLE_SERVER.")
-	serveCmd.PersistentFlags().String("tls-ca", "certs/ca.crt", "TLS CA cert. Env var: K8S_KMS_PLUGIN_SERVE_TLS_CA.")
-	serveCmd.PersistentFlags().String("tls-key", "certs/tls.key", "TLS server key. Env var: K8S_KMS_PLUGIN_SERVE_TLS_KEY")
-	serveCmd.PersistentFlags().String("tls-certificate", "certs/tls.crt", "TLS server cert. Env var: K8S_KMS_PLUGIN_SERVE_TLS_CERTIFICATE")
+	serveCmd.PersistentFlags().Bool("enable-server", false, "Enable TLS based server.")
+	serveCmd.PersistentFlags().String("tls-ca", "certs/ca.crt", "TLS CA cert.")
+	serveCmd.PersistentFlags().String("tls-key", "certs/tls.key", "TLS server key.")
+	serveCmd.PersistentFlags().String("tls-certificate", "certs/tls.crt", "TLS server cert.")
 
-	serveCmd.PersistentFlags().Bool("allow-any", false, "Allow any device (accepts all ids/secrets). Env var: K8S_KMS_PLUGIN_SERVE_ALLOW_ANY")
+	serveCmd.PersistentFlags().Bool("allow-any", false, "Allow any device (accepts all ids/secrets).")
 
-	serveCmd.PersistentFlags().String("algorithm", "aes-gcm", "Set the algorithm for encryption/decryption. Possible values: aes-gcm, aes-cbc, rsa-oaep. Env var: K8S_KMS_PLUGIN_SERVE_ALGORITHM")
+	serveCmd.PersistentFlags().String("algorithm", "aes-gcm", "Set the algorithm for encryption/decryption. Possible values: aes-gcm, aes-cbc, rsa-oaep.")
 	serveCmd.RegisterFlagCompletionFunc("algorithm", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"aes-gcm", "aes-cbc", "rsa-oaep"}, cobra.ShellCompDirectiveNoFileComp
 	})
 
 	// These flags comes from root
 	// These flags does not need to store their values in variable because we use the viper structure ViperFlagsServe to do this
-	serveCmd.PersistentFlags().String("ca-id", defaultCaId, "Cert ID for CA Cert record. Env var: K8S_KMS_PLUGIN_SERVE_CA_ID")
-	serveCmd.PersistentFlags().Bool("auto-create", false, "Auto create the keys if needed. Env var: K8S_KMS_PLUGIN_SERVE_AUTO_CREATE.")
-	serveCmd.PersistentFlags().String("p11-key-label", "", "Key Label CKA_LABEL to use for encrypt/decrypt. Env var: K8S_KMS_PLUGIN_SERVE_P11_KEY_LABEL.")
-	serveCmd.PersistentFlags().String("p11-hmac-label", "", "Key Label CKA_LABEL to use for sha based verifications. Env var: K8S_KMS_PLUGIN_SERVE_P11_HMAC_LABEL.")
-	serveCmd.PersistentFlags().String("host", "0.0.0.0", "Hostname without port. Env var: K8S_KMS_PLUGIN_SERVE_HOST.")
-	serveCmd.PersistentFlags().String("p11-key-id", "", "Key ID CKA_ID for KMS KEK. Env var: K8S_KMS_PLUGIN_SERVE_KEK_ID")
-	serveCmd.PersistentFlags().String("p11-hmac-id", "", "Key ID CKA_ID for KMS HMAC. Env var: K8S_KMS_PLUGIN_SERVE_HMAC_ID")
-	serveCmd.PersistentFlags().StringP("native-path", "p", ".keys", "Path to key store for native provider(Files only). Env var: K8S_KMS_PLUGIN_SERVE_NATIVE_PATH.")
-	serveCmd.PersistentFlags().String("p11-label", "", "P11 token label. Env var: K8S_KMS_PLUGIN_SERVE_P11_TOKEN")
-	serveCmd.PersistentFlags().String("p11-lib", "", "Path to p11 library/client. Env var: K8S_KMS_PLUGIN_SERVE_P11_LIB")
-	serveCmd.PersistentFlags().String("p11-pin", "", "P11 Pin. Env var: K8S_KMS_PLUGIN_SERVE_P11_PIN")
-	serveCmd.PersistentFlags().Int("p11-slot", 0, "P11 token slot. Env var: K8S_KMS_PLUGIN_SERVE_P11_SLOT")
-	serveCmd.PersistentFlags().Uint16("port", 31400, "TCP Port for gRPC service. Env var: K8S_KMS_PLUGIN_SERVE_PORT.")
+	serveCmd.PersistentFlags().String("ca-id", defaultCaId, "Cert ID for CA Cert record.")
+	serveCmd.PersistentFlags().Bool("auto-create", false, "Auto create the keys if needed.")
+	serveCmd.PersistentFlags().String("p11-key-label", "", "Key Label CKA_LABEL to use for encrypt/decrypt.")
+	serveCmd.PersistentFlags().String("p11-hmac-label", "", "Key Label CKA_LABEL to use for sha based verifications.")
+	serveCmd.PersistentFlags().String("host", "0.0.0.0", "Hostname without port.")
+	serveCmd.PersistentFlags().String("p11-key-id", "", "Key ID CKA_ID for KMS KEK.")
+	serveCmd.PersistentFlags().String("p11-hmac-id", "", "Key ID CKA_ID for KMS HMAC.")
+	serveCmd.PersistentFlags().StringP("native-path", "p", ".keys", "Path to key store for native provider(Files only).")
+	serveCmd.PersistentFlags().String("p11-label", "", "P11 token label.")
+	serveCmd.PersistentFlags().String("p11-lib", "", "Path to p11 library/client.")
+	serveCmd.PersistentFlags().String("p11-pin", "", "P11 Pin.")
+	serveCmd.PersistentFlags().Int("p11-slot", 0, "P11 token slot.")
+	serveCmd.PersistentFlags().Uint16("port", 31400, "TCP Port for gRPC service.")
 	// Provider
-	serveCmd.PersistentFlags().String("provider", "p11", "Provider. Possible values: p11, softhsm, luna, dpod. Env var: K8S_KMS_PLUGIN_SERVE_PROVIDER.")
+	serveCmd.PersistentFlags().String("provider", "p11", "Provider. Possible values: p11, softhsm, luna, dpod.")
 	serveCmd.RegisterFlagCompletionFunc("provider", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"p11", "softhsm", "luna", "dpod"}, cobra.ShellCompDirectiveNoFileComp
 	})
 
 	// Socket
-	serveCmd.PersistentFlags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_SERVE_KEK_SOCKET")
+	serveCmd.PersistentFlags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock.")
 
 	// At least one of KEK CKA_ID or CKA_LABEL must be provided by the user
 	serveCmd.MarkFlagsOneRequired("p11-key-id", "p11-key-label")
