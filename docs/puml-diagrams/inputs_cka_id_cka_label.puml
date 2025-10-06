@@ -49,11 +49,11 @@ legend top left
     CKA_ID    (Byte array)          PKCS #11 Key identifier for public/private key pairs
     CKA_LABEL (RFC2279 string UTF8) PKCS #11 Description of the object (default empty).
 
-| Cobra CLI Flags  | --kek-id (CKA_ID) | --p11-key-label (CKA_LABEL) | Comment                                                                                                                                                                                    |
-| User Input Value | ""   (empty)      | ""   (empty)                | This fails as there is no way to find the key without one of these information                                                                                                             |
-|                  | ""   (empty)      | "<pkcs11_key_label>"        | Need to find the CKA_ID thanks to the CKA_LABEL                                                                                                                                            |
-|                  | "<pkcs11_key_id>" | ""   (empty)                | In this situation, finding the LABEL with the ID might not be usefull, except for logging.                                                                                                 |
-|                  | "<pkcs11_key_id>" | "<pkcs11_key_label>"        | In this situation we risk a mismatch between the 2 flags (ID not corresponding to Label).\n Either we make this 2 flags `MarkFlagsMutuallyExclusive`, or we test if ID corresponds to LABEL. |
+| Cobra CLI Flags  | --p11-key-id (CKA_ID) | --p11-key-label (CKA_LABEL) | Comment                                                                                                                                                                                    |
+| User Input Value | ""   (empty)          | ""   (empty)                | This fails as there is no way to find the key without one of these information              |
+|                  | ""   (empty)          | "<pkcs11_key_label>"        | Need to find the CKA_ID thanks to the CKA_LABEL                                             |
+|                  | "<pkcs11_key_id>"     | ""   (empty)                | In this situation, finding the LABEL with the ID might not be usefull, except for logging.  |
+|                  | "<pkcs11_key_id>"     | "<pkcs11_key_label>"        | These 2 flags are Mutually Exclusive. Use one or the other, not both.                       |
 
     PKCS #11 v3.0: https://docs.oasis-open.org/pkcs11/pkcs11-base/v3.0/pkcs11-base-v3.0.html
 end legend
@@ -65,7 +65,7 @@ end legend
 start
 
 :Parse CLI Flags (user provided|
-:--kek-id (CKA_ID)
+:--p11-key-id (CKA_ID)
 --p11-key-label (CKA_LABEL);
 
 if (CKA_ID empty?) then (yes)
@@ -103,34 +103,13 @@ else (no)
     stop
   else (no)
     :⚠️ Both ID and LABEL provided|
-    :Risk of mismatch between flags;
-    
+    :❌ ERROR|
     note right
-      Decision point: Either make flags 
-      mutually exclusive OR validate 
-      ID corresponds to LABEL
+      Flags are mutually exclusive.
+      Use one or the other, not both.
     end note
-    
-    if (Validation approach?) then (Make flags mutually exclusive)
-      :❌ ERROR|
-      :Cannot specify both 
-      ID and LABEL;
-      stop
-    else (Validate ID-LABEL match)
-      :Verify ID corresponds to LABEL|
-      :Check if provided ID matches 
-      the ID of key with provided LABEL;
-      if (ID matches LABEL?) then (yes)
-        :✅ SUCCESS|
-        :Use validated CKA_ID;
-        stop
-      else (no)
-        :❌ ERROR|
-        :ID does not correspond 
-        to provided LABEL;
-        stop
-      endif
-    endif
+    :Flags are mutually exclusive;
+    stop
   endif
 endif
 
