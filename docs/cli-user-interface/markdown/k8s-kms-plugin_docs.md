@@ -15,7 +15,7 @@ k8s-kms-plugin docs [flags]
 ```
   -f, --format string       Docs Output format. Prefered is markdown. Supported formats: markdown, man, rst, yaml, cli-table-csv, cli-table-pretty, cli-table-html, all. (default "markdown")
   -h, --help                help for docs
-  -o, --output-dir string   Output directory (default "/tmp/k8s-kms-plugin-docs-2025-10-03T11:28:59+02:00")
+  -o, --output-dir string   Output directory (default "/tmp/k8s-kms-plugin-docs-2025-10-03T11:55:43+02:00")
 ```
 
 ### Options inherited from parent commands
