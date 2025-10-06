@@ -8,7 +8,7 @@ Handles Kubernetes KMS v2 requests but do not support key rotation.
 Use "k8s-kms-plugin serve rotation" subcommand to support key rotation.
 Kubernetes KMS documentation: https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/#configuring-the-kms-provider-kms-v2
 
-KMS v2 API: https://pkg.go.dev/k8s.io/kms@v0.33.3/apis/v2
+KMS v2 API: https://pkg.go.dev/k8s.io/kms@v0.34.1/apis/v2
 
 
 ```

@@ -63,7 +63,7 @@ var rotationCmd = &cobra.Command{
 Refer to the kubernetes KMS v2 documentation for more details about key rotation.
 https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/#developing-a-kms-plugin-gRPC-server-notes-kms-v2
 
-KMS v2 API: https://pkg.go.dev/k8s.io/kms@v0.33.3/apis/v2
+KMS v2 API: https://pkg.go.dev/k8s.io/kms@v0.34.1/apis/v2
 `,
 	Example: `
 Using flags and serving on unix socket (gRPC plaintext):

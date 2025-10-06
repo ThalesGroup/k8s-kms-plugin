@@ -267,7 +267,7 @@ k8s-kms-plugin
 Now fetch the protobuf API file `api.proto` from https://github.com/kubernetes/kms:
 
 ```bash
-wget https://raw.githubusercontent.com/kubernetes/kms/refs/tags/v0.33.3/apis/v2/api.proto
+wget https://raw.githubusercontent.com/kubernetes/kms/refs/tags/v0.34.1/apis/v2/api.proto
 ```
 
 Now you can test a **StatusRequest** with `grpcurl`:
