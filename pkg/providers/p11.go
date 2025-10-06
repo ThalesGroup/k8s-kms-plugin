@@ -10,40 +10,29 @@
 package providers
 
 import (
-	"bytes"
 	"context"
 	"crypto"
 	"crypto/cipher"
 	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
+	"encoding/hex"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"hash"
 	"io"
-	"math/big"
-	"reflect"
 
 	"github.com/ThalesGroup/crypto11"
 	"github.com/ThalesGroup/gose"
 	"github.com/ThalesGroup/gose/hsm"
 	"github.com/ThalesGroup/gose/jose"
-	"github.com/ThalesGroup/k8s-kms-plugin/apis/istio/v1"
-	k8s "github.com/ThalesGroup/k8s-kms-plugin/apis/k8s/v1beta1"
-	"github.com/ThalesGroup/k8s-kms-plugin/apis/kms/v1"
+
 	"github.com/google/uuid"
 	"github.com/miekg/pkcs11"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-)
-
-var (
-	defaultKEKlabel    = []byte("k8s-kms-plugin-kek")
-	defaultRootCAlabel = []byte("k8s-kms-plugin-root-ca")
+	k8skmsv2 "k8s.io/kms/apis/v2"
 )
 
 var (
@@ -63,7 +52,16 @@ var (
 	}
 )
 
-func generateDEK(ctx11 *crypto11.Context, encryptor gose.JweEncryptor) (encryptedKeyBlob []byte, err error) {
+// GenerateDEK generates a Data Encryption Key (DEK) and encrypts it using
+// the provided JWE encryptor. It first creates a random 32-byte symmetric
+// key, converts it to a JWK format, and then encrypts the JWK using the
+// encryptor. The resulting encrypted DEK is returned as a byte slice.
+// Any errors encountered during random number generation, key conversion,
+// or encryption are returned.
+//
+// for Istio: GenerateDEK is only used by istio.go:GenerateDEK and integration testing.
+// TODO: decide if this Istio related method should be separated from the KMS v2 plugin
+func GenerateDEK(ctx11 *crypto11.Context, encryptor gose.JweEncryptor) (encryptedKeyBlob []byte, err error) {
 
 	key := make([]byte, 32)
 
@@ -82,7 +80,10 @@ func generateDEK(ctx11 *crypto11.Context, encryptor gose.JweEncryptor) (encrypte
 		return
 	}
 	var dekStr []byte
-	dekStr, err = json.Marshal(dekJWK)
+	if dekStr, err = json.Marshal(dekJWK); err != nil {
+		logrus.WithError(err).Error("generateDEK: failed to marshal DEK JWK")
+		return
+	}
 	// using the AES key as it's payload
 	var encryptedString string
 	if encryptedString, err = encryptor.Encrypt(dekStr, nil); err != nil {
@@ -94,8 +95,15 @@ func generateDEK(ctx11 *crypto11.Context, encryptor gose.JweEncryptor) (encrypte
 	return
 }
 
-// generateKEK an KEK
-func generateKEK(ctx *crypto11.Context, identity, label []byte, alg jose.Alg) (key gose.AeadEncryptionKey, err error) {
+// GenerateKEK generates a Key Encryption Key (KEK) using the provided
+// cryptographic context, identity, label, and algorithm. The function
+// checks if the specified algorithm is supported and, if so, generates
+// a secret key with the associated parameters. It returns the generated
+// AEAD encryption key or an error if the operation fails.
+//
+// for Istio: GenerateKEK is only used by istio.go:GenerateKEK and integration testing.
+// TODO: decide if this Istio related method should be separated from the KMS v2 plugin
+func GenerateKEK(ctx *crypto11.Context, identity, label []byte, alg jose.Alg) (key gose.AeadEncryptionKey, err error) {
 	params, supported := algToKeyGenParams[alg]
 	if !supported {
 		err = fmt.Errorf("algorithm %v is not supported", alg)
@@ -103,43 +111,6 @@ func generateKEK(ctx *crypto11.Context, identity, label []byte, alg jose.Alg) (k
 	}
 
 	if _, err = ctx.GenerateSecretKeyWithLabel(identity, label, params.size, params.cipher); err != nil {
-		return
-	}
-
-	return
-}
-
-func generateSKey(ctx *crypto11.Context, request *istio.GenerateSKeyRequest, dekEncryptor gose.JweEncryptor) (wrappedSKey []byte, err error) {
-	var rng io.Reader
-	if rng, err = ctx.NewRandomReader(); err != nil {
-		return
-	}
-	switch request.Kind {
-	case istio.KeyKind_RSA:
-		var kp *rsa.PrivateKey
-		if kp, err = rsa.GenerateKey(rng, int(request.Size)); err != nil {
-			return
-		}
-		kpPEM := &pem.Block{
-			Type:  "RSA PRIVATE KEY",
-			Bytes: x509.MarshalPKCS1PrivateKey(kp),
-		}
-		buf := bytes.NewBuffer([]byte{})
-		if err = pem.Encode(buf, kpPEM); err != nil {
-			return
-		}
-
-		// Wrap and return the wrappedSKey
-		var wrappedSKeyString string
-		if wrappedSKeyString, err = dekEncryptor.Encrypt(buf.Bytes(), nil); err != nil {
-			return
-		}
-		wrappedSKey = []byte(wrappedSKeyString)
-	case istio.KeyKind_ECC:
-		err = status.Error(codes.Unimplemented, "ECC not yet implemented")
-		return
-	default:
-		err = status.Error(codes.InvalidArgument, "unsupported key kind")
 		return
 	}
 
@@ -167,42 +138,201 @@ func IsPKCS11AuthenticationError(err error) bool {
 	}
 }
 
-func randomSerial() (serial *big.Int) {
-	serial, _ = rand.Int(rand.Reader, big.NewInt(20000))
-	return
-}
-
+// P11 is a struct representing a P11 provider, which handles encryption and decryption
+// operations using a Hardware Security Module (HSM). It manages keys, contexts, and
+// encryption algorithms necessary for secure cryptographic operations within the KMS plugin.
+//
+// Active Fields: the actual keys being used in StatusResponse and EncryptResponse.
+//
+// KEK Key Rotation Fields:,old keys used for Decryption of old ciphertext during a key rotation.
+// See: https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/#developing-a-kms-plugin-gRPC-server-notes-kms-v2
+//
+// Istio Related Fields:
+// - cid: Certificate Identifier used in Istio operations.
 type P11 struct {
-	kid                []byte
-	cid                []byte
-	config             *crypto11.Config
-	ctx                *crypto11.Context
-	encryptors         map[string]gose.JweEncryptor
-	decryptors         map[string]gose.JweDecryptor
-	createKey          bool
-	k8sDefaultDekLabel string
-	k8sHmacKeyLabel    string
-	algorithm          jose.Alg
+	// Starting with [KMS v0.34.0](https://github.com/kubernetes/kms/tree/v0.34.0/apis/v2), the KMS maintainers stoped to use https://github.com/gogo/protobuf to generate protobuf files, as it is deprecated.
+	// KMS v0.34.0 and later uses official https://github.com/protocolbuffers/protobuf-go. This demands that the gRPC server embeds UnimplementedKeyManagementServiceServer to automatically satisfy method mustEmbedUnimplementedKeyManagementServiceServer()
+	k8skmsv2.UnimplementedKeyManagementServiceServer
+
+	// active KEK parameters
+	createKey    bool                         // Indicates whether the k8s-kms-plugin should create a new key. TODO: explain the use case of when should the k8s-kms-plugin create the key, or create a new cobra command
+	config       *crypto11.Config             // Active configuration for the crypto11 library
+	ctx          *crypto11.Context            // Active cryptographic context for key operations
+	encryptors   map[string]gose.JweEncryptor // Active Map of JWE encryptors used for encryption operations
+	decryptors   map[string]gose.JweDecryptor // Active Map of JWE decryptors used for decryption operations
+	kekCkaId     []byte                       // Active Key Encryption Key KEK Identifier & CKA_ID
+	kekCkaLabel  string                       // Active KEK CKA_LABEL utf8
+	hmacCkaId    []byte                       // Active HMAC key CKA_ID for AES-CBC + HMAC
+	hmacCkaLabel string                       // Active HMAC key CKA_LABEL utf8 for AES-CBC + HMAC
+	algorithm    jose.Alg                     // The active cryptographic algorithm being used
+
+	// Istio related fields
+	cid []byte // Certificate Identifier
+
+	// KEK Key rotation feature for KMS v2
+	oldConfig *crypto11.Config  // for key rotation
+	oldCtx    *crypto11.Context // for key rotation
+	// no encryptors since the old KEK keys are used for decryption only
+	oldDecryptors   map[string]gose.JweDecryptor // for key rotation
+	oldKekCkaId     []byte                       // Key Encryption Key KEK Identifier & CKA_ID of old KEK being rotated
+	oldKekCkaLabel  string                       // CKA_LABEL utf8 of old KEK being rotated
+	oldHmacCkaId    []byte                       // CKA_ID of old HMAC key being rotated
+	oldHmacCkaLabel string                       // CKA_LABEL utf8 of old HMAC key being rotated
+	oldAlgorithm    jose.Alg                     // algorithm of old KEK being rotated
 }
 
-func NewP11(config *crypto11.Config, createKey bool, k8sKekLabel string, hmacKeyLabel string, algorithm jose.Alg) (p *P11, err error) {
+// NewP11 creates a new P11 instance.
+//
+// The P11 instance is configured with the given crypto11.Config.
+//
+// The createKey argument is a boolean that indicates whether the P11 instance
+// should create a default key with the given label. TODO: explain the use case
+// when this would be needed, eventualy move this to a new command.
+//
+// The kekkeyid argument is the Key Encryption Key (KEK) identifier.
+// This is the PKCS #11 CKA_ID.
+//
+// The k8sKekLabel argument is the label of the default key.
+// This is the PKCS #11 CKA_LABEL.
+//
+// The hmacKeyLabel argument is the label of the HMAC key, for AES-CBC + HMAC.
+//
+// The algorithm argument specify which algorithm to use, symmetric or
+// asymmetric.
+//
+// The function returns a pointer to the P11 instance and an error value. If
+// the error value is not nil, the P11 instance is not valid and should not
+// be used.
+func NewP11(
+	// active KEK parameters
+	config *crypto11.Config,
+	createKey bool,
+	kekkeyid string,
+	k8sKekLabel string,
+	hmacKeyLabel string,
+	hmacCkaId string,
+	algorithm jose.Alg,
+
+	// key rotation
+	isKeyRotation bool,
+	oldConfig *crypto11.Config,
+	oldKekkeyid string,
+	oldKekCkaLabel string,
+	oldHmacKeyLabel string,
+	oldHmacCkaId string,
+	oldAlgorithm jose.Alg,
+) (p *P11, err error) {
 	p = &P11{
-		config:             config,
-		createKey:          createKey,
-		k8sDefaultDekLabel: k8sKekLabel,
-		k8sHmacKeyLabel:    hmacKeyLabel,
-		algorithm:          algorithm,
+		// active KEK parameters
+		config:    config,
+		createKey: createKey,
+		algorithm: algorithm,
+
+		// only in case of key rotation
+		oldConfig:    oldConfig,
+		oldAlgorithm: oldAlgorithm,
 	}
-	// Bootstrap the Pkcs11 device or die
+
+	// Bootstrap the active Pkcs11 device or die
 	if p.ctx, err = crypto11.Configure(p.config); err != nil {
-		logrus.Error(err)
+		logrus.WithError(err).Error("NewP11: failed to configure the active Pkcs11 device")
 		return
+	}
+
+	// Bootstrap the key rotation Pkcs11 device or die
+	if isKeyRotation {
+		if p.oldCtx, err = crypto11.Configure(p.oldConfig); err != nil {
+			logrus.WithError(err).Error("NewP11: failed to configure the key rotation Pkcs11 device")
+			return
+		}
+	}
+
+	// Case: Attempt to discover KEK ID (CKA_ID) by Key label (CKA_LABEL)
+	// From the CLI's user input perspective, the kekkeyid (CKA_ID) and k8sKekLabel (CKA_LABEL)
+	// should be marked as MarkFlagsMutuallyExclusive and MarkFlagsOneRequired.
+	// This prevent mismatching the two inputs.
+	// From kubernetes KMS v2 point of vue, StatusResponse.KeyId, EncryptResponse.KeyId and
+	// EncryptRequest.KeyId should use a unique identifier: pkcs11.CKA_ID is a unique identifier.
+	// If the user set the k8sKekLabel flag (CKA_LABEL), then the kekkeyid (CKA_ID) is retrieved by
+	// the k8sKekLabel.
+	// CKA_ID is mandatory to provide the KEK ID to the status requests from Kubernetes' Status
+	// Request, so we need to retrieve it mandatorily from the HSM if provided empty.
+	// TODO USE SetKekKeyIdString instead of conversions in the method
+	p.kekCkaId, p.kekCkaLabel, err = GetKeyIdAndLabel(p, kekkeyid, k8sKekLabel)
+	if err != nil {
+		return
+	}
+
+	// in case the user provide the CKA_ID or the CKA_LABEL of HMAC key
+	if p.algorithm == jose.AlgA256CBC {
+		p.hmacCkaId, p.hmacCkaLabel, err = GetKeyIdAndLabel(p, hmacCkaId, hmacKeyLabel)
+		if err != nil {
+			return
+		}
+	}
+
+	// key rotation
+	if isKeyRotation {
+		// in case the user provide the OLD CKA_ID or the OLD CKA_LABEL of OLD HMAC key
+		if p.oldAlgorithm == jose.AlgA256CBC {
+			if oldHmacCkaId == "" && oldHmacKeyLabel != "" { // get id by label
+				// old HMAC
+				p.oldHmacCkaLabel = oldHmacKeyLabel
+
+				if p.oldHmacCkaId, err = FindCkaAttrByIdOrLabel(p.oldCtx, p.oldAlgorithm, crypto11.CkaId, nil, []byte(p.oldHmacCkaLabel)); err != nil {
+					logrus.WithError(err).Error("NewP11: failed to find HMAC CKA_ID by label")
+					return nil, err
+				}
+
+			} else if oldHmacCkaId != "" && oldHmacKeyLabel == "" { // get label by id
+				p.SetOldHmacKeyIdString(oldHmacCkaId)
+
+				var labelBuf []byte
+				if labelBuf, err = FindCkaAttrByIdOrLabel(p.oldCtx, p.oldAlgorithm, crypto11.CkaLabel, p.oldHmacCkaId, nil); err != nil {
+					logrus.WithError(err).Error("NewP11: failed to find old HMAC CKA_LABEL by ID")
+					return nil, err
+				}
+
+				p.oldHmacCkaLabel = string(labelBuf)
+
+			} else if oldHmacCkaId == "" && oldHmacKeyLabel == "" {
+				logrus.WithError(err).Errorf("NewP11: oldHmacCkaId and oldHmacKeyLabel are both empty, please provide one of them")
+				return nil, fmt.Errorf("NewP11: oldHmacCkaId and oldHmacKeyLabel are both empty, please provide one of them")
+			} else {
+				logrus.WithError(err).Errorf("NewP11: both oldHmacCkaId and oldHmacKeyLabel are provided, please provide only one")
+				return nil, fmt.Errorf("NewP11: both oldHmacCkaId and oldHmacKeyLabel are provided, please provide only one")
+			}
+		}
+
+		// find old KEK ID with LABEL
+		if oldKekkeyid == "" && oldKekCkaLabel != "" {
+			logrus.Tracef("NewP11: kek key id (CKA_ID) is empty. Find CKA_ID by CKA_LABEL %s", k8sKekLabel)
+			p.oldKekCkaLabel = oldKekCkaLabel
+
+			if p.oldKekCkaId, err = FindCkaAttrByIdOrLabel(p.oldCtx, p.oldAlgorithm, crypto11.CkaId, nil, []byte(p.oldKekCkaLabel)); err != nil {
+				logrus.WithError(err).Error("NewP11: failed to find OLD KEK CKA_ID by label")
+				return nil, err
+			}
+		}
+
+		// find old KEK label with ID
+		if oldKekkeyid != "" && oldKekCkaLabel == "" {
+			logrus.Tracef("NewP11: k8sKekLabel (CKA_LABEL) is empty but kekkeyid (CKA_ID) is not empty. Find CKA_LABEL by CKA_ID %s", oldKekkeyid)
+			p.SetOldKekKeyIdString(oldKekkeyid)
+
+			var labelBuf []byte
+			if labelBuf, err = FindCkaAttrByIdOrLabel(p.oldCtx, p.oldAlgorithm, crypto11.CkaLabel, p.oldKekCkaId, nil); err != nil {
+				logrus.WithError(err).Error("NewP11: failed to find OLD KEK CKA_LABEL by CKA_ID")
+				return nil, err
+			}
+			p.oldKekCkaLabel = string(labelBuf)
+		}
 	}
 
 	if p.createKey {
 		// Check if the default key exists - if not, create it
 		var foundDefaultDek *crypto11.SecretKey
-		if foundDefaultDek, err = p.ctx.FindKey(nil, []byte(p.k8sDefaultDekLabel)); nil != err {
+		if foundDefaultDek, err = p.ctx.FindKey(p.kekCkaId, p.GetKekCkaLabelByteA()); nil != err {
 			return
 		}
 		if nil == foundDefaultDek {
@@ -214,7 +344,7 @@ func NewP11(config *crypto11.Config, createKey bool, k8sKekLabel string, hmacKey
 			if uuidBytes, err = newDekUUID.MarshalText(); nil != err {
 				return
 			}
-			if _, err = p.ctx.GenerateSecretKeyWithLabel(uuidBytes, []byte(p.k8sDefaultDekLabel), 256, crypto11.CipherAES); nil != err {
+			if _, err = p.ctx.GenerateSecretKeyWithLabel(uuidBytes, p.GetKekCkaLabelByteA(), 256, crypto11.CipherAES); nil != err {
 				return
 			}
 		}
@@ -222,56 +352,134 @@ func NewP11(config *crypto11.Config, createKey bool, k8sKekLabel string, hmacKey
 	return
 }
 
-func (p *P11) AuthenticatedDecrypt(ctx context.Context, request *istio.AuthenticatedDecryptRequest) (resp *istio.AuthenticatedDecryptResponse, err error) {
-	var kekDecryptor gose.JweDecryptor
-	if kekDecryptor = p.decryptors[string(request.KekKid)]; kekDecryptor == nil {
-		if _, kekDecryptor, err = p.loadKEKbyID(p.ctx, request.KekKid, defaultKEKlabel); err != nil {
-			return
-		}
+func (p *P11) SetKekKeyIdFromBytes(keyID []byte) error {
+	if keyID == nil {
+		return fmt.Errorf("keyID cannot be nil")
 	}
-
-	var dekDecrypted []byte
-	var aadFromWrappedDek []byte
-	dekDecrypted, aadFromWrappedDek, err = kekDecryptor.Decrypt(string(request.EncryptedDekBlob))
-	if nil != err {
-		return
-	}
-
-	// Should be nil
-	if nil != aadFromWrappedDek {
-		return
-	}
-
-	var loadedDek jose.Jwk
-	loadedDek, err = gose.LoadJwk(bytes.NewReader(dekDecrypted), []jose.KeyOps{jose.KeyOpsDecrypt})
-	if nil != err {
-		return
-	}
-
-	var dekAead gose.AeadEncryptionKey
-	if dekAead, err = gose.NewAesGcmCryptorFromJwk(loadedDek, []jose.KeyOps{jose.KeyOpsDecrypt}); nil != err {
-		return
-	}
-
-	var dekAeadDecryptor gose.JweDecryptor
-	dekAeadDecryptor = gose.NewJweDirectDecryptorAeadImpl([]gose.AeadEncryptionKey{dekAead})
-
-	var pt, aad []byte
-	if pt, aad, err = dekAeadDecryptor.Decrypt(string(request.Ciphertext)); err != nil {
-		return
-	}
-	if !reflect.DeepEqual(aad, request.Aad) {
-		err = status.Error(codes.InvalidArgument, "AAD does not match... invalid request/code")
-		return
-	}
-	resp = &istio.AuthenticatedDecryptResponse{
-		Plaintext: pt,
-	}
-
-	return
+	p.kekCkaId = keyID
+	return nil
 }
 
-func (p *P11) loadKEKbyID(ctx *crypto11.Context, kekIdentity, label []byte) (encryptor gose.JweEncryptor, decryptor gose.JweDecryptor, err error) {
+// SetKekKeyIdString sets the internal CKA_ID from a hex-encoded string.
+func (p *P11) SetKekKeyIdString(hexKeyID string) error {
+	kid, err := hex.DecodeString(hexKeyID)
+	if err != nil {
+		return fmt.Errorf("invalid hex KeyID: %w", err)
+	}
+	p.kekCkaId = kid
+	return nil
+}
+
+// GetKekKeyIdString returns the Key Encryption Key (KEK)  identifier as a
+// hex-encoded string. This identifier is used to uniquely identify the
+// encryption key within the PKCS#11 CKA_ID context.
+func (p *P11) GetKekKeyIdString() string {
+	return hex.EncodeToString(p.kekCkaId)
+}
+
+// GetKekCkaLabelByteA returns the KEK's CKA_LABEL as a UTF-8 encoded byte slice.
+func (p *P11) GetKekCkaLabelByteA() []byte {
+	return []byte(p.kekCkaLabel)
+}
+
+// SetHmacKeyIdString sets the internal HMAC Key ID from a hex-encoded string.
+func (p *P11) SetHmacKeyIdString(hexHmacKeyID string) error {
+	hmacId, err := hex.DecodeString(hexHmacKeyID)
+	if err != nil {
+		return fmt.Errorf("invalid hex HMAC KeyID: %w", err)
+	}
+	p.hmacCkaId = hmacId
+	return nil
+}
+
+// GetHmacKeyIdString returns the HMAC Key ID as a hex-encoded string.
+func (p *P11) GetHmacKeyIdString() string {
+	return hex.EncodeToString(p.hmacCkaId)
+}
+
+// SetHmacKeyIdString sets the internal HMAC Key ID from a hex-encoded string.
+func (p *P11) SetOldHmacKeyIdString(hexOldHmacKeyID string) error {
+	oldHmacId, err := hex.DecodeString(hexOldHmacKeyID)
+	if err != nil {
+		return fmt.Errorf("invalid hex HMAC KeyID: %w", err)
+	}
+	p.oldHmacCkaId = oldHmacId
+	return nil
+}
+
+// SetKekKeyIdString sets the internal CKA_ID from a hex-encoded string.
+func (p *P11) SetOldKekKeyIdString(hexOldKeyID string) error {
+	kid, err := hex.DecodeString(hexOldKeyID)
+	if err != nil {
+		return fmt.Errorf("invalid hex KeyID: %w", err)
+	}
+	p.oldKekCkaId = kid
+	return nil
+}
+
+// SetEncryptor sets the gose.JWE Encryptor.
+func (p *P11) SetEncryptor(encryptor gose.JweEncryptor) error {
+	if encryptor == nil {
+		return fmt.Errorf("SetEncryptor: encryptor is nil")
+	}
+	p.encryptors[p.GetKekKeyIdString()] = encryptor
+	return nil
+}
+
+// SetEncryptors sets the map of encryptors.
+func (p *P11) SetEncryptors(encryptors map[string]gose.JweEncryptor) error {
+	if encryptors == nil {
+		return fmt.Errorf("SetEncryptors: encryptors is nil")
+	}
+	p.encryptors = encryptors
+	return nil
+}
+
+// SetDecryptor sets the gose.JWE Decryptor.
+func (p *P11) SetDecryptor(decryptor gose.JweDecryptor) error {
+	if decryptor == nil {
+		return fmt.Errorf("SetDecryptor: decryptor is nil")
+	}
+	p.decryptors[p.GetKekKeyIdString()] = decryptor
+	return nil
+}
+
+// SetDecryptors sets the map of decryptors.
+func (p *P11) SetDecryptors(decryptors map[string]gose.JweDecryptor) error {
+	if decryptors == nil {
+		return fmt.Errorf("SetDecryptors: decryptors is nil")
+	}
+	p.decryptors = decryptors
+	return nil
+}
+
+// SetContext sets the PKCS#11 context.
+func (p *P11) SetContext(ctx *crypto11.Context) error {
+	if ctx == nil {
+		return fmt.Errorf("SetContext: ctx is nil")
+	}
+	p.ctx = ctx
+	return nil
+}
+
+// SetCID sets the Certificate Identifier used in Istio operations.
+func (p *P11) SetCID(cid []byte) error {
+	if cid == nil {
+		return fmt.Errorf("SetCID: cid is nil")
+	}
+	p.cid = cid
+	return nil
+}
+
+// loadKEKbyID loads a Key Encryption Key (KEK) from the HSM for the given
+// kekIdentity and label. It returns the loaded KEK as a gose.AeadEncryptionKey,
+// a gose.JweEncryptor, and a gose.JweDecryptor. If the key is not found or
+// there is an error loading the key, loadKEKbyID returns an error.
+//
+// TODO: for now this method only support AES GCM symmetric keys as ctx.FindKey
+// only supports symmetric keys. This needs to be extended to support other
+// algorithms inlcuding asymmetric.
+func (p *P11) loadKEKbyID(ctx *crypto11.Context, kekId, kekLabel []byte) (encryptor gose.JweEncryptor, decryptor gose.JweDecryptor, err error) {
 
 	var rng io.Reader
 	var aek gose.AeadEncryptionKey
@@ -281,66 +489,27 @@ func (p *P11) loadKEKbyID(ctx *crypto11.Context, kekIdentity, label []byte) (enc
 	}
 	// get the HSM Key
 	var handle *crypto11.SecretKey
-	if handle, err = ctx.FindKey(kekIdentity, label); err != nil {
+	if handle, err = ctx.FindKey(kekId, kekLabel); err != nil {
 		return
 	}
 	if handle == nil {
 		err = errors.New("no such key")
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"kekIdentity": string(kekId),
+			"label":       string(kekLabel),
+		}).Error("load KEK by ID or label failed")
 		return
 	}
 	var aead cipher.AEAD
 	if aead, err = handle.NewGCM(); err != nil {
 		return
 	}
-	if aek, err = gose.NewAesGcmCryptor(aead, rng, string(kekIdentity), jose.AlgA256GCM, kekKeyOps); err != nil {
+	if aek, err = gose.NewAesGcmCryptor(aead, rng, string(kekId), jose.AlgA256GCM, kekKeyOps); err != nil {
 		return
 	}
 	decryptor = gose.NewJweDirectDecryptorAeadImpl([]gose.AeadEncryptionKey{aek})
 	encryptor = gose.NewJweDirectEncryptorAead(aek, p.config.UseGCMIVFromHSM)
 
-	return
-}
-
-func (p *P11) AuthenticatedEncrypt(ctx context.Context, request *istio.AuthenticatedEncryptRequest) (resp *istio.AuthenticatedEncryptResponse, err error) {
-	var kekDecryptor gose.JweDecryptor
-	if kekDecryptor = p.decryptors[string(request.KekKid)]; nil == kekDecryptor {
-		if _, kekDecryptor, err = p.loadKEKbyID(p.ctx, request.KekKid, defaultKEKlabel); nil != err {
-			return
-		}
-	}
-
-	var dekDecrypted []byte
-	var aadFromWrappedDek []byte
-	dekDecrypted, aadFromWrappedDek, err = kekDecryptor.Decrypt(string(request.EncryptedDekBlob))
-	if nil != err {
-		return
-	}
-
-	// Should be nil
-	if nil != aadFromWrappedDek {
-		return
-	}
-
-	var loadedDek jose.Jwk
-	loadedDek, err = gose.LoadJwk(bytes.NewReader(dekDecrypted), []jose.KeyOps{jose.KeyOpsEncrypt})
-	if nil != err {
-		return
-	}
-
-	var dekAead gose.AeadEncryptionKey
-	if dekAead, err = gose.NewAesGcmCryptorFromJwk(loadedDek, []jose.KeyOps{jose.KeyOpsEncrypt}); nil != err {
-		return
-	}
-
-	var dekAeadEncryptor gose.JweEncryptor
-	dekAeadEncryptor = gose.NewJweDirectEncryptorAead(dekAead, false)
-
-	resp = &istio.AuthenticatedEncryptResponse{}
-	var ct string
-	if ct, err = dekAeadEncryptor.Encrypt(request.Plaintext, request.Aad); err != nil {
-		return
-	}
-	resp.Ciphertext = []byte(ct)
 	return
 }
 
@@ -353,21 +522,30 @@ func (p *P11) Close() (err error) {
 	return
 }
 
+// makeAeadKey creates a new AES GCM key encryption key from the given HSM key
+// and random reader. It returns a gose.AeadEncryptionKey and an error.
 func (p *P11) makeAeadKey(rng io.Reader, kek *crypto11.SecretKey) (aek gose.AeadEncryptionKey, err error) {
 	var aead cipher.AEAD
 	if aead, err = kek.NewGCM(); err != nil {
 		return nil, fmt.Errorf("error while creating new gcm cipher: %v", err)
 	}
-	if aek, err = gose.NewAesGcmCryptor(aead, rng, p.k8sDefaultDekLabel, jose.AlgA256GCM, kekKeyOps); err != nil {
+	if aek, err = gose.NewAesGcmCryptor(aead, rng, p.kekCkaLabel, jose.AlgA256GCM, kekKeyOps); err != nil {
 		return nil, fmt.Errorf("error while creating aead key: %v", err)
 	}
 	return
 }
 
-func getIVFromDecryptRequest(req *k8s.DecryptRequest) (iv []byte, err error) {
+// getIVFromDecryptRequest extracts the Initialization Vector from a KMS v2
+// DecryptRequest. It first unmarshalls the JWE from the ciphertext, and
+// then returns the InitializationVector from the unmarshalled JWE. If
+// there is an error during unmarshalling, it is returned.
+func getIVFromDecryptRequest(req *k8skmsv2.DecryptRequest) (iv []byte, err error) {
 	var jwe jose.JweRfc7516Compact
-	if err = jwe.Unmarshal(string(req.Cipher)); err != nil {
+	if err = jwe.Unmarshal(string(req.GetCiphertext())); err != nil {
 		return nil, fmt.Errorf("error unmarshalling the jwe: %v", err)
+	}
+	if len(jwe.InitializationVector) == 0 {
+		return nil, fmt.Errorf("no initialization vector found in jwe")
 	}
 	return jwe.InitializationVector, nil
 }
@@ -388,43 +566,118 @@ func getIVFromDecryptRequest(req *k8s.DecryptRequest) (iv []byte, err error) {
 //		 // Additional metadata that was sent by the KMS plugin during encryption.
 //	  // NOT	SURE IF IT IS NECESSARY FOR US
 //		 Annotations          map[string][]byte
-func (p *P11) Decrypt(ctx context.Context, req *k8s.DecryptRequest) (resp *k8s.DecryptResponse, err error) {
-	var decryptor gose.JweDecryptor
-	var out []byte
-	var aad []byte
+func (p *P11) Decrypt(ctx context.Context, req *k8skmsv2.DecryptRequest) (resp *k8skmsv2.DecryptResponse, err error) {
+	var out []byte // buffer for the DecryptResponse.Plaintext
+	var isRotation bool
 
-	// req.KeyId populated by interceptor
-	if decryptor = p.decryptors[req.KeyId]; decryptor == nil {
+	// Support key rotation
+	switch req.KeyId {
+	case p.GetKekKeyIdString():
+		isRotation = false
+	case hex.EncodeToString(p.oldKekCkaId):
+		isRotation = true
+	default:
+		logrus.WithError(err).WithField("key_id", req.GetKeyId()).Error("Decrypt: unknown key ID")
+		return nil, fmt.Errorf("Decrypt: unknown key ID: %s", req.GetKeyId())
+	}
+
+	// decrypt with PKCS#11 context
+	out, err = p.decryptWithContext(req, isRotation)
+	if err != nil {
+		logrus.WithError(err).Error("error while decrypting with old key")
+		return nil, err
+	}
+
+	resp = &k8skmsv2.DecryptResponse{
+		Plaintext: out,
+	}
+	return
+}
+
+// decryptWithContext performs decryption using the provided PKCS#11 context, DecryptRequest and decryptor map.
+//
+// The method takes into account if the key has been rotated and decrypts the
+// ciphertext accordingly.
+func (p *P11) decryptWithContext(req *k8skmsv2.DecryptRequest, isRotation bool) ([]byte, error) {
+	var actualCtx *crypto11.Context
+	var actualDecryptors map[string]gose.JweDecryptor
+	var actualAlgo jose.Alg
+	var actualHmacCkaId []byte
+	var actualHmacCkaLabel string
+
+	var decryptor gose.JweDecryptor // buffer
+	var out []byte                  // buffer for the DecryptResponse.Plaintext
+	var aad []byte                  // Additional Authenticated Data optional input used in authenticated encryption algorithms like AES-GCM or AES-CBC-HMAC
+	var err error
+
+	if isRotation {
+		actualCtx = p.oldCtx
+		actualDecryptors = p.oldDecryptors
+		actualAlgo = p.oldAlgorithm
+		actualHmacCkaId = p.oldHmacCkaId
+		actualHmacCkaLabel = p.oldHmacCkaLabel
+	} else {
+		actualCtx = p.ctx
+		actualDecryptors = p.decryptors
+		actualAlgo = p.algorithm
+		actualHmacCkaId = p.hmacCkaId
+		actualHmacCkaLabel = p.hmacCkaLabel
+	}
+
+	if decryptor = actualDecryptors[req.GetKeyId()]; decryptor == nil {
 		// Random source from the HSM (pkcs11 context)
 		var rng io.Reader
-		if rng, err = p.ctx.NewRandomReader(); err != nil {
-			logrus.Error(err)
-			return
+		if rng, err = actualCtx.NewRandomReader(); err != nil {
+			logrus.WithError(err).Error("error while creating random reader")
+			return nil, err
 		}
-		// get kek by id
-		var kek *crypto11.SecretKey
-		if kek, err = p.ctx.FindKey([]byte(req.KeyId), nil); nil != err {
-			return
+
+		// convert the string DecryptRequest.KeyId containing a hex representation as string to hex []byte
+		var reqKekKeyIdByteA []byte
+		if reqKekKeyIdByteA, err = hex.DecodeString(req.GetKeyId()); err != nil {
+			logrus.WithError(err).WithField("DecryptRequest.KeyId", req.GetKeyId()).Error("error while decoding the key id")
+			return nil, fmt.Errorf("error while decoding the key id: %v", err)
 		}
-		switch p.algorithm {
+
+		switch actualAlgo {
 		case jose.AlgA256GCM:
 			logrus.Tracef("p11:Decrypt case %s", jose.AlgA256GCM)
+
+			// get kek by CKA_ID
+			var kek *crypto11.SecretKey
+
+			// Since the DecryptRequest comes from kubernetes, the only information k8s has is the keyId via the StatusResponse
+			if kek, err = actualCtx.FindKey(reqKekKeyIdByteA, nil); nil != err {
+				logrus.WithError(err).WithField("DecryptRequest.KeyId", req.GetKeyId()).Error("error while finding key by CKA_ID")
+				return nil, err
+			}
+
 			var aek gose.AeadEncryptionKey
 			if aek, err = p.makeAeadKey(rng, kek); err != nil {
-				return
+				logrus.WithError(err).Error("error while creating aead key")
+				return nil, err
 			}
 			decryptor = gose.NewJweDirectDecryptorAeadImpl([]gose.AeadEncryptionKey{aek})
 
-			if out, aad, err = decryptor.Decrypt(string(req.Cipher)); err != nil {
-				return
+			if out, aad, err = decryptor.Decrypt(string(req.GetCiphertext())); err != nil {
+				logrus.WithError(err).Error("error during decryption")
+				return nil, err
 			}
 			if nil != aad {
 				// AAD should be nil - if not, needs to be changed in tandem with /Encrypt
 				err = fmt.Errorf("bad AAD")
-				return
+				logrus.WithError(err).Error("error during decryption AAD should be nil")
+				return nil, err
 			}
 		case jose.AlgA256CBC:
 			logrus.Tracef("p11:Decrypt case %s", jose.AlgA256CBC)
+			// get kek by id
+			var kek *crypto11.SecretKey
+			if kek, err = actualCtx.FindKey(reqKekKeyIdByteA, nil); nil != err {
+				logrus.WithError(err).Error("error finding key by ID")
+				return nil, err
+			}
+
 			// for decryption, we have to retrieve the iv from the jwe
 			var iv []byte
 			if iv, err = getIVFromDecryptRequest(req); err != nil {
@@ -436,61 +689,68 @@ func (p *P11) Decrypt(ctx context.Context, req *k8s.DecryptRequest) (resp *k8s.D
 				return nil, fmt.Errorf("error initializing block cipher: %v", err)
 			}
 
-			cbcKey := gose.NewAesCbcCryptor(blockMode, string(p.kid), jose.AlgA256CBC)
+			cbcKey := gose.NewAesCbcCryptor(blockMode, req.GetKeyId(), jose.AlgA256CBC)
 			// Initialize the hmac key for authentication
 			var hmacp11Key *crypto11.SecretKey
-			if hmacp11Key, err = p.ctx.FindKey(nil, []byte(p.k8sHmacKeyLabel)); err != nil {
-				return nil, fmt.Errorf("error getting hmac key from HSM with label '%s': %v", p.k8sHmacKeyLabel, err)
+			if hmacp11Key, err = actualCtx.FindKey(actualHmacCkaId, []byte(actualHmacCkaLabel)); err != nil {
+				return nil, fmt.Errorf("error getting hmac key from HSM with label '%s' or id '%s': %v", actualHmacCkaLabel, actualHmacCkaId, err)
 			}
 			var hash hash.Hash
 			if hash, err = hmacp11Key.NewHMAC(pkcs11.CKM_SHA256_HMAC, 0); err != nil {
-				return nil, fmt.Errorf("error initializing SHA26 with key '%s': %v", p.k8sHmacKeyLabel, err)
+				return nil, fmt.Errorf("error initializing SHA26 with key '%s': %v", actualHmacCkaLabel, err)
 			}
-			hmacKey := gose.NewHmacShaCryptor(p.k8sHmacKeyLabel, hash)
+			hmacKey := gose.NewHmacShaCryptor(actualHmacCkaLabel, hash)
 			// decryptor
 			decryptor = gose.NewJweDirectDecryptorBlock(cbcKey, hmacKey)
 			// !!! It is very important to finalize each PKCS11 operation
 			defer blockMode.Close()
 
-			if out, aad, err = decryptor.Decrypt(string(req.Cipher)); err != nil {
-				return
+			if out, aad, err = decryptor.Decrypt(string(req.GetCiphertext())); err != nil {
+				logrus.WithError(err).Tracef("error during decryption")
+				return nil, err
 			}
 			if nil != aad {
 				// AAD should be nil - if not, needs to be changed in tandem with /Encrypt
 				err = fmt.Errorf("bad AAD")
-				return
+				logrus.WithError(err).Error("error during decryption AAD should be nil")
+				return nil, err
 			}
 		case jose.AlgRSAOAEP:
 			logrus.Tracef("p11:Decrypt case %s", jose.AlgRSAOAEP)
+			logrus.Tracef("p11:Decrypt case %s", jose.AlgRSAOAEP)
 			// load pkcs11 context
 			var rsaKeyPair crypto11.SignerDecrypter
-			if rsaKeyPair, err = p.ctx.FindRSAKeyPair([]byte(req.KeyId), nil); err != nil {
-				panic(err)
+			if rsaKeyPair, err = actualCtx.FindRSAKeyPair(reqKekKeyIdByteA, nil); err != nil {
+				logrus.WithError(err).Errorf("error finding RSA key pair with id %X", reqKekKeyIdByteA)
+				return nil, fmt.Errorf("error finding RSA key pair with id %X: %v", reqKekKeyIdByteA, err)
 			}
+
 			var privKey *hsm.AsymmetricDecryptionKey
-			if privKey, err = hsm.NewAsymmetricDecryptionKey(p.ctx, rsaKeyPair, []byte(req.KeyId), nil); err != nil {
-				panic(err)
+			if privKey, err = hsm.NewAsymmetricDecryptionKey(p.ctx, rsaKeyPair, reqKekKeyIdByteA, nil); err != nil {
+				logrus.WithError(err).Errorf("error creating AsymmetricDecryptionKey with id %X: %v", reqKekKeyIdByteA, err)
+				return nil, fmt.Errorf("error creating AsymmetricDecryptionKey with id %X: %v", reqKekKeyIdByteA, err)
 			}
 			// create key store from private key
-			store, err := gose.NewAsymmetricDecryptionKeyStoreImpl(map[string]gose.AsymmetricDecryptionKey{req.KeyId: privKey})
+			var store gose.AsymmetricDecryptionKeyStore
+			if store, err = gose.NewAsymmetricDecryptionKeyStoreImpl(map[string]gose.AsymmetricDecryptionKey{req.GetKeyId(): privKey}); err != nil {
+				logrus.WithError(err).Errorf("error creating AsymmetricDecryptionKeyStore with id %X: %v", reqKekKeyIdByteA, err)
+				return nil, fmt.Errorf("error creating AsymmetricDecryptionKeyStore with id %X: %v", reqKekKeyIdByteA, err)
+			}
+
 			// create decryptor
 			decryptor := gose.NewJweRsaKeyEncryptionDecryptorImpl(store)
+
 			// decrypt
-			out, _, err = decryptor.Decrypt(string(req.Cipher), crypto.SHA256)
+			out, _, err = decryptor.Decrypt(string(req.GetCiphertext()), crypto.SHA256)
 			if err != nil {
-				panic(err)
+				logrus.WithError(err).Error("decryption failed")
+				return nil, err
 			}
 		default:
-			print("algorithm not supported")
+			logrus.Error("Decrypt: algorithm not supported")
 		}
-
 	}
-
-	resp = &k8s.DecryptResponse{
-		// no changes in v2
-		Plain: out,
-	}
-	return
+	return out, nil
 }
 
 // Encrypt
@@ -509,47 +769,66 @@ func (p *P11) Decrypt(ctx context.Context, req *k8s.DecryptRequest) (resp *k8s.D
 //     // UID is a unique identifier for the request.
 //     // NOT	SURE IF IT IS NECESSARY FOR US
 //     Uid string
-func (p *P11) Encrypt(ctx context.Context, req *k8s.EncryptRequest) (resp *k8s.EncryptResponse, err error) {
+func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *k8skmsv2.EncryptResponse, err error) {
 	var encryptor gose.JweEncryptor
-	var out string
+	var out string // buffer for the EncryptResponse.Ciphertext
 
-	// req.KeyId populated by interceptor
-	if encryptor = p.encryptors[req.KeyId]; encryptor == nil {
+	// p.kid is initialized by NewP11
+	if encryptor = p.encryptors[p.GetKekKeyIdString()]; encryptor == nil {
 		// Select algorithm
 		switch p.algorithm {
 		case jose.AlgA256GCM:
 			logrus.Tracef("p11:Encrypt case %s", jose.AlgA256GCM)
+			logrus.Tracef("p11:Encrypt case %s", jose.AlgA256GCM)
 			// Find the KEK in the KMS
 			var kek *crypto11.SecretKey
-			if kek, err = p.ctx.FindKey([]byte(req.KeyId), nil); nil != err {
+			if kek, err = p.ctx.FindKey(p.kekCkaId, p.GetKekCkaLabelByteA()); nil != err {
+				logrus.WithError(err).WithFields(logrus.Fields{
+					"algorithm": jose.AlgA256GCM,
+					"label":     p.kekCkaLabel,
+					"keyId":     p.GetKekKeyIdString(),
+				}).Errorf("Encrypt: cannot find a symmetric key")
 				return
 			}
+
 			// Random source from the HSM (pkcs11 context)
 			var rng io.Reader
 			if rng, err = p.ctx.NewRandomReader(); err != nil {
-				logrus.Error(err)
+				logrus.WithError(err).Errorf("Encrypt: cannot get a random source from the HSM (pkcs11 context)")
 				return
 			}
 			var aek gose.AeadEncryptionKey
+			// TODO investigate why the aek result does not have a kid
 			if aek, err = p.makeAeadKey(rng, kek); err != nil {
+				logrus.WithError(err).Errorf("Encrypt: cannot create an aead key")
 				return
 			}
+
 			encryptor = gose.NewJweDirectEncryptorAead(aek, p.config.UseGCMIVFromHSM)
 			// output is the marshalled jwe
-			if out, err = encryptor.Encrypt(req.Plain, nil); err != nil {
+			if out, err = encryptor.Encrypt(req.GetPlaintext(), nil); err != nil {
+				logrus.WithError(err).Error("Encrypt: encryption failed")
 				return
 			}
+
 		case jose.AlgA256CBC:
+			logrus.Tracef("p11:Encrypt case %s", jose.AlgA256CBC)
 			logrus.Tracef("p11:Encrypt case %s", jose.AlgA256CBC)
 			// Find the KEK in the KMS
 			var kek *crypto11.SecretKey
-			if kek, err = p.ctx.FindKey([]byte(req.KeyId), nil); nil != err {
+			if kek, err = p.ctx.FindKey(p.kekCkaId, p.GetKekCkaLabelByteA()); nil != err {
+				logrus.WithError(err).WithFields(logrus.Fields{
+					"algorithm": p.algorithm,
+					"label":     p.kekCkaLabel,
+					"keyId":     p.GetKekKeyIdString(),
+				}).Errorf("Encrypt: cannot find a symmetric key")
 				return
 			}
+
 			// Random source from the HSM (pkcs11 context)
 			var rng io.Reader
 			if rng, err = p.ctx.NewRandomReader(); err != nil {
-				logrus.Error(err)
+				logrus.WithError(err).Errorf("Encrypt: cannot get a random source from the HSM (pkcs11 context)")
 				return
 			}
 			// generate the IV from the KMS, using the kek block size
@@ -562,26 +841,30 @@ func (p *P11) Encrypt(ctx context.Context, req *k8s.EncryptRequest) (resp *k8s.E
 			if blockMode, err = kek.NewCBCEncrypterCloser(iv); err != nil {
 				return nil, fmt.Errorf("error initializing block cipher: %v", err)
 			}
-			cbcKey := gose.NewAesCbcCryptor(blockMode, string(p.kid), jose.AlgA256CBC)
-			// Initialize the hmac key for authentication
+			cbcKey := gose.NewAesCbcCryptor(blockMode, p.GetKekKeyIdString(), p.algorithm)
+
+			// Initialize the hmac key for authentication TODO: consider allowing user to use a CKA_ID to get the HMAC key
 			var hmacp11Key *crypto11.SecretKey
-			if hmacp11Key, err = p.ctx.FindKey(nil, []byte(p.k8sHmacKeyLabel)); err != nil {
-				return nil, fmt.Errorf("error getting hmac key from HSM with label '%s': %v", p.k8sHmacKeyLabel, err)
+			if hmacp11Key, err = p.ctx.FindKey(p.hmacCkaId, []byte(p.hmacCkaLabel)); err != nil {
+				return nil, fmt.Errorf("error getting hmac key from HSM with label '%s' and id '%s': %v", p.hmacCkaLabel, p.GetHmacKeyIdString(), err)
 			}
 			var hash hash.Hash
 			if hash, err = hmacp11Key.NewHMAC(pkcs11.CKM_SHA256_HMAC, 0); err != nil {
-				return nil, fmt.Errorf("error initializing SHA256 with key '%s': %v", p.k8sHmacKeyLabel, err)
+				return nil, fmt.Errorf("error initializing CKM_SHA256_HMAC with key '%s': %v", p.hmacCkaLabel, err)
 			}
-			hmacKey := gose.NewHmacShaCryptor(p.k8sHmacKeyLabel, hash)
+			hmacKey := gose.NewHmacShaCryptor(p.hmacCkaLabel, hash)
 			// encryptor
 			encryptor = gose.NewJweDirectEncryptorBlock(cbcKey, hmacKey, iv)
 			// !!! It is very important to finalize each PKCS11 operation
 			defer blockMode.Close()
 			// output is the marshalled jwe
-			if out, err = encryptor.Encrypt(req.Plain, nil); err != nil {
+			if out, err = encryptor.Encrypt(req.GetPlaintext(), nil); err != nil {
+				logrus.WithError(err).Error("Encrypt: encryption failed")
 				return
 			}
+
 		case jose.AlgRSAOAEP:
+			logrus.Tracef("p11:Encrypt case %s", jose.AlgRSAOAEP)
 			logrus.Tracef("p11:Encrypt case %s", jose.AlgRSAOAEP)
 			//TODO generate a jwk with the kid of the public key. Ex :
 			//      {"kty":"EC",
@@ -602,8 +885,13 @@ func (p *P11) Encrypt(ctx context.Context, req *k8s.EncryptRequest) (resp *k8s.E
 			//         "kid":"2011-04-29"
 			//    }
 			var rsaKeyPair crypto11.SignerDecrypter
-			if rsaKeyPair, err = p.ctx.FindRSAKeyPair([]byte(req.KeyId), nil); err != nil {
-				panic(err)
+			if rsaKeyPair, err = p.ctx.FindRSAKeyPair(p.kekCkaId, p.GetKekCkaLabelByteA()); err != nil {
+				logrus.WithError(err).WithFields(logrus.Fields{
+					"algorithm": p.algorithm,
+					"label":     p.kekCkaLabel,
+					"keyId":     p.GetKekKeyIdString(),
+				}).Errorf("Encrypt: cannot find an rsa key pair with label %s", p.kekCkaLabel)
+				return nil, err
 			}
 
 			// ENCRYPTION
@@ -613,7 +901,8 @@ func (p *P11) Encrypt(ctx context.Context, req *k8s.EncryptRequest) (resp *k8s.E
 			// generate jwk from public key
 			var pubJwk jose.Jwk
 			if pubJwk, err = gose.JwkFromPublicKey(pubkey, []jose.KeyOps{jose.KeyOpsEncrypt}, nil); err != nil {
-				panic(err)
+				logrus.WithError(err).Error("Failed to create JWE RSA Key Encryption Encryptor")
+				return nil, err
 			}
 			// set JWK Algorithm for encryption
 			pubJwk.SetAlg(jose.AlgRSAOAEP)
@@ -621,420 +910,96 @@ func (p *P11) Encrypt(ctx context.Context, req *k8s.EncryptRequest) (resp *k8s.E
 			// encrypt plaintext
 			var rsaEncryptor *gose.JweRsaKeyEncryptionEncryptorImpl
 			if rsaEncryptor, err = gose.NewJweRsaKeyEncryptionEncryptorImpl(pubJwk, rand.Reader); err != nil {
-				panic(err)
+				logrus.WithError(err).Error("Failed to create JWE RSA Key Encryption Encryptor")
+				return nil, err
 			}
 			// output is the marshalled jwe
-			if out, err = rsaEncryptor.Encrypt(req.Plain, crypto.SHA256); err != nil {
+			if out, err = rsaEncryptor.Encrypt(req.GetPlaintext(), crypto.SHA256); err != nil {
+				logrus.WithError(err).Error("Encrypt: encryption failed")
 				return
 			}
 		default:
-			print("not supported")
+			logrus.Infof("Encrypt: not supported algorithm: %s", p.algorithm)
 		}
 	}
 
-	// TODO the response must fit the v2 Kubernetes api of kms provider. Add
-	//  Source : https://github.com/kubernetes/kms/blob/cf5ec9691661916fb7911e4545ed38d518f0430e/apis/v2/api.pb.go#L287
-	//  - What should be added is the key id used for encryption in the response body, like :
-	//	     KeyId string `protobuf:"bytes,2,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty"`
-	//  - However, 'Annotations' should not be pertinent because all relevant information are held in the jwe
-	//    But annotations could also be used instead of the JWE implementations
-	//	 	 Annotations          map[string][]byte
-	resp = &k8s.EncryptResponse{
+	resp = &k8skmsv2.EncryptResponse{
 		// the bytes array contains the bytes of the marshalled jwe
-		Cipher: []byte(out),
-		//keyID: ..
-		//Annotations: nil
+		Ciphertext: []byte(out),
+		KeyId:      p.GetKekKeyIdString(),
 	}
-	return
-}
-
-// GenerateDEK a 256 bit AES DEK Key , Wrapped via JWE with the PKCS11 base KEK
-func (p *P11) GenerateDEK(ctx context.Context, request *istio.GenerateDEKRequest) (resp *istio.GenerateDEKResponse, err error) {
-	if request == nil {
-		logrus.Error(err)
-		return nil, status.Error(codes.InvalidArgument, "no request sent")
-	}
-	var encryptor gose.JweEncryptor
-	if encryptor = p.encryptors[string(request.KekKid)]; encryptor == nil {
-		if encryptor, _, err = p.loadKEKbyID(p.ctx, []byte(request.KekKid), []byte(defaultKEKlabel)); err != nil {
-			return
-		}
-	}
-	var dekBlob []byte
-
-	if dekBlob, err = generateDEK(p.ctx, encryptor); err != nil {
-		logrus.Error(err)
-		return
-	}
-	resp = &istio.GenerateDEKResponse{
-		EncryptedDekBlob: dekBlob,
-	}
-	return
-}
-
-// GenerateKEK a 256 bit AES KEK Key that resides in the Pkcs11 device
-func (p *P11) GenerateKEK(ctx context.Context, request *istio.GenerateKEKRequest) (resp *istio.GenerateKEKResponse, err error) {
-	if request.KekKid == nil {
-		request.KekKid, err = p.genKekKid()
-		if err != nil {
-			logrus.Error(err)
-			return
-		}
-	}
-
-	_, err = generateKEK(p.ctx, request.KekKid, []byte(defaultKEKlabel), jose.AlgA256GCM)
-	if err != nil {
-		logrus.Error(err)
-		return
-	}
-	resp = &istio.GenerateKEKResponse{
-		KekKid: request.KekKid,
-	}
-	return
-
-}
-
-// GenerateSKey gens a 4096 RSA Key with the DEK that is protected by the KEK for later Unwrapping by the remote client in it's pod/container
-func (p *P11) GenerateSKey(ctx context.Context, request *istio.GenerateSKeyRequest) (resp *istio.GenerateSKeyResponse, err error) {
-	if request == nil {
-		return nil, status.Error(codes.InvalidArgument, "no request sent")
-	}
-	if request.EncryptedDekBlob == nil {
-		err = status.Error(codes.InvalidArgument, "EncryptedDekBlob required ")
-		return
-	}
-	var decryptor gose.JweDecryptor
-	if decryptor = p.decryptors[string(request.KekKid)]; decryptor == nil {
-		if _, decryptor, err = p.loadKEKbyID(p.ctx, request.KekKid, []byte(defaultKEKlabel)); err != nil {
-			return
-		}
-	}
-
-	var dekClear []byte
-	if dekClear, _, err = decryptor.Decrypt(string(request.EncryptedDekBlob)); err != nil {
-		return
-	}
-	var jwk jose.Jwk
-	if jwk, err = gose.LoadJwk(bytes.NewReader(dekClear), kekKeyOps); err != nil {
-		return
-	}
-
-	var aead gose.AeadEncryptionKey
-	if aead, err = gose.NewAesGcmCryptorFromJwk(jwk, kekKeyOps); err != nil {
-		return
-	}
-	dekEncryptor := gose.NewJweDirectEncryptorAead(aead, false)
-
-	var wrappedSKey []byte
-	if wrappedSKey, err = generateSKey(p.ctx, request, dekEncryptor); err != nil {
-		return
-	}
-	resp = &istio.GenerateSKeyResponse{}
-	resp.EncryptedSkeyBlob = []byte(wrappedSKey)
-	return
-}
-
-// ImportCACert inserts the Root CA cert chain
-func (p *P11) ImportCACert(ctx context.Context, request *istio.ImportCACertRequest) (resp *istio.ImportCACertResponse, err error) {
-	resp = &istio.ImportCACertResponse{
-		Success: false,
-	}
-	var pp *pem.Block
-	if pp, _ = pem.Decode(request.CaCertBlob); pp == nil {
-		err = fmt.Errorf("unable to decode provided cert blob")
-		return
-	}
-	var cert *x509.Certificate
-	if cert, err = x509.ParseCertificate(pp.Bytes); err != nil {
-		return
-	}
-
-	// RF: setting p.kid to request.KekKid so we can recall the kid later for retrieving the cert
-	p.cid = request.CaId
-
-	// RF: Todo - are we using cert.subject.string or the default label here? If we use cert.subject.string we don't currently have any way of recalling this later on when using to verify
-	if err = p.ctx.ImportCertificateWithLabel(p.cid, []byte(cert.Subject.String()), cert); err != nil {
-		return
-	}
-	resp.Success = true
-
-	return
-}
-
-// LoadSKey unwraps the supplied sKey with the Wrapped sKey
-func (p *P11) LoadSKey(ctx context.Context, request *istio.LoadSKeyRequest) (resp *istio.LoadSKeyResponse, err error) {
-	if request == nil {
-		return nil, status.Error(codes.InvalidArgument, "no request sent")
-	}
-	var decryptor gose.JweDecryptor
-	if decryptor = p.decryptors[string(request.KekKid)]; decryptor == nil {
-		if _, decryptor, err = p.loadKEKbyID(p.ctx, request.KekKid, []byte(defaultKEKlabel)); err != nil {
-			return
-		}
-	}
-
-	// Decrypt and Load the DEK for usage...
-	var clearDEK []byte
-	if clearDEK, _, err = decryptor.Decrypt(string(request.EncryptedDekBlob)); err != nil {
-		return
-	}
-	var jwk jose.Jwk
-	if jwk, err = gose.LoadJwk(bytes.NewReader(clearDEK), kekKeyOps); err != nil {
-		return
-	}
-
-	var aead gose.AeadEncryptionKey
-	if aead, err = gose.NewAesGcmCryptorFromJwk(jwk, kekKeyOps); err != nil {
-		return
-	}
-	dekDecryptor := gose.NewJweDirectDecryptorAeadImpl([]gose.AeadEncryptionKey{aead})
-	resp = &istio.LoadSKeyResponse{
-		PlaintextSkey: nil,
-	}
-
-	// Return the clear sKey in PEM format or bust
-	if resp.PlaintextSkey, _, err = dekDecryptor.Decrypt(string(request.EncryptedSkeyBlob)); err != nil {
-		return
-	}
-
-	return
+	return resp, nil
 }
 
 func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 	switch req.(type) {
-	case *kms.VersionRequest:
+	case *k8skmsv2.StatusRequest:
 		{
-			logrus.Trace("UnaryInterceptor kms VersionRequest")
+			logrus.Trace("UnaryInterceptor kms v2 StatusRequest")
 		}
-		//TODO
-	case *k8s.EncryptRequest:
+	case *k8skmsv2.EncryptRequest:
 		{
-			logrus.Trace("UnaryInterceptor kms EncryptRequest")
-			if "" == (req).(*k8s.EncryptRequest).KeyId && "" == (req).(*k8s.EncryptRequest).KeyringId {
-				// Assume we're handling the original API and look up the ID of our default DEK
-				var a *crypto11.Attribute
-				kekKey, _ := s.ctx.FindKey(nil, []byte(s.k8sDefaultDekLabel))
-				// TODO if asymmetric key
-				if kekKey == nil {
-					var kekPair crypto11.SignerDecrypter
-					if kekPair, err = s.ctx.FindRSAKeyPair(nil, []byte(s.k8sDefaultDekLabel)); err != nil {
-						return
-					}
-					if a, err = s.ctx.GetAttribute(kekPair, crypto11.CkaId); nil != err {
-						return
-					}
-				} else {
-					if a, err = s.ctx.GetAttribute(kekKey, crypto11.CkaId); nil != err {
-						return
-					}
-				}
-
-				(req).(*k8s.EncryptRequest).KeyId = string(a.Value)
-			}
+			logrus.Trace("UnaryInterceptor kms v2 EncryptRequest")
 		}
-	case *k8s.DecryptRequest:
+	case *k8skmsv2.DecryptRequest:
 		{
-			logrus.Trace("UnaryInterceptor kms DecryptRequest")
-			if "" == (req).(*k8s.DecryptRequest).KeyId && "" == (req).(*k8s.DecryptRequest).KeyringId {
-				// Assume we're handling the original API and look up the ID of our default DEK
-				var a *crypto11.Attribute
-				kekKey, _ := s.ctx.FindKey(nil, []byte(s.k8sDefaultDekLabel))
-				// TODO if asymmetric key
-				if kekKey == nil {
-					var kekPair crypto11.SignerDecrypter
-					if kekPair, err = s.ctx.FindRSAKeyPair(nil, []byte(s.k8sDefaultDekLabel)); err != nil {
-						return
-					}
-					if a, err = s.ctx.GetAttribute(kekPair, crypto11.CkaId); nil != err {
-						return
-					}
-				} else {
-					if a, err = s.ctx.GetAttribute(kekKey, crypto11.CkaId); nil != err {
-						return
-					}
-				}
-
-				(req).(*k8s.DecryptRequest).KeyId = string(a.Value)
+			logrus.Trace("UnaryInterceptor kms v2 DecryptRequest")
+			if (req).(*k8skmsv2.DecryptRequest).GetKeyId() == "" {
+				logrus.Error("UnaryInterceptor: KeyId is empty in the DecryptRequest")
+				return nil, status.Errorf(codes.InvalidArgument, "UnaryInterceptor: KeyId is empty in the DecryptRequest")
 			}
 		}
 	default:
-		// TODO
 		{
 			logrus.Trace("UnaryInterceptor default")
 		}
 	}
 
 	resp, err = handler(ctx, req)
+	if err != nil {
+		logrus.Error(err)
+	}
 	return resp, err
 }
 
-// VerifyCertChain verifies a provided cert-chain (currently self-contained)
-func (p *P11) VerifyCertChain(ctx context.Context, request *istio.VerifyCertChainRequest) (resp *istio.VerifyCertChainResponse, err error) {
-	defer func() {
-		if err != nil {
-			logrus.Errorf("Error in VerifyCertChain: %v", err)
-		}
-	}()
-	if nil == request {
-		return nil, status.Error(codes.InvalidArgument, "no request sent")
-	}
+// Status returns the StatusResponse for the KMS plugin. There are two cases:
+// The returned StatusResponse contains the KeyID of the KEK (CKA_ID), the Healthz and the Version.
+//
+// Status() method comes from the KeyManagementServiceClient interface from "k8s.io/kms/apis/v2"
+// See https://pkg.go.dev/k8s.io/kms@v0.31.3/apis/v2#KeyManagementServiceClient
+// Also check the content of a StatusResponse
+// See https://pkg.go.dev/k8s.io/kms@v0.31.3/apis/v2#StatusResponse
+func (p *P11) Status(ctx context.Context, request *k8skmsv2.StatusRequest) (statusResponse *k8skmsv2.StatusResponse, err error) {
+	logrus.Trace("p11 Status: entering method")
 
-	if nil == request.Certificates {
-		err = fmt.Errorf("no certificates provided")
+	// NewP11 should populate both KEK ID (CKA_ID) and Key label (CKA_LABEL), but check the content just in case.
+	if p.kekCkaId == nil {
+		err = errors.New("KEK ID is nil")
+		logrus.WithError(err).Error("p11 Status: error due to missing KEK ID")
 		return
 	}
 
-	var parsedTargetCert *x509.Certificate
-
-	/*
-		Regardless of the length of the supplied chain, we need to try and turn this into a valid chain, with the head of
-		the chain being something we pull from the HSM
-		The length of the chain must be at least 2 when we're done
-	*/
-
-	var retrievedRootCert *x509.Certificate
-
-	var verifyOpts = x509.VerifyOptions{
-		Roots:         x509.NewCertPool(),
-		Intermediates: x509.NewCertPool(),
-	}
-
-	if nil == p.cid {
-		err = fmt.Errorf("no loaded CA cert for verification")
+	if len(p.kekCkaId) == 0 {
+		err = errors.New("KEK ID is empty")
+		logrus.WithError(err).Error("p11 Status: error due to missing KEK ID")
 		return
 	}
 
-	if 0 != len(request.Certificates) {
-		parsedTargetCert, err = x509.ParseCertificate(request.Certificates[len(request.Certificates)-1])
-		if nil != err {
-			return
-		}
-	} else {
-		err = fmt.Errorf("no certificates supplied")
-		return
+	statusResponse = &k8skmsv2.StatusResponse{
+		Version: "v2",
+		Healthz: "ok",
+		KeyId:   p.GetKekKeyIdString(),
 	}
 
-	switch len(request.Certificates) {
-	case 1:
-		// Try to find a workable CA cert in the HSM
-		if retrievedRootCert, err = p.ctx.FindCertificate(p.cid, nil, nil); nil != err {
-			return
-		}
-		verifyOpts.Roots.AddCert(retrievedRootCert)
-	default:
-		{
-
-			/*
-			   We try to verify the chain as supplied - if this verifies we then look at the returned chain root and see
-			   if matches our existing root cert
-			*/
-			var parsedFirstCert *x509.Certificate
-
-			if parsedFirstCert, err = x509.ParseCertificate(request.Certificates[0]); nil != err {
-				// TODO - RF: unify
-				// try PEM instead
-				var pemFirstCertBlock *pem.Block
-				pemFirstCertBlock, _ = pem.Decode(request.Certificates[0])
-				parsedFirstCert, err = x509.ParseCertificate(pemFirstCertBlock.Bytes)
-				if nil != err {
-					return
-				}
-			}
-
-			var preliminaryVerifyOpts = x509.VerifyOptions{
-				Roots:         x509.NewCertPool(),
-				Intermediates: x509.NewCertPool(),
-			}
-			preliminaryVerifyOpts.Roots.AddCert(parsedFirstCert)
-
-			// And add any supplied intermediate certs
-			for i := 1; i < len(request.Certificates)-1; i++ {
-
-				var parsedAdditionalIntermediateCert *x509.Certificate
-				if parsedAdditionalIntermediateCert, err = x509.ParseCertificate(request.Certificates[i]); nil != err {
-					logrus.Errorf("failed to parse additional intermediate certificate")
-					return
-				}
-				preliminaryVerifyOpts.Intermediates.AddCert(parsedAdditionalIntermediateCert)
-			}
-
-			var parsedChains [][]*x509.Certificate
-			if parsedChains, err = parsedTargetCert.Verify(preliminaryVerifyOpts); nil != err {
-				logrus.Errorf("supplied chain does not verify")
-				return
-			} else {
-
-				/*
-					Here we examine the verified chains, as yet ignoring our CA certs.
-					If the verified chain root matches our CA cert, all is good
-
-					If not, we treat it as an intermediate cert and proceed to a verification which takes this into account
-
-					For now, we should only have a single chain, so crash out if there's more than one
-				*/
-				if 1 != len(parsedChains) {
-					err = fmt.Errorf("unhandled: multiple verification chains")
-					return
-				}
-
-				// Then compare the supplied CA cert against the one currently in the HSM to ensure they're the same
-				if retrievedRootCert, err = p.ctx.FindCertificate(p.cid, nil, nil); nil != err {
-					return
-				}
-
-				/*
-					Here, if the preliminary verification root matches our HSM-stored root, we add to verifyOpts.Roots
-					Else, we haven't seen this before, so add to verifyOpts.Intermediates
-				*/
-				if !retrievedRootCert.Equal(parsedChains[0][len(parsedChains[0])-1]) {
-					verifyOpts.Intermediates.AddCert(parsedChains[0][len(parsedChains[0])-1])
-					// And add our HSM-sourced CA cert as a root
-					verifyOpts.Roots.AddCert(retrievedRootCert)
-				} else {
-					verifyOpts.Roots.AddCert(parsedChains[0][len(parsedChains[0])-1])
-				}
-
-			}
-
-			/*
-				And add any more possible intermediates (these are treated as being any certificates which are not the
-				first or the last)
-			*/
-			for i := 1; i < len(request.Certificates)-1; i++ {
-
-				var parsedAdditionalIntermediateCert *x509.Certificate
-				if parsedAdditionalIntermediateCert, err = x509.ParseCertificate(request.Certificates[i]); nil != err {
-					logrus.Errorf("failed to parse additional intermediate certificate")
-					return
-				}
-				verifyOpts.Intermediates.AddCert(parsedAdditionalIntermediateCert)
-			}
-
-		}
-	}
-
-	resp = &istio.VerifyCertChainResponse{}
-
-	_, verifyErr := parsedTargetCert.Verify(verifyOpts)
-	if nil != verifyErr {
-		err = verifyErr
-	} else {
-		resp.SuccessfulVerification = true
-	}
-
-	return
-
+	logrus.WithFields(logrus.Fields{
+		"Version": statusResponse.Version,
+		"Healthz": statusResponse.Healthz,
+		"KeyId":   statusResponse.KeyId,
+	}).Debug("StatusResponse")
+	return statusResponse, nil
 }
 
-func (p *P11) Version(ctx context.Context, request *kms.VersionRequest) (versionResponse *kms.VersionResponse, err error) {
-	versionResponse = &kms.VersionResponse{
-		Version:        "v1beta1",
-		RuntimeName:    "Thales k8s KMS plugin",
-		RuntimeVersion: "v0.5.0",
-	}
-	return
-}
-
+// TODO: decide if this Istio related method should be separated from the KMS v2 plugin
 func (p *P11) genKekKid() (kid []byte, err error) {
 	var u uuid.UUID
 	u, err = uuid.NewRandom()
@@ -1051,4 +1016,116 @@ func (p *P11) genKekKid() (kid []byte, err error) {
 type keyGenerationParameters struct {
 	size   int
 	cipher *crypto11.SymmetricCipher
+}
+
+// FindCkaAttrByIdOrLabel find a CKA attribute like CKA_ID or CKA_LABEL by id or by label.
+func FindCkaAttrByIdOrLabel(ctx *crypto11.Context, algorithm jose.Alg, ckaAttr crypto11.AttributeType, id, label []byte) ([]byte, error) {
+	var outBuf []byte // output buffers
+
+	if ( // find ID by label
+	(len(id) == 0) &&
+		(label != nil || len(label) > 0) &&
+		(ckaAttr == crypto11.CkaId)) ||
+		( // find label by ID
+		(id != nil || len(id) > 0) &&
+			(len(label) == 0) &&
+			(ckaAttr == crypto11.CkaLabel)) {
+
+		var err error
+		switch algorithm {
+		case jose.AlgA256GCM, jose.AlgA256CBC:
+			// Find the key in the KMS for AES symmetric algorithms
+			var symKey *crypto11.SecretKey
+			if symKey, err = ctx.FindKey(id, label); nil != err {
+				logrus.WithError(err).Errorf("FindCkaAttrByIdOrLabel:cannot find a %s symmetric key with label %x or id %x", algorithm, label, id)
+				return nil, err
+			}
+
+			// Get the CKA_ID to obtain the KEK key id
+			var attr *crypto11.Attribute
+			if attr, err = ctx.GetAttribute(symKey, ckaAttr); err != nil {
+				logrus.WithError(err).Errorf("FindCkaAttrByIdOrLabel: cannot get the CKA_ attribute %v for algo %s and key with label %x or id %x", ckaAttr, algorithm, label, id)
+				return nil, err
+			} else {
+				outBuf = attr.Value
+			}
+		case jose.AlgRSAOAEP:
+			// Find the key in the KMS for RSA asymmetric algorithms
+			var rsaKeyPair crypto11.SignerDecrypter
+			if rsaKeyPair, err = ctx.FindRSAKeyPair(id, label); err != nil {
+				logrus.WithError(err).Errorf("FindCkaAttrByIdOrLabel: cannot find an rsa key pair with label %x or id %x", label, id)
+				return nil, err
+			}
+
+			// Get the key id by key label
+			var attr *crypto11.Attribute
+			if attr, err = ctx.GetAttribute(rsaKeyPair, ckaAttr); err != nil {
+				logrus.WithError(err).Errorf("FindCkaAttrByIdOrLabel: cannot get the CKA_ attribute %v for algo %s and with label %x or id %x", ckaAttr, algorithm, label, id)
+				return nil, err
+			} else {
+				outBuf = attr.Value
+			}
+		}
+	} else {
+		logrus.Errorf("FindCkaAttrByIdOrLabel: cannot find a key with parameters id%x and label%x", id, label)
+		return nil, fmt.Errorf("FindCkaAttrByIdOrLabel: cannot find a key with parameters id%x and label%x", id, label)
+	}
+
+	return outBuf, nil
+}
+
+// GetKeyIdAndLabel checks the CKA_ID and CKA_LABEL of a key from the P11 provider, and returns
+// both of the value from one or the other.
+// Indeed, Key ID and Key Label are mutually exclusive and at least one must be provided.
+// If the Key ID is provided only, this function retrieves the label of the key.
+// If the Key Label is provided, this function retrieves the ID of the key.
+// If the key Label is provided and the key is retrieved without a Key ID from the HSM, the process
+// exits with a fatal error. Indeed, the K8S KMS v2 protocol requires a Key ID (CKA_ID) for status
+// requests.
+func GetKeyIdAndLabel(p *P11, keyId string, keyLabel string) (resultKeyId []byte, resultKeyLabel string, err error) {
+	var resultKeyLabelBytes []byte
+	if keyId == "" && keyLabel != "" {
+		logrus.Tracef("NewP11: key id (CKA_ID) is empty. Find CKA_ID by CKA_LABEL %s", keyLabel)
+		resultKeyLabel = keyLabel
+
+		keyLabelBytes := []byte(keyLabel)
+		resultKeyId, err = FindCkaAttrByIdOrLabel(p.ctx, p.algorithm, crypto11.CkaId, nil, keyLabelBytes)
+		if err != nil {
+			logrus.WithError(err).Errorf("NewP11: failed to find key CKA_ID by CKA_LABEL '%s'", resultKeyLabel)
+			return nil, "", err
+		}
+
+		// panic error if the CKA_ID if the key, found using its label, is empty.
+		if len(resultKeyId) == 0 {
+			logrus.Fatalf("NewP11: Fatal error : key ID (CKA_ID) empty for key label (CKA_LABEL) '%s'. k8s-kms-plugin only supports keys with a CKA_ID in HSM", keyLabel)
+		}
+	} else if keyId != "" && keyLabel == "" {
+		// Case: KEK ID already provided by user at startup with flag --p11-key-id
+		// If k8sKekLabel is empty but kekkeyid is not nil, we can get the key label by the key id. But
+		// the only purpose of this is for logging messages, as the CKA_LABEL is not use in the KMS v2
+		// API calls.
+		// But we could use EncryptResponse.Annotations and DecryptRequest.Annotations to store
+		// the value of the key label CKA_LABEL.
+		logrus.Tracef("NewP11: key label (CKA_LABEL) is empty but key id (CKA_ID) is not empty. Find CKA_LABEL by CKA_ID %s", keyId)
+		resultKeyId, err = hex.DecodeString(keyId)
+		if err != nil {
+			return nil, "", fmt.Errorf("NewP11: cannot decode string CKA_ID into hex expected format '%s': %w", keyId, err)
+		}
+
+		if resultKeyLabelBytes, err = FindCkaAttrByIdOrLabel(p.ctx, p.algorithm, crypto11.CkaLabel, resultKeyId, nil); err != nil {
+			logrus.WithError(err).Error("NewP11: failed to find key CKA_LABEL by CKA_ID '%s'", resultKeyId)
+			return nil, "", err
+		}
+		resultKeyLabel = string(resultKeyLabelBytes)
+	} else if keyId == "" && keyLabel == "" {
+		errMsg := "NewP11: key ID (CKA_ID) and key label (CKA_LABEL) are both empty, please provide one of them"
+		logrus.WithError(err).Errorf(errMsg)
+		return nil, "", fmt.Errorf(errMsg)
+	} else {
+		errMsg := "NewP11: both key ID (CKA_ID) and key label (CKA_LABEL) are provided, please provide only one"
+		logrus.WithError(err).Errorf(errMsg)
+		return nil, "", fmt.Errorf(errMsg)
+	}
+
+	return
 }

@@ -1,0 +1,116 @@
+@startuml "Kubernetes first startup & KMS v2"
+
+'=============================================================================='
+'== PlantUML Appearance parameters ============================================'
+'=============================================================================='
+skinparam shadowing false
+'skinparam backgroundColor transparent
+
+' enable arrows on same level
+'!pragma teoz true
+
+skinparam legend {
+  FontSize 13
+  FontName DejaVu Sans Mono
+  BorderColor black
+  BackgroundColor white
+}
+
+skinparam sequence {
+ArrowColor Black
+ActorBorderColor Black
+LifeLineBorderColor Black
+LifeLineBackgroundColor #A9DCDF
+
+ParticipantBorderColor MidnightBlue
+ParticipantBackgroundColor #326CE5
+ParticipantFontName Impact
+ParticipantFontSize 17
+ParticipantFontColor white
+
+ActorBackgroundColor MidnightBlue
+ActorFontColor MidnightBlue
+ActorFontSize 17
+ActorFontName Aapex
+}
+
+skinparam ArrowFontName DejaVu Sans Mono
+
+
+'=============================================================================='
+'== Title ====================================================================='
+'=============================================================================='
+title
+    Kubernetes first startup & KMS v2
+    Kubernetes KMS API v2 - k8s.io/kms/apis/v2 & KMS Plugin for PKCS #11
+end title
+
+skinparam HeaderFontSize 14
+header <font color=black>Kubernetes KMS v2 & k8s-kms-plugin Figure %page% of %lastpage%</font>
+footer © 2025 Thales Group for Thales Open Source
+
+' Legend
+legend top left
+    Legend
+    CKA_ID (Byte array) PKCS #11 Key identifier for public/private key pairs
+    DEK    Data Encryption Key
+    JWE    JSON Web Encryption
+    KEK    Key Encryption Key
+    KMS    Key Management System
+    HSM    Hardware Security Module
+    TPM    Trusted Platform Module
+
+    PKCS #11 v3.0: https://docs.oasis-open.org/pkcs11/pkcs11-base/v3.0/pkcs11-base-v3.0.html
+    KMS v2: - https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/
+            - https://github.com/kubernetes/enhancements/tree/master/keps/sig-auth/3299-kms-v2-improvements
+end legend
+
+'=============================================================================='
+'== Sequence diagram begins ==================================================='
+'=============================================================================='
+
+    actor "k8s admin" as k8sa
+    actor "kms admin" as kmsa
+
+    box "kubernetes" #AliceBlue
+        participant "k8s apiserver" as k8sapisrv
+        participant "etcd" as etcd
+    end box
+
+
+    box "kms plugin & PKCS #11 TPM/HSM" #fff
+        participant "k8s-kms-plugin (server)" as kmsplg
+        participant "pkcs11-device" as p11
+    end box
+
+    group KMS v2 & Kubernetes first startup & Status heartbeet
+        alt Generate DEK seed at k8s startup
+
+            kmsa -> kmsplg : run k8s-kms-plugin serve with a KEK stored on the TPM or HSM
+            k8sa -> k8sapisrv : deploy/install/start \na fresh kubernetes cluster
+            k8sapisrv -> k8sapisrv : generate DEK seed (32 random bytes)\nat startup and cache it ; indefinite \nretention until kube-apiserver restart \nor KEK rotation
+
+            group KMS v2 first StatusRequest
+                k8sapisrv -> kmsplg : send StatusRequest
+                kmsplg -> p11 : validate remote KEK, e.g. \n get CKA_ID from TPM/HSM
+                p11 -> kmsplg : return KEK status, e.g. CKA_ID
+                kmsplg -> k8sapisrv : return StatusResponse \n {Version:"v2", Healthz: "ok", \n KeyId:<remote KEK ID string>}
+            end
+
+            group KMS v2 first Encrypts DEK Seed
+                k8sapisrv -> kmsplg : send EncryptRequest \n {Plaintext:<DEK seed as []byte>, Uid:<string>}
+                kmsplg -> p11 : Encrypt(Plaintext) \n encrypt DEK seed with remote KEK
+                p11 -> kmsplg : return encrypted DEK seed & KEK ID, \n e.g. CKA_ID
+                kmsplg -> k8sapisrv : return EncryptResponse \n {Ciphertext:<encrypted DEK seed as base64 encoded JWE []byte>,\n KeyId: <remote KEK ID as string>, \n Annotations: <map[string][]byte>}
+            end
+
+        end
+
+        loop every minute when plugin is healthy or every 10 seconds when the plugin is not healthy
+            k8sapisrv -> kmsplg : send StatusRequest
+            kmsplg -> p11 : validate remote KEK, e.g. \n get CKA_ID from TPM/HSM
+            p11 -> kmsplg : return KEK status, e.g. CKA_ID
+            kmsplg -> k8sapisrv : return StatusResponse \n {Version:"v2", Healthz: "ok", \n KeyId:<remote KEK ID string>}
+        end
+    end
+@enduml

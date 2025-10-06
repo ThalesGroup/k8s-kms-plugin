@@ -1,0 +1,123 @@
+@startuml "Kubernetes KMS v2 Key Rotation"
+
+'=============================================================================='
+'== PlantUML Appearance parameters ============================================'
+'=============================================================================='
+skinparam shadowing false
+'skinparam backgroundColor transparent
+
+' enable arrows on same level
+'!pragma teoz true
+
+skinparam legend {
+  FontSize 13
+  FontName DejaVu Sans Mono
+  BorderColor black
+  BackgroundColor white
+}
+
+skinparam sequence {
+ArrowColor Black
+ActorBorderColor Black
+LifeLineBorderColor Black
+LifeLineBackgroundColor #A9DCDF
+
+ParticipantBorderColor MidnightBlue
+ParticipantBackgroundColor #326CE5
+ParticipantFontName Impact
+ParticipantFontSize 17
+ParticipantFontColor white
+
+ActorBackgroundColor MidnightBlue
+ActorFontColor MidnightBlue
+ActorFontSize 17
+ActorFontName Aapex
+}
+
+skinparam ArrowFontName DejaVu Sans Mono
+
+
+'=============================================================================='
+'== Title ====================================================================='
+'=============================================================================='
+title
+    KMS v2 Key Rotation
+    Kubernetes KMS API v2 - k8s.io/kms/apis/v2 & KMS Plugin for PKCS #11
+end title
+
+skinparam HeaderFontSize 14
+header <font color=black>Kubernetes KMS v2 & k8s-kms-plugin Figure %page% of %lastpage%</font>
+footer © 2025 Thales Group for Thales Open Source
+
+' Legend
+legend top left
+    Legend
+    CKA_ID (Byte array) PKCS #11 Key identifier for public/private key pairs
+    DEK    Data Encryption Key
+    JWE    JSON Web Encryption
+    KEK    Key Encryption Key
+    KMS    Key Management System
+    HSM    Hardware Security Module
+    TPM    Trusted Platform Module
+    
+    PKCS #11 v3.0: https://docs.oasis-open.org/pkcs11/pkcs11-base/v3.0/pkcs11-base-v3.0.html
+    KMS v2: - https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/
+            - https://github.com/kubernetes/enhancements/tree/master/keps/sig-auth/3299-kms-v2-improvements
+end legend
+
+'=============================================================================='
+'== Sequence diagram begins ==================================================='
+'=============================================================================='
+
+    actor "k8s admin" as k8sa
+    actor "kms admin" as kmsa
+
+    box "kubernetes" #AliceBlue
+        participant "k8s apiserver" as k8sapisrv
+        participant "etcd" as etcd
+    end box
+
+
+    box "kms plugin & PKCS #11 TPM/HSM" #fff
+        participant "k8s-kms-plugin (server)" as kmsplg
+        participant "pkcs11-device" as p11
+    end box
+
+    group KMS v2 Key rotation
+        alt remote KEK rotation detected from last StatusResponse (KeyId changed), rotate DEK seed
+            kmsa -> kmsplg : run k8s-kms-plugin key rotation with a new active KEK and keep old KEK available to \ndecrypt previously encrypted data and reencrypt with new KEK
+
+            group New active Key ID recieved thanks to Status
+                k8sapisrv -> kmsplg : send StatusRequest
+                kmsplg -> p11 : validate remote KEK, e.g. \n get CKA_ID from TPM/HSM
+                p11 -> kmsplg : return new KEK status, e.g. new CKA_ID
+                kmsplg -> k8sapisrv : return StatusResponse \n {Version:"v2", Healthz: "ok", \n KeyId:<new remote KEK ID string>}
+            end
+
+            k8sapisrv -> k8sapisrv : generate a new DEK seed (32 random bytes)\nat startup and cache it ; indefinite \nretention until kube-apiserver restart \nor KEK rotation
+
+            group KMS v2 encrypt new DEK Seed
+                k8sapisrv -> kmsplg : send EncryptRequest \n {Plaintext:<new DEK seed as base64 encoded JWE []byte>, Uid:<string>}
+                kmsplg -> p11 : Encrypt(Plaintext) \n encrypt new DEK seed with new remote KEK
+                p11 -> kmsplg : return new encrypted DEK seed & new KEK ID \n must not re-use old key_ids
+                kmsplg -> k8sapisrv : return EncryptResponse \n {Ciphertext:<new encrypted DEK seed as []byte>,\n KeyId: <new remote KEK ID as string>, \n Annotations:... }
+            end
+          
+            note over k8sapisrv, etcd : Data encrypted with the old KEK is marked stale by k8s. \nNew active DEK can Encrypt and Decrypt, whereas \nold DEK can only Decrypt.
+            note over k8sapisrv, kmsplg : New active KEK can Encrypt and Decrypt, whereas old KEK can only Decrypt.
+        end
+
+        Loop For all encrypted objects with the old DEK, reencrypt with new DEK key
+            note over k8sa, etcd : One way of triggering a reencryption with the new active DEK is to trigger an empty \n (no modification) kubectl patch secret command.
+
+            k8sa -> k8sapisrv : kubectl patch all encrypted \netcd objects (like secrets) \nto trigger reencryption
+            k8sapisrv -> etcd : Get an encrypted object.
+            etcd -> k8sapisrv :
+            k8sapisrv -> k8sapisrv : Decrypt with old DEK.
+            k8sapisrv -> k8sa : Decrypted object
+            k8sa -> k8sapisrv : Patched object
+            k8sapisrv -> k8sapisrv : Encrypt with new active DEK.
+            k8sapisrv -> etcd : Store encrypted object
+        end
+    end
+@enduml

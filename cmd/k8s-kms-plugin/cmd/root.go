@@ -11,6 +11,7 @@ package cmd
 
 import (
 	"fmt"
+	"time"
 
 	filename "github.com/keepeye/logrus-filename"
 	"github.com/sirupsen/logrus"
@@ -44,16 +45,21 @@ var vprFlgsRoot ViperFlagsRoot
 
 // cobra root CLI flags default value
 const (
-	defaultKekId = "a37807cd-6d1a-4d75-813a-e120f30176f7"
-	defaultCaId  = "1c3d30d5-dfa8-4167-a9f9-2c768464181b"
+	defaultKekId = "a37807cd-6d1a-4d75-813a-e120f30176f7" // TODO: with KMS v2, consider not using this hardcoded value
+	defaultCaId  = "1c3d30d5-dfa8-4167-a9f9-2c768464181b" // TODO: with KMS v2, consider not using this hardcoded value
 )
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "k8s-kms-plugin",
 	Short: "Thales KMS Server for K8S",
-	Long: `Use k8s-kms-plugin to connect a kubernetes cluster to a PKCS11 TPM or HSM.
-k8s-kms-plugin prioritizes configuration sources as follows: CLI flags > environment variables > configuration files > default settings.`,
+	Long: `Use k8s-kms-plugin to connect a kubernetes cluster to a PKCS  #11 TPM or HSM
+using KMS v2.
+
+k8s-kms-plugin prioritizes configuration sources as follows: CLI flags > environment variables > configuration files > default settings.
+
+Project Page: https://github.com/ThalesGroup/k8s-kms-plugin
+`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		logrus.Warn("No subcommand provided. Please use one of the available subcommands. Showing help message.")
 		return cmd.Help()
@@ -126,12 +132,15 @@ func initConfig() {
 	switch vprFlgsRoot.LogFormat {
 	case "json":
 		logrus.SetFormatter(&logrus.JSONFormatter{
-			PrettyPrint: false,
+			PrettyPrint:      false,
+			DisableTimestamp: false,
+			TimestampFormat:  time.RFC3339,
 		})
 	case "text":
 		logrus.SetFormatter(&logrus.TextFormatter{
 			ForceColors:      true,
-			DisableTimestamp: true,
+			DisableTimestamp: false,
+			TimestampFormat:  time.DateTime,
 		})
 	default:
 		logrus.WithError(fmt.Errorf("logrus unknown output format")).Error("unknown log format")
