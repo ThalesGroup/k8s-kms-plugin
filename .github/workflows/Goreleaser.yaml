@@ -9,7 +9,6 @@ on:
       - "*"
       
 jobs:
-
     goreleaser:
       runs-on: ubuntu-latest
       env: 
@@ -29,7 +28,6 @@ jobs:
           id : publish-artifacts
           uses: ./.github/actions/publish-release
           with:
-            go-version: 1.24.5
             github_token : ${{ secrets.GITHUB_TOKEN }}
             registry: ghcr.io
             registry_username: ${{ github.actor }}
@@ -74,11 +72,10 @@ jobs:
           - name: Checkout
             uses: actions/checkout@v5
             with:
-                  fetch-depth: 0      
+              fetch-depth: 0      
           - name: Verify provenance attestations
             id : slsa-verifier
             uses: ./.github/actions/verify-attestations
             with:
-              go-version: 1.24.5
               github_token : ${{ secrets.GITHUB_TOKEN }}
               image: ${{needs.goreleaser.outputs.image}}@${{needs.goreleaser.outputs.digest}} 

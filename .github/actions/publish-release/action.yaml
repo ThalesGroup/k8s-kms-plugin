@@ -34,11 +34,12 @@ outputs:
 runs: 
   using: composite
   steps:
-    # Install go with specific version
+    # Install go with specific version for go build
+    - uses: actions/checkout@v5
     - name: Set up Go
       uses: actions/setup-go@v6
       with:
-        go-version: ${{ inputs.go-version }} # same version than the one in the go.mod or in the .go-version
+        go-version-file: ${{ github.workspace }}/go.mod # same version than the one in the go.mod
      # Register to ghcr.io container Registry
     - name: 'Login to GitHub Container Registry'
       uses: docker/login-action@v3

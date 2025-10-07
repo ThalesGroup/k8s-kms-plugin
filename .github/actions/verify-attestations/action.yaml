@@ -23,11 +23,11 @@ inputs:
 runs: 
   using: composite
   steps:
-    # Install go with specific version
+    # Install go latest stable
     - name: Set up Go
       uses: actions/setup-go@v6
       with:
-        go-version: ${{ inputs.go-version }} # same version than the one in the go.mod or in the .go-version
+        go-version: 'stable'
 
     - shell: bash 
       name : Install dependencies
