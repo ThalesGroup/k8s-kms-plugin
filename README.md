@@ -527,12 +527,10 @@ They are signed by a tool named cosign using a keyless mode.
 It required an authentication by clicking in links present in logs.
 
 ![Screenshot of one example of logs containing three authentication links generating tokens](docs/images/cosign/AuthLinksCosign.png)
-![Screenshot of one example of logs containing three authentication links generating tokens](docs/images/cosign/AuthLinksCosign.png)
 
 Once you click on one, you can submit a verification code that will redirect you to three types of authentication. Then click on Github authentication.
 
- ![Screenshot of the interface for submitting a code](docs/images/cosign/CodeSubmit.png)
- ![Screenshot of the interface for submitting a code](docs/images/cosign/CodeSubmit.png)
+![Screenshot of the interface for submitting a code](docs/images/cosign/CodeSubmit.png)
 
 Do these actions for every authentication links and the signatures and the certificates will be generated with the artifacts in the release.
 
