@@ -717,7 +717,6 @@ func (p *P11) decryptWithContext(req *k8skmsv2.DecryptRequest, isRotation bool) 
 			}
 		case jose.AlgRSAOAEP:
 			logrus.Tracef("p11:Decrypt case %s", jose.AlgRSAOAEP)
-			logrus.Tracef("p11:Decrypt case %s", jose.AlgRSAOAEP)
 			// load pkcs11 context
 			var rsaKeyPair crypto11.SignerDecrypter
 			if rsaKeyPair, err = actualCtx.FindRSAKeyPair(reqKekKeyIdByteA, nil); err != nil {
@@ -779,7 +778,6 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 		switch p.algorithm {
 		case jose.AlgA256GCM:
 			logrus.Tracef("p11:Encrypt case %s", jose.AlgA256GCM)
-			logrus.Tracef("p11:Encrypt case %s", jose.AlgA256GCM)
 			// Find the KEK in the KMS
 			var kek *crypto11.SecretKey
 			if kek, err = p.ctx.FindKey(p.kekCkaId, p.GetKekCkaLabelByteA()); nil != err {
@@ -812,7 +810,6 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 			}
 
 		case jose.AlgA256CBC:
-			logrus.Tracef("p11:Encrypt case %s", jose.AlgA256CBC)
 			logrus.Tracef("p11:Encrypt case %s", jose.AlgA256CBC)
 			// Find the KEK in the KMS
 			var kek *crypto11.SecretKey
@@ -864,7 +861,6 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 			}
 
 		case jose.AlgRSAOAEP:
-			logrus.Tracef("p11:Encrypt case %s", jose.AlgRSAOAEP)
 			logrus.Tracef("p11:Encrypt case %s", jose.AlgRSAOAEP)
 			//TODO generate a jwk with the kid of the public key. Ex :
 			//      {"kty":"EC",
