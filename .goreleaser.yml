@@ -34,8 +34,18 @@ builds:
       - linux
     goarch:
       - amd64
+      - arm64
+      - riscv64
     ldflags:
       - "{{ .Env.LDFLAGS }}"
+    env:
+      - >-
+        {{- if eq .Os "linux" }}
+          {{- if eq .Arch "amd64"}}CC=gcc{{- end }}
+          {{- if eq .Arch "arm64"}}CC=aarch64-linux-gnu-gcc{{- end }}
+          {{- if eq .Arch "riscv64"}}CC=riscv64-linux-gnu-gcc{{- end }}
+        {{- end }}
+
 
 # Use ko-build to publish container image to a specific registry
 # It is possible to define platforms
