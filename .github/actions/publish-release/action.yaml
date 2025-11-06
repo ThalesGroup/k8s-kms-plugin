@@ -66,7 +66,8 @@ runs:
         curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
         curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.49.1
     
-    - name: Install cross-compilers for aarch64 and riscv64
+    - shell: bash
+      name: Install cross-compilers for aarch64 and riscv64
       run: |
         sudo apt-get update
         sudo apt-get install -y \
@@ -75,7 +76,8 @@ runs:
           libc6-dev-arm64-cross \
           libc6-dev-riscv64-cross
 
-    - name: Verify cross toolchains for aarch64 and riscv64
+    - shell: bash
+      name: Verify cross toolchains for aarch64 and riscv64
       run: |
         aarch64-linux-gnu-gcc --version
         riscv64-linux-gnu-gcc --version
