@@ -1,6 +1,6 @@
-name: Publish release
+name: Build Go & publish release
 
-description: Publish release, container image, SBOMS, signs artifacts. 
+description: Build Go app, publish release, container image, SBOMS, signs artifacts. 
 
 inputs:
   go-version:
@@ -61,10 +61,27 @@ runs:
         echo "ldflags= $(make get-ldflags)" >> "$GITHUB_OUTPUT"
     # Install other dependencies like scanners and go librairies
     - shell: bash 
-      name : Install dependencies
+      name : Install software composition analysis tools
       run : |
         curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
         curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.49.1
+    
+    - shell: bash
+      name: Install cross-compilers for aarch64 and riscv64
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          gcc-aarch64-linux-gnu \
+          gcc-riscv64-linux-gnu \
+          libc6-dev-arm64-cross \
+          libc6-dev-riscv64-cross
+
+    - shell: bash
+      name: Verify cross toolchains for aarch64 and riscv64
+      run: |
+        aarch64-linux-gnu-gcc --version
+        riscv64-linux-gnu-gcc --version
+    
     # Run command goreleaser release based on .goreleaser.yml
     # LDFLAGS are passed thanks to the steps.job_id.outputs.variable_name variable
     - name: Run GoReleaser
