@@ -39,8 +39,12 @@ TL;DR: For a quick start experience, try the `k8s-kms-plugin` with software (vir
     - [3.2.5. Binary](#325-binary)
   - [3.3. Build `k8s-kms-plugin` locally from Source with `make`](#33-build-k8s-kms-plugin-locally-from-source-with-make)
     - [3.3.1. Build Requirements](#331-build-requirements)
-    - [3.3.2. Standard x86 Linux Build](#332-standard-x86-linux-build)
-    - [3.3.3. Debug x86 Linux Build](#333-debug-x86-linux-build)
+    - [3.3.2. Build `linux/amd64`](#332-build-linuxamd64)
+    - [3.3.3. Build `linux/amd64` Debug](#333-build-linuxamd64-debug)
+    - [3.3.4. Build `linux/aarch64`](#334-build-linuxaarch64)
+    - [3.3.5. Build `linux/aarch64` Debug](#335-build-linuxaarch64-debug)
+    - [3.3.6. Build `linux/riscv64`](#336-build-linuxriscv64)
+    - [3.3.7. Build `linux/riscv64` Debug](#337-build-linuxriscv64-debug)
   - [3.4. Build `k8s-kms-plugin` **locally** from Source with `goreleaser`](#34-build-k8s-kms-plugin-locally-from-source-with-goreleaser)
 - [4. Documentation, Usage \& User Guides 📚](#4-documentation-usage--user-guides-)
   - [4.1. CLI Help Messages](#41-cli-help-messages)
@@ -193,8 +197,22 @@ Until the packages are available on official repos and signed, you can install t
 
 Example on Wolfi OS:
 
+**amd64 x86_64**:
+
 ```bash
-apk add --allow-untrusted ./k8s-kms-plugin_SNAPSHOT-3239cd9_x86_64.apk
+apk add --allow-untrusted ./k8s-kms-plugin_0.8.0_test2-ga_x86_64.apk
+```
+
+**arm64 aarch64**:
+
+```bash
+apk add --allow-untrusted ./k8s-kms-plugin_0.8.0_test2-ga_aarch64.apk
+```
+
+**riscv64 riscv64**:
+
+```bash
+apk add --allow-untrusted ./k8s-kms-plugin_0.8.0_test2-ga_riscv64.apk
 ```
 
 #### 3.2.2. `archlinux` packages
@@ -203,9 +221,21 @@ See https://wiki.archlinux.org/title/Pacman#Additional_commands
 
 Command should look like this:
 
+**amd64 x86_64**:
+
 ```bash
-pacman -U ./k8s-kms-plugin-SNAPSHOT-3239cd9-1-x86_64.pkg.tar.zst
+pacman -U ./k8s-kms-plugin-0.8.0_test2-ga-1-x86_64.pkg.tar.zst
 ```
+
+**arm64 aarch64**:
+
+```bash
+pacman -U ./k8s-kms-plugin-0.8.0_test2-ga-1-aarch64.pkg.tar.zst
+```
+
+**riscv64 riscv64**:
+
+Building `riscv64` from `goreleaser` for `archilinux` is not supported yet.
 
 However, pacman needs a version that follows semantic versionning. Make sure you use the right package that uses semver, otherwise you get this error:
 
@@ -218,8 +248,10 @@ error: './k8s-kms-plugin-SNAPSHOT-3239cd9-1-x86_64.pkg.tar.zst': invalid or corr
 
 If you wish to install a snapshot version of `k8s-kms-plugin` (not following semantic versionning), you will need to use the following command `dpkg -i --force-all` to force the installation of the package. Otherwise, `dpkg` will fail with the following error:
 
+**amd64 x86_64**:
+
 ```bash
-$ sudo dpkg -i ./k8s-kms-plugin_SNAPSHOT-3239cd9_amd64.deb 
+$ sudo dpkg -i ./k8s-kms-plugin_0.8.0_test2-ga_amd64.deb
 ```
 ```
 dpkg: error processing archive ./k8s-kms-plugin_SNAPSHOT-3239cd9_amd64.deb (--install):
@@ -231,8 +263,10 @@ Errors were encountered while processing:
 
 "Force" will only raise a warning:
 
+**amd64 x86_64**:
+
 ```bash
-dpkg --force-all -i ./k8s-kms-plugin_SNAPSHOT-3239cd9_amd64.deb
+dpkg --force-all -i ./k8s-kms-plugin_0.8.0_test2-ga_amd64.deb
 ```
 
 ```
@@ -245,26 +279,68 @@ Unpacking k8s-kms-plugin (SNAPSHOT-3239cd9) ...
 Setting up k8s-kms-plugin (SNAPSHOT-3239cd9) ...
 ```
 
-#### 3.2.4. `rpm` RPM packages
+**arm64 aarch64**:
 
 ```bash
-dnf install ./k8s-kms-plugin-SNAPSHOT-3239cd9-1.x86_64.rpm
+dpkg --force-all -i ./k8s-kms-plugin_0.8.0_test2-ga_arm64.deb
+```
+
+**riscv64 riscv64**:
+
+```bash
+dpkg --force-all -i ./k8s-kms-plugin_0.8.0_test2-ga_riscv64.deb
+```
+
+#### 3.2.4. `rpm` RPM packages
+
+**amd64 x86_64**:
+
+```bash
+dnf install ./k8s-kms-plugin-0.8.0_test2_ga-1.x86_64.rpm
+```
+
+**arm64 aarch64**:
+
+```bash
+dnf install ./k8s-kms-plugin-0.8.0_test2_ga-1.aarch64.rpm
+```
+
+**riscv64 riscv64**:
+
+```bash
+dnf install ./k8s-kms-plugin-0.8.0_test2_ga-1.riscv64.rpm
 ```
 
 #### 3.2.5. Binary
 
 Move the `k8s-kms-plugin` binary to a relevant location under your `$PATH`, for example `/usr/local/bin/k8s-kms-plugin`.
 
+On Github Actions, the `k8s-kms-plugin` binary is available in the release page for amd64 x86_64, arm64 (aarch64) and riscv64.
+
 ### 3.3. Build `k8s-kms-plugin` locally from Source with `make`
 
 #### 3.3.1. Build Requirements
 
-You should have `make`, `git` and `go` installed. Review the content of the [`Makefile`](./Makefile) file for more details.
+On an amd64 x86 linux environment, you need to install:
+  * `make`
+  * `gcc`
+  * `git`
+  * `go`
+  * `gcc-aarch64-linux-gnu` (mandatory, needed if you wish to cross compile from amd64 x86 to aarch64 arm64)
+  * `gcc-riscv64-linux-gnu` (mandatory, needed if you wish to cross compile from amd64 x86 to riscv64)
+  * `libc6-dev-arm64-cross` (optional for now)
+  * `libc6-dev-riscv64-cross` (optional for now)
+
+> Note: Building from a macOS or Windows environment is not supported by this documentation.
+
+Review the content of the [`Makefile`](./Makefile) file for more details.
 
 **`CGO`** is required to build the plugin: **make sure you are using the right C Library** (glibc or musl) for your target
 environment. Do not build on musl libc if you intend to use the plugin on a non-musl environment (glibc).
 
-Build was tested with:
+Build was tested on an amd64 x86 linux environment with:
+
+**make**
 
 ```bash
 make --version
@@ -278,16 +354,48 @@ This is free software: you are free to change and redistribute it.
 There is NO WARRANTY, to the extent permitted by law.
 ```
 
-GoLang
+**gcc**
+
+```bash
+gcc --version
+```
+```
+gcc (Debian 12.2.0-14+deb12u1) 12.2.0
+Copyright (C) 2022 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+```
+
+```bash
+aarch64-linux-gnu-gcc --version
+```
+```
+aarch64-linux-gnu-gcc (Debian 12.2.0-14) 12.2.0
+Copyright (C) 2022 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+```
+
+```bash
+riscv64-linux-gnu-gcc --version
+```
+```
+riscv64-linux-gnu-gcc (Debian 12.2.0-13) 12.2.0
+Copyright (C) 2022 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+```
+
+**GoLang**
 
 ```bash
 go version
 ```
 ```
-go version go1.23.9 linux/amd64
+go version go1.24.5 linux/amd64
 ```
 
-Git
+**Git**
 
 ```bash
 git version
@@ -296,27 +404,87 @@ git version
 git version 2.50.1
 ```
 
-#### 3.3.2. Standard x86 Linux Build
+#### 3.3.2. Build `linux/amd64`
 
 Run
 
 ```bash
-make build
+make build-linux-amd64
 ```
 
 You should get a `k8s-kms-plugin` binary in the current directory.
 
-#### 3.3.3. Debug x86 Linux Build
+#### 3.3.3. Build `linux/amd64` Debug
 
 Run
 
 ```bash
-make build-debug
+make build-linux-amd64-debug
 ```
 
 You should get a `k8s-kms-plugin` binary in the current directory.
+
+#### 3.3.4. Build `linux/aarch64`
+
+```bash
+make build-linux-aarch64
+```
+
+#### 3.3.5. Build `linux/aarch64` Debug
+
+```bash
+make build-linux-aarch64-debug
+```
+
+#### 3.3.6. Build `linux/riscv64`
+
+```bash
+make build-linux-riscv64
+```
+
+#### 3.3.7. Build `linux/riscv64` Debug
+
+```bash
+make build-linux-riscv64-debug
+```
 
 ### 3.4. Build `k8s-kms-plugin` **locally** from Source with `goreleaser`
+
+> 🚧 **Note** 🚧: This section needs to be updated to fully support building for `linux/aarch64` and `linux/riscv64`.
+> Indeed, for now image `ghcr.io/thalesgroup/goreleaser-glibc-image:golang-1.24.5-bookworm` only supports `linux/arm64` x86. If you wish to build for `linux/aarch64` and `linux/riscv64`, you need to manually install `gcc-aarch64-linux-gnu` and `gcc-riscv64-linux-gnu` on this image.
+>
+> You can do so by using `ghcr.io/thalesgroup/goreleaser-glibc-image-base` base image and entering inside the container as follows:
+>
+> ```bash
+> podman run -it --rm \
+              -v $PWD:/pwd \
+              --workdir /pwd \
+              -e LDFLAGS=$LDFLAGS \
+              -e WORKSPACE=$WORKSPACE \
+              -e GITHUB_REPOSITORY_OWNER=$GITHUB_REPOSITORY_OWNER \
+              --platform "linux/amd64" \
+      ghcr.io/thalesgroup/goreleaser-glibc-image-base:golang-1.24.5-bookworm
+> ```
+> 
+> Then from inside the container, install the required packages:
+>
+> ```bash
+> apt-get update && \
+> apt-get install -y \
+>   gcc-aarch64-linux-gnu \
+>   gcc-riscv64-linux-gnu
+> ```
+>
+> Then from inside the container, you can run goreleaser as follows:
+>
+> ```bash
+> goreleaser release \
+>   --clean \
+>   --snapshot \
+>   --skip sign,publish,validate,ko,sbom
+> ```
+>
+> The objective is to add support for `linux/aarch64` and `linux/riscv64` to image `ghcr.io/thalesgroup/goreleaser-glibc-image*` in a future version.
 
 This section allows you to locally test the [`goreleaser`](https://github.com/goreleaser/goreleaser) Github Action Build
 Recipe. It generates the same artefacts that the one generated by the Github Action CICD pipeline, but locally.
