@@ -28,7 +28,7 @@ builds:
     binary: '{{ .ProjectName }}_linux_{{ .Arch }}_{{ .Version }}'
     no_unique_dist_dir: true
     main: ./cmd/{{ .ProjectName }}/main.go
-    
+
     mod_timestamp: '{{ .CommitTimestamp }}'
     goos:
       - linux
@@ -50,7 +50,7 @@ builds:
 # Use ko-build to publish container image to a specific registry
 # It is possible to define platforms
 kos:
-  - repositories: 
+  - repositories:
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY }}
     tags:
       - "{{.Tag}}"
@@ -78,9 +78,9 @@ nfpms:
     homepage: https://github.com/ThalesGroup/k8s-kms-plugin
     maintainer: Thales Open Source <oss@thalesgroup.com>
     description: |-
-      gRPC service that leverages a remote or local HSM/TPM to encrypt Kubernetes data at-rest with KMS v2. 
+      gRPC service that leverages a remote or local HSM/TPM to encrypt Kubernetes data at-rest with KMS v2.
     ids:
-      - k8s-kms-plugin # need to use the same id that the build id 
+      - k8s-kms-plugin # need to use the same id that the build id
     formats:
         - apk
         - deb
@@ -111,17 +111,16 @@ archives:
   - id: binary-uncompressed
     formats:
       - binary
-    name_template: "{{ .Binary }}" 
+    name_template: "{{ .Binary }}"
     allow_different_binary_count: true
   - id: binary-compressed-archives
     formats:
       - zip
       - tar.gz
-    name_template: "{{ .Binary }}" 
+    name_template: "{{ .Binary }}"
     allow_different_binary_count: true
 # create metadata file
 metadata:
-  
   mod_timestamp: "{{ .CommitTimestamp }}"
 
 
@@ -154,68 +153,68 @@ sboms:
       - "${artifact}.cyclonedx-vex.sbom"
     args: ["fs","--format","cyclonedx","--scanners","vuln","--output","$document","{{ .Env.WORKSPACE }}"]
 
-# Sign the artifacts
-# Use the command cosign in keyless mode to sign the different kind of artifacts: binary, checksum, package, sbom
-signs:
-  - id : '{{ .ProjectName }}-keyless'
-    cmd: cosign
-    env:
-      - COSIGN_EXPERIMENTAL=1
-    signature : "${artifact}-keyless.sig"
-    certificate: "${artifact}-keyless.pem"
-    args:
-      - sign-blob
-      - "--output-certificate=${certificate}"
-      - "--output-signature=${signature}"
-      - "-y"
-      - "${artifact}"   
-    artifacts: binary
-    output: true
-  - id : checksum-keyless
-    cmd: cosign
-    env:
-      - COSIGN_EXPERIMENTAL=1
-    signature : "${artifact}-keyless.sig"
-    certificate: "${artifact}-keyless.pem"
-    args:
-      - sign-blob
-      - "--output-certificate=${certificate}"
-      - "--output-signature=${signature}"
-      - "-y"
-      - "${artifact}"   
-    artifacts: checksum
-    output: true
-  - id : package-keyless
-    cmd: cosign
-    env:
-      - COSIGN_EXPERIMENTAL=1
-    signature : "${artifact}-keyless.sig"
-    certificate: "${artifact}-keyless.pem"
-    args:
-      - sign-blob
-      - "--output-certificate=${certificate}"
-      - "--output-signature=${signature}"
-      - "-y"
-      - "${artifact}" 
-    artifacts: package
-    output: true
-  - id : 'sbom-keyless'
-    cmd: cosign
-    env:
-      - COSIGN_EXPERIMENTAL=1
-    signature : "${artifact}-keyless.sig"
-    certificate: "${artifact}-keyless.pem"
-    args:
-      - sign-blob
-      - "--output-certificate=${certificate}"
-      - "--output-signature=${signature}"
-      - "-y"
-      - "${artifact}"
-    artifacts: sbom
-    output: true
-  
+# # Sign the artifacts
+# # Use the command cosign in keyless mode to sign the different kind of artifacts: binary, checksum, package, sbom
+# signs:
+#   - id : '{{ .ProjectName }}-keyless'
+#     cmd: cosign
+#     env:
+#       - COSIGN_EXPERIMENTAL=1
+#     signature : "${artifact}-keyless.sig"
+#     certificate: "${artifact}-keyless.pem"
+#     args:
+#       - sign-blob
+#       - "--output-certificate=${certificate}"
+#       - "--output-signature=${signature}"
+#       - "-y"
+#       - "${artifact}"
+#     artifacts: binary
+#     output: true
+#   - id : checksum-keyless
+#     cmd: cosign
+#     env:
+#       - COSIGN_EXPERIMENTAL=1
+#     signature : "${artifact}-keyless.sig"
+#     certificate: "${artifact}-keyless.pem"
+#     args:
+#       - sign-blob
+#       - "--output-certificate=${certificate}"
+#       - "--output-signature=${signature}"
+#       - "-y"
+#       - "${artifact}"
+#     artifacts: checksum
+#     output: true
+#   - id : package-keyless
+#     cmd: cosign
+#     env:
+#       - COSIGN_EXPERIMENTAL=1
+#     signature : "${artifact}-keyless.sig"
+#     certificate: "${artifact}-keyless.pem"
+#     args:
+#       - sign-blob
+#       - "--output-certificate=${certificate}"
+#       - "--output-signature=${signature}"
+#       - "-y"
+#       - "${artifact}"
+#     artifacts: package
+#     output: true
+#   - id : 'sbom-keyless'
+#     cmd: cosign
+#     env:
+#       - COSIGN_EXPERIMENTAL=1
+#     signature : "${artifact}-keyless.sig"
+#     certificate: "${artifact}-keyless.pem"
+#     args:
+#       - sign-blob
+#       - "--output-certificate=${certificate}"
+#       - "--output-signature=${signature}"
+#       - "-y"
+#       - "${artifact}"
+#     artifacts: sbom
+#     output: true
 
-# Create a release 
+
+# Create a release
 release:
   # draft: true # Used to publish a draft on github
   make_latest: true
