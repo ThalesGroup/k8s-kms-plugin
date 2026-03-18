@@ -6,7 +6,7 @@
 # https://opensource.org/licenses/MIT.
 .PHONY: all lint build coverage dev gen
 
-all: build-linux-amd64 build-linux-arm64 build-linux-riscv64
+all: build-linux-amd64 build-linux-arm64 build-linux-riscv64 build-linux-armv7
 
 #==============================================================================#
 # Project name
@@ -53,6 +53,7 @@ DIST_DIR := dist
 LINUX_AMD64_GCC := gcc
 LINUX_ARM64_GCC := aarch64-linux-gnu-gcc
 LINUX_RISCV64_GCC := riscv64-linux-gnu-gcc
+LINUX_ARMV7_GCC := arm-linux-gnueabihf-gcc
 
 #==============================================================================#
 # lint & SAST
@@ -87,6 +88,19 @@ build-linux-amd64-debug:
 		@echo "Makefile: Building $(PROJECT_NAME) for linux/amd64 with debug option"
 		@go version
 		CGO_ENABLED=$(CGO_ENABLED) GOOS=linux GOARCH=amd64 CC=$(LINUX_AMD64_CC) go build -gcflags="all=-N -l" -ldflags="$(GIT_INFO_LDFLAGS)" -o $(DIST_DIR)/$(PROJECT_NAME)_$(VERSION)_linux_amd64 cmd/k8s-kms-plugin/main.go
+		$(info use cmd : dlv --listen=:2345 --headless=true --api-version=2 --accept-multiclient exec k8s-kms-plugin)
+		$(info will listen to port 2345)
+
+build-linux-armv7:
+		@echo "Makefile: Building $(PROJECT_NAME) for linux/armv7"
+		@go version
+		CGO_ENABLED=$(CGO_ENABLED) GOOS=linux GOARCH=arm GOARM=7 CC=$(LINUX_ARMV7_GCC) go build -ldflags="$(GIT_INFO_LDFLAGS) -s -w" -o $(DIST_DIR)/$(PROJECT_NAME)_$(VERSION)_linux_armv7 cmd/k8s-kms-plugin/main.go
+
+# Optional: Add a debug version
+build-linux-armv7-debug:
+		@echo "Makefile: Building $(PROJECT_NAME) for linux/armv7 with debug option"
+		@go version
+		CGO_ENABLED=$(CGO_ENABLED) GOOS=linux GOARCH=arm GOARM=7 CC=$(LINUX_ARMV7_GCC) go build -gcflags="all=-N -l" -ldflags="$(GIT_INFO_LDFLAGS)" -o $(DIST_DIR)/$(PROJECT_NAME)_$(VERSION)_linux_armv7 cmd/k8s-kms-plugin/main.go
 		$(info use cmd : dlv --listen=:2345 --headless=true --api-version=2 --accept-multiclient exec k8s-kms-plugin)
 		$(info will listen to port 2345)
 
