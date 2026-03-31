@@ -1,6 +1,6 @@
 module github.com/ThalesGroup/k8s-kms-plugin
 
-go 1.24.5
+go 1.25.1
 
 require (
 	github.com/golang/protobuf v1.5.4
@@ -43,15 +43,16 @@ require (
 )
 
 require (
-	github.com/ThalesGroup/crypto11 v1.5.0
-	github.com/ThalesGroup/gose v0.11.0-rc
+	github.com/ThalesGroup/crypto11 v1.6.0
+	github.com/ThalesGroup/gose v0.12.0
 	github.com/hashicorp/go-version v1.7.0
 	k8s.io/kms v0.34.1
 )
 
 require (
-	github.com/mattn/go-runewidth v0.0.16 // indirect
-	github.com/rivo/uniseg v0.4.7 // indirect
+	github.com/clipperhouse/uax29/v2 v2.2.0 // indirect
+	github.com/mattn/go-runewidth v0.0.19 // indirect
+	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
