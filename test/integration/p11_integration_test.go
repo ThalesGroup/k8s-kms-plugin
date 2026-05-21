@@ -181,6 +181,7 @@ func makeTestCases(t testing.TB) (tests []testCase, td func(testing.TB)) {
 					encryptors: testEncryptor,
 					decryptors: testDecryptor,
 					createKey:  true,
+					algorithm:  providers.AlgAESGCM,
 				},
 				args: testCaseArgs{
 					ctx: context.Background(),
@@ -212,10 +213,10 @@ func TestP11_Encrypt(t *testing.T) {
 			p, err := providers.NewP11(
 				tt.fields.config,
 				tt.fields.createKey,
-				"", // kekkeyid
-				"", // k8sKekLabel
-				"", // hmacKeyLabel
-				"", // hmacCkaId
+				"",                          // kekkeyid (use label instead)
+				string(tt.fields.keyLabel),  // k8sKekLabel
+				"",                          // hmacKeyLabel
+				"",                          // hmacCkaId
 				tt.fields.algorithm,
 				false, // isKeyRotation
 				nil,   // oldConfig
@@ -243,8 +244,7 @@ func TestP11_Encrypt(t *testing.T) {
 			var gotClearResp *k8skmsv2.DecryptResponse
 			if gotClearResp, err = p.Decrypt(context.Background(), &k8skmsv2.DecryptRequest{
 				Ciphertext: gotResp.GetCiphertext(),
-				//Uid: "...", // TODO: handle this
-				KeyId: string(tt.fields.keyId),
+				KeyId:      gotResp.GetKeyId(),
 			}); err != nil {
 				t.Errorf("Unable to decrypt the payload... danger!!!")
 				return
@@ -371,9 +371,6 @@ func setupSoftHSMTestCase(t testing.TB) func(t testing.TB) {
 		t.Fatal(err)
 	}
 	var k crypto.Signer
-	if k, err = testCtx.FindKeyPair(testKid, []byte(defaultKEKlabel)); err != nil {
-		t.Fatal(err)
-	}
 	if k, err = rsa.GenerateKey(rng, 2048); err != nil {
 		t.Fatal(err)
 	}
