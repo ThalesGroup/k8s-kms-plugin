@@ -142,32 +142,41 @@ func initSoftHSMToken(modulePath string) func() {
 
 	slots, err := ctx.GetSlotList(false)
 	if err != nil || len(slots) == 0 {
-		ctx.Finalize(); ctx.Destroy()
+		ctx.Finalize()
+		ctx.Destroy()
 		panic(fmt.Sprintf("initSoftHSMToken: C_GetSlotList(false): %v (slots=%d)", err, len(slots)))
 	}
 
 	if err := ctx.InitToken(slots[0], e2eSoPin, e2eTokenLabel); err != nil {
-		ctx.Finalize(); ctx.Destroy()
+		ctx.Finalize()
+		ctx.Destroy()
 		panic("initSoftHSMToken: C_InitToken: " + err.Error())
 	}
 
 	slots, err = ctx.GetSlotList(true)
 	if err != nil || len(slots) == 0 {
-		ctx.Finalize(); ctx.Destroy()
+		ctx.Finalize()
+		ctx.Destroy()
 		panic(fmt.Sprintf("initSoftHSMToken: C_GetSlotList(true): %v (slots=%d)", err, len(slots)))
 	}
 
 	sh, err := ctx.OpenSession(slots[0], pkcs11.CKF_SERIAL_SESSION|pkcs11.CKF_RW_SESSION)
 	if err != nil {
-		ctx.Finalize(); ctx.Destroy()
+		ctx.Finalize()
+		ctx.Destroy()
 		panic("initSoftHSMToken: OpenSession: " + err.Error())
 	}
 	if err := ctx.Login(sh, pkcs11.CKU_SO, e2eSoPin); err != nil {
-		ctx.CloseSession(sh); ctx.Finalize(); ctx.Destroy()
+		ctx.CloseSession(sh)
+		ctx.Finalize()
+		ctx.Destroy()
 		panic("initSoftHSMToken: Login(SO): " + err.Error())
 	}
 	if err := ctx.InitPIN(sh, userPin); err != nil {
-		ctx.Logout(sh); ctx.CloseSession(sh); ctx.Finalize(); ctx.Destroy()
+		ctx.Logout(sh)
+		ctx.CloseSession(sh)
+		ctx.Finalize()
+		ctx.Destroy()
 		panic("initSoftHSMToken: C_InitPIN: " + err.Error())
 	}
 	ctx.Logout(sh)
