@@ -17,6 +17,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
+	"log/slog"
 	"reflect"
 
 	"github.com/ThalesGroup/crypto11"
@@ -25,8 +26,6 @@ import (
 	"github.com/ThalesGroup/k8s-kms-plugin/apis/istio/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-
-	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -173,7 +172,7 @@ func generateSKey(ctx *crypto11.Context, request *istio.GenerateSKeyRequest, dek
 // GenerateDEK a 256 bit AES DEK Key , Wrapped via JWE with the PKCS11 base KEK
 func (p *P11) GenerateDEK(ctx context.Context, request *istio.GenerateDEKRequest) (resp *istio.GenerateDEKResponse, err error) {
 	if request == nil {
-		logrus.Error(err)
+		slog.Error("GenerateDEK: no request sent")
 		return nil, status.Error(codes.InvalidArgument, "no request sent")
 	}
 	var encryptor gose.JweEncryptor
@@ -186,7 +185,7 @@ func (p *P11) GenerateDEK(ctx context.Context, request *istio.GenerateDEKRequest
 
 	// GenerateDEK from p11.go
 	if dekBlob, err = GenerateDEK(p.ctx, encryptor); err != nil {
-		logrus.Error(err)
+		slog.Error("GenerateDEK: failed", "error", err)
 		return
 	}
 	resp = &istio.GenerateDEKResponse{
@@ -200,7 +199,7 @@ func (p *P11) GenerateKEK(ctx context.Context, request *istio.GenerateKEKRequest
 	if request.KekKid == nil {
 		request.KekKid, err = p.genKekKid()
 		if err != nil {
-			logrus.Error(err)
+			slog.Error("GenerateKEK: failed to generate KEK kid", "error", err)
 			return
 		}
 	}
@@ -208,7 +207,7 @@ func (p *P11) GenerateKEK(ctx context.Context, request *istio.GenerateKEKRequest
 	// GenerateKEK from p11.go
 	_, err = GenerateKEK(p.ctx, request.KekKid, []byte(defaultKEKlabel), jose.AlgA256GCM)
 	if err != nil {
-		logrus.Error(err)
+		slog.Error("GenerateKEK: failed", "error", err)
 		return
 	}
 	resp = &istio.GenerateKEKResponse{
@@ -328,7 +327,7 @@ func (p *P11) LoadSKey(ctx context.Context, request *istio.LoadSKeyRequest) (res
 func (p *P11) VerifyCertChain(ctx context.Context, request *istio.VerifyCertChainRequest) (resp *istio.VerifyCertChainResponse, err error) {
 	defer func() {
 		if err != nil {
-			logrus.Errorf("Error in VerifyCertChain: %v", err)
+			slog.Error("Error in VerifyCertChain", "error", err)
 		}
 	}()
 	if nil == request {
@@ -408,7 +407,7 @@ func (p *P11) VerifyCertChain(ctx context.Context, request *istio.VerifyCertChai
 
 				var parsedAdditionalIntermediateCert *x509.Certificate
 				if parsedAdditionalIntermediateCert, err = x509.ParseCertificate(request.Certificates[i]); nil != err {
-					logrus.Errorf("failed to parse additional intermediate certificate")
+					slog.Error("failed to parse additional intermediate certificate", "error", err)
 					return
 				}
 				preliminaryVerifyOpts.Intermediates.AddCert(parsedAdditionalIntermediateCert)
@@ -416,7 +415,7 @@ func (p *P11) VerifyCertChain(ctx context.Context, request *istio.VerifyCertChai
 
 			var parsedChains [][]*x509.Certificate
 			if parsedChains, err = parsedTargetCert.Verify(preliminaryVerifyOpts); nil != err {
-				logrus.Errorf("supplied chain does not verify")
+				slog.Error("supplied chain does not verify", "error", err)
 				return
 			} else {
 
@@ -460,7 +459,7 @@ func (p *P11) VerifyCertChain(ctx context.Context, request *istio.VerifyCertChai
 
 				var parsedAdditionalIntermediateCert *x509.Certificate
 				if parsedAdditionalIntermediateCert, err = x509.ParseCertificate(request.Certificates[i]); nil != err {
-					logrus.Errorf("failed to parse additional intermediate certificate")
+					slog.Error("failed to parse additional intermediate certificate", "error", err)
 					return
 				}
 				verifyOpts.Intermediates.AddCert(parsedAdditionalIntermediateCert)

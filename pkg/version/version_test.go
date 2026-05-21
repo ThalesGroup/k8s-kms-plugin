@@ -11,10 +11,11 @@ package version
 
 import (
 	"encoding/json"
+	"io"
+	"log/slog"
 	"strings"
 	"testing"
 
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -337,6 +338,6 @@ func TestIsPopulated(t *testing.T) {
 }
 
 func init() {
-	// Disable logrus output for testing purposes
-	logrus.SetOutput(logrus.New().Writer())
+	// Discard slog output during tests
+	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
 }

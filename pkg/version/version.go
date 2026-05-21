@@ -14,7 +14,7 @@ import (
 	"fmt"
 
 	go_version "github.com/hashicorp/go-version"
-	"github.com/sirupsen/logrus"
+	"log/slog"
 	"gopkg.in/yaml.v2"
 )
 
@@ -66,7 +66,7 @@ func IsDirty(isDirtyStr string) (bool, error) {
 	case "false":
 		return false, nil
 	default:
-		logrus.WithField("GitDirtyStr", isDirtyStr).Warn("Unexpected Git dirty string, assuming clean")
+		slog.Warn("Unexpected Git dirty string, assuming clean", "GitDirtyStr", isDirtyStr)
 		return false, fmt.Errorf("invalid dirty information: %s", GitDirtyStr)
 	}
 }
@@ -88,17 +88,14 @@ func NewVersionData() (VersionData, error) {
 	isDirty, err := IsDirty(GitDirtyStr)
 	if err != nil {
 		// only do a warning, do not return an error
-		logrus.WithError(err).Warning("Failed to parse Git dirty status")
+		slog.Warn("Failed to parse Git dirty status", "error", err)
 	}
 	versionData.IsGitDirty = isDirty
 
 	// Check if RawGitDescribe is a valid semantic version or a commit hash
 	version, err := go_version.NewSemver(RawGitDescribe)
 	if err != nil {
-		logrus.WithFields(logrus.Fields{
-			"raw_git_describe": RawGitDescribe,
-			"error":            err,
-		}).Debug("Invalid semantic versioning, falling back to snapshot version")
+		slog.Debug("Invalid semantic versioning, falling back to snapshot version", "raw_git_describe", RawGitDescribe, "error", err)
 		return versionData, nil
 	}
 
@@ -150,30 +147,30 @@ func returnYamlVersion() ([]byte, error) {
 
 	yamlData, err := yaml.Marshal(versionDetails)
 	if err != nil {
-		logrus.WithError(err).Error("Failed to marshal YAML")
+		slog.Error("Failed to marshal YAML", "error", err)
 		return nil, err
 	}
 	return yamlData, nil
 }
 
-// LogrusOutputVersion logs the version details at server startup. For server logging.
-func LogrusOutputVersion() {
+// LogVersion logs the version details at server startup.
+func LogVersion() {
 	versionData, err := NewVersionData()
 	if err != nil {
-		logrus.WithError(err).Error("Failed to fetch version data")
+		slog.Error("Failed to fetch version data", "error", err)
 		return
 	}
 
-	logrus.Infof("k8s-kms-plugin version: %s", versionData.Version)
-	logrus.WithFields(logrus.Fields{
-		"build-date":       versionData.BuildDate,
-		"build-platform":   versionData.BuildPlatform,
-		"commit":           versionData.GitCommitIdLong,
-		"go-version":       versionData.GoVersion,
-		"raw-git-describe": versionData.Version,
-		"is-git-dirty":     versionData.IsGitDirty,
-		"short-commit":     versionData.GitCommitIdShort,
-	}).Debug("k8s-kms-plugin version details")
+	slog.Info(fmt.Sprintf("k8s-kms-plugin version: %s", versionData.Version))
+	slog.Debug("k8s-kms-plugin version details",
+		"build-date", versionData.BuildDate,
+		"build-platform", versionData.BuildPlatform,
+		"commit", versionData.GitCommitIdLong,
+		"go-version", versionData.GoVersion,
+		"raw-git-describe", versionData.Version,
+		"is-git-dirty", versionData.IsGitDirty,
+		"short-commit", versionData.GitCommitIdShort,
+	)
 }
 
 // VersionOutputToString returns the version as a formatted string.
@@ -182,21 +179,21 @@ func VersionOutputToString(outputFormat string, prettyPrint bool) string {
 	case "json":
 		data, err := returnJsonVersion(prettyPrint)
 		if err != nil {
-			logrus.WithError(err).Error("Failed to generate JSON version output")
+			slog.Error("Failed to generate JSON version output", "error", err)
 			return "Error generating JSON output"
 		}
 		return string(data)
 	case "yaml":
 		data, err := returnYamlVersion()
 		if err != nil {
-			logrus.WithError(err).Error("Failed to generate YAML version output")
+			slog.Error("Failed to generate YAML version output", "error", err)
 			return "Error generating YAML output"
 		}
 		return string(data)
 	default:
 		version, err := go_version.NewSemver(RawGitDescribe)
 		if err != nil {
-			logrus.WithError(err).Debug("Invalid semantic versioning, falling back to snapshot version")
+			slog.Debug("Invalid semantic versioning, falling back to snapshot version", "error", err)
 			return fmt.Sprintf("k8s-kms-plugin: (snapshot) %s", RawGitDescribe)
 		}
 

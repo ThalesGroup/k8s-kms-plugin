@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 Thales Group
+ * Copyright 2026 Thales Group
  * SPDX-License-Identifier: MIT
  *
  * Use of this source code is governed by an MIT-style
@@ -13,8 +13,10 @@ package cmd
 //   - gose
 //   - crypto11
 import (
+	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"os"
 	"path/filepath"
@@ -26,11 +28,11 @@ import (
 	"github.com/ThalesGroup/gose/jose"
 
 	istio "github.com/ThalesGroup/k8s-kms-plugin/apis/istio/v1"
+	"github.com/ThalesGroup/k8s-kms-plugin/pkg/logging"
+	"github.com/ThalesGroup/k8s-kms-plugin/pkg/providers"
 	version "github.com/ThalesGroup/k8s-kms-plugin/pkg/version"
 	k8skmsv2 "k8s.io/kms/apis/v2"
 
-	"github.com/ThalesGroup/k8s-kms-plugin/pkg/providers"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/sync/errgroup"
@@ -52,21 +54,21 @@ type ViperFlagsServe struct {
 
 	// PKCS #11 & KMS plugin parameters
 	AlgorithmFamily string `mapstructure:"algorithm-family"`
-	CaID       string `mapstructure:"ca-id"`
-	NativePath string `mapstructure:"native-path"`
-	P11Label   string `mapstructure:"p11-label"`
-	P11Lib     string `mapstructure:"p11-lib"`
-	P11Pin     string `mapstructure:"p11-pin"`
-	P11Slot    int    `mapstructure:"p11-slot"`
-	Provider   string `mapstructure:"provider"`
-	SocketPath string `mapstructure:"socket"` // Unix socket path for TPM or HSM
+	CaID            string `mapstructure:"ca-id"`
+	NativePath      string `mapstructure:"native-path"`
+	P11Label        string `mapstructure:"p11-label"`
+	P11Lib          string `mapstructure:"p11-lib"`
+	P11Pin          string `mapstructure:"p11-pin"`
+	P11Slot         int    `mapstructure:"p11-slot"`
+	Provider        string `mapstructure:"provider"`
+	SocketPath      string `mapstructure:"socket"` // Unix socket path for TPM or HSM
 
 	// PKCS #11 CKA_ID and CKA_LABEL of active KEK key
 	CreateKey    bool   `mapstructure:"auto-create"`
-	DekKeyLabel  string `mapstructure:"p11-key-label"`      // active DEK key CKA_LABEL
-	HmacKeyID    string `mapstructure:"p11-hmac-id"`        // active HMAC key CKA_ID
-	HmacKeyLabel string `mapstructure:"p11-hmac-label"`     // active HMAC key CKA_LABEL
-	KekKeyID     string `mapstructure:"p11-key-id"`         // active KEK key CKA_ID
+	DekKeyLabel  string `mapstructure:"p11-key-label"`  // active DEK key CKA_LABEL
+	HmacKeyID    string `mapstructure:"p11-hmac-id"`    // active HMAC key CKA_ID
+	HmacKeyLabel string `mapstructure:"p11-hmac-label"` // active HMAC key CKA_LABEL
+	KekKeyID     string `mapstructure:"p11-key-id"`     // active KEK key CKA_ID
 }
 
 // Declare the viper CLI flag values buffer
@@ -104,7 +106,6 @@ func validateAlgorithmFamily(s string) error {
 		return fmt.Errorf("must be one of aes-gcm, aes-cbc, rsa-oaep, ml-kem; got %q", s)
 	}
 }
-
 
 // sanitizeViperFlagsServe validates all user-controlled fields in ViperFlagsServe after
 // viper has resolved them from all input sources (CLI flags, config file, env vars).
@@ -159,7 +160,7 @@ Using AES-CBC with HMAC authentication, using CKA_ID, using CLI flags and servin
 	// Initialize and populate cobra CLI flags values with viper during the Persistent pre-run
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		if err := InitViperSubCmdE(viper.GetViper(), cmd, &vprFlgsServe); err != nil {
-			logrus.WithField("cobra-cmd", cmd.Use).WithError(err).Error("Error initializing Viper")
+			slog.Error("Error initializing Viper", "cobra_cmd", cmd.Use, "error", err)
 			return err
 		}
 		if err := sanitizeViperFlagsServe(&vprFlgsServe); err != nil {
@@ -169,22 +170,20 @@ Using AES-CBC with HMAC authentication, using CKA_ID, using CLI flags and servin
 	},
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		// Show the version of the k8s-kms-plugin and commit ID
-		version.LogrusOutputVersion()
+		version.LogVersion()
 
 		// Don't panic/exit if we have a PKCS#11 error.
 		// Sleep forever instead.
 		var p providers.Provider
 		p, err = initProvider()
 		if err != nil && providers.IsPKCS11AuthenticationError(err) {
-			logrus.WithField("cobra-cmd", cmd.Use).
-				WithError(err).
-				Error("PKCS11 authentication error detected. Further retries may cause the token to be erased.")
-			logrus.WithField("cobra-cmd", cmd.Use).Warn("Process will now sleep indefinitely to prevent further damage...")
+			slog.Error("PKCS11 authentication error detected. Further retries may cause the token to be erased.", "cobra_cmd", cmd.Use, "error", err)
+			slog.Warn("Process will now sleep indefinitely to prevent further damage...", "cobra_cmd", cmd.Use)
 			time.Sleep(8760 * time.Hour)
 		}
 
 		if err != nil {
-			logrus.WithField("cobra-cmd", cmd.Use).Fatalf("failed to initialize provider: %v", err)
+			logging.Fatal("failed to initialize provider", "cobra_cmd", cmd.Use, "error", err)
 		}
 
 		g := new(errgroup.Group)
@@ -215,7 +214,7 @@ Using AES-CBC with HMAC authentication, using CKA_ID, using CLI flags and servin
 		}
 
 		if err = g.Wait(); err != nil {
-			logrus.WithField("cobra-cmd", cmd.Use).Error(err)
+			slog.Error("gRPC server error", "cobra_cmd", cmd.Use, "error", err)
 		}
 
 		return
@@ -288,7 +287,7 @@ func initProvider() (p providers.Provider, err error) {
 	config := &crypto11.Config{}
 	switch vprFlgsServe.Provider {
 	case "p11", "softhsm":
-		logrus.Debug("initProvider: case p11 or softhsm")
+		slog.Debug("initProvider: case p11 or softhsm")
 		config = &crypto11.Config{
 			Path:            vprFlgsServe.P11Lib,
 			Pin:             vprFlgsServe.P11Pin,
@@ -296,7 +295,7 @@ func initProvider() (p providers.Provider, err error) {
 		}
 
 	case "luna", "dpod":
-		logrus.Debug("initProvider: case luna HSM or dpod")
+		slog.Debug("initProvider: case luna HSM or dpod")
 		config = &crypto11.Config{
 			Path:            vprFlgsServe.P11Lib,
 			Pin:             vprFlgsServe.P11Pin,
@@ -307,7 +306,7 @@ func initProvider() (p providers.Provider, err error) {
 			},
 		}
 	default:
-		logrus.WithField("provider", vprFlgsServe.Provider).Error("unknown provider")
+		slog.Error("unknown provider", "provider", vprFlgsServe.Provider)
 		err = errors.New("unknown provider")
 		return
 	}
@@ -341,7 +340,7 @@ func initProvider() (p providers.Provider, err error) {
 }
 
 func grpcServe(gl net.Listener, p providers.Provider) (err error) {
-	logrus.Trace("grpcServe")
+	slog.Log(context.Background(), logging.LevelTrace, "grpcServe")
 
 	// Create a gRPC server to host the services
 	serverOptions := []grpc.ServerOption{
@@ -354,12 +353,12 @@ func grpcServe(gl net.Listener, p providers.Provider) (err error) {
 	reflection.Register(gs)
 	istio.RegisterKeyManagementServiceServer(gs, p)
 
-	logrus.Infof("Serving on socket: %s", gl.Addr().String())
-	logrus.Debugf("grpcServe: value of grpcPort user input: %d", vprFlgsServe.Port)
+	slog.Info("serving on socket", "address", gl.Addr().String())
+	slog.Debug("grpc port", "port", vprFlgsServe.Port)
 
 START:
 	if err = gs.Serve(gl); err != nil {
-		logrus.Error(err)
+		slog.Error("gRPC serve error", "error", err)
 		goto START
 	}
 	return
@@ -367,6 +366,6 @@ START:
 
 func unknownServiceHandler(srv interface{}, stream grpc.ServerStream) error {
 	typeOfSrv := reflect.TypeOf(srv)
-	logrus.Infof("unknownServiceHandler. Looking for: %v, %v", typeOfSrv, srv)
+	slog.Info("unknown service handler", "type", typeOfSrv, "service", srv)
 	return nil
 }

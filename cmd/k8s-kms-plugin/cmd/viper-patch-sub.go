@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 Thales Group
+ * Copyright 2026 Thales Group
  * SPDX-License-Identifier: MIT
  *
  * Use of this source code is governed by an MIT-style
@@ -15,9 +15,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/mitchellh/go-homedir"
+	"context"
+	"log/slog"
 
-	"github.com/sirupsen/logrus"
+	"github.com/ThalesGroup/k8s-kms-plugin/pkg/logging"
+	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -60,7 +62,7 @@ import (
 func UnmarshalSubMergedE(v *viper.Viper, section string, target any) error {
 	// 1. Skip if no config file is loaded at all
 	if v.ConfigFileUsed() == "" {
-		logrus.Trace("UnmarshalSubMerged: no config file loaded")
+		slog.Log(context.Background(), logging.LevelTrace, "UnmarshalSubMerged: no config file loaded")
 		return v.Unmarshal(target) // only env, flags, defaults
 	}
 
@@ -68,13 +70,13 @@ func UnmarshalSubMergedE(v *viper.Viper, section string, target any) error {
 	sub := v.GetStringMap(section)
 	if len(sub) == 0 {
 		// No subsection found, fallback to flags/env/default
-		logrus.Tracef("UnmarshalSubMerged: no config found for section '%s'", section)
+		slog.Log(context.Background(), logging.LevelTrace, "UnmarshalSubMerged: no config found for section", "section", section)
 		return v.Unmarshal(target)
 	}
 
 	// 3. Merge section into Viper's config layer (not override!)
 	if err := v.MergeConfigMap(sub); err != nil {
-		logrus.WithError(err).Errorf("UnmarshalSubMerged: failed to merge config section '%s'", section)
+		slog.Error("UnmarshalSubMerged: failed to merge config section", "section", section, "error", err)
 		return fmt.Errorf("failed to merge config section '%s': %w", section, err)
 	}
 
@@ -101,18 +103,18 @@ func UnmarshalSubMergedE(v *viper.Viper, section string, target any) error {
 func InitViperSubCmdE(v *viper.Viper, cobraCmd *cobra.Command, target any) error {
 	// the name of the cobra subcommand is the "section" of the config file
 	// in this situation we suppose the cobra command correspond to a first level command. But if it is a second or third or greater level subcommand, we need the section to represent all the parent name. How can we get the fulle path to root command ?
-	logrus.WithField("cobra-cmd", cobraCmd.Use).Trace("cobra command path: " + cobraCmd.CommandPath())
+	slog.Log(context.Background(), logging.LevelTrace, "cobra command path", "path", cobraCmd.CommandPath(), "cobra_cmd", cobraCmd.Use)
 
 	// cobra.CommandPath returns the full path to the command, including all parent commands, each command separated by 1 space.
 	// TODO: allow cobra.CommandPath to get new separator like ".".
 	// See https://github.com/spf13/cobra/blob/40b5bc1437a564fc795d388b23835e84f54cd1d1/command.go#L1460
 	sectionPath := strings.ReplaceAll(cobraCmd.CommandPath(), " ", ".")
-	logrus.WithField("cobra-cmd", cobraCmd.Use).Tracef("section path: %s", sectionPath)
+	slog.Log(context.Background(), logging.LevelTrace, "section path", "section_path", sectionPath, "cobra_cmd", cobraCmd.Use)
 
 	// modify viper env prefix with the current cobra subcommand name
 	sectionEnvPrefix := strings.ToUpper(strings.NewReplacer("-", "_", ".", "_").Replace(sectionPath)) // for the env prefix, this should be uppercase snake case and replace dot . with underscore
 	// concat the previous viper env prefix with the current cobra subcommand name
-	logrus.WithField("cobra-cmd", cobraCmd.Use).Trace("new viper env prefix: " + sectionEnvPrefix)
+	slog.Log(context.Background(), logging.LevelTrace, "new viper env prefix", "env_prefix", sectionEnvPrefix, "cobra_cmd", cobraCmd.Use)
 	v.SetEnvPrefix(sectionEnvPrefix)
 	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_")) // Converts flags to ENV format
 	v.AutomaticEnv()                                   // Enables automatic binding
@@ -120,14 +122,14 @@ func InitViperSubCmdE(v *viper.Viper, cobraCmd *cobra.Command, target any) error
 	// Bind subcommand-specific cobra flags to viper
 	err := v.BindPFlags(cobraCmd.Flags())
 	if err != nil {
-		logrus.WithField("cobra-cmd", cobraCmd.Use).Errorf("error binding flags: %v", err)
+		slog.Error("error binding flags", "cobra_cmd", cobraCmd.Use, "error", err)
 		return fmt.Errorf("error binding flags: %w", err)
 	}
 
 	// Load config values for this subcommand
 	err = UnmarshalSubMergedE(v, sectionPath, &target)
 	if err != nil {
-		logrus.WithField("cobra-cmd", cobraCmd.Use).Fatalf("failed to unmarshal version config: %v", err)
+		slog.Error("failed to unmarshal version config", "cobra_cmd", cobraCmd.Use, "error", err)
 		return fmt.Errorf("failed to unmarshal version config: %w", err)
 	}
 
@@ -163,13 +165,13 @@ func InitViperSubCmdE(v *viper.Viper, cobraCmd *cobra.Command, target any) error
 func ReadViperConfigE(v *viper.Viper, cmd *cobra.Command) error {
 	// use a configuration file parsed by viper
 	if cmd.Flags().Lookup("config").Changed && cfgFile != "" {
-		logrus.Tracef("Case config file from the flag: %s", cfgFile)
+		slog.Log(context.Background(), logging.LevelTrace, "case config file from the flag", "config_file", cfgFile)
 		viper.SetConfigFile(cfgFile)
 	} else if envVar, ok := os.LookupEnv("K8S_KMS_PLUGIN_CONFIG"); ok {
-		logrus.Tracef("Case config file from the environment variable: %s", envVar)
+		slog.Log(context.Background(), logging.LevelTrace, "case config file from env var", "config_file", envVar)
 		viper.SetConfigFile(envVar)
 	} else {
-		logrus.Tracef("Case config file from default location")
+		slog.Log(context.Background(), logging.LevelTrace, "Case config file from default location")
 		// Find home directory.
 		home, err := homedir.Dir()
 		if err != nil {
@@ -178,17 +180,16 @@ func ReadViperConfigE(v *viper.Viper, cmd *cobra.Command) error {
 
 		viper.SetConfigName("k8s-kms-plugin.conf") // name of config file (viper needs no file extension)
 		// TODO: consider using the rootCmd.Flags().Lookup("config").DefValue for viper.SetConfigName
-		// logrus.Infof("default config filename %s", rootCmd.Flags().Lookup("config").DefValue)
-		logrus.Tracef("Search config in .config directory %s with name k8s-kms-plugin.conf.yaml (without extension).", home)
+		slog.Log(context.Background(), logging.LevelTrace, "searching config in home directory", "dir", home)
 		viper.AddConfigPath(home)
-		logrus.Tracef("Search config in home directory %s with name k8s-kms-plugin.conf.yaml (without extension).", filepath.Join(home, ".config/k8s-kms-plugin"))
+		slog.Log(context.Background(), logging.LevelTrace, "searching config in .config directory", "dir", filepath.Join(home, ".config/k8s-kms-plugin"))
 		viper.AddConfigPath(filepath.Join(home, ".config/k8s-kms-plugin"))
 	}
 
 	// If a config file is not found, log a trace error. Otherwise, read it in.
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			logrus.Trace("No config file found; continue with cobra default values")
+			slog.Log(context.Background(), logging.LevelTrace, "No config file found; continue with cobra default values")
 		} else {
 			// Config file was found but another error occurred
 			return fmt.Errorf("error reading config file: %w", err)

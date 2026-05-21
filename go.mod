@@ -7,11 +7,9 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	github.com/infobloxopen/atlas-app-toolkit v1.4.2
-	github.com/keepeye/logrus-filename v0.0.0-20190711075016-ce01a4391dd1
 	github.com/miekg/pkcs11 v1.1.2
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/protoc-gen-go-json v1.1.0
-	github.com/sirupsen/logrus v1.9.4
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
@@ -46,7 +44,14 @@ require (
 	github.com/ThalesGroup/crypto11 v1.7.0-rc1
 	github.com/ThalesGroup/gose v0.13.0-rc1
 	github.com/hashicorp/go-version v1.8.0
+	github.com/lmittmann/tint v1.1.3
 	k8s.io/kms v0.35.3
+)
+
+replace (
+	github.com/ThalesGroup/crypto11 v1.7.0-rc1 => ../crypto11.github.com.ThalesGroup
+	github.com/ThalesGroup/gose v0.13.0-rc1 => ../gose.github.com.ThalesGroup
+	github.com/miekg/pkcs11 v1.1.2 => ../pkcs11.github.com.ThalesGroup
 )
 
 require (
