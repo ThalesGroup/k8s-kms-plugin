@@ -1,5 +1,7 @@
 # [`Software TPM Emulator`](https://github.com/stefanberger/swtpm)
 
+> ⚠️ **Legacy reference**: This guide is kept for backward compatibility. [`SoftHSMv3` (`pqctoday-hsm`)](./softhsm-v3.md) is now the recommended software HSM for development and integration testing — it supports all algorithm families including **ML-KEM**. The Software TPM Emulator does **not** support ML-KEM.
+
 This guide described how to set up [`Software TPM Emulator`](https://github.com/stefanberger/swtpm) and make it work with the `k8s-kms-plugin` in a **non production environment**.
 
 You should read [`Software TPM Emulator`](https://github.com/stefanberger/swtpm) official documentation before reading this guide.
@@ -78,21 +80,21 @@ k8s-kms-plugin \
     --p11-hmac-label hmac0 \
     --p11-label mylabel \
     --p11-pin mypin \
-    --algorithm aes-cbc
+    --algorithm-family aes-cbc
 ```
 
-Alternatively, you can use `--kek-id` (PKCS #11 CKA_ID) instead of `--p11-key-label` (PKCS #11 CKA_LABEL).
+Alternatively, you can use `--p11-key-id` (PKCS #11 CKA_ID) instead of `--p11-key-label` (PKCS #11 CKA_LABEL).
 
 ```bash
-k8s-kms-plugin 
+k8s-kms-plugin \
   serve \
     --log-level=trace \
     --p11-lib  /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1  \
     --p11-label mylabel  \
     --p11-pin  mypin  \
-    --kek-id  64636138353931326363356537313264 \
-    --hmac-id 30663536623936326235663530363234 \
-    --algorithm aes-cbc \
+    --p11-key-id  64636138353931326363356537313264 \
+    --p11-hmac-id 30663536623936326235663530363234 \
+    --algorithm-family aes-cbc \
     --socket /run/user/1000/k8s-kms-plugin.sock
 ```
 
@@ -141,7 +143,7 @@ k8s-kms-plugin \
     --p11-label mylabel \
     --p11-pin mypin \
     --p11-key-label rsa0 \
-    --algorithm rsa-oaep
+    --algorithm-family rsa-oaep
 ```
 
 You can validate Encryption and Decryption are working by using [`grpcurl-roundtrip-test.sh`](../scripts/grpcurl/grpcurl-roundtrip-test.sh).

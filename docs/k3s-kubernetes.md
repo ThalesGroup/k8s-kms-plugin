@@ -54,8 +54,8 @@ k8s-kms-plugin \
     --p11-lib /usr/lib64/pkcs11/libtpm2_pkcs11.so \
     --p11-label mylabel \
     --p11-pin mypin \
-    --kek-id abcd \
-    --algorithm rsa-oaep
+    --p11-key-id abcd \
+    --algorithm-family rsa-oaep
 ```
 
 > This example uses [`Software TPM Emulator`](https://github.com/stefanberger/swtpm).

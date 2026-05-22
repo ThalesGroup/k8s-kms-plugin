@@ -83,7 +83,7 @@ sudo k8s-kms-plugin \
       --p11-label "My Token" \
       --p11-pin "0000000000" \
       --p11-key-id 1212abab \
-      --algorithm rsa-oaep
+      --algorithm-family rsa-oaep
 ```
 
 You can validate Encryption and Decryption are working by using [`grpcurl-roundtrip-test.sh`](../scripts/grpcurl/grpcurl-roundtrip-test.sh).

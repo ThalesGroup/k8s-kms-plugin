@@ -6,6 +6,13 @@
 `k8s-kms-plugin serve` implements the [Kubernetes KMS v2 API](https://pkg.go.dev/k8s.io/kms/apis/v2) protocol as a gRPC service that leverages a remote or local HSM via PKCS11.
 `k8s-kms-plugin serve rotation` supports key rotation operations.
 
+Supported `--algorithm-family` values (key size / parameter set is derived at runtime from the HSM key):
+
+- `aes-gcm` — AES-GCM symmetric encryption (128 / 192 / 256-bit)
+- `aes-cbc` — AES-CBC symmetric encryption with HMAC-SHA256 authentication
+- `rsa-oaep` — RSA-OAEP asymmetric encryption
+- `ml-kem` — post-quantum ML-KEM hybrid encryption (CRYSTALS-Kyber / FIPS 203; ML-KEM-512, ML-KEM-768, ML-KEM-1024)
+
 This plugin will also run in proxy mode which can connect to a remote plugin service running in a secure network device (Key Managers)
 
 > ⚠️ **Droping support of KMS v1**: Newer version of the `k8s-kms-plugin` droped support for [Kubernetes KMSv1](https://pkg.go.dev/k8s.io/kms@v0.34.1/apis/v1beta1),
@@ -16,10 +23,9 @@ This plugin will also run in proxy mode which can connect to a remote plugin ser
 
 # 🚤 Quick Start 🚀
 
-TL;DR: For a quick start experience, try the `k8s-kms-plugin` with software (virtual) HSM such as:
+TL;DR: For a quick start experience, try the `k8s-kms-plugin` with a software (virtual) HSM:
 
-- [SoftHSMv2 & `k8s-kms-plugin`](./docs/softhsm-v2.md)
-- [Software TPM Emulator & `k8s-kms-plugin`](./docs/software-tpm-emulator.md)
+- [SoftHSMv3 (`pqctoday-hsm`) & `k8s-kms-plugin`](./docs/softhsm-v3.md) — **recommended**: supports all algorithm families including ML-KEM
 
 # Table of Contents
 
@@ -60,17 +66,18 @@ TL;DR: For a quick start experience, try the `k8s-kms-plugin` with software (vir
 
 ## 1. Definions & Accronyms 🔎
 
-| Term         | Definition                            |
-|--------------|---------------------------------------|
-| **DEK**      | Data Encryption Key                   |
-| **HA**       | High Availability                     |
-| **HSM**      | Hardware Security Module              |
-| **k3s**      | A Lightweight Kubernetes Distribution |
-| **k8s**      | Kubernetes (short for)                |
-| **KEK**      | Key Encryption Key                    |
-| **KMS**      | Key Management System                 |
-| **PKCS #11** | Public Key Cryptography Standard #11  |
-| **TPM**      | Trusted Platform Module               |
+| Term         | Definition                               |
+|--------------|------------------------------------------|
+| **DEK**      | Data Encryption Key                      |
+| **HA**       | High Availability                        |
+| **HSM**      | Hardware Security Module                 |
+| **JOSE**     | JOSE JSON Objects Signing and Encryption |
+| **k3s**      | A Lightweight Kubernetes Distribution    |
+| **k8s**      | Kubernetes (short for)                   |
+| **KEK**      | Key Encryption Key                       |
+| **KMS**      | Key Management System                    |
+| **PKCS #11** | Public Key Cryptography Standard #11     |
+| **TPM**      | Trusted Platform Module                  |
 
 ## 2. Overview 🔭
 
@@ -93,17 +100,18 @@ Figure below sums up the main dependencies of `k8s-kms-plugin`:
 The following sequence diagram illustrates the communication between `kubernetes` ([KMS v2 API](https://pkg.go.dev/k8s.io/kms/apis/v2)), `k8s-kms-plugin`, and a [PKCS #11](https://docs.oasis-open.org/pkcs11/pkcs11-base/v3.0/pkcs11-base-v3.0.html) capable device like a TPM or HSM.
 
 <details>
-<summary>➡️ click here to show 🔦 k8s-kms-plugin & KMS v2 API Sequence Diagram </summary>
+<summary>➡️ <b>click here</b> to show 🔦 k8s-kms-plugin & KMS v2 API Sequence Diagram </summary>
 
 ![](./docs/puml-diagrams/kmsv2-first-k8s-startup.sqce-diag.svg)
 
 ![](./docs/puml-diagrams/kmsv2-decryptrequest.sqce-diag.svg)
 
 ![](./docs/puml-diagrams/kmsv2-key-rotation.sqce-diag.svg)
+> This diagram was inspired by those from https://github.com/kubernetes/enhancements/tree/master/keps/sig-auth/3299-kms-v2-improvements
 
 </details>
 
-> This diagram was inspired by those from https://github.com/kubernetes/enhancements/tree/master/keps/sig-auth/3299-kms-v2-improvements
+&NewLine;
 
 The figure below illustrates several example of how the `k8s-kms-plugin` can be deployed for a Kubernetes Single Node cluster and using an embedded TPM or an HSM as a PKCS #11 capable key store.
 
@@ -114,7 +122,7 @@ The `k8s-kms-plugin` also supports kubernetes cluster in HA mode (at least 3 ser
 ![](./docs/images/k8s-kms-plugin-TPM_3_master_nodes.svg)
 
 <details>
-<summary>➡️ click here to show 🔦 other HA k8s-kms-plugin deployments</summary>
+<summary>➡️ <b>click here</b> to show 🔦 other HA k8s-kms-plugin deployments</summary>
 
 ![](./docs/images/k8s-kms-plugin-USB_HSM_3_master_nodes.svg)
 ![](./docs/images/k8s-kms-plugin-Net_HSM_3_master_nodes.svg)
@@ -128,7 +136,9 @@ Look at [`k8s-kms-plugin serve rotation`](./docs/cli-user-interface/markdown/k8s
 Figures below illustrate a Key Rotation sequence. First the KEK is stored on a TPM. Then rotation is being performed to use a USB HSM to store the new KEK.
 
 ![](./docs/images/k8s-kms-plugin-Key_Rot_1.svg)
+
 ![](./docs/images/k8s-kms-plugin-Key_Rot_2.svg)
+
 ![](./docs/images/k8s-kms-plugin-Key_Rot_3.svg)
 
 ## 3. Installation 🔧
@@ -156,8 +166,8 @@ k8s-kms-plugin \
     --p11-lib /usr/lib64/pkcs11/libtpm2_pkcs11.so \
     --p11-label mylabel \
     --p11-pin mypin \
-    --kek-id 33653932616130656634343238346163 \
-    --algorithm rsa-oaep
+    --p11-key-id 33653932616130656634343238346163 \
+    --algorithm-family rsa-oaep
 ```
 
 > This example uses [`Software TPM Emulator`](https://github.com/stefanberger/swtpm).
@@ -426,10 +436,11 @@ to patch the binding between Cobra and Viper.
 
 ### 4.5. 🚤 Quick Start 🚀
 
-For a quick start experience, try the `k8s-kms-plugin` with software (virtual) HSM such as:
+For a quick start experience, try the `k8s-kms-plugin` with a software (virtual) HSM:
 
-- [SoftHSMv2 & `k8s-kms-plugin`](./docs/softhsm-v2.md)
-- [Software TPM Emulator & `k8s-kms-plugin`](./docs/software-tpm-emulator.md)
+- [SoftHSMv3 (`pqctoday-hsm`) & `k8s-kms-plugin`](./docs/softhsm-v3.md) — **recommended**: supports all algorithm families including ML-KEM
+- [SoftHSMv2 & `k8s-kms-plugin`](./docs/softhsm-v2.md) — kept for legacy reference; does not support ML-KEM
+- [Software TPM Emulator & `k8s-kms-plugin`](./docs/software-tpm-emulator.md) — kept for legacy reference; does not support ML-KEM
 
 ### 4.6. HSM & TPM Supported Platforms
 
@@ -440,12 +451,13 @@ The following table sums up the HSMs or TPMs that has been _officially_ tested &
 with the `k8s-kms-plugin`. This list is not exhaustive: you can contribute to it, as other HSM
 devices or virtual HSM might work with the `k8s-kms-plugin`.
 
-| [`k8s-kms-plugin` version `XX`]()                                                                  | HSM or TPM   | Form factor  | AES GCM          | AES CBC HMAC     | RSA OAEP         | Comment                               | Docs Details                            |
-|----------------------------------------------------------------------------------------------------|--------------|--------------|------------------|------------------|------------------|---------------------------------------|-----------------------------------------|
-| [`SoftHSMv2`](https://github.com/softhsm/SoftHSMv2)                                                | HSM PKCS #11 | Software     | ✅Success         | 🚫not applicable | 🚫not applicable | softhsm does not support AES CBC HMAC | [Link](./docs/softhsm-v2.md)            |
-| [`Software TPM Emulator`](https://github.com/stefanberger/swtpm)                                   | TPM PKCS #11 | Software     | 🚫not applicable | ✅Success         | ✅Success         | vTPM 2.0 does not support AEG GCM     | [Link](./docs/software-tpm-emulator.md) |
-| [Thales eToken Fusion](https://cpl.thalesgroup.com/access-management/authenticators/etoken-fusion) | HSM PKCS #11 | Hardware USB | ❔Not Tested      | ❔Not Tested      | ✅Success         |                                       | [Link](./docs/thales-etoken-fusion.md)  |
-| [yubico YubiHSM 2](https://docs.yubico.com/hardware/yubihsm-2/hsm-2-user-guide/index.html)         | HSM PKCS #11 | Hardware USB | ❔Not Tested      | ❔Not Tested      | ✅Success         | RSA 4096 tested                       | [Link](./docs/yubico-yubihsm2.md)       |
+| [`k8s-kms-plugin` version `XX`]()                                                                  | HSM or TPM   | Form factor  | AES GCM     | AES CBC HMAC | RSA OAEP    | ML-KEM          | Comment                                                                    | Docs Details                            |
+|----------------------------------------------------------------------------------------------------|--------------|--------------|-------------|--------------|-------------|-----------------|----------------------------------------------------------------------------|-----------------------------------------|
+| [`SoftHSMv3` (`pqctoday-hsm`)](https://github.com/pqctoday-org/pqctoday-hsm)                       | HSM PKCS #11 | Software     | ✅Success    | ✅Success     | ✅Success    | ✅Success        | Recommended for dev & integration testing; supports all algorithm families | [Link](./docs/softhsm-v3.md)            |
+| [`SoftHSMv2`](https://github.com/softhsm/SoftHSMv2)                                                | HSM PKCS #11 | Software     | ❔Not Tested | ❔Not Tested  | ❔Not Tested | 🚫not supported | Legacy reference; ML-KEM requires SoftHSMv3                                | [Link](./docs/softhsm-v2.md)            |
+| [`Software TPM Emulator`](https://github.com/stefanberger/swtpm)                                   | TPM PKCS #11 | Software     | ❔Not Tested | ❔Not Tested  | ❔Not Tested | 🚫not supported | Legacy reference; ML-KEM requires SoftHSMv3                                | [Link](./docs/software-tpm-emulator.md) |
+| [Thales eToken Fusion](https://cpl.thalesgroup.com/access-management/authenticators/etoken-fusion) | HSM PKCS #11 | Hardware USB | ❔Not Tested | ❔Not Tested  | ✅Success    | ❔Not Tested     |                                                                            | [Link](./docs/thales-etoken-fusion.md)  |
+| [yubico YubiHSM 2](https://docs.yubico.com/hardware/yubihsm-2/hsm-2-user-guide/index.html)         | HSM PKCS #11 | Hardware USB | ❔Not Tested | ❔Not Tested  | ✅Success    | ❔Not Tested     | RSA 4096 tested                                                            | [Link](./docs/yubico-yubihsm2.md)       |
 
 ## 5. Development Environment 🔬
 

@@ -6,10 +6,11 @@ _Auto generated_ documentation files are marked with footer `###### Auto generat
 
 `k8s-kms-plugin` has been tested with the following HSMs & TPMs:
 
+* [SoftHSMv3 (`pqctoday-hsm`)](./softhsm-v3.md) — recommended for dev & integration testing; supports all algorithm families including ML-KEM
 * [Thales eToken Fusion](./thales-etoken-fusion.md)
 * [Yubico YubiHSM 2](./yubico-yubihsm2.md)
-* [Software TPM Emulator](./software-tpm-emulator.md)
-* [SoftHSMv2](./softhsm-v2.md)
+* [SoftHSMv2](./softhsm-v2.md) — legacy reference; does not support ML-KEM
+* [Software TPM Emulator](./software-tpm-emulator.md) — legacy reference; does not support ML-KEM
 
 `k8s-kms-plugin` has been tested with the following Kubernetes distributions:
 

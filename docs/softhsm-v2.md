@@ -1,5 +1,7 @@
 # [`SoftHSMv2`](https://github.com/softhsm/SoftHSMv2)
 
+> ⚠️ **Legacy reference**: This guide is kept for backward compatibility. [`SoftHSMv3` (`pqctoday-hsm`)](./softhsm-v3.md) is now the recommended software HSM for development and integration testing — it supports all algorithm families including **ML-KEM**. SoftHSMv2 does **not** support ML-KEM.
+
 This guide describes how to set up [`SoftHSMv2`](https://github.com/softhsm/SoftHSMv2) and make it
 work with the `k8s-kms-plugin` in a **non production environment**.
 
@@ -104,7 +106,7 @@ k8s-kms-plugin \
     --p11-label mylabel \
     --p11-pin mypin \
     --p11-key-label aes00softhsm \
-    --algorithm aes-gcm
+    --algorithm-family aes-gcm
 ```
 
 Alternatively, you can use `--p11-key-id` (PKCS #11 CKA_ID) instead of `--p11-key-label` (PKCS #11 CKA_LABEL).
@@ -120,7 +122,7 @@ k8s-kms-plugin \
     --p11-label mylabel \
     --p11-pin mypin \
     --p11-key-id d73f87d08873be56 \
-    --algorithm aes-gcm
+    --algorithm-family aes-gcm
 ```
 
 You can validate Encryption and Decryption are working by using [`grpcurl-roundtrip-test.sh`](../scripts/grpcurl/grpcurl-roundtrip-test.sh).
@@ -170,5 +172,5 @@ k8s-kms-plugin \
     --p11-label mylabel \
     --p11-pin mypin \
     --p11-key-label aes00softhsm \
-    --algorithm aes-gcm
+    --algorithm-family aes-gcm
 ```
