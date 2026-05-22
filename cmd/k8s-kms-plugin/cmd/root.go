@@ -143,16 +143,18 @@ func initConfig() {
 
 	// Build slog handler based on requested format
 	opts := &tint.Options{
-		Level:      activeLogLevel,
-		TimeFormat: time.DateTime,
-		AddSource:  true,
+		Level:       activeLogLevel,
+		TimeFormat:  time.DateTime,
+		AddSource:   true,
+		ReplaceAttr: logging.ReplaceAttr,
 	}
 	var handler slog.Handler
 	switch vprFlgsRoot.LogFormat {
 	case "json":
 		handler = slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
-			Level:     activeLogLevel,
-			AddSource: true,
+			Level:       activeLogLevel,
+			AddSource:   true,
+			ReplaceAttr: logging.ReplaceAttr,
 		})
 	case "text":
 		handler = tint.NewHandler(os.Stderr, opts)
@@ -163,5 +165,5 @@ func initConfig() {
 	slog.SetDefault(slog.New(handler))
 
 	slog.Debug("log format configured", "log_format", vprFlgsRoot.LogFormat)
-	slog.Debug("log level configured", "log_level", activeLogLevel.Level())
+	slog.Debug("log level configured", "log_level", vprFlgsRoot.LogLevel)
 }
