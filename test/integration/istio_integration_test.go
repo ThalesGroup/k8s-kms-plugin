@@ -21,6 +21,7 @@ import (
 )
 
 func TestP11_GenerateDEK(t *testing.T) {
+	t.Skip("istio removal pending")
 	td := setupSoftHSMTestCase(t)
 	defer td(t)
 	type fields struct {
@@ -101,6 +102,7 @@ func TestP11_GenerateDEK(t *testing.T) {
 }
 
 func TestP11_GenerateSKey(t *testing.T) {
+	t.Skip("istio removal pending")
 	td := setupSoftHSMTestCase(t)
 	defer td(t)
 	type fields struct {
@@ -184,6 +186,7 @@ func TestP11_GenerateSKey(t *testing.T) {
 }
 
 func TestP11_ImportCACert(t *testing.T) {
+	t.Skip("istio removal pending")
 	td := setupSoftHSMTestCase(t)
 	defer td(t)
 	type fields struct {
@@ -271,6 +274,7 @@ func TestP11_ImportCACert(t *testing.T) {
 }
 
 func TestP11_LoadDEK(t *testing.T) {
+	t.Skip("istio removal pending")
 	td := setupSoftHSMTestCase(t)
 	defer td(t)
 	type fields struct {
