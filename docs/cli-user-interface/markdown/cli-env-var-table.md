@@ -1,23 +1,23 @@
 | Command | Flags (long) | Flags (short) | Env Var | Config File Keys | Default Value | Type | Persistent Flag | Usage |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | k8s-kms-plugin | --config |  | K8S_KMS_PLUGIN_CONFIG | k8s-kms-plugin.config | k8s-kms-plugin.config.yaml | string | true | ConfigFile. Env var: K8S_KMS_PLUGIN_CONFIG_FILE |
-| k8s-kms-plugin | --debug |  | K8S_KMS_PLUGIN_DEBUG | k8s-kms-plugin.debug | false | bool | true | Set logrus.SetLevel to "debug". This is equivalent to using --log-level=debug. Flags --log-level and --debug flag are mutually exclusive. Env var: K8S_KMS_PLUGIN_DEBUG. |
-| k8s-kms-plugin | --log-format |  | K8S_KMS_PLUGIN_LOG_FORMAT | k8s-kms-plugin.log-format | text | string | true | Logrus log output format. Possible values: text, json. Env var: K8S_KMS_PLUGIN_LOG_FORMAT |
-| k8s-kms-plugin | --log-level |  | K8S_KMS_PLUGIN_LOG_LEVEL | k8s-kms-plugin.log-level | info | string | true | Set logrus.SetLevel. Possible values: trace, debug, info, warning, error, fatal and panic. Flags --log-level and --debug flag are mutually exclusive. Env var: K8S_KMS_PLUGIN_LOG_LEVEL. |
+| k8s-kms-plugin | --debug |  | K8S_KMS_PLUGIN_DEBUG | k8s-kms-plugin.debug | false | bool | true | Set log level to "debug". This is equivalent to using --log-level=debug. Flags --log-level and --debug flag are mutually exclusive. Env var: K8S_KMS_PLUGIN_DEBUG. |
+| k8s-kms-plugin | --log-format |  | K8S_KMS_PLUGIN_LOG_FORMAT | k8s-kms-plugin.log-format | text | string | true | Log output format. Possible values: text, json. Env var: K8S_KMS_PLUGIN_LOG_FORMAT |
+| k8s-kms-plugin | --log-level |  | K8S_KMS_PLUGIN_LOG_LEVEL | k8s-kms-plugin.log-level | info | string | true | Set log level. Possible values: trace, debug, info, warn, error, quiet. Flags --log-level and --debug flag are mutually exclusive. Env var: K8S_KMS_PLUGIN_LOG_LEVEL. |
 | k8s-kms-plugin decrypt-csr | --input-filename | -f | K8S_KMS_PLUGIN_DECRYPT_CSR_INPUT_FILENAME | k8s-kms-plugin.decrypt-csr.input-filename |  | string | false | Input file. Env var: K8S_KMS_PLUGIN_DECRYPT_CSR_INPUT_FILE |
 | k8s-kms-plugin decrypt-csr | --output-filename | -o | K8S_KMS_PLUGIN_DECRYPT_CSR_OUTPUT_FILENAME | k8s-kms-plugin.decrypt-csr.output-filename |  | string | false | Output file. Env var: K8S_KMS_PLUGIN_DECRYPT_CSR_OUTPUT_FILE |
 | k8s-kms-plugin decrypt-csr | --socket |  | K8S_KMS_PLUGIN_DECRYPT_CSR_SOCKET | k8s-kms-plugin.decrypt-csr.socket | /tmp/run/hsm-plugin-server.sock | string | false | Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_DECRYPT_CSR_SOCKET |
 | k8s-kms-plugin decrypt-csr | --timeout |  | K8S_KMS_PLUGIN_DECRYPT_CSR_TIMEOUT | k8s-kms-plugin.decrypt-csr.timeout | 30s | duration | false | KMS timeout. Env var: K8S_KMS_PLUGIN_DECRYPT_CSR_TIMEOUT |
 | k8s-kms-plugin docs | --format | -f | K8S_KMS_PLUGIN_DOCS_FORMAT | k8s-kms-plugin.docs.format | markdown | string | false | Docs Output format. Prefered is markdown. Supported formats: markdown, man, rst, yaml, cli-table-csv, cli-table-pretty, cli-table-html, all. |
 | k8s-kms-plugin docs | --help | -h | K8S_KMS_PLUGIN_DOCS_HELP | k8s-kms-plugin.docs.help | false | bool | false | help for docs |
-| k8s-kms-plugin docs | --output-dir | -o | K8S_KMS_PLUGIN_DOCS_OUTPUT_DIR | k8s-kms-plugin.docs.output-dir | /tmp/k8s-kms-plugin-docs-2025-10-07T16:43:47+02:00 | string | false | Output directory |
+| k8s-kms-plugin docs | --output-dir | -o | K8S_KMS_PLUGIN_DOCS_OUTPUT_DIR | k8s-kms-plugin.docs.output-dir | /tmp/k8s-kms-plugin-docs-2026-05-27T17:16:25+02:00 | string | false | Output directory |
 | k8s-kms-plugin generate-kek | --kek-id |  | K8S_KMS_PLUGIN_GENERATE_KEK_KEK_ID | k8s-kms-plugin.generate-kek.kek-id | a37807cd-6d1a-4d75-813a-e120f30176f7 | string | false | Key ID for KMS KEK. Env var: K8S_KMS_PLUGIN_GENERATE_KEK_KEK_ID |
 | k8s-kms-plugin generate-kek | --socket |  | K8S_KMS_PLUGIN_GENERATE_KEK_SOCKET | k8s-kms-plugin.generate-kek.socket | /tmp/run/hsm-plugin-server.sock | string | false | Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_GENERATE_KEK_SOCKET |
 | k8s-kms-plugin generate-kek | --timeout |  | K8S_KMS_PLUGIN_GENERATE_KEK_TIMEOUT | k8s-kms-plugin.generate-kek.timeout | 30s | duration | false | KMS timeout. Env var: K8S_KMS_PLUGIN_GENERATE_KEK_TIMEOUT |
 | k8s-kms-plugin import-ca | --cert-file | -f | K8S_KMS_PLUGIN_IMPORT_CA_CERT_FILE | k8s-kms-plugin.import-ca.cert-file |  | string | false | Certificate File. Env var: K8S_KMS_PLUGIN_IMPORT_CA_CERT_FILE |
 | k8s-kms-plugin import-ca | --socket |  | K8S_KMS_PLUGIN_IMPORT_CA_SOCKET | k8s-kms-plugin.import-ca.socket | /tmp/run/hsm-plugin-server.sock | string | false | Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock. Env var: K8S_KMS_PLUGIN_IMPORT_CA_SOCKET |
 | k8s-kms-plugin import-ca | --timeout |  | K8S_KMS_PLUGIN_IMPORT_CA_TIMEOUT | k8s-kms-plugin.import-ca.timeout | 30s | duration | false | KMS timeout. Env var: K8S_KMS_PLUGIN_IMPORT_CA_TIMEOUT |
-| k8s-kms-plugin serve | --algorithm |  | K8S_KMS_PLUGIN_SERVE_ALGORITHM | k8s-kms-plugin.serve.algorithm | aes-gcm | string | true | Set the algorithm for encryption/decryption. Possible values: aes-gcm, aes-cbc, rsa-oaep. |
+| k8s-kms-plugin serve | --algorithm-family |  | K8S_KMS_PLUGIN_SERVE_ALGORITHM_FAMILY | k8s-kms-plugin.serve.algorithm-family | aes-gcm | algorithmFamily | true | Encryption mechanism. Possible values: aes-gcm, aes-cbc, rsa-oaep, ml-kem. |
 | k8s-kms-plugin serve | --allow-any |  | K8S_KMS_PLUGIN_SERVE_ALLOW_ANY | k8s-kms-plugin.serve.allow-any | false | bool | true | Allow any device (accepts all ids/secrets). |
 | k8s-kms-plugin serve | --auto-create |  | K8S_KMS_PLUGIN_SERVE_AUTO_CREATE | k8s-kms-plugin.serve.auto-create | false | bool | true | Auto create the keys if needed. |
 | k8s-kms-plugin serve | --ca-id |  | K8S_KMS_PLUGIN_SERVE_CA_ID | k8s-kms-plugin.serve.ca-id | 1c3d30d5-dfa8-4167-a9f9-2c768464181b | string | true | Cert ID for CA Cert record. |
@@ -26,9 +26,9 @@
 | k8s-kms-plugin serve | --host |  | K8S_KMS_PLUGIN_SERVE_HOST | k8s-kms-plugin.serve.host | 0.0.0.0 | string | true | Hostname without port. |
 | k8s-kms-plugin serve | --native-path | -p | K8S_KMS_PLUGIN_SERVE_NATIVE_PATH | k8s-kms-plugin.serve.native-path | .keys | string | true | Path to key store for native provider(Files only). |
 | k8s-kms-plugin serve | --p11-hmac-id |  | K8S_KMS_PLUGIN_SERVE_P11_HMAC_ID | k8s-kms-plugin.serve.p11-hmac-id |  | string | true | Key ID CKA_ID for KMS HMAC. |
-| k8s-kms-plugin serve | --p11-hmac-label |  | K8S_KMS_PLUGIN_SERVE_P11_HMAC_LABEL | k8s-kms-plugin.serve.p11-hmac-label |  | string | true | Key Label CKA_LABEL to use for sha based verifications. |
+| k8s-kms-plugin serve | --p11-hmac-label |  | K8S_KMS_PLUGIN_SERVE_P11_HMAC_LABEL | k8s-kms-plugin.serve.p11-hmac-label |  | string | true | Key Label (CKA_LABEL) for the HMAC key. The key must have a CKA_ID set on the HSM. |
 | k8s-kms-plugin serve | --p11-key-id |  | K8S_KMS_PLUGIN_SERVE_P11_KEY_ID | k8s-kms-plugin.serve.p11-key-id |  | string | true | Key ID CKA_ID for KMS KEK. |
-| k8s-kms-plugin serve | --p11-key-label |  | K8S_KMS_PLUGIN_SERVE_P11_KEY_LABEL | k8s-kms-plugin.serve.p11-key-label |  | string | true | Key Label CKA_LABEL to use for encrypt/decrypt. |
+| k8s-kms-plugin serve | --p11-key-label |  | K8S_KMS_PLUGIN_SERVE_P11_KEY_LABEL | k8s-kms-plugin.serve.p11-key-label |  | string | true | Key Label (CKA_LABEL) for the KMS KEK. The key must have a CKA_ID set on the HSM — it is stored as the KEK ID in Kubernetes etcd. |
 | k8s-kms-plugin serve | --p11-label |  | K8S_KMS_PLUGIN_SERVE_P11_LABEL | k8s-kms-plugin.serve.p11-label |  | string | true | P11 token label. |
 | k8s-kms-plugin serve | --p11-lib |  | K8S_KMS_PLUGIN_SERVE_P11_LIB | k8s-kms-plugin.serve.p11-lib |  | string | true | Path to p11 library/client. |
 | k8s-kms-plugin serve | --p11-pin |  | K8S_KMS_PLUGIN_SERVE_P11_PIN | k8s-kms-plugin.serve.p11-pin |  | string | true | P11 Pin. |
@@ -39,13 +39,13 @@
 | k8s-kms-plugin serve | --tls-ca |  | K8S_KMS_PLUGIN_SERVE_TLS_CA | k8s-kms-plugin.serve.tls-ca | certs/ca.crt | string | true | TLS CA cert. |
 | k8s-kms-plugin serve | --tls-certificate |  | K8S_KMS_PLUGIN_SERVE_TLS_CERTIFICATE | k8s-kms-plugin.serve.tls-certificate | certs/tls.crt | string | true | TLS server cert. |
 | k8s-kms-plugin serve | --tls-key |  | K8S_KMS_PLUGIN_SERVE_TLS_KEY | k8s-kms-plugin.serve.tls-key | certs/tls.key | string | true | TLS server key. |
-| k8s-kms-plugin serve rotation | --old-algorithm |  | K8S_KMS_PLUGIN_SERVE_ROTATION_OLD_ALGORITHM | k8s-kms-plugin.serve.rotation.old-algorithm |  | string | false | Set the algorithm for the old KEK |
+| k8s-kms-plugin serve rotation | --old-algorithm-family |  | K8S_KMS_PLUGIN_SERVE_ROTATION_OLD_ALGORITHM_FAMILY | k8s-kms-plugin.serve.rotation.old-algorithm-family | aes-gcm | algorithmFamily | false | Encryption mechanism of the old KEK. Possible values: aes-gcm, aes-cbc, rsa-oaep, ml-kem. |
 | k8s-kms-plugin serve rotation | --old-ca-id |  | K8S_KMS_PLUGIN_SERVE_ROTATION_OLD_CA_ID | k8s-kms-plugin.serve.rotation.old-ca-id |  | string | false | Cert ID for old CA Cert record |
 | k8s-kms-plugin serve rotation | --old-native-path |  | K8S_KMS_PLUGIN_SERVE_ROTATION_OLD_NATIVE_PATH | k8s-kms-plugin.serve.rotation.old-native-path |  | string | false | Native path for old KEK |
 | k8s-kms-plugin serve rotation | --old-p11-hmac-id |  | K8S_KMS_PLUGIN_SERVE_ROTATION_OLD_P11_HMAC_ID | k8s-kms-plugin.serve.rotation.old-p11-hmac-id |  | string | false | Key ID CKA_ID for old KEK HMAC |
-| k8s-kms-plugin serve rotation | --old-p11-hmac-label |  | K8S_KMS_PLUGIN_SERVE_ROTATION_OLD_P11_HMAC_LABEL | k8s-kms-plugin.serve.rotation.old-p11-hmac-label |  | string | false | Key Label CKA_LABEL for old KEK HMAC |
+| k8s-kms-plugin serve rotation | --old-p11-hmac-label |  | K8S_KMS_PLUGIN_SERVE_ROTATION_OLD_P11_HMAC_LABEL | k8s-kms-plugin.serve.rotation.old-p11-hmac-label |  | string | false | Key Label (CKA_LABEL) for the old KEK HMAC. The key must have a CKA_ID set on the HSM. |
 | k8s-kms-plugin serve rotation | --old-p11-key-id |  | K8S_KMS_PLUGIN_SERVE_ROTATION_OLD_P11_KEY_ID | k8s-kms-plugin.serve.rotation.old-p11-key-id |  | string | false | Key ID CKA_ID for old KEK |
-| k8s-kms-plugin serve rotation | --old-p11-key-label |  | K8S_KMS_PLUGIN_SERVE_ROTATION_OLD_P11_KEY_LABEL | k8s-kms-plugin.serve.rotation.old-p11-key-label |  | string | false | Key Label CKA_LABEL for old KEK |
+| k8s-kms-plugin serve rotation | --old-p11-key-label |  | K8S_KMS_PLUGIN_SERVE_ROTATION_OLD_P11_KEY_LABEL | k8s-kms-plugin.serve.rotation.old-p11-key-label |  | string | false | Key Label (CKA_LABEL) for the old KEK. The key must have a CKA_ID set on the HSM. |
 | k8s-kms-plugin serve rotation | --old-p11-label |  | K8S_KMS_PLUGIN_SERVE_ROTATION_OLD_P11_LABEL | k8s-kms-plugin.serve.rotation.old-p11-label |  | string | false | P11 token label for old KEK |
 | k8s-kms-plugin serve rotation | --old-p11-lib |  | K8S_KMS_PLUGIN_SERVE_ROTATION_OLD_P11_LIB | k8s-kms-plugin.serve.rotation.old-p11-lib |  | string | false | Path to P11 library/client for old KEK |
 | k8s-kms-plugin serve rotation | --old-p11-pin |  | K8S_KMS_PLUGIN_SERVE_ROTATION_OLD_P11_PIN | k8s-kms-plugin.serve.rotation.old-p11-pin |  | string | false | P11 Pin for old KEK |
