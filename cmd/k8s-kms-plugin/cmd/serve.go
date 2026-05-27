@@ -250,8 +250,8 @@ func init() {
 	// These flags does not need to store their values in variable because we use the viper structure ViperFlagsServe to do this
 	serveCmd.PersistentFlags().String("ca-id", defaultCaId, "Cert ID for CA Cert record.")
 	serveCmd.PersistentFlags().Bool("auto-create", false, "Auto create the keys if needed.")
-	serveCmd.PersistentFlags().String("p11-key-label", "", "Key Label CKA_LABEL to use for encrypt/decrypt.")
-	serveCmd.PersistentFlags().String("p11-hmac-label", "", "Key Label CKA_LABEL to use for sha based verifications.")
+	serveCmd.PersistentFlags().String("p11-key-label", "", "Key Label (CKA_LABEL) for the KMS KEK. The key must have a CKA_ID set on the HSM — it is stored as the KEK ID in Kubernetes etcd.")
+	serveCmd.PersistentFlags().String("p11-hmac-label", "", "Key Label (CKA_LABEL) for the HMAC key. The key must have a CKA_ID set on the HSM.")
 	serveCmd.PersistentFlags().String("host", "0.0.0.0", "Hostname without port.")
 	serveCmd.PersistentFlags().String("p11-key-id", "", "Key ID CKA_ID for KMS KEK.")
 	serveCmd.PersistentFlags().String("p11-hmac-id", "", "Key ID CKA_ID for KMS HMAC.")

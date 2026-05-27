@@ -1222,13 +1222,16 @@ func GetKeyIdAndLabel(p *P11, keyId string, keyLabel string) (resultKeyId []byte
 		keyLabelBytes := []byte(keyLabel)
 		resultKeyId, err = FindCkaAttrByIdOrLabel(p.ctx, p.algorithmFamily, crypto11.CkaId, nil, keyLabelBytes)
 		if err != nil {
-			slog.Error("NewP11: failed to find key CKA_ID by CKA_LABEL", "label", resultKeyLabel, "error", err)
+			slog.Error("no key found in HSM with the given CKA_LABEL — verify the label matches a key present on the configured PKCS#11 token",
+				"label", resultKeyLabel, "error", err)
 			return nil, "", err
 		}
 
-		// panic error if the CKA_ID if the key, found using its label, is empty.
 		if len(resultKeyId) == 0 {
-			logging.Fatal("NewP11: Fatal error : key ID (CKA_ID) empty for key label (CKA_LABEL). k8s-kms-plugin only supports keys with a CKA_ID in HSM", "label", keyLabel)
+			logging.Fatal("key found by CKA_LABEL has no CKA_ID set",
+				"label", keyLabel,
+				"reason", "CKA_ID is used as the KEK ID stored in Kubernetes etcd; it must be stable and unambiguous to guarantee secret recoverability",
+				"action", "set a CKA_ID on this key using your HSM management tool (e.g. pkcs11-tool --id <hex-id>) before starting the plugin")
 		}
 	} else if keyId != "" && keyLabel == "" {
 		// Case: KEK ID already provided by user at startup with flag --p11-key-id

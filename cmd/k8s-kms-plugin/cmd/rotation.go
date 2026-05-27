@@ -187,9 +187,9 @@ func init() {
 	rotationCmd.Flags().Int("old-p11-slot", 0, "P11 token slot for old KEK")
 	rotationCmd.Flags().String("old-provider", "p11", "Provider for old KEK")
 	rotationCmd.Flags().String("old-socket", "", "Unix socket path for old KEK")
-	rotationCmd.Flags().String("old-p11-key-label", "", "Key Label CKA_LABEL for old KEK")
+	rotationCmd.Flags().String("old-p11-key-label", "", "Key Label (CKA_LABEL) for the old KEK. The key must have a CKA_ID set on the HSM.")
 	rotationCmd.Flags().String("old-p11-hmac-id", "", "Key ID CKA_ID for old KEK HMAC")
-	rotationCmd.Flags().String("old-p11-hmac-label", "", "Key Label CKA_LABEL for old KEK HMAC")
+	rotationCmd.Flags().String("old-p11-hmac-label", "", "Key Label (CKA_LABEL) for the old KEK HMAC. The key must have a CKA_ID set on the HSM.")
 	rotationCmd.Flags().String("old-p11-key-id", "", "Key ID CKA_ID for old KEK")
 
 	// At least one of the old KEK CKA_ID or old CKA_LABEL must be provided by the user
