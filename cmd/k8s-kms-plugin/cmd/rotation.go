@@ -217,7 +217,7 @@ func initRotatedProvider() (pRot providers.Provider, err error) {
 	activeConfig := &crypto11.Config{}
 	switch vprFlgsServe.Provider {
 	case "p11", "softhsm":
-		slog.Debug("initProvider: case p11 or softhsm")
+		slog.Log(context.Background(), logging.LevelTrace, "initProvider: case p11 or softhsm")
 		activeConfig = &crypto11.Config{
 			Path:            vprFlgsServe.P11Lib,
 			Pin:             vprFlgsServe.P11Pin,
@@ -225,7 +225,7 @@ func initRotatedProvider() (pRot providers.Provider, err error) {
 		}
 
 	case "luna", "dpod":
-		slog.Debug("initProvider: case luna HSM or dpod")
+		slog.Log(context.Background(), logging.LevelTrace, "initProvider: case luna HSM or dpod")
 		activeConfig = &crypto11.Config{
 			Path:            vprFlgsServe.P11Lib,
 			Pin:             vprFlgsServe.P11Pin,
@@ -254,7 +254,7 @@ func initRotatedProvider() (pRot providers.Provider, err error) {
 	oldConfig := &crypto11.Config{}
 	switch vprFlgsRotation.OldProvider {
 	case "p11", "softhsm":
-		slog.Debug("initProvider: case p11 or softhsm")
+		slog.Log(context.Background(), logging.LevelTrace, "initProvider: case p11 or softhsm")
 		oldConfig = &crypto11.Config{
 			Path:            vprFlgsRotation.OldP11Lib,
 			Pin:             vprFlgsRotation.OldP11Pin,
@@ -262,7 +262,7 @@ func initRotatedProvider() (pRot providers.Provider, err error) {
 		}
 
 	case "luna", "dpod":
-		slog.Debug("initProvider: case luna HSM or dpod")
+		slog.Log(context.Background(), logging.LevelTrace, "initProvider: case luna HSM or dpod")
 		oldConfig = &crypto11.Config{
 			Path:            vprFlgsRotation.OldP11Lib,
 			Pin:             vprFlgsRotation.OldP11Pin,
@@ -320,7 +320,7 @@ func grpcRotation(gl net.Listener, p providers.Provider) (err error) {
 	reflection.Register(gs)
 
 	slog.Info("serving on socket", "address", gl.Addr().String())
-	slog.Debug("grpc port", "port", vprFlgsServe.Port)
+	slog.Log(context.Background(), logging.LevelTrace, "grpc port", "port", vprFlgsServe.Port)
 
 START:
 	if err = gs.Serve(gl); err != nil {

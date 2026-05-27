@@ -788,7 +788,7 @@ func (p *P11) decryptWithContext(req *k8skmsv2.DecryptRequest, isRotation bool) 
 			defer blockMode.Close()
 
 			if out, aad, err = decryptor.Decrypt(string(req.GetCiphertext())); err != nil {
-				slog.Log(context.Background(), logging.LevelTrace, "error during decryption", "error", err)
+				slog.Error("error during decryption", "error", err)
 				return nil, err
 			}
 			if nil != aad {
@@ -991,7 +991,7 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 				return
 			}
 		default:
-			slog.Info("Encrypt: not supported algorithm", "algorithm", p.algorithmFamily)
+			slog.Error("Encrypt: unsupported algorithm", "algorithm", p.algorithmFamily)
 		}
 	}
 
@@ -1063,7 +1063,7 @@ func (p *P11) Status(ctx context.Context, request *k8skmsv2.StatusRequest) (stat
 		KeyId:   p.GetKekKeyIdString(),
 	}
 
-	slog.Debug("StatusResponse", "Version", statusResponse.Version, "Healthz", statusResponse.Healthz, "KeyId", statusResponse.KeyId)
+	slog.Log(ctx, logging.LevelTrace, "StatusResponse", "Version", statusResponse.Version, "Healthz", statusResponse.Healthz, "KeyId", statusResponse.KeyId)
 	return statusResponse, nil
 }
 

@@ -287,7 +287,7 @@ func initProvider() (p providers.Provider, err error) {
 	config := &crypto11.Config{}
 	switch vprFlgsServe.Provider {
 	case "p11", "softhsm":
-		slog.Debug("initProvider: case p11 or softhsm")
+		slog.Log(context.Background(), logging.LevelTrace, "initProvider: case p11 or softhsm")
 		config = &crypto11.Config{
 			Path:            vprFlgsServe.P11Lib,
 			Pin:             vprFlgsServe.P11Pin,
@@ -295,7 +295,7 @@ func initProvider() (p providers.Provider, err error) {
 		}
 
 	case "luna", "dpod":
-		slog.Debug("initProvider: case luna HSM or dpod")
+		slog.Log(context.Background(), logging.LevelTrace, "initProvider: case luna HSM or dpod")
 		config = &crypto11.Config{
 			Path:            vprFlgsServe.P11Lib,
 			Pin:             vprFlgsServe.P11Pin,
@@ -354,7 +354,7 @@ func grpcServe(gl net.Listener, p providers.Provider) (err error) {
 	istio.RegisterKeyManagementServiceServer(gs, p)
 
 	slog.Info("serving on socket", "address", gl.Addr().String())
-	slog.Debug("grpc port", "port", vprFlgsServe.Port)
+	slog.Log(context.Background(), logging.LevelTrace, "grpc port", "port", vprFlgsServe.Port)
 
 START:
 	if err = gs.Serve(gl); err != nil {
