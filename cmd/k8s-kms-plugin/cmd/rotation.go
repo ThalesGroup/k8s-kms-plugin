@@ -213,6 +213,15 @@ func sanitizeViperFlagsRotation(f *ViperFlagsRotation) error {
 	if err := validateAlgorithmFamily(f.OldAlgorithmFamily); err != nil {
 		return fmt.Errorf("--old-algorithm-family: %w", err)
 	}
+	if len(f.OldP11Label) > maxCkaLabelBytes {
+		return fmt.Errorf("--old-p11-label: length %d exceeds maximum of %d bytes", len(f.OldP11Label), maxCkaLabelBytes)
+	}
+	if len(f.OldDekKeyLabel) > maxCkaLabelBytes {
+		return fmt.Errorf("--old-p11-key-label: length %d exceeds maximum of %d bytes", len(f.OldDekKeyLabel), maxCkaLabelBytes)
+	}
+	if len(f.OldHmacKeyLabel) > maxCkaLabelBytes {
+		return fmt.Errorf("--old-p11-hmac-label: length %d exceeds maximum of %d bytes", len(f.OldHmacKeyLabel), maxCkaLabelBytes)
+	}
 	return nil
 }
 

@@ -107,11 +107,30 @@ func validateAlgorithmFamily(s string) error {
 	}
 }
 
+const (
+	// maxCkaLabelBytes is the PKCS#11 CKA_LABEL maximum (mirrored from pkg/providers).
+	maxCkaLabelBytes = 255
+	// maxUnixSocketPathLen is the Linux UNIX_PATH_MAX minus one byte for the null terminator.
+	maxUnixSocketPathLen = 107
+)
+
 // sanitizeViperFlagsServe validates all user-controlled fields in ViperFlagsServe after
 // viper has resolved them from all input sources (CLI flags, config file, env vars).
 func sanitizeViperFlagsServe(f *ViperFlagsServe) error {
 	if err := validateAlgorithmFamily(f.AlgorithmFamily); err != nil {
 		return fmt.Errorf("--algorithm-family: %w", err)
+	}
+	if len(f.P11Label) > maxCkaLabelBytes {
+		return fmt.Errorf("--p11-label: length %d exceeds maximum of %d bytes", len(f.P11Label), maxCkaLabelBytes)
+	}
+	if len(f.DekKeyLabel) > maxCkaLabelBytes {
+		return fmt.Errorf("--p11-key-label: length %d exceeds maximum of %d bytes", len(f.DekKeyLabel), maxCkaLabelBytes)
+	}
+	if len(f.HmacKeyLabel) > maxCkaLabelBytes {
+		return fmt.Errorf("--p11-hmac-label: length %d exceeds maximum of %d bytes", len(f.HmacKeyLabel), maxCkaLabelBytes)
+	}
+	if !f.DisableSocket && len(f.SocketPath) > maxUnixSocketPathLen {
+		return fmt.Errorf("--socket: path length %d exceeds Unix socket maximum of %d bytes", len(f.SocketPath), maxUnixSocketPathLen)
 	}
 	return nil
 }

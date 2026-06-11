@@ -10,6 +10,7 @@
 package cmd
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -120,4 +121,89 @@ func TestSanitizeViperFlagsServe_Empty(t *testing.T) {
 	err := sanitizeViperFlagsServe(f)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "--algorithm-family")
+}
+
+// TestSanitizeViperFlagsServe_LabelLimits verifies that CKA_LABEL strings over the
+// PKCS#11 255-byte maximum are rejected with flag-prefixed error messages.
+func TestSanitizeViperFlagsServe_LabelLimits(t *testing.T) {
+	atLimit := strings.Repeat("a", maxCkaLabelBytes)
+	overLimit := strings.Repeat("a", maxCkaLabelBytes+1)
+
+	cases := []struct {
+		name    string
+		flags   ViperFlagsServe
+		wantErr string
+	}{
+		{
+			"all labels at limit",
+			ViperFlagsServe{AlgorithmFamily: "aes-gcm", P11Label: atLimit, DekKeyLabel: atLimit, HmacKeyLabel: atLimit},
+			"",
+		},
+		{
+			"p11-label over limit",
+			ViperFlagsServe{AlgorithmFamily: "aes-gcm", P11Label: overLimit},
+			"--p11-label",
+		},
+		{
+			"p11-key-label over limit",
+			ViperFlagsServe{AlgorithmFamily: "aes-gcm", DekKeyLabel: overLimit},
+			"--p11-key-label",
+		},
+		{
+			"p11-hmac-label over limit",
+			ViperFlagsServe{AlgorithmFamily: "aes-gcm", HmacKeyLabel: overLimit},
+			"--p11-hmac-label",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := sanitizeViperFlagsServe(&tc.flags)
+			if tc.wantErr == "" {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.wantErr)
+			}
+		})
+	}
+}
+
+// TestSanitizeViperFlagsServe_SocketPathLimit verifies that Unix socket paths over
+// 107 bytes are rejected, but only when the socket is not disabled.
+func TestSanitizeViperFlagsServe_SocketPathLimit(t *testing.T) {
+	atLimit := strings.Repeat("a", maxUnixSocketPathLen)
+	overLimit := strings.Repeat("a", maxUnixSocketPathLen+1)
+
+	cases := []struct {
+		name    string
+		flags   ViperFlagsServe
+		wantErr string
+	}{
+		{
+			"at limit",
+			ViperFlagsServe{AlgorithmFamily: "aes-gcm", SocketPath: atLimit},
+			"",
+		},
+		{
+			"over limit socket enabled",
+			ViperFlagsServe{AlgorithmFamily: "aes-gcm", SocketPath: overLimit},
+			"--socket",
+		},
+		{
+			"over limit socket disabled",
+			ViperFlagsServe{AlgorithmFamily: "aes-gcm", SocketPath: overLimit, DisableSocket: true},
+			"",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := sanitizeViperFlagsServe(&tc.flags)
+			if tc.wantErr == "" {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.wantErr)
+			}
+		})
+	}
 }

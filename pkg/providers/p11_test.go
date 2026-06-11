@@ -15,6 +15,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 
@@ -25,9 +26,42 @@ import (
 	"github.com/ThalesGroup/gose/jose"
 	"github.com/miekg/pkcs11"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	k8skmsv2 "k8s.io/kms/apis/v2"
 )
+
+// TestValidateHexKeyID covers all branches of the standalone validator.
+func TestValidateHexKeyID(t *testing.T) {
+	tooLong := strings.Repeat("a", maxCkaIDHexLen+2) // even length, over limit
+	atLimit := strings.Repeat("a", maxCkaIDHexLen)
+
+	cases := []struct {
+		name    string
+		input   string
+		wantErr string // substring; empty means no error expected
+	}{
+		{"empty", "", "hex key ID is empty"},
+		{"odd length", "abc", "even number of characters"},
+		{"too long", tooLong, "exceeds PKCS#11 maximum"},
+		{"valid short", "abcd", ""},
+		{"valid single byte", "00", ""},
+		{"at limit", atLimit, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateHexKeyID(tc.input)
+			if tc.wantErr == "" {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.wantErr)
+			}
+		})
+	}
+}
 
 // Tests for P11 struct methods
 func TestP11_SetKekKeyIdString(t *testing.T) {
@@ -41,13 +75,133 @@ func TestP11_SetKekKeyIdString(t *testing.T) {
 	assert.Equal(t, expected, p.kekCkaId)
 }
 
-func TestP11_SetKekKeyIdString_InvalidHex(t *testing.T) {
-	p := &P11{}
+func TestP11_SetKekKeyIdString_Validation(t *testing.T) {
+	tooLong := strings.Repeat("a", maxCkaIDHexLen+2) // even length, over limit
+	cases := []struct {
+		name    string
+		input   string
+		wantErr string
+	}{
+		{"empty", "", "hex key ID is empty"},
+		{"odd length", "abc", "even number of characters"},
+		{"too long", tooLong, "exceeds PKCS#11 maximum"},
+		{"invalid hex chars even length", "zzzz", "invalid hex KeyID"},
+		{"valid", "abcd1234", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			p := &P11{}
+			err := p.SetKekKeyIdString(tc.input)
+			if tc.wantErr == "" {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.wantErr)
+			}
+		})
+	}
+}
 
-	err := p.SetKekKeyIdString("invalid_hex")
+func TestP11_SetHmacKeyIdString_Validation(t *testing.T) {
+	cases := []struct {
+		name    string
+		input   string
+		wantErr string
+	}{
+		{"empty", "", "hex key ID is empty"},
+		{"odd length", "a", "even number of characters"},
+		{"valid", "ef567890", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			p := &P11{}
+			err := p.SetHmacKeyIdString(tc.input)
+			if tc.wantErr == "" {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.wantErr)
+			}
+		})
+	}
+}
 
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid hex KeyID")
+func TestP11_SetOldHmacKeyIdString_Validation(t *testing.T) {
+	cases := []struct {
+		name    string
+		input   string
+		wantErr string
+	}{
+		{"empty", "", "hex key ID is empty"},
+		{"odd length", "a", "even number of characters"},
+		{"valid", "1234abcd", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			p := &P11{}
+			err := p.SetOldHmacKeyIdString(tc.input)
+			if tc.wantErr == "" {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.wantErr)
+			}
+		})
+	}
+}
+
+func TestP11_SetOldKekKeyIdString_Validation(t *testing.T) {
+	cases := []struct {
+		name    string
+		input   string
+		wantErr string
+	}{
+		{"empty", "", "hex key ID is empty"},
+		{"odd length", "a", "even number of characters"},
+		{"valid", "5678cdef", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			p := &P11{}
+			err := p.SetOldKekKeyIdString(tc.input)
+			if tc.wantErr == "" {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.wantErr)
+			}
+		})
+	}
+}
+
+// TestP11_DecryptWithContext_InvalidKeyId verifies that validateHexKeyID is enforced
+// on the DecryptRequest.KeyId when the decryptor is not yet cached.
+func TestP11_DecryptWithContext_InvalidKeyId(t *testing.T) {
+	p := &P11{
+		kekCkaId:        []byte{0x01},
+		algorithmFamily: AlgAESGCM,
+		decryptors:      map[string]gose.JweDecryptor{},
+	}
+
+	cases := []struct {
+		name  string
+		keyID string
+	}{
+		{"empty key ID", ""},
+		{"odd length key ID", "abc"},
+		{"oversized key ID", strings.Repeat("a", maxCkaIDHexLen+1)},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := &k8skmsv2.DecryptRequest{
+				KeyId:      tc.keyID,
+				Ciphertext: []byte("mock"),
+			}
+			_, err := p.decryptWithContext(req, false)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "invalid key ID")
+		})
+	}
 }
 
 func TestP11_GetKekKeyIdString(t *testing.T) {
@@ -442,4 +596,120 @@ func TestP11_NewP11_ConfigEmptyArgs(t *testing.T) {
 
 	_, err := NewP11(validActiveCfg, false, "", "", "", "", "", false, validOldCfg, "", "", "", "", "")
 	assert.Error(t, err)
+}
+
+// TestValidateCkaLabel covers all branches of the CKA_LABEL validator.
+func TestValidateCkaLabel(t *testing.T) {
+	atLimit := strings.Repeat("a", maxCkaLabelLen)
+	overLimit := strings.Repeat("a", maxCkaLabelLen+1)
+	// "é" is 2 bytes in UTF-8; len() counts bytes, not runes.
+	multibyteOver := strings.Repeat("é", maxCkaLabelLen/2+1) // 128×2 = 256 bytes
+
+	cases := []struct {
+		name    string
+		input   string
+		wantErr string
+	}{
+		{"empty", "", "CKA_LABEL is empty"},
+		{"at limit", atLimit, ""},
+		{"over limit", overLimit, "exceeds PKCS#11 maximum"},
+		{"valid short", "my-key-label", ""},
+		{"multibyte over limit", multibyteOver, "exceeds PKCS#11 maximum"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateCkaLabel(tc.input)
+			if tc.wantErr == "" {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.wantErr)
+			}
+		})
+	}
+}
+
+// TestGetKeyIdAndLabel_LabelTooLong confirms that validateCkaLabel fires in
+// GetKeyIdAndLabel before any HSM call is attempted.
+func TestGetKeyIdAndLabel_LabelTooLong(t *testing.T) {
+	p := &P11{algorithmFamily: AlgAESGCM}
+	tooLong := strings.Repeat("a", maxCkaLabelLen+1)
+
+	_, _, err := GetKeyIdAndLabel(p, "", tooLong)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "exceeds PKCS#11 maximum")
+}
+
+// noopHandler is a grpc.UnaryHandler stub that returns success without side effects.
+var noopHandler grpc.UnaryHandler = func(_ context.Context, _ interface{}) (interface{}, error) {
+	return nil, nil
+}
+
+// requireGRPCCode is a test helper that asserts a gRPC status code on an error.
+func requireGRPCCode(t *testing.T, err error, want codes.Code) {
+	t.Helper()
+	assert.Error(t, err)
+	st, ok := status.FromError(err)
+	assert.True(t, ok, "expected a gRPC status error")
+	assert.Equal(t, want, st.Code())
+}
+
+// TestUnaryInterceptor_EncryptRequest_Validation checks that empty and oversized
+// plaintext are rejected before the handler is reached.
+func TestUnaryInterceptor_EncryptRequest_Validation(t *testing.T) {
+	p := &P11{}
+	ctx := context.Background()
+	info := &grpc.UnaryServerInfo{}
+
+	cases := []struct {
+		name     string
+		req      *k8skmsv2.EncryptRequest
+		wantCode codes.Code // codes.OK means no interceptor error expected
+	}{
+		{"nil plaintext", &k8skmsv2.EncryptRequest{}, codes.InvalidArgument},
+		{"empty plaintext", &k8skmsv2.EncryptRequest{Plaintext: []byte{}}, codes.InvalidArgument},
+		{"plaintext too large", &k8skmsv2.EncryptRequest{Plaintext: make([]byte, maxPlaintextSize+1)}, codes.InvalidArgument},
+		{"valid plaintext", &k8skmsv2.EncryptRequest{Plaintext: []byte("hello")}, codes.OK},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := p.UnaryInterceptor(ctx, tc.req, info, noopHandler)
+			if tc.wantCode == codes.OK {
+				assert.NoError(t, err)
+			} else {
+				requireGRPCCode(t, err, tc.wantCode)
+			}
+		})
+	}
+}
+
+// TestUnaryInterceptor_DecryptRequest_Validation checks that missing key ID,
+// empty ciphertext, and oversized ciphertext are rejected before the handler.
+func TestUnaryInterceptor_DecryptRequest_Validation(t *testing.T) {
+	p := &P11{kekCkaId: []byte{0x01}}
+	ctx := context.Background()
+	info := &grpc.UnaryServerInfo{}
+	validKeyID := p.GetKekKeyIdString()
+
+	cases := []struct {
+		name     string
+		req      *k8skmsv2.DecryptRequest
+		wantCode codes.Code
+	}{
+		{"empty key ID", &k8skmsv2.DecryptRequest{KeyId: "", Ciphertext: []byte("data")}, codes.InvalidArgument},
+		{"empty ciphertext", &k8skmsv2.DecryptRequest{KeyId: validKeyID, Ciphertext: []byte{}}, codes.InvalidArgument},
+		{"ciphertext too large", &k8skmsv2.DecryptRequest{KeyId: validKeyID, Ciphertext: make([]byte, maxCiphertextSize+1)}, codes.InvalidArgument},
+		{"valid request", &k8skmsv2.DecryptRequest{KeyId: validKeyID, Ciphertext: []byte("mock")}, codes.OK},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := p.UnaryInterceptor(ctx, tc.req, info, noopHandler)
+			if tc.wantCode == codes.OK {
+				assert.NoError(t, err)
+			} else {
+				requireGRPCCode(t, err, tc.wantCode)
+			}
+		})
+	}
 }

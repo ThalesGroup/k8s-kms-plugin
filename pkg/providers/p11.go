@@ -70,6 +70,45 @@ const (
 	AlgMLKEM jose.Alg = "ml-kem"
 )
 
+const (
+	// maxCkaIDHexLen is the maximum length of a hex-encoded PKCS#11 CKA_ID (255 bytes → 510 hex chars).
+	maxCkaIDHexLen = 510
+	// maxCkaLabelLen is the maximum byte length of a PKCS#11 CKA_LABEL attribute.
+	maxCkaLabelLen = 255
+	// maxPlaintextSize is the KMS v2 maximum for Encrypt requests — matches the Kubernetes API server limit.
+	maxPlaintextSize = 8 * 1024
+	// maxCiphertextSize is the upper bound for Decrypt request ciphertext. JWE overhead on an 8 KB
+	// plaintext is ~100 bytes; 64 KB is a generous margin that prevents runaway memory allocation.
+	maxCiphertextSize = 64 * 1024
+)
+
+// validateHexKeyID checks that a hex-encoded CKA_ID string is non-empty, even-length,
+// and within the PKCS#11 maximum attribute length before hex decoding.
+func validateHexKeyID(hexKeyID string) error {
+	if len(hexKeyID) == 0 {
+		return fmt.Errorf("hex key ID is empty")
+	}
+	if len(hexKeyID)%2 != 0 {
+		return fmt.Errorf("hex key ID must have an even number of characters, got %d", len(hexKeyID))
+	}
+	if len(hexKeyID) > maxCkaIDHexLen {
+		return fmt.Errorf("hex key ID length %d exceeds PKCS#11 maximum of %d characters", len(hexKeyID), maxCkaIDHexLen)
+	}
+	return nil
+}
+
+// validateCkaLabel checks that a CKA_LABEL string is non-empty and within the PKCS#11
+// maximum attribute length before it is passed to the HSM.
+func validateCkaLabel(label string) error {
+	if len(label) == 0 {
+		return fmt.Errorf("CKA_LABEL is empty")
+	}
+	if len(label) > maxCkaLabelLen {
+		return fmt.Errorf("CKA_LABEL length %d exceeds PKCS#11 maximum of %d bytes", len(label), maxCkaLabelLen)
+	}
+	return nil
+}
+
 // GenerateDEK generates a Data Encryption Key (DEK) and encrypts it using
 // the provided JWE encryptor. It first creates a random 32-byte symmetric
 // key, converts it to a JWK format, and then encrypts the JWK using the
@@ -388,8 +427,13 @@ func (p *P11) SetKekKeyIdFromBytes(keyID []byte) error {
 
 // SetKekKeyIdString sets the internal CKA_ID from a hex-encoded string.
 func (p *P11) SetKekKeyIdString(hexKeyID string) error {
+	if err := validateHexKeyID(hexKeyID); err != nil {
+		slog.Error("SetKekKeyIdString: invalid hex key ID", "error", err)
+		return err
+	}
 	kid, err := hex.DecodeString(hexKeyID)
 	if err != nil {
+		slog.Error("SetKekKeyIdString: failed to decode hex key ID", "error", err)
 		return fmt.Errorf("invalid hex KeyID: %w", err)
 	}
 	p.kekCkaId = kid
@@ -410,8 +454,13 @@ func (p *P11) GetKekCkaLabelByteA() []byte {
 
 // SetHmacKeyIdString sets the internal HMAC Key ID from a hex-encoded string.
 func (p *P11) SetHmacKeyIdString(hexHmacKeyID string) error {
+	if err := validateHexKeyID(hexHmacKeyID); err != nil {
+		slog.Error("SetHmacKeyIdString: invalid hex HMAC key ID", "error", err)
+		return err
+	}
 	hmacId, err := hex.DecodeString(hexHmacKeyID)
 	if err != nil {
+		slog.Error("SetHmacKeyIdString: failed to decode hex HMAC key ID", "error", err)
 		return fmt.Errorf("invalid hex HMAC KeyID: %w", err)
 	}
 	p.hmacCkaId = hmacId
@@ -423,20 +472,30 @@ func (p *P11) GetHmacKeyIdString() string {
 	return hex.EncodeToString(p.hmacCkaId)
 }
 
-// SetHmacKeyIdString sets the internal HMAC Key ID from a hex-encoded string.
+// SetOldHmacKeyIdString sets the internal old HMAC Key ID from a hex-encoded string.
 func (p *P11) SetOldHmacKeyIdString(hexOldHmacKeyID string) error {
+	if err := validateHexKeyID(hexOldHmacKeyID); err != nil {
+		slog.Error("SetOldHmacKeyIdString: invalid hex old HMAC key ID", "error", err)
+		return err
+	}
 	oldHmacId, err := hex.DecodeString(hexOldHmacKeyID)
 	if err != nil {
+		slog.Error("SetOldHmacKeyIdString: failed to decode hex old HMAC key ID", "error", err)
 		return fmt.Errorf("invalid hex HMAC KeyID: %w", err)
 	}
 	p.oldHmacCkaId = oldHmacId
 	return nil
 }
 
-// SetKekKeyIdString sets the internal CKA_ID from a hex-encoded string.
+// SetOldKekKeyIdString sets the internal old KEK CKA_ID from a hex-encoded string.
 func (p *P11) SetOldKekKeyIdString(hexOldKeyID string) error {
+	if err := validateHexKeyID(hexOldKeyID); err != nil {
+		slog.Error("SetOldKekKeyIdString: invalid hex old KEK key ID", "error", err)
+		return err
+	}
 	kid, err := hex.DecodeString(hexOldKeyID)
 	if err != nil {
+		slog.Error("SetOldKekKeyIdString: failed to decode hex old KEK key ID", "error", err)
 		return fmt.Errorf("invalid hex KeyID: %w", err)
 	}
 	p.oldKekCkaId = kid
@@ -733,6 +792,11 @@ func (p *P11) decryptWithContext(req *k8skmsv2.DecryptRequest, isRotation bool) 
 	decryptor = actualDecryptors[req.GetKeyId()]
 	p.mu.RUnlock()
 	if decryptor == nil {
+		if err = validateHexKeyID(req.GetKeyId()); err != nil {
+			slog.Error("decryptWithContext: invalid key ID in DecryptRequest", "key_id", req.GetKeyId(), "error", err)
+			return nil, fmt.Errorf("decryptWithContext: invalid key ID: %w", err)
+		}
+
 		// Random source from the HSM (pkcs11 context)
 		var rng io.Reader
 		if rng, err = actualCtx.NewRandomReader(); err != nil {
@@ -1041,13 +1105,31 @@ func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.
 	case *k8skmsv2.EncryptRequest:
 		{
 			slog.Log(ctx, logging.LevelTrace, "UnaryInterceptor kms v2 EncryptRequest")
+			pt := (req).(*k8skmsv2.EncryptRequest).GetPlaintext()
+			if len(pt) == 0 {
+				slog.Error("UnaryInterceptor: plaintext is empty in EncryptRequest")
+				return nil, status.Errorf(codes.InvalidArgument, "UnaryInterceptor: plaintext is empty")
+			}
+			if len(pt) > maxPlaintextSize {
+				slog.Error("UnaryInterceptor: plaintext exceeds maximum size", "size", len(pt), "max", maxPlaintextSize)
+				return nil, status.Errorf(codes.InvalidArgument, "UnaryInterceptor: plaintext size %d exceeds maximum of %d bytes", len(pt), maxPlaintextSize)
+			}
 		}
 	case *k8skmsv2.DecryptRequest:
 		{
 			slog.Log(ctx, logging.LevelTrace, "UnaryInterceptor kms v2 DecryptRequest")
-			if (req).(*k8skmsv2.DecryptRequest).GetKeyId() == "" {
+			decReq := (req).(*k8skmsv2.DecryptRequest)
+			if decReq.GetKeyId() == "" {
 				slog.Error("UnaryInterceptor: KeyId is empty in the DecryptRequest")
 				return nil, status.Errorf(codes.InvalidArgument, "UnaryInterceptor: KeyId is empty in the DecryptRequest")
+			}
+			if len(decReq.GetCiphertext()) == 0 {
+				slog.Error("UnaryInterceptor: ciphertext is empty in DecryptRequest")
+				return nil, status.Errorf(codes.InvalidArgument, "UnaryInterceptor: ciphertext is empty")
+			}
+			if len(decReq.GetCiphertext()) > maxCiphertextSize {
+				slog.Error("UnaryInterceptor: ciphertext exceeds maximum size", "size", len(decReq.GetCiphertext()), "max", maxCiphertextSize)
+				return nil, status.Errorf(codes.InvalidArgument, "UnaryInterceptor: ciphertext size %d exceeds maximum of %d bytes", len(decReq.GetCiphertext()), maxCiphertextSize)
 			}
 		}
 	default:
@@ -1245,6 +1327,10 @@ func FindCkaAttrByIdOrLabel(ctx *crypto11.Context, algorithm jose.Alg, ckaAttr c
 func GetKeyIdAndLabel(p *P11, keyId string, keyLabel string) (resultKeyId []byte, resultKeyLabel string, err error) {
 	var resultKeyLabelBytes []byte
 	if keyId == "" && keyLabel != "" {
+		if err = validateCkaLabel(keyLabel); err != nil {
+			slog.Error("GetKeyIdAndLabel: invalid CKA_LABEL", "error", err)
+			return nil, "", err
+		}
 		slog.Log(context.Background(), logging.LevelTrace, "NewP11: key id (CKA_ID) is empty. Find CKA_ID by CKA_LABEL", "label", keyLabel)
 		resultKeyLabel = keyLabel
 
@@ -1270,6 +1356,10 @@ func GetKeyIdAndLabel(p *P11, keyId string, keyLabel string) (resultKeyId []byte
 		// But we could use EncryptResponse.Annotations and DecryptRequest.Annotations to store
 		// the value of the key label CKA_LABEL.
 		slog.Log(context.Background(), logging.LevelTrace, "NewP11: key label (CKA_LABEL) is empty but key id (CKA_ID) is not empty. Find CKA_LABEL by CKA_ID", "keyId", keyId)
+		if err = validateHexKeyID(keyId); err != nil {
+			slog.Error("GetKeyIdAndLabel: invalid hex key ID format", "error", err)
+			return nil, "", fmt.Errorf("GetKeyIdAndLabel: invalid hex key ID: %w", err)
+		}
 		resultKeyId, err = hex.DecodeString(keyId)
 		if err != nil {
 			return nil, "", fmt.Errorf("NewP11: cannot decode string CKA_ID into hex expected format '%s': %w", keyId, err)
