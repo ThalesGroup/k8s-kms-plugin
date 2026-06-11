@@ -15,9 +15,8 @@
 # Pre-condition: the calling job must have checked out the repo before calling
 #   this action (LDFLAGS runs `make get-ldflags` which needs the Makefile).
 #
-# Tool versions are kept in sync with goreleaser-glibc-image:
-#   https://github.com/ThalesGroup/goreleaser-glibc-image
-#   SYFT_VERSION=1.33.0  TRIVY_VERSION=0.66.0
+# Tool versions: update here when new releases are available.
+#   SYFT_VERSION=1.45.1  TRIVY_VERSION=0.71.0
 
 name: Setup build environment
 description: >
@@ -87,7 +86,7 @@ runs:
       shell: bash
       run: |
         curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh \
-          | sudo sh -s -- -b /usr/local/bin v1.33.0
+          | sudo sh -s -- -b /usr/local/bin v1.45.1
 
     # -- Trivy ----------------------------------------------------------------
     # Generates CycloneDX VEX SBOMs with live vulnerability data, invoked by goreleaser.
@@ -95,4 +94,4 @@ runs:
       shell: bash
       run: |
         curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
-          | sudo sh -s -- -b /usr/local/bin v0.66.0
+          | sudo sh -s -- -b /usr/local/bin v0.71.0
