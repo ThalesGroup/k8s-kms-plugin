@@ -23,6 +23,8 @@ import (
 	"io"
 	"log/slog"
 
+	"sync"
+
 	"github.com/ThalesGroup/crypto11"
 	"github.com/ThalesGroup/gose"
 	"github.com/ThalesGroup/gose/hsm"
@@ -169,6 +171,9 @@ type P11 struct {
 	// Starting with [KMS v0.34.0](https://github.com/kubernetes/kms/tree/v0.34.0/apis/v2), the KMS maintainers stoped to use https://github.com/gogo/protobuf to generate protobuf files, as it is deprecated.
 	// KMS v0.34.0 and later uses official https://github.com/protocolbuffers/protobuf-go. This demands that the gRPC server embeds UnimplementedKeyManagementServiceServer to automatically satisfy method mustEmbedUnimplementedKeyManagementServiceServer()
 	k8skmsv2.UnimplementedKeyManagementServiceServer
+
+	// mu guards encryptors, decryptors, and oldDecryptors against concurrent reads and writes.
+	mu sync.RWMutex
 
 	// active KEK parameters
 	createKey    bool                         // Indicates whether the k8s-kms-plugin should create a new key. TODO: explain the use case of when should the k8s-kms-plugin create the key, or create a new cobra command
@@ -443,6 +448,11 @@ func (p *P11) SetEncryptor(encryptor gose.JweEncryptor) error {
 	if encryptor == nil {
 		return fmt.Errorf("SetEncryptor: encryptor is nil")
 	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.encryptors == nil {
+		p.encryptors = make(map[string]gose.JweEncryptor)
+	}
 	p.encryptors[p.GetKekKeyIdString()] = encryptor
 	return nil
 }
@@ -452,6 +462,8 @@ func (p *P11) SetEncryptors(encryptors map[string]gose.JweEncryptor) error {
 	if encryptors == nil {
 		return fmt.Errorf("SetEncryptors: encryptors is nil")
 	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	p.encryptors = encryptors
 	return nil
 }
@@ -460,6 +472,11 @@ func (p *P11) SetEncryptors(encryptors map[string]gose.JweEncryptor) error {
 func (p *P11) SetDecryptor(decryptor gose.JweDecryptor) error {
 	if decryptor == nil {
 		return fmt.Errorf("SetDecryptor: decryptor is nil")
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.decryptors == nil {
+		p.decryptors = make(map[string]gose.JweDecryptor)
 	}
 	p.decryptors[p.GetKekKeyIdString()] = decryptor
 	return nil
@@ -470,6 +487,8 @@ func (p *P11) SetDecryptors(decryptors map[string]gose.JweDecryptor) error {
 	if decryptors == nil {
 		return fmt.Errorf("SetDecryptors: decryptors is nil")
 	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	p.decryptors = decryptors
 	return nil
 }
@@ -537,8 +556,10 @@ func (p *P11) loadKEKbyID(ctx *crypto11.Context, kekId, kekLabel []byte) (encryp
 
 // Close the key manager
 func (p *P11) Close() (err error) {
+	p.mu.Lock()
 	p.encryptors = nil
 	p.decryptors = nil
+	p.mu.Unlock()
 	err = p.ctx.Close()
 
 	return
@@ -685,6 +706,7 @@ func (p *P11) decryptWithContext(req *k8skmsv2.DecryptRequest, isRotation bool) 
 	var aad []byte                  // Additional Authenticated Data optional input used in authenticated encryption algorithms like AES-GCM or AES-CBC-HMAC
 	var err error
 
+	p.mu.RLock()
 	if isRotation {
 		actualCtx = p.oldCtx
 		actualDecryptors = p.oldDecryptors
@@ -700,13 +722,17 @@ func (p *P11) decryptWithContext(req *k8skmsv2.DecryptRequest, isRotation bool) 
 		actualHmacCkaId = p.hmacCkaId
 		actualHmacCkaLabel = p.hmacCkaLabel
 	}
+	p.mu.RUnlock()
 
 	// ML-KEM uses a binary envelope instead of JWE — handle it before the JWE decryptor path.
 	if actualAlgo == AlgMLKEM {
 		return p.decryptMLKEMWithContext(req, actualCtx)
 	}
 
-	if decryptor = actualDecryptors[req.GetKeyId()]; decryptor == nil {
+	p.mu.RLock()
+	decryptor = actualDecryptors[req.GetKeyId()]
+	p.mu.RUnlock()
+	if decryptor == nil {
 		// Random source from the HSM (pkcs11 context)
 		var rng io.Reader
 		if rng, err = actualCtx.NewRandomReader(); err != nil {
@@ -860,7 +886,10 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 	var out string // buffer for the EncryptResponse.Ciphertext
 
 	// p.kid is initialized by NewP11
-	if encryptor = p.encryptors[p.GetKekKeyIdString()]; encryptor == nil {
+	p.mu.RLock()
+	encryptor = p.encryptors[p.GetKekKeyIdString()]
+	p.mu.RUnlock()
+	if encryptor == nil {
 		// Select algorithm
 		switch p.algorithmFamily {
 		case AlgAESGCM:

@@ -35,7 +35,10 @@ var (
 
 func (p *P11) AuthenticatedEncrypt(ctx context.Context, request *istio.AuthenticatedEncryptRequest) (resp *istio.AuthenticatedEncryptResponse, err error) {
 	var kekDecryptor gose.JweDecryptor
-	if kekDecryptor = p.decryptors[string(request.KekKid)]; nil == kekDecryptor {
+	p.mu.RLock()
+	kekDecryptor = p.decryptors[string(request.KekKid)]
+	p.mu.RUnlock()
+	if kekDecryptor == nil {
 		if _, kekDecryptor, err = p.loadKEKbyID(p.ctx, request.KekKid, defaultKEKlabel); nil != err {
 			return
 		}
@@ -78,7 +81,10 @@ func (p *P11) AuthenticatedEncrypt(ctx context.Context, request *istio.Authentic
 
 func (p *P11) AuthenticatedDecrypt(ctx context.Context, request *istio.AuthenticatedDecryptRequest) (resp *istio.AuthenticatedDecryptResponse, err error) {
 	var kekDecryptor gose.JweDecryptor
-	if kekDecryptor = p.decryptors[string(request.KekKid)]; kekDecryptor == nil {
+	p.mu.RLock()
+	kekDecryptor = p.decryptors[string(request.KekKid)]
+	p.mu.RUnlock()
+	if kekDecryptor == nil {
 		if _, kekDecryptor, err = p.loadKEKbyID(p.ctx, request.KekKid, defaultKEKlabel); err != nil {
 			return
 		}
@@ -176,7 +182,10 @@ func (p *P11) GenerateDEK(ctx context.Context, request *istio.GenerateDEKRequest
 		return nil, status.Error(codes.InvalidArgument, "no request sent")
 	}
 	var encryptor gose.JweEncryptor
-	if encryptor = p.encryptors[string(request.KekKid)]; encryptor == nil {
+	p.mu.RLock()
+	encryptor = p.encryptors[string(request.KekKid)]
+	p.mu.RUnlock()
+	if encryptor == nil {
 		if encryptor, _, err = p.loadKEKbyID(p.ctx, []byte(request.KekKid), []byte(defaultKEKlabel)); err != nil {
 			return
 		}
@@ -227,7 +236,10 @@ func (p *P11) GenerateSKey(ctx context.Context, request *istio.GenerateSKeyReque
 		return
 	}
 	var decryptor gose.JweDecryptor
-	if decryptor = p.decryptors[string(request.KekKid)]; decryptor == nil {
+	p.mu.RLock()
+	decryptor = p.decryptors[string(request.KekKid)]
+	p.mu.RUnlock()
+	if decryptor == nil {
 		if _, decryptor, err = p.loadKEKbyID(p.ctx, request.KekKid, []byte(defaultKEKlabel)); err != nil {
 			return
 		}
@@ -290,7 +302,10 @@ func (p *P11) LoadSKey(ctx context.Context, request *istio.LoadSKeyRequest) (res
 		return nil, status.Error(codes.InvalidArgument, "no request sent")
 	}
 	var decryptor gose.JweDecryptor
-	if decryptor = p.decryptors[string(request.KekKid)]; decryptor == nil {
+	p.mu.RLock()
+	decryptor = p.decryptors[string(request.KekKid)]
+	p.mu.RUnlock()
+	if decryptor == nil {
 		if _, decryptor, err = p.loadKEKbyID(p.ctx, request.KekKid, []byte(defaultKEKlabel)); err != nil {
 			return
 		}

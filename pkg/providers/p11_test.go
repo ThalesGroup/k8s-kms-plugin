@@ -15,11 +15,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/google/uuid"
 
 	"github.com/ThalesGroup/crypto11"
+	"github.com/ThalesGroup/gose"
 	"github.com/ThalesGroup/gose/jose"
 	"github.com/miekg/pkcs11"
 	"github.com/stretchr/testify/assert"
@@ -329,6 +331,100 @@ func TestMlkemAlgFromKey_UnknownParameterSet(t *testing.T) {
 	_, err := mlkemAlgFromKey(kp)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "unsupported ML-KEM parameter set")
+}
+
+// mockJweEncryptor is a no-op gose.JweEncryptor used in concurrency tests.
+type mockJweEncryptor struct{}
+
+func (m *mockJweEncryptor) Encrypt(_, _ []byte) (string, error) { return "mock.jwe.token", nil }
+
+// mockJweDecryptor is a no-op gose.JweDecryptor used in concurrency tests.
+type mockJweDecryptor struct{}
+
+func (m *mockJweDecryptor) Decrypt(_ string) ([]byte, []byte, error) {
+	return []byte("plaintext"), nil, nil
+}
+
+// TestP11_MapAccess_Race verifies that concurrent reads (Encrypt, Decrypt) and
+// writes (SetEncryptors, SetDecryptors) on the encryptor/decryptor maps do not
+// produce data races. Run with: go test -race ./pkg/providers/...
+//
+// The test avoids any HSM interaction by pre-populating the maps so that
+// Encrypt and Decrypt find a cached entry and return early without calling
+// into crypto11.
+func TestP11_MapAccess_Race(t *testing.T) {
+	const hexID = "01"
+	p := &P11{kekCkaId: []byte{0x01}}
+
+	_ = p.SetEncryptors(map[string]gose.JweEncryptor{hexID: &mockJweEncryptor{}})
+	_ = p.SetDecryptors(map[string]gose.JweDecryptor{hexID: &mockJweDecryptor{}})
+
+	ctx := context.Background()
+	encReq := &k8skmsv2.EncryptRequest{Plaintext: []byte("hello")}
+	decReq := &k8skmsv2.DecryptRequest{KeyId: hexID, Ciphertext: []byte("mock.jwe.token")}
+
+	var wg sync.WaitGroup
+	const n = 50
+
+	for i := 0; i < n; i++ {
+		wg.Add(4)
+
+		// writers: replace the whole map
+		go func() {
+			defer wg.Done()
+			_ = p.SetEncryptors(map[string]gose.JweEncryptor{hexID: &mockJweEncryptor{}})
+		}()
+		go func() {
+			defer wg.Done()
+			_ = p.SetDecryptors(map[string]gose.JweDecryptor{hexID: &mockJweDecryptor{}})
+		}()
+
+		// readers: hit the cached-entry path — no HSM calls needed
+		go func() {
+			defer wg.Done()
+			_, _ = p.Encrypt(ctx, encReq)
+		}()
+		go func() {
+			defer wg.Done()
+			_, _ = p.Decrypt(ctx, decReq)
+		}()
+	}
+
+	wg.Wait()
+}
+
+// TestP11_SetEncryptor_Race verifies that single-entry writes (SetEncryptor,
+// SetDecryptor) racing against full-map replacements (SetEncryptors,
+// SetDecryptors) do not produce data races.
+func TestP11_SetEncryptor_Race(t *testing.T) {
+	p := &P11{kekCkaId: []byte{0x01}}
+	_ = p.SetEncryptors(map[string]gose.JweEncryptor{})
+	_ = p.SetDecryptors(map[string]gose.JweDecryptor{})
+
+	var wg sync.WaitGroup
+	const n = 50
+
+	for i := 0; i < n; i++ {
+		wg.Add(4)
+		go func() {
+			defer wg.Done()
+			_ = p.SetEncryptor(&mockJweEncryptor{})
+		}()
+		go func() {
+			defer wg.Done()
+			_ = p.SetEncryptors(map[string]gose.JweEncryptor{"01": &mockJweEncryptor{}})
+		}()
+		go func() {
+			defer wg.Done()
+			_ = p.SetDecryptor(&mockJweDecryptor{})
+		}()
+		go func() {
+			defer wg.Done()
+			_ = p.SetDecryptors(map[string]gose.JweDecryptor{"01": &mockJweDecryptor{}})
+		}()
+	}
+
+	wg.Wait()
 }
 
 func TestP11_NewP11_ConfigEmptyArgs(t *testing.T) {
