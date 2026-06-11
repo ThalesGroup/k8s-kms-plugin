@@ -1,4 +1,20 @@
 # .goreleaser.yml
+#
+# Merged from:
+#   - branch aarch64-riscv64-build-support  (build matrix, kos, nfpms, signs, release)
+#   - security improvement branch           (source-level SBOMs, changelog,
+#                                            prerelease:auto, source tarball block)
+#
+# Signing responsibilities:
+#   - Blobs (binaries, checksums, packages, SBOMs): signed here via the `signs` block.
+#   - Container image: signed by the publish-release composite action AFTER goreleaser
+#     pushes the image. docker_signs is intentionally absent to avoid signing the
+#     image twice with different OIDC identities.
+#
+# SBOM file count: always 3, regardless of how many architectures are built.
+#   *.spdx.json     — SPDX via syft   (ISO/IEC 5962)
+#   *.cdx.json      — CycloneDX via syft  (OWASP)
+#   *.vex.cdx.json  — CycloneDX + VEX via trivy (vulnerability data)
 
 version: 2
 
@@ -9,38 +25,47 @@ env:
   - CGO_ENABLED=1
   - LATEST_TAG=,latest
 
-# Prevents parallel builds from stepping on each others toes downloading modules
 before:
   hooks:
     - go mod tidy
     - go mod download
 
-# Define GITLAB parameters o publish release on gitlab
+# -- GitLab publishing (uncomment gitlab block in release section to activate) --
 gitlab_urls:
   api: "{{ .Env.CI_API_V4_URL }}"
   download: "{{ .Env.CI_SERVER_URL }}"
   skip_tls_verify: true
   use_package_registry: true
 
-# Build the binary for different architectures
+# -- Build -------------------------------------------------------------------
+# Cross-compilers are installed by the publish-release composite action (apt-get).
+# See .github/actions/setup-build-env/action.yml.
 builds:
   - id: k8s-kms-plugin
     binary: '{{ .ProjectName }}_linux_{{ .Arch }}_{{ .Version }}'
     no_unique_dist_dir: true
     main: ./cmd/{{ .ProjectName }}/main.go
-    
     mod_timestamp: '{{ .CommitTimestamp }}'
     goos:
       - linux
     goarch:
       - amd64
+      - arm64    # aarch64
+      - riscv64
     ldflags:
       - "{{ .Env.LDFLAGS }}"
+    env:
+      - >-
+        {{- if eq .Os "linux" }}
+          {{- if eq .Arch "amd64"}}CC=gcc{{- end }}
+          {{- if eq .Arch "arm64"}}CC=aarch64-linux-gnu-gcc{{- end }}
+          {{- if eq .Arch "riscv64"}}CC=riscv64-linux-gnu-gcc{{- end }}
+        {{- end }}
 
-# Use ko-build to publish container image to a specific registry
-# It is possible to define platforms
+# -- Container images via ko -------------------------------------------------
+# GITHUB_REPOSITORY (e.g. "ThalesGroup/k8s-kms-plugin") is set by the workflow.
 kos:
-  - repositories: 
+  - repositories:
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY }}
     tags:
       - "{{.Tag}}"
@@ -51,164 +76,185 @@ kos:
     preserve_import_paths: false
     platforms:
       - linux/amd64
+      # - linux/arm64    # TODO: enable once cross-CGO is wired through ko
+      # - linux/riscv64  # TODO: enable once cross-CGO is wired through ko
     flags:
       - -trimpath
     ldflags:
       - "{{ .Env.LDFLAGS }}"
     env:
-       - CGO_ENABLED=1 # Mandatory for crypto11 pkg or go libraries using C compilator
+      - CGO_ENABLED=1
 
-# Generate different type of packages from binary(ies) generated in build section: apk, deb, rpm, archlinux
+# -- Linux packages ----------------------------------------------------------
 nfpms:
   - id: '{{ .ProjectName }}'
     package_name: '{{ .ProjectName }}'
-    file_name_template:  "{{ .ConventionalFileName }}"
+    file_name_template: "{{ .ConventionalFileName }}"
     license: "Apache License 2.0"
     vendor: "ThalesGroup"
     homepage: https://github.com/ThalesGroup/k8s-kms-plugin
     maintainer: Thales Open Source <oss@thalesgroup.com>
     description: |-
-      gRPC service that leverages a remote or local HSM/TPM to encrypt Kubernetes data at-rest with KMS v2. 
+      gRPC service that leverages a remote or local HSM/TPM to encrypt Kubernetes data at-rest with KMS v2.
     ids:
-      - k8s-kms-plugin # need to use the same id that the build id 
+      - k8s-kms-plugin
     formats:
-        - apk
-        - deb
-        - rpm
-        - archlinux
+      - apk
+      - deb
+      - rpm
+      - archlinux
     bindir: /usr/bin
     contents:
-        # create a symlink with a simpler shorter name for the binary
-        - src: /usr/bin/{{ .ProjectName }}_linux_{{ .Arch }}_{{ .Version }}
-          dst: /usr/bin/{{ .ProjectName }}
-          type: "symlink"
-        # gives an example of configuration file for the k8s-kms-plugin, this is usefull to run it as a daemon for example
-        - src: configs/config.example.yaml
-          dst: /etc/{{ .ProjectName }}/{{ .ProjectName }}.config.example.yaml
-          type: "config"
-        # gives an example of a kubernetes manifest for kms provider
-        - src: deployments/k8s/encryption-conf-kmsv2-unix-socket.yaml
-          dst: /etc/{{ .ProjectName }}/kubernetes/manifest/encryption-conf-kmsv2-unix-socket.example.yaml
-          type: "config"
-        # gives an example of systemd file
-        - src: configs/systemd/k8s-kms-plugin.service
-          dst: /lib/systemd/system/{{ .ProjectName }}.service
-          type: config
+      - src: /usr/bin/{{ .ProjectName }}_linux_{{ .Arch }}_{{ .Version }}
+        dst: /usr/bin/{{ .ProjectName }}
+        type: "symlink"
+      - src: configs/config.example.yaml
+        dst: /etc/{{ .ProjectName }}/{{ .ProjectName }}.config.example.yaml
+        type: "config"
+      - src: deployments/k8s/encryption-conf-kmsv2-unix-socket.yaml
+        dst: /etc/{{ .ProjectName }}/kubernetes/manifest/encryption-conf-kmsv2-unix-socket.example.yaml
+        type: "config"
+      - src: configs/systemd/k8s-kms-plugin.service
+        dst: /lib/systemd/system/{{ .ProjectName }}.service
+        type: config
 
-# Define caracteristics of binary artifacts
-# Generate zip and tar archives from binary(ies) generated in the build section
+# -- Archives ----------------------------------------------------------------
 archives:
   - id: binary-uncompressed
     formats:
       - binary
-    name_template: "{{ .Binary }}" 
+    name_template: "{{ .Binary }}"
     allow_different_binary_count: true
   - id: binary-compressed-archives
     formats:
       - zip
       - tar.gz
-    name_template: "{{ .Binary }}" 
+    name_template: "{{ .Binary }}"
     allow_different_binary_count: true
-# create metadata file
+
 metadata:
-  
   mod_timestamp: "{{ .CommitTimestamp }}"
 
-
-# Checksum caracteristics
+# -- Checksums ---------------------------------------------------------------
+# Filename must match what release.yml passes to verify-attestations as checksum_file.
 checksum:
   name_template: "{{ .ProjectName }}_checksums.txt"
-# Snapshot caracteristics
+
 snapshot:
   version_template: SNAPSHOT-{{ .ShortCommit }}
 
-# Generate SBOM for all artifacts
-# SPDX generate with syft (default scanner)
-# CycloneDX generate with trivy
-# CycloneDX "Vex" contains also informations on vulnerabilities
-# It is possible to change the scanner and the command
+# -- Source tarball (required for artifacts: source in sboms block) ----------
+source:
+  enabled: true
+  name_template: "{{ .ProjectName }}-{{ .Version }}-source"
+  format: tar.gz
+
+# -- SBOMs — 3 files total, fixed regardless of architecture count -----------
 sboms:
-  - id: binary sbom
-    artifacts: binary
+  - id: source-sbom-spdx
+    artifacts: source
     documents:
-      - "${artifact}.spdx.sbom"
-  - id: CycloneDX sbom
-    artifacts: binary
+      - "{{ .ProjectName }}-{{ .Version }}-source.tar.gz.spdx.json"
+    cmd: syft
+    args:
+      - "$artifact"
+      - "--output"
+      - "spdx-json=$document"
+      - "--enrich"
+      - "all"
+
+  - id: source-sbom-cdx
+    artifacts: source
     documents:
-      - "${artifact}.cyclonedx-json.sbom"
-    args: ["$artifact", "--output", "cyclonedx-json","--file","$document"]
-  - id: trivy sbom
-    artifacts: binary
+      - "{{ .ProjectName }}-{{ .Version }}-source.tar.gz.cdx.json"
+    cmd: syft
+    args:
+      - "$artifact"
+      - "--output"
+      - "cyclonedx-json=$document"
+      - "--enrich"
+      - "all"
+
+  - id: source-sbom-vex
+    artifacts: source
     cmd: trivy
     documents:
-      - "${artifact}.cyclonedx-vex.sbom"
-    args: ["fs","--format","cyclonedx","--scanners","vuln","--output","$document","{{ .Env.WORKSPACE }}"]
-
-# Sign the artifacts
-# Use the command cosign in keyless mode to sign the different kind of artifacts: binary, checksum, package, sbom
-signs:
-  - id : '{{ .ProjectName }}-keyless'
-    cmd: cosign
-    env:
-      - COSIGN_EXPERIMENTAL=1
-    signature : "${artifact}-keyless.sig"
-    certificate: "${artifact}-keyless.pem"
+      - "{{ .ProjectName }}-{{ .Version }}-source.tar.gz.vex.cdx.json"
     args:
-      - sign-blob
-      - "--output-certificate=${certificate}"
-      - "--output-signature=${signature}"
-      - "-y"
-      - "${artifact}"   
+      - "fs"
+      - "--format"
+      - "cyclonedx"
+      - "--scanners"
+      - "vuln"
+      - "--output"
+      - "$document"
+      - "{{ .Env.WORKSPACE }}"
+
+# -- Blob signing — keyless cosign (binaries, checksums, packages, SBOMs) ----
+# Container image signing is handled separately in the publish-release action.
+# Cosign v2 keyless is the default; no COSIGN_EXPERIMENTAL flag needed.
+signs:
+  - id: binary-keyless
+    cmd: cosign
+    signature: "${artifact}-keyless.sig"
+    certificate: "${artifact}-keyless.pem"
+    args: [sign-blob, "--output-certificate=${certificate}", "--output-signature=${signature}", "-y", "${artifact}"]
     artifacts: binary
     output: true
-  - id : checksum-keyless
+
+  - id: checksum-keyless
     cmd: cosign
-    env:
-      - COSIGN_EXPERIMENTAL=1
-    signature : "${artifact}-keyless.sig"
+    signature: "${artifact}-keyless.sig"
     certificate: "${artifact}-keyless.pem"
-    args:
-      - sign-blob
-      - "--output-certificate=${certificate}"
-      - "--output-signature=${signature}"
-      - "-y"
-      - "${artifact}"   
+    args: [sign-blob, "--output-certificate=${certificate}", "--output-signature=${signature}", "-y", "${artifact}"]
     artifacts: checksum
     output: true
-  - id : package-keyless
+
+  - id: package-keyless
     cmd: cosign
-    env:
-      - COSIGN_EXPERIMENTAL=1
-    signature : "${artifact}-keyless.sig"
+    signature: "${artifact}-keyless.sig"
     certificate: "${artifact}-keyless.pem"
-    args:
-      - sign-blob
-      - "--output-certificate=${certificate}"
-      - "--output-signature=${signature}"
-      - "-y"
-      - "${artifact}" 
+    args: [sign-blob, "--output-certificate=${certificate}", "--output-signature=${signature}", "-y", "${artifact}"]
     artifacts: package
     output: true
-  - id : 'sbom-keyless'
+
+  - id: sbom-keyless
     cmd: cosign
-    env:
-      - COSIGN_EXPERIMENTAL=1
-    signature : "${artifact}-keyless.sig"
+    signature: "${artifact}-keyless.sig"
     certificate: "${artifact}-keyless.pem"
-    args:
-      - sign-blob
-      - "--output-certificate=${certificate}"
-      - "--output-signature=${signature}"
-      - "-y"
-      - "${artifact}"
+    args: [sign-blob, "--output-certificate=${certificate}", "--output-signature=${signature}", "-y", "${artifact}"]
     artifacts: sbom
     output: true
-  
 
-# Create a release 
+# -- Changelog ---------------------------------------------------------------
+changelog:
+  use: github
+  sort: asc
+  groups:
+    - title: "Breaking Changes"
+      regexp: '^.*?(break|BREAKING).*?$'
+      order: 0
+    - title: "New Features"
+      regexp: '^.*?feat(\(.+\))??!?:.+$'
+      order: 1
+    - title: "Bug Fixes"
+      regexp: '^.*?fix(\(.+\))??!?:.+$'
+      order: 2
+    - title: "Security"
+      regexp: '^.*?sec(\(.+\))??!?:.+$'
+      order: 3
+    - title: Other
+      order: 999
+  filters:
+    exclude:
+      - "^docs:"
+      - "^chore:"
+      - "^test:"
+
+# -- Release -----------------------------------------------------------------
 release:
-  # draft: true # Used to publish a draft on github
   make_latest: true
+  prerelease: auto
   github:
     owner: "{{ .Env.GITHUB_REPOSITORY_OWNER }}"
     name: '{{ .ProjectName }}'
@@ -217,4 +263,3 @@ release:
   #  name: "{{ .Env.CI_PROJECT_PATH }}"
   footer: |
     ### Thanks to all contributors!
-

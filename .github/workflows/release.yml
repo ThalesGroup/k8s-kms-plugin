@@ -1,0 +1,168 @@
+# .github/workflows/release.yml
+#
+# Release pipeline. Job dependency graph:
+#
+#   goreleaser ---+-- binary-provenance ---\
+#                +-- image-provenance  ---+-- verify-provenance
+#
+# Composite actions called:
+#   setup-build-env  — toolchain (Go, cross-compilers, ko, cosign, syft, trivy)
+#   publish-release  — goreleaser + SLSA outputs + image signing
+#   verify-slsa      — slsa-verifier for binaries and image
+#
+# All signing is non-interactive: cosign uses the OIDC token issued by GitHub
+# when id-token:write is granted. No secrets, no key material, no human clicks.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+
+  # -- 1. Build, release, sign, attest SBOMs ---------------------------------
+  goreleaser:
+    name: Build & Release
+    runs-on: ubuntu-latest
+    env:
+      WORKSPACE: ${{ github.workspace }}
+
+    permissions:
+      contents: write      # create GitHub Release and upload assets
+      packages: write      # push container image to GHCR
+      id-token: write      # cosign keyless signing + OIDC for GitHub Attestations
+      attestations: write  # actions/attest-sbom steps
+
+    outputs:
+      hashes: ${{ steps.publish-artifacts.outputs.hashes }}
+      image:  ${{ steps.publish-artifacts.outputs.name }}
+      digest: ${{ steps.publish-artifacts.outputs.digest }}
+
+    steps:
+      # Full history required by goreleaser for changelog generation.
+      - name: Checkout
+        # actions/checkout v6.0.3
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          fetch-depth: 0
+
+      # Installs Go, cross-compilers, ko, cosign, syft, trivy, and LDFLAGS.
+      # All tool versions live in one place: setup-build-env/action.yml.
+      - name: Set up build environment
+        uses: ./.github/actions/setup-build-env
+
+      # Registry login is kept here (not in publish-release) so the credential
+      # wiring is visible at the workflow level rather than hidden inside the action.
+      - name: Login to GHCR
+        # docker/login-action v4.2.0
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Runs goreleaser, signs the container image, and surfaces SLSA outputs.
+      - name: Publish artifacts
+        id: publish-artifacts
+        uses: ./.github/actions/publish-release
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      # SBOM in-toto attestations — dist/ is populated by goreleaser above.
+      # Goreleaser embeds the version in the filename, so we resolve paths
+      # dynamically before passing them to actions/attest.
+      # *.spdx.json      — 1 file (SPDX via syft)
+      # *.cdx.json       — 1 file (CycloneDX via syft)
+      # *.vex.cdx.json   — 1 file (CycloneDX + VEX via trivy)
+      - name: Locate SBOM files
+        id: sboms
+        run: |
+          echo "source=$(ls ./dist/*-source.tar.gz)"              >> "$GITHUB_OUTPUT"
+          echo "spdx=$(ls ./dist/*.spdx.json)"                    >> "$GITHUB_OUTPUT"
+          echo "cdx=$(ls ./dist/*.cdx.json | grep -v vex)"        >> "$GITHUB_OUTPUT"
+          echo "vex=$(ls ./dist/*.vex.cdx.json)"                  >> "$GITHUB_OUTPUT"
+
+      - name: Attest SBOM (SPDX)
+        # actions/attest v4.1.0
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26
+        with:
+          subject-path:   ${{ steps.sboms.outputs.source }}
+          predicate-type: "https://spdx.dev/Document"
+          predicate-path: ${{ steps.sboms.outputs.spdx }}
+
+      - name: Attest SBOM (CycloneDX)
+        # actions/attest v4.1.0
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26
+        with:
+          subject-path:   ${{ steps.sboms.outputs.source }}
+          predicate-type: "https://cyclonedx.org/bom"
+          predicate-path: ${{ steps.sboms.outputs.cdx }}
+
+      - name: Attest SBOM (CycloneDX VEX)
+        # actions/attest v4.1.0
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26
+        with:
+          subject-path:   ${{ steps.sboms.outputs.source }}
+          predicate-type: "https://cyclonedx.org/bom"
+          predicate-path: ${{ steps.sboms.outputs.vex }}
+
+  # -- 2. SLSA3 provenance — binary artifacts --------------------------------
+  binary-provenance:
+    name: SLSA3 Binary Provenance
+    needs: [goreleaser]
+    permissions:
+      actions: read
+      id-token: write
+      contents: write  # upload .intoto.jsonl to the GitHub Release
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
+    with:
+      base64-subjects: ${{ needs.goreleaser.outputs.hashes }}
+      upload-assets: true
+
+  # -- 3. SLSA3 provenance — container image ---------------------------------
+  image-provenance:
+    name: SLSA3 Image Provenance
+    needs: [goreleaser]
+    permissions:
+      actions: read
+      id-token: write
+      packages: write  # push attestation to GHCR
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
+    with:
+      image:             ${{ needs.goreleaser.outputs.image }}
+      digest:            ${{ needs.goreleaser.outputs.digest }}
+      registry-username: ${{ github.actor }}
+    secrets:
+      registry-password: ${{ secrets.GITHUB_TOKEN }}
+
+  # -- 4. End-to-end verification --------------------------------------------
+  verify-provenance:
+    name: Verify Provenance
+    needs: [goreleaser, binary-provenance, image-provenance]
+    runs-on: ubuntu-latest
+
+    permissions:
+      actions: read
+      id-token: write
+      packages: read
+      contents: read
+
+    steps:
+      - name: Checkout
+        # actions/checkout v6.0.3
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          fetch-depth: 0
+
+      - name: Verify SLSA provenance
+        uses: ./.github/actions/verify-slsa
+        with:
+          github_token:  ${{ secrets.GITHUB_TOKEN }}
+          image:         ${{ needs.goreleaser.outputs.image }}@${{ needs.goreleaser.outputs.digest }}
+          tag:           ${{ github.ref_name }}
+          checksum_file: k8s-kms-plugin_checksums.txt

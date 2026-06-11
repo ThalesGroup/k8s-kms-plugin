@@ -1,114 +1,101 @@
-name: Publish release
+# .github/actions/publish-release/action.yml
+#
+# Runs the release process: pushes the container image, runs GoReleaser,
+# collects outputs for SLSA provenance jobs, and signs the container image.
+#
+# Pre-conditions (the calling job must satisfy these before calling this action):
+#   1. actions/checkout with fetch-depth: 0
+#   2. ./.github/actions/setup-build-env  (Go, cross-compilers, ko, cosign, syft, trivy)
+#   3. docker/login-action or equivalent for the target registry
+#
+# Required calling-job permissions:
+#   contents: write   — create the GitHub Release and upload assets
+#   packages: write   — push container image to GHCR
+#   id-token: write   — cosign keyless signing via OIDC (no human interaction)
 
-description: Publish release, container image, SBOMS, signs artifacts. 
+name: Publish release
+description: >
+  Runs GoReleaser (build all arches, sign blobs, generate SBOMs, publish release
+  and container image), then signs the image with cosign and surfaces the outputs
+  needed by the SLSA3 provenance generator jobs.
 
 inputs:
-  go-version:
+  github_token:
     required: true
-    description: go version to install on the runner
-  github_token: 
-    required : true
-    description: github token used for the release
-  registry_username:
-    required: true
-    description: Container registry username
-  registry_password:
-    required: true
-    description: Container registry password 
-  registry:
-    required: true 
-    description: registry used to publish container images
-
+    description: GitHub token for the release and registry push
 
 outputs:
   hashes:
     value: ${{ steps.binary.outputs.hashes }}
-    description: hash of the cheksum file in base64
-  name: 
+    description: >
+      Base64-encoded contents of the checksum file.
+      Consumed by slsa-github-generator for binary SLSA3 provenance.
+  name:
     value: ${{ steps.image.outputs.name }}
-    description: name of the published container image
-  digest: 
+    description: Published container image name (without tag or digest)
+  digest:
     value: ${{ steps.image.outputs.digest }}
-    description: published image digest
+    description: Published container image digest (sha256:...)
 
-runs: 
+runs:
   using: composite
   steps:
-    # Install go with specific version for go build
-    - uses: actions/checkout@v5
-    - name: Set up Go
-      uses: actions/setup-go@v6
-      with:
-        go-version-file: ${{ github.workspace }}/go.mod # same version than the one in the go.mod
-     # Register to ghcr.io container Registry
-    - name: 'Login to GitHub Container Registry'
-      uses: docker/login-action@v3
-      with:
-        registry: ${{ inputs.registry}}
-        username: ${{ inputs.registry_username }}
-        password: ${{ inputs.registry_password }} 
-    # Install ko to publish container images
-    - name: Set up Ko
-      uses: ko-build/setup-ko@v0.9
-    # Install cosign to sign artfacts with goreleaser 
-    - name: Install Cosign
-      uses: sigstore/cosign-installer@v3.10.0
-    # Get LDFLAGS with a makefile command
-    - shell: bash
-      name: Get LDFLAGS
-      id: get_ldlflags # need to define id to pass the variable to other steps
-      run : |
-        echo "ldflags= $(make get-ldflags)" >> "$GITHUB_OUTPUT"
-    # Install other dependencies like scanners and go librairies
-    - shell: bash 
-      name : Install dependencies
-      run : |
-        curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
-        curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.49.1
-    # Run command goreleaser release based on .goreleaser.yml
-    # LDFLAGS are passed thanks to the steps.job_id.outputs.variable_name variable
+
+    # -- GoReleaser -----------------------------------------------------------
+    # Builds linux/{amd64,arm64,riscv64}, generates packages and SBOMs, signs all
+    # blobs with cosign, and publishes the GitHub Release and container image.
+    # Cross-compilers, syft, trivy, and cosign are expected to be on PATH
+    # (provided by setup-build-env). LDFLAGS is expected in GITHUB_ENV.
+    # --clean removes any stale dist/ from previous runs.
     - name: Run GoReleaser
-      uses: goreleaser/goreleaser-action@v6
       id: goreleaser
+      # goreleaser/goreleaser-action v7.2.2
+      uses: goreleaser/goreleaser-action@5daf1e915a5f0af01ddbcd89a43b8061ff4f1a89
       with:
-        distribution: goreleaser 
-        version: '~> v2'
-        args: release 
+        distribution: goreleaser
+        version: "~> v2"
+        args: release --clean
       env:
         GITHUB_TOKEN: ${{ inputs.github_token }}
-        LDFLAGS: ${{steps.get_ldlflags.outputs.ldflags}}
-    # Get artifacts from goreleaser's step outputs to generate cheksums file abse64 hashes
-    # Provenance generator action needs to have a base64 hash for generating blobs provenance
-    # The hash is passed as an output of goreleaser job
-    - shell: bash 
-      name: Generate binary hashes
+        LDFLAGS: ${{ env.LDFLAGS }}
+        WORKSPACE: ${{ github.workspace }}
+        GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+
+    # -- SLSA outputs ---------------------------------------------------------
+    # Extract the data the SLSA3 provenance generator jobs need from goreleaser's
+    # artifact list. Done here so the calling workflow stays clean.
+
+    - name: Collect binary hashes
       id: binary
+      shell: bash
       env:
-        ARTIFACTS: "${{ steps.goreleaser.outputs.artifacts }}"
+        ARTIFACTS: ${{ steps.goreleaser.outputs.artifacts }}
       run: |
-          set -euo pipefail
-          checksum_file=$(echo "$ARTIFACTS" | jq -r '.[] | select (.type=="Checksum") | .path')
-          echo "hashes=$(cat $checksum_file | base64 -w0)" >> "$GITHUB_OUTPUT"
-    # Get artifacts from the goreleaser's step outputs to retrieve Docker Manifest containing the image and its digest
-    # Image Provenance generator action needs to have the image name and a digest for generating provenance and publish it to the container registry
-    - shell: bash 
-      name: Image digest
+        set -euo pipefail
+        checksum_file=$(echo "$ARTIFACTS" | jq -r '.[] | select(.type=="Checksum") | .path')
+        echo "hashes=$(base64 -w0 < "$checksum_file")" >> "$GITHUB_OUTPUT"
+
+    - name: Collect image digest
       id: image
+      shell: bash
       env:
-        ARTIFACTS: "${{ steps.goreleaser.outputs.artifacts }}"
+        ARTIFACTS: ${{ steps.goreleaser.outputs.artifacts }}
       run: |
-          set -euo pipefail
-          image_and_digest=$(echo "$ARTIFACTS" | jq -r '.[] | select (.type=="Docker Manifest") | .path')
-          image=$(echo "${image_and_digest}" | cut -d'@' -f1 | cut -d':' -f1)
-          digest=$(echo "${image_and_digest}" | cut -d'@' -f2)
-          echo "name=$image" >> "$GITHUB_OUTPUT"
-          echo "digest=$digest" >> "$GITHUB_OUTPUT"
-    # Sign image with cosign sign command
-    - shell: bash
-      name: Generate Image Signature
+        set -euo pipefail
+        image_and_digest=$(echo "$ARTIFACTS" \
+          | jq -r '.[] | select(.type=="Docker Manifest") | .path')
+        echo "name=$(echo "$image_and_digest" | cut -d'@' -f1 | cut -d':' -f1)" \
+          >> "$GITHUB_OUTPUT"
+        echo "digest=$(echo "$image_and_digest" | cut -d'@' -f2)" \
+          >> "$GITHUB_OUTPUT"
+
+    # -- Image signing --------------------------------------------------------
+    # Signs the exact image@digest produced above. Handled here rather than via
+    # goreleaser docker_signs so signing happens after the digest is confirmed
+    # and uses a single, known OIDC identity for the whole release job.
+    - name: Sign container image
+      shell: bash
       env:
-        #COSIGN_REPOSITORY: ghcr.io/${{github.owner}}/signatures # need to use this variable for having a dfiferent signature repository 
         IMAGE: ${{ steps.image.outputs.name }}@${{ steps.image.outputs.digest }}
-      run : |
-        cosign sign --yes \
-        ${{ env.IMAGE }}
+      run: cosign sign --yes "$IMAGE"

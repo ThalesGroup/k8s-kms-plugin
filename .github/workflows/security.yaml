@@ -1,0 +1,159 @@
+# .github/workflows/security.yaml
+#
+# Continuous security scanning — runs on every PR, every push to master,
+# and on a weekly schedule to catch newly published vulnerabilities.
+#
+# Jobs:
+#   govulncheck : Go-specific vulnerability check against the Go vuln DB (SARIF)
+#   codeql      : GitHub SAST engine, Go security-extended query suite (SARIF)
+#   trivy-fs    : Filesystem scan — CVEs in Go modules & Dockerfiles (SARIF)
+#   trivy-image : Scan the container image built from Dockerfile.prod (SARIF)
+#
+# All four jobs upload SARIF to the GitHub Security tab so findings are
+# consolidated in one place without blocking the build.
+
+name: Security Scanning
+
+on:
+  push:
+    branches: ["master", "main"]
+  pull_request:
+    branches: ["master", "main"]
+  schedule:
+    # Every Monday at 08:00 UTC — catches newly disclosed CVEs between PRs
+    - cron: "0 8 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  # -- 1. govulncheck --------------------------------------------------------
+  govulncheck:
+    name: govulncheck
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
+        with:
+          go-version-file: "go.mod"
+          cache: true
+
+      - name: Run govulncheck
+        # golang/govulncheck-action v1.0.4
+        uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee
+        with:
+          go-version-file: "go.mod"
+          go-package: "./..."
+          output-format: "sarif"
+          output-file: "govulncheck.sarif"
+
+      - name: Upload govulncheck SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e
+        with:
+          sarif_file: "govulncheck.sarif"
+          category: govulncheck
+
+  # -- 2. CodeQL -------------------------------------------------------------
+  codeql:
+    name: CodeQL (Go)
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+
+      - name: Initialize CodeQL
+        # github/codeql-action/init v4.36.2
+        uses: github/codeql-action/init@8aad20d150bbac5944a9f9d289da16a4b0d87c1e
+        with:
+          languages: go
+          queries: security-extended
+
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
+        with:
+          go-version-file: "go.mod"
+          cache: true
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@8aad20d150bbac5944a9f9d289da16a4b0d87c1e
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@8aad20d150bbac5944a9f9d289da16a4b0d87c1e
+        with:
+          category: codeql-go
+
+  # -- 3. Trivy filesystem scan ----------------------------------------------
+  trivy-fs:
+    name: Trivy (filesystem)
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+
+      - name: Trivy filesystem scan
+        # aquasecurity/trivy-action v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          severity: "CRITICAL,HIGH"
+          format: "sarif"
+          output: "trivy-fs.sarif"
+          exit-code: "0"
+
+      - name: Upload Trivy filesystem SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e
+        with:
+          sarif_file: "trivy-fs.sarif"
+          category: trivy-fs
+
+  # -- 4. Trivy container image scan -----------------------------------------
+  # Builds Dockerfile.prod (amd64) and scans the resulting image for OS-layer
+  # and application CVEs. Runs on all triggers including schedule — the weekly
+  # run is the most valuable since it detects CVEs disclosed since the last push.
+  trivy-image:
+    name: Trivy (container image)
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+
+      - name: Build image for scanning
+        run: docker build -f Dockerfile.prod -t k8s-kms-plugin:scan .
+
+      - name: Trivy image scan
+        # aquasecurity/trivy-action v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          image-ref: "k8s-kms-plugin:scan"
+          severity: "CRITICAL,HIGH"
+          format: "sarif"
+          output: "trivy-image.sarif"
+          exit-code: "0"
+
+      - name: Upload Trivy image SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e
+        with:
+          sarif_file: "trivy-image.sarif"
+          category: trivy-image

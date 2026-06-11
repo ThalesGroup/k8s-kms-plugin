@@ -1,0 +1,50 @@
+# .github/dependabot.yml
+#
+# Keeps Go modules, GitHub Actions, and Docker base images up to date automatically.
+# PRs are grouped to reduce noise — one PR per ecosystem per week.
+#
+version: 2
+
+updates:
+  # -- Go module dependencies ------------------------------------------------
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    # Group all Go dependency bumps into a single weekly PR
+    groups:
+      go-dependencies:
+        patterns:
+          - "*"
+    # Focus security updates as individual PRs so they're easier to review
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "go"
+
+  # -- GitHub Actions --------------------------------------------------------
+  # Dependabot will also update the SHA pins when you switch to SHA-based pinning
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"
+
+  # -- Docker base images ----------------------------------------------------
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "docker"

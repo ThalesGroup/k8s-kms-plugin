@@ -1,0 +1,83 @@
+# .github/actions/verify-slsa/action.yml
+#
+# Verifies SLSA3 provenance for binary artifacts and the container image
+# using slsa-verifier. Called by the verify-provenance job in release.yml
+# after both binary-provenance and image-provenance jobs have completed.
+#
+# Renamed from verify-attestations: the action verifies specifically SLSA3
+# provenance (not generic attestations), making its scope unambiguous.
+
+name: Verify SLSA3 provenance
+description: >
+  Downloads the .intoto.jsonl provenance file and checksum file from the GitHub
+  Release, then uses slsa-verifier to confirm SLSA3 provenance for both the
+  binary artifacts and the container image.
+
+inputs:
+  github_token:
+    required: true
+    description: GitHub token for downloading release assets via gh CLI
+  image:
+    required: true
+    description: Container image to verify, as name@digest
+  tag:
+    required: true
+    description: Release tag (e.g. v1.2.3) — used to fetch the right release assets
+  checksum_file:
+    required: true
+    description: >
+      Name of the checksum file attached to the release
+      (e.g. k8s-kms-plugin_checksums.txt).
+
+runs:
+  using: composite
+  steps:
+
+    # -- Go + slsa-verifier ---------------------------------------------------
+    - name: Set up Go
+      # actions/setup-go v6.4.0
+      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
+      with:
+        go-version-file: go.mod
+
+    - name: Install slsa-verifier
+      shell: bash
+      run: go install github.com/slsa-framework/slsa-verifier/v2/cli/slsa-verifier@v2.7.1
+
+    # -- Download release assets ----------------------------------------------
+    # The binary-provenance job uploads a *.intoto.jsonl to the GitHub Release.
+    # We download it alongside the checksum file for binary verification.
+    - name: Download provenance and checksum
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github_token }}
+      run: |
+        mkdir -p /tmp/verify
+        gh release download "${{ inputs.tag }}" \
+          --repo "${{ github.repository }}" \
+          --pattern "${{ inputs.checksum_file }}" \
+          --pattern "*.intoto.jsonl" \
+          --dir /tmp/verify \
+          --clobber
+
+    # -- Verify binary provenance ---------------------------------------------
+    - name: Verify binary provenance
+      shell: bash
+      run: |
+        provenance=$(ls /tmp/verify/*.intoto.jsonl | head -1)
+        slsa-verifier verify-artifact \
+          "/tmp/verify/${{ inputs.checksum_file }}" \
+          --provenance-path "$provenance" \
+          --source-uri "github.com/${{ github.repository }}" \
+          --source-tag "${{ inputs.tag }}"
+
+    # -- Verify image provenance ----------------------------------------------
+    # The --builder-id must match the generator_container_slsa3.yml reference
+    # used in release.yml image-provenance job.
+    - name: Verify image provenance
+      shell: bash
+      run: |
+        slsa-verifier verify-image "${{ inputs.image }}" \
+          --source-uri "github.com/${{ github.repository }}" \
+          --source-tag "${{ inputs.tag }}" \
+          --builder-id "https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@refs/tags/v2.1.0"
