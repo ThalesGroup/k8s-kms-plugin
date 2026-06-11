@@ -172,6 +172,10 @@ Using AES-CBC with HMAC authentication, using CKA_ID, using CLI flags and servin
 		// Show the version of the k8s-kms-plugin and commit ID
 		version.LogVersion()
 
+		if vprFlgsServe.P11Pin, err = resolvePin(viper.GetViper(), "p11-pin", "Enter HSM PIN: "); err != nil {
+			return
+		}
+
 		// Don't panic/exit if we have a PKCS#11 error.
 		// Sleep forever instead.
 		var p providers.Provider
@@ -258,7 +262,7 @@ func init() {
 	serveCmd.PersistentFlags().StringP("native-path", "p", ".keys", "Path to key store for native provider(Files only).")
 	serveCmd.PersistentFlags().String("p11-label", "", "P11 token label.")
 	serveCmd.PersistentFlags().String("p11-lib", "", "Path to p11 library/client.")
-	serveCmd.PersistentFlags().String("p11-pin", "", "P11 Pin.")
+	serveCmd.PersistentFlags().String("p11-pin", "", "HSM PIN. If omitted, prompted interactively (input hidden). Pass an empty string explicitly to use a no-PIN token.")
 	serveCmd.PersistentFlags().Int("p11-slot", 0, "P11 token slot.")
 	serveCmd.PersistentFlags().Uint16("port", 31400, "TCP Port for gRPC service.")
 	// Provider

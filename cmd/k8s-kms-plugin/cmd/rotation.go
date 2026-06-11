@@ -116,6 +116,13 @@ Using both CLI Flags, environment variables and configuration file and serving o
 		// Show the version of the k8s-kms-plugin and commit ID
 		version.LogVersion()
 
+		if vprFlgsServe.P11Pin, err = resolvePin(viper.GetViper(), "p11-pin", "Enter HSM PIN: "); err != nil {
+			return
+		}
+		if vprFlgsRotation.OldP11Pin, err = resolvePin(viper.GetViper(), "old-p11-pin", "Enter old KEK HSM PIN: "); err != nil {
+			return
+		}
+
 		// provider for the KEK that is being rotated, aka the old KEK
 		var p providers.Provider
 
@@ -182,7 +189,7 @@ func init() {
 	rotationCmd.Flags().String("old-native-path", "", "Native path for old KEK")
 	rotationCmd.Flags().String("old-p11-label", "", "P11 token label for old KEK")
 	rotationCmd.Flags().String("old-p11-lib", "", "Path to P11 library/client for old KEK")
-	rotationCmd.Flags().String("old-p11-pin", "", "P11 Pin for old KEK")
+	rotationCmd.Flags().String("old-p11-pin", "", "HSM PIN for old KEK. If omitted, prompted interactively (input hidden). Pass an empty string explicitly to use a no-PIN token.")
 
 	rotationCmd.Flags().Int("old-p11-slot", 0, "P11 token slot for old KEK")
 	rotationCmd.Flags().String("old-provider", "p11", "Provider for old KEK")

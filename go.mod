@@ -33,7 +33,7 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/thales-e-security/pool v0.0.2 // indirect
 	golang.org/x/net v0.52.0 // indirect
-	golang.org/x/sys v0.42.0 // indirect
+	golang.org/x/sys v0.46.0 // indirect
 	golang.org/x/text v0.35.0 // indirect
 	golang.org/x/tools/cmd/cover v0.1.0-deprecated
 	gopkg.in/yaml.v2 v2.4.0
@@ -43,8 +43,10 @@ require (
 require (
 	github.com/ThalesGroup/crypto11 v1.7.0-rc1
 	github.com/ThalesGroup/gose v0.13.0-rc1
+	github.com/creack/pty v1.1.24
 	github.com/hashicorp/go-version v1.8.0
 	github.com/lmittmann/tint v1.1.3
+	golang.org/x/term v0.44.0
 	k8s.io/kms v0.35.3
 )
 
