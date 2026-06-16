@@ -34,7 +34,7 @@ import (
 	"strings"
 
 	"github.com/ThalesGroup/crypto11"
-	"github.com/miekg/pkcs11"
+	pkcs11 "github.com/eclipse-keypont/pkcs11-go/cryptoki"
 )
 
 const (
@@ -96,9 +96,9 @@ func main() {
 
 	// ── Initialise token (C_InitToken + C_InitPIN) ────────────────────────────
 
-	p11 := pkcs11.New(*lib)
-	if p11 == nil {
-		fatalf("failed to load library: %s", *lib)
+	p11, err := pkcs11.New(*lib)
+	if err != nil {
+		fatalf("failed to load library: %s: %v", *lib, err)
 	}
 	if err := p11.Initialize(); err != nil {
 		p11.Destroy()
@@ -110,7 +110,7 @@ func main() {
 		p11.Finalize(); p11.Destroy()
 		fatalf("C_GetSlotList: %v (slots=%d)", err, len(slots))
 	}
-	if err := p11.InitToken(slots[0], soPin, tokenLabel); err != nil {
+	if err := p11.InitToken(slots[0], []byte(soPin), tokenLabel); err != nil {
 		p11.Finalize(); p11.Destroy()
 		fatalf("C_InitToken: %v", err)
 	}
@@ -126,11 +126,11 @@ func main() {
 		p11.Finalize(); p11.Destroy()
 		fatalf("OpenSession: %v", err)
 	}
-	if err := p11.Login(sh, pkcs11.CKU_SO, soPin); err != nil {
+	if err := p11.Login(sh, pkcs11.CKU_SO, []byte(soPin)); err != nil {
 		p11.CloseSession(sh); p11.Finalize(); p11.Destroy()
 		fatalf("Login(SO): %v", err)
 	}
-	if err := p11.InitPIN(sh, *pin); err != nil {
+	if err := p11.InitPIN(sh, []byte(*pin)); err != nil {
 		p11.Logout(sh); p11.CloseSession(sh); p11.Finalize(); p11.Destroy()
 		fatalf("C_InitPIN: %v", err)
 	}

@@ -17,7 +17,7 @@ import (
 	"testing"
 
 	"github.com/ThalesGroup/crypto11"
-	"github.com/miekg/pkcs11"
+	pkcs11 "github.com/eclipse-keypont/pkcs11-go/cryptoki"
 )
 
 // TestMain bootstraps an ephemeral SoftHSM token when P11_LIBRARY is set,
@@ -105,9 +105,9 @@ func initSoftHSMToken(modulePath string) func() {
 	userPin := os.Getenv("P11_PIN")
 
 	// ── Load module ───────────────────────────────────────────────────────────
-	ctx := pkcs11.New(modulePath)
-	if ctx == nil {
-		panic("initSoftHSMToken: failed to load P11_LIBRARY: " + modulePath)
+	ctx, err := pkcs11.New(modulePath)
+	if err != nil {
+		panic("initSoftHSMToken: failed to load P11_LIBRARY: " + modulePath + ": " + err.Error())
 	}
 	if err := ctx.Initialize(); err != nil {
 		ctx.Destroy()
@@ -123,7 +123,7 @@ func initSoftHSMToken(modulePath string) func() {
 	}
 
 	// ── Initialise the token (SO-PIN + label) ─────────────────────────────────
-	if err := ctx.InitToken(slots[0], integrationSoPin, integrationTokenLabel); err != nil {
+	if err := ctx.InitToken(slots[0], []byte(integrationSoPin), integrationTokenLabel); err != nil {
 		ctx.Finalize()
 		ctx.Destroy()
 		panic("initSoftHSMToken: C_InitToken: " + err.Error())
@@ -144,13 +144,13 @@ func initSoftHSMToken(modulePath string) func() {
 		ctx.Destroy()
 		panic("initSoftHSMToken: OpenSession: " + err.Error())
 	}
-	if err := ctx.Login(sh, pkcs11.CKU_SO, integrationSoPin); err != nil {
+	if err := ctx.Login(sh, pkcs11.CKU_SO, []byte(integrationSoPin)); err != nil {
 		ctx.CloseSession(sh)
 		ctx.Finalize()
 		ctx.Destroy()
 		panic("initSoftHSMToken: Login(SO): " + err.Error())
 	}
-	if err := ctx.InitPIN(sh, userPin); err != nil {
+	if err := ctx.InitPIN(sh, []byte(userPin)); err != nil {
 		ctx.Logout(sh)
 		ctx.CloseSession(sh)
 		ctx.Finalize()
@@ -183,9 +183,9 @@ func initSoftHSMToken(modulePath string) func() {
 // Panics with a descriptive message on failure so a mis-configured token
 // causes an immediate, obvious failure rather than cryptic test errors later.
 func verifySoftHSMToken(modulePath string) {
-	ctx := pkcs11.New(modulePath)
-	if ctx == nil {
-		panic("verifySoftHSMToken: failed to load module " + modulePath)
+	ctx, err := pkcs11.New(modulePath)
+	if err != nil {
+		panic("verifySoftHSMToken: failed to load module " + modulePath + ": " + err.Error())
 	}
 	if err := ctx.Initialize(); err != nil {
 		ctx.Destroy()
@@ -227,7 +227,7 @@ func verifySoftHSMToken(modulePath string) {
 		if err != nil {
 			panic(fmt.Sprintf("verifySoftHSMToken: OpenSession on token %q: %v", integrationTokenLabel, err))
 		}
-		if err := ctx.Login(sh, pkcs11.CKU_USER, os.Getenv("P11_PIN")); err != nil {
+		if err := ctx.Login(sh, pkcs11.CKU_USER, []byte(os.Getenv("P11_PIN"))); err != nil {
 			ctx.CloseSession(sh)
 			panic(fmt.Sprintf("verifySoftHSMToken: Login(USER) on token %q: %v", integrationTokenLabel, err))
 		}

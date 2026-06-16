@@ -3,11 +3,11 @@ module github.com/ThalesGroup/k8s-kms-plugin
 go 1.26.1
 
 require (
+	github.com/eclipse-keypont/pkcs11-go v0.0.0
 	github.com/golang/protobuf v1.5.4
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	github.com/infobloxopen/atlas-app-toolkit v1.4.2
-	github.com/miekg/pkcs11 v1.1.2
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/protoc-gen-go-json v1.1.0
 	github.com/spf13/cobra v1.10.2
@@ -53,7 +53,7 @@ require (
 replace (
 	github.com/ThalesGroup/crypto11 v1.7.0-rc1 => ../crypto11.github.com.ThalesGroup
 	github.com/ThalesGroup/gose v0.13.0-rc1 => ../gose.github.com.ThalesGroup
-	github.com/miekg/pkcs11 v1.1.2 => ../pkcs11.github.com.ThalesGroup
+	github.com/eclipse-keypont/pkcs11-go v0.0.0 => ../pkcs11-go
 )
 
 require (
