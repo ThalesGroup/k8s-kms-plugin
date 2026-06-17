@@ -20,6 +20,14 @@ import (
 	pkcs11 "github.com/eclipse-keypont/pkcs11-go/cryptoki"
 )
 
+// testConfig and testCtx are the shared crypto11 handles for the integration
+// suite. They are initialised by initCrypto11 (called from TestMain) once the
+// ephemeral SoftHSM token is ready, and consumed by all *_integration_test.go.
+var (
+	testConfig *crypto11.Config
+	testCtx    *crypto11.Context
+)
+
 // TestMain bootstraps an ephemeral SoftHSM token when P11_LIBRARY is set,
 // runs all tests against it, then cleans up.
 //

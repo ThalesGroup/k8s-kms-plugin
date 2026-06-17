@@ -27,7 +27,6 @@ import (
 	"github.com/ThalesGroup/crypto11"
 	"github.com/ThalesGroup/gose/jose"
 
-	istio "github.com/ThalesGroup/k8s-kms-plugin/apis/istio/v1"
 	"github.com/ThalesGroup/k8s-kms-plugin/pkg/logging"
 	"github.com/ThalesGroup/k8s-kms-plugin/pkg/providers"
 	version "github.com/ThalesGroup/k8s-kms-plugin/pkg/version"
@@ -54,7 +53,6 @@ type ViperFlagsServe struct {
 
 	// PKCS #11 & KMS plugin parameters
 	AlgorithmFamily string `mapstructure:"algorithm-family"`
-	CaID            string `mapstructure:"ca-id"`
 	NativePath      string `mapstructure:"native-path"`
 	P11Label        string `mapstructure:"p11-label"`
 	P11Lib          string `mapstructure:"p11-lib"`
@@ -229,9 +227,8 @@ Using AES-CBC with HMAC authentication, using CKA_ID, using CLI flags and servin
 				return
 			}
 
-			// Istiod runs with uid and gid 1337, but the plugin runs with uid 0 and
-			// gid 1337.  Change the socket permissions so the group has read/write
-			// access to the socket.
+			// Grant group read/write so a co-located client (e.g. kube-apiserver
+			// running under a shared gid) can connect to the socket.
 			os.Chmod(vprFlgsServe.SocketPath, 0775)
 			g.Go(func() error { return grpcServe(grpcUNIX, p) })
 		}
@@ -271,7 +268,6 @@ func init() {
 
 	// These flags comes from root
 	// These flags does not need to store their values in variable because we use the viper structure ViperFlagsServe to do this
-	serveCmd.PersistentFlags().String("ca-id", defaultCaId, "Cert ID for CA Cert record.")
 	serveCmd.PersistentFlags().Bool("auto-create", false, "Auto create the keys if needed.")
 	serveCmd.PersistentFlags().String("p11-key-label", "", "Key Label (CKA_LABEL) for the KMS KEK. The key must have a CKA_ID set on the HSM — it is stored as the KEK ID in Kubernetes etcd.")
 	serveCmd.PersistentFlags().String("p11-hmac-label", "", "Key Label (CKA_LABEL) for the HMAC key. The key must have a CKA_ID set on the HSM.")
@@ -374,7 +370,6 @@ func grpcServe(gl net.Listener, p providers.Provider) (err error) {
 
 	k8skmsv2.RegisterKeyManagementServiceServer(gs, p)
 	reflection.Register(gs)
-	istio.RegisterKeyManagementServiceServer(gs, p)
 
 	slog.Info("serving on socket", "address", gl.Addr().String())
 	slog.Log(context.Background(), logging.LevelTrace, "grpc port", "port", vprFlgsServe.Port)

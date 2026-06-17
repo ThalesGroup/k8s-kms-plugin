@@ -16,7 +16,6 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"hash"
@@ -36,23 +35,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	k8skmsv2 "k8s.io/kms/apis/v2"
-)
-
-var (
-	algToKeyGenParams = map[jose.Alg]keyGenerationParameters{
-		jose.AlgA128GCM: {
-			size:   128,
-			cipher: crypto11.CipherAES,
-		},
-		jose.AlgA192GCM: {
-			size:   192,
-			cipher: crypto11.CipherAES,
-		},
-		jose.AlgA256GCM: {
-			size:   256,
-			cipher: crypto11.CipherAES,
-		},
-	}
 )
 
 // Algorithm sentinels used in P11.algorithmFamily for routing. Values match the user-facing
@@ -109,71 +91,6 @@ func validateCkaLabel(label string) error {
 	return nil
 }
 
-// GenerateDEK generates a Data Encryption Key (DEK) and encrypts it using
-// the provided JWE encryptor. It first creates a random 32-byte symmetric
-// key, converts it to a JWK format, and then encrypts the JWK using the
-// encryptor. The resulting encrypted DEK is returned as a byte slice.
-// Any errors encountered during random number generation, key conversion,
-// or encryption are returned.
-//
-// for Istio: GenerateDEK is only used by istio.go:GenerateDEK and integration testing.
-// TODO: decide if this Istio related method should be separated from the KMS v2 plugin
-func GenerateDEK(ctx11 *crypto11.Context, encryptor gose.JweEncryptor) (encryptedKeyBlob []byte, err error) {
-
-	key := make([]byte, 32)
-
-	var rng io.Reader
-	if rng, err = ctx11.NewRandomReader(); err != nil {
-		slog.Error("GenerateDEK: failed to create random reader", "error", err)
-		return
-	}
-
-	if _, err = rng.Read(key); err != nil {
-		return
-	}
-
-	var dekJWK jose.Jwk
-	if dekJWK, err = gose.JwkFromSymmetric(key, jose.AlgA256GCM); err != nil {
-		return
-	}
-	var dekStr []byte
-	if dekStr, err = json.Marshal(dekJWK); err != nil {
-		slog.Error("generateDEK: failed to marshal DEK JWK", "error", err)
-		return
-	}
-	// using the AES key as it's payload
-	var encryptedString string
-	if encryptedString, err = encryptor.Encrypt(dekStr, nil); err != nil {
-		slog.Error("GenerateDEK: failed to encrypt DEK", "error", err)
-		return
-	}
-	encryptedKeyBlob = []byte(encryptedString)
-
-	return
-}
-
-// GenerateKEK generates a Key Encryption Key (KEK) using the provided
-// cryptographic context, identity, label, and algorithm. The function
-// checks if the specified algorithm is supported and, if so, generates
-// a secret key with the associated parameters. It returns the generated
-// AEAD encryption key or an error if the operation fails.
-//
-// for Istio: GenerateKEK is only used by istio.go:GenerateKEK and integration testing.
-// TODO: decide if this Istio related method should be separated from the KMS v2 plugin
-func GenerateKEK(ctx *crypto11.Context, identity, label []byte, alg jose.Alg) (key gose.AeadEncryptionKey, err error) {
-	params, supported := algToKeyGenParams[alg]
-	if !supported {
-		err = fmt.Errorf("algorithm %v is not supported", alg)
-		return
-	}
-
-	if _, err = ctx.GenerateSecretKeyWithLabel(identity, label, params.size, params.cipher); err != nil {
-		return
-	}
-
-	return
-}
-
 // IsPKCS11AuthenticationError returns true
 // if further attempts to log in will risk causing the
 // device to be locked.
@@ -203,9 +120,6 @@ func IsPKCS11AuthenticationError(err error) bool {
 //
 // KEK Key Rotation Fields:,old keys used for Decryption of old ciphertext during a key rotation.
 // See: https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/#developing-a-kms-plugin-gRPC-server-notes-kms-v2
-//
-// Istio Related Fields:
-// - cid: Certificate Identifier used in Istio operations.
 type P11 struct {
 	// Starting with [KMS v0.34.0](https://github.com/kubernetes/kms/tree/v0.34.0/apis/v2), the KMS maintainers stoped to use https://github.com/gogo/protobuf to generate protobuf files, as it is deprecated.
 	// KMS v0.34.0 and later uses official https://github.com/protocolbuffers/protobuf-go. This demands that the gRPC server embeds UnimplementedKeyManagementServiceServer to automatically satisfy method mustEmbedUnimplementedKeyManagementServiceServer()
@@ -225,9 +139,6 @@ type P11 struct {
 	hmacCkaId    []byte                       // Active HMAC key CKA_ID for AES-CBC + HMAC
 	hmacCkaLabel string                       // Active HMAC key CKA_LABEL utf8 for AES-CBC + HMAC
 	algorithmFamily jose.Alg                  // The active cryptographic algorithm family being used
-
-	// Istio related fields
-	cid []byte // Certificate Identifier
 
 	// KEK Key rotation feature for KMS v2
 	oldConfig *crypto11.Config  // for key rotation
@@ -559,58 +470,6 @@ func (p *P11) SetContext(ctx *crypto11.Context) error {
 	}
 	p.ctx = ctx
 	return nil
-}
-
-// SetCID sets the Certificate Identifier used in Istio operations.
-func (p *P11) SetCID(cid []byte) error {
-	if cid == nil {
-		return fmt.Errorf("SetCID: cid is nil")
-	}
-	p.cid = cid
-	return nil
-}
-
-// loadKEKbyID loads a Key Encryption Key (KEK) from the HSM for the given
-// kekIdentity and label. It returns the loaded KEK as a gose.AeadEncryptionKey,
-// a gose.JweEncryptor, and a gose.JweDecryptor. If the key is not found or
-// there is an error loading the key, loadKEKbyID returns an error.
-//
-// TODO: for now this method only support AES GCM symmetric keys as ctx.FindKey
-// only supports symmetric keys. This needs to be extended to support other
-// algorithms inlcuding asymmetric.
-func (p *P11) loadKEKbyID(ctx *crypto11.Context, kekId, kekLabel []byte) (encryptor gose.JweEncryptor, decryptor gose.JweDecryptor, err error) {
-
-	var rng io.Reader
-	var aek gose.AeadEncryptionKey
-
-	if rng, err = ctx.NewRandomReader(); err != nil {
-		return
-	}
-	// get the HSM Key
-	var handle *crypto11.SecretKey
-	if handle, err = ctx.FindKey(kekId, kekLabel); err != nil {
-		return
-	}
-	if handle == nil {
-		err = errors.New("no such key")
-		slog.Error("load KEK by ID or label failed", "kekIdentity", string(kekId), "label", string(kekLabel), "error", err)
-		return
-	}
-	var aead cipher.AEAD
-	if aead, err = handle.NewGCM(); err != nil {
-		return
-	}
-	var gcmAlg jose.Alg
-	if gcmAlg, err = aesGcmAlgFromKey(ctx, handle); err != nil {
-		return
-	}
-	if aek, err = gose.NewAesGcmCryptor(aead, rng, string(kekId), gcmAlg, kekKeyOps); err != nil {
-		return
-	}
-	decryptor = gose.NewJweDirectDecryptorAeadImpl([]gose.AeadEncryptionKey{aek})
-	encryptor = gose.NewJweDirectEncryptorAead(aek, p.config.UseGCMIVFromHSM)
-
-	return
 }
 
 // Close the key manager
@@ -1176,25 +1035,6 @@ func (p *P11) Status(ctx context.Context, request *k8skmsv2.StatusRequest) (stat
 
 	slog.Log(ctx, logging.LevelTrace, "StatusResponse", "Version", statusResponse.Version, "Healthz", statusResponse.Healthz, "KeyId", statusResponse.KeyId)
 	return statusResponse, nil
-}
-
-// TODO: decide if this Istio related method should be separated from the KMS v2 plugin
-func (p *P11) genKekKid() (kid []byte, err error) {
-	var u uuid.UUID
-	u, err = uuid.NewRandom()
-	if err != nil {
-		return
-	}
-	kid, err = u.MarshalText()
-	if err != nil {
-		return
-	}
-	return
-}
-
-type keyGenerationParameters struct {
-	size   int
-	cipher *crypto11.SymmetricCipher
 }
 
 // encryptMLKEM encrypts req.Plaintext using ML-KEM hybrid encryption via gose JWE.

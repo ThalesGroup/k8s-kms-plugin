@@ -19,8 +19,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/google/uuid"
-
 	"github.com/ThalesGroup/crypto11"
 	"github.com/ThalesGroup/gose"
 	"github.com/ThalesGroup/gose/jose"
@@ -313,21 +311,6 @@ func TestP11_Status_EmptyKekId(t *testing.T) {
 	assert.Contains(t, err.Error(), "KEK ID is empty")
 }
 
-// Tests for genKekKid method
-func TestP11_genKekKid(t *testing.T) {
-	p := &P11{}
-
-	kid, err := p.genKekKid()
-
-	assert.NoError(t, err)
-	assert.NotNil(t, kid)
-	assert.Greater(t, len(kid), 0)
-
-	// Verify it's a valid UUID text format
-	_, err = uuid.ParseBytes(kid)
-	assert.NoError(t, err)
-}
-
 // Create a mock JWE with a valid IV
 var validJWEs = []string{
 	"eyJhbGciOiJBMjU2Q0JDIiwia2lkIjoiNjQ2MzYxMzgzNTM5MzEzMjYzNjMzNTY1MzczMTMyNjQiLCJ0eXAiOiJKV1QiLCJjdHkiOiJKV1QiLCJfdGhhbGVzX2FhZCI6IkFBQUFBQUFBQUNBIiwiZW5jIjoiQTI1NkNCQyJ9..RCs4v0hOW9lHFwDOo7itNA.encrypted_data.tag",
@@ -392,12 +375,6 @@ func TestP11_GetIVFromDecryptRequest_InvalidIV(t *testing.T) {
 	}
 }
 
-// Test for unknown algorithm in map
-func TestP11_AlgToKeyGenParams_UnknownAlgorithm(t *testing.T) {
-	_, exists := algToKeyGenParams[jose.Alg("unknown")]
-	assert.False(t, exists)
-}
-
 func TestP11_NewP11_AllEmptyArgs(t *testing.T) {
 
 	emptyActiveCfg := &crypto11.Config{}
@@ -414,25 +391,6 @@ func TestAlgSentinelValues(t *testing.T) {
 	assert.Equal(t, jose.Alg("aes-cbc"), AlgAESCBC)
 	assert.Equal(t, jose.Alg("rsa-oaep"), AlgRSAOAEP)
 	assert.Equal(t, jose.Alg("ml-kem"), AlgMLKEM)
-}
-
-// TestAlgToKeyGenParams_KnownAlgorithms verifies that every supported AES-GCM
-// size is registered with the correct bit-width and cipher.
-func TestAlgToKeyGenParams_KnownAlgorithms(t *testing.T) {
-	cases := []struct {
-		alg      jose.Alg
-		wantSize int
-	}{
-		{jose.AlgA128GCM, 128},
-		{jose.AlgA192GCM, 192},
-		{jose.AlgA256GCM, 256},
-	}
-	for _, tc := range cases {
-		params, ok := algToKeyGenParams[tc.alg]
-		assert.Truef(t, ok, "expected %s in algToKeyGenParams", tc.alg)
-		assert.Equal(t, tc.wantSize, params.size)
-		assert.Equal(t, crypto11.CipherAES, params.cipher)
-	}
 }
 
 // TestIsPKCS11AuthenticationError covers nil, non-pkcs11, and CKR_PIN_INCORRECT inputs.

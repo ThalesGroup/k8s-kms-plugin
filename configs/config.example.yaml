@@ -48,7 +48,7 @@ k8s-kms-plugin:
       #old-p11-hmac-id: "my-hmac-key-for-cbc"
       #old-p11-hmac-label: "a72d4a0059ac"
 
-    ## TLS settings for Istio PKI
+    ## TLS settings for the optional TCP gRPC server
     #tls-ca: "certs/ca.crt"
     #tls-key: "certs/tls.key"
     #tls-certificate: "certs/tls.crt"

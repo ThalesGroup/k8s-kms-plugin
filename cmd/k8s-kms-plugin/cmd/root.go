@@ -45,12 +45,6 @@ var vprFlgsRoot ViperFlagsRoot
 // activeLogLevel is the runtime-adjustable log level shared by all slog handlers.
 var activeLogLevel = new(slog.LevelVar)
 
-// cobra root CLI flags default value
-const (
-	defaultKekId = "a37807cd-6d1a-4d75-813a-e120f30176f7" // TODO: with KMS v2, consider not using this hardcoded value
-	defaultCaId  = "1c3d30d5-dfa8-4167-a9f9-2c768464181b" // TODO: with KMS v2, consider not using this hardcoded value
-)
-
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "k8s-kms-plugin",
@@ -87,14 +81,8 @@ func init() {
 		Title: "Main KMS Commands:",
 	}
 
-	kmsCmdsGrpSupporting := &cobra.Group{
-		ID:    "kmscmdsgrpsupporting", // ID needs to be lowercase
-		Title: "Supporting KMS Commands:",
-	}
-
 	// Add groups to the root command
 	rootCmd.AddGroup(kmsCmdsGrpMain)
-	rootCmd.AddGroup(kmsCmdsGrpSupporting)
 
 	// Since this project uses Viper bind with Cobra flags, we generally do not need to use "Flags().*Var"
 	// (like StringVar, BoolVar, Uint16Var, etc...) as we do not need to access the cobra flag values directly. This is

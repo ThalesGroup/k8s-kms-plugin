@@ -38,7 +38,6 @@ import (
 type ViperFlagsRotation struct {
 	// PKCS #11 & KMS plugin parameters
 	OldAlgorithmFamily string `mapstructure:"old-algorithm-family"`
-	OldCaID            string `mapstructure:"old-ca-id"`
 	OldCaTLSCert       string `mapstructure:"old-tls-ca"`
 	OldNativePath      string `mapstructure:"old-native-path"`
 	OldP11Label        string `mapstructure:"old-p11-label"`
@@ -160,9 +159,8 @@ Using both CLI Flags, environment variables and configuration file and serving o
 				return
 			}
 
-			// Istiod runs with uid and gid 1337, but the plugin runs with uid 0 and
-			// gid 1337.  Change the socket permissions so the group has read/write
-			// access to the socket.
+			// Grant group read/write so a co-located client (e.g. kube-apiserver
+			// running under a shared gid) can connect to the socket.
 			os.Chmod(vprFlgsServe.SocketPath, 0775)
 			g.Go(func() error { return grpcRotation(grpcUNIX, p) })
 		}
@@ -184,7 +182,6 @@ func init() {
 		return []string{"aes-gcm", "aes-cbc", "rsa-oaep", "ml-kem"}, cobra.ShellCompDirectiveNoFileComp
 	})
 	rotationCmd.MarkFlagRequired("old-algorithm-family")
-	rotationCmd.Flags().String("old-ca-id", "", "Cert ID for old CA Cert record")
 	rotationCmd.Flags().String("old-tls-ca", "", "TLS CA cert for old KEK")
 	rotationCmd.Flags().String("old-native-path", "", "Native path for old KEK")
 	rotationCmd.Flags().String("old-p11-label", "", "P11 token label for old KEK")

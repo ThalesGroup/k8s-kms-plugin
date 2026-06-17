@@ -2,7 +2,7 @@
     actor "k8s admin" as k8sa
 
     box "k8s" #LightBlue
-        participant "APIServer/IstioD" as apis
+        participant "APIServer" as apis
     end box
 
     box "kms" #fff
@@ -20,24 +20,6 @@
         p11 -> server : KEK Loaded
     end
 
-    group Istio PKI Operations
-        ==key gen==
-        apis -> server : GenerateDEK(GenerateDEKRequest)
-        server -> p11 : GenerateDEK(KeyKind+Params)
-        server <- p11 : GenerateDEK(WrappedDEK)
-        apis <- server : GenerateDEK(GenerateDEKResponse)
-        apis -> server : GenerateSKey(GenerateSKeyRequest)
-        server -> p11 : GenerateSKey(KeyKind+Params+WrappedDEK)
-        server <- p11 : GenerateSKey(WrappedSKey)
-        apis <- server : GenerateSKey(GenerateSKeyResponse)
-
-        ==key load==
-        apis -> server : LoadSKey(GenerateSKeyRequest)
-        server -> p11 : LoadSKey(WrappedDEK+WrappedSKey)
-        server <- p11 : LoadSKey(sKey in PEM Format)
-        apis <- server : LoadSKey(GenerateSKeyResponse)
-
-    end
     group K8S Data Protection Operations
 
         apis -> server : Encrypt(EncryptRequest)
