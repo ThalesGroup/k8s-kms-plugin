@@ -90,7 +90,7 @@ nfpms:
   - id: '{{ .ProjectName }}'
     package_name: '{{ .ProjectName }}'
     file_name_template: "{{ .ConventionalFileName }}"
-    license: "Apache License 2.0"
+    license: "MIT"
     vendor: "ThalesGroup"
     homepage: https://github.com/ThalesGroup/k8s-kms-plugin
     maintainer: Thales Open Source <oss@thalesgroup.com>

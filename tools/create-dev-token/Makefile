@@ -1,4 +1,4 @@
-# Copyright 2026 Thales Group
+# SPDX-FileCopyrightText: 2026 Thales Group and the k8s-kms-plugin Contributors
 # SPDX-License-Identifier: MIT
 
 BINARY  := create-dev-token

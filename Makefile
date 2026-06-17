@@ -1,9 +1,6 @@
-# Copyright 2025 Thales Group
+# SPDX-FileCopyrightText: 2026 Thales Group and the k8s-kms-plugin Contributors
 # SPDX-License-Identifier: MIT
-#
-# Use of this source code is governed by an MIT-style
-# license that can be found in the LICENSE file or at
-# https://opensource.org/licenses/MIT.
+
 .PHONY: all lint build coverage dev gen
 
 all: build
