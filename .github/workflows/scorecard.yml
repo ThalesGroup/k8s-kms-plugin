@@ -1,0 +1,58 @@
+# .github/workflows/scorecard.yml
+#
+# OpenSSF Scorecard rates the repo's supply-chain security posture (branch
+# protection, token permissions, pinned dependencies, dangerous workflow
+# patterns) and publishes results to code scanning and the public Scorecard API.
+# This repo already does the hard parts (SHA-pinned actions, SLSA3 provenance,
+# cosign signing, SBOM attestation), so it should score well.
+
+name: Scorecard
+
+on:
+  branch_protection_rule:
+  push:
+    branches: ["master", "main"]
+  schedule:
+    - cron: "23 6 * * 1"
+  workflow_dispatch:
+
+# Top-level token has minimal access; the job requests only what it needs.
+permissions: read-all
+
+jobs:
+  analysis:
+    name: Scorecard analysis
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write # upload SARIF to code scanning
+      id-token: write        # publish results to the public OpenSSF API
+    steps:
+      - name: Checkout
+        # actions/checkout v6.0.3
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          persist-credentials: false
+
+      - name: Run analysis
+        # ossf/scorecard-action v2.4.2
+        uses: ossf/scorecard-action@05b42c624433fc40578a4040d5cf5e36ddca8cde
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          # Publishes the score to https://api.securityscorecards.dev for the
+          # badge. Set to false to keep results private.
+          publish_results: true
+
+      - name: Upload artifact
+        # actions/upload-artifact v4.6.2
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: SARIF file
+          path: results.sarif
+          retention-days: 5
+
+      - name: Upload to code-scanning
+        # github/codeql-action/upload-sarif v4.36.2
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e
+        with:
+          sarif_file: results.sarif
