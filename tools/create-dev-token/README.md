@@ -1,5 +1,13 @@
 # create-dev-token
 
+> [!WARNING]
+> ⚠️ **Development / testing helper — not part of the `k8s-kms-plugin` deployable.** ⚠️
+> It provisions a throwaway token with **well-known PINs** and **fixed key IDs**.
+> Do **not** run it against a production HSM, and do **not** use the keys it
+> creates to protect real data. It ships as a pre-built convenience binary on the
+> GitHub releases page (named `create-dev-token_testing-only_…`), separate from the
+> plugin packages and container image.
+
 `create-dev-token` bootstraps a **persistent** SoftHSMv3 token with one key of every algorithm family supported by `k8s-kms-plugin`:
 
 | Label | Algorithm | Key type |

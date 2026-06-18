@@ -62,6 +62,36 @@ builds:
           {{- if eq .Arch "riscv64"}}CC=riscv64-linux-gnu-gcc{{- end }}
         {{- end }}
 
+  # ──────────────────────────────────────────────────────────────────────────
+  # create-dev-token — DEVELOPMENT / TESTING helper. NOT part of the k8s-kms-plugin
+  # deployable and MUST NOT be run in production.
+  #
+  # It provisions a throwaway SoftHSMv3 token with well-known PINs and fixed key
+  # IDs so users can manually exercise the plugin. Published as a convenience
+  # binary only — deliberately excluded from the nfpms packages (see nfpms.ids)
+  # and the container image (the ko block builds only ./cmd/k8s-kms-plugin).
+  # The "testing-only" marker in the binary name makes the intent obvious on the
+  # release page.
+  # ──────────────────────────────────────────────────────────────────────────
+  - id: create-dev-token
+    binary: 'create-dev-token_testing-only_linux_{{ .Arch }}_{{ .Version }}'
+    no_unique_dist_dir: true
+    main: ./tools/create-dev-token
+    mod_timestamp: '{{ .CommitTimestamp }}'
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64    # aarch64
+      - riscv64
+    env:
+      - >-
+        {{- if eq .Os "linux" }}
+          {{- if eq .Arch "amd64"}}CC=gcc{{- end }}
+          {{- if eq .Arch "arm64"}}CC=aarch64-linux-gnu-gcc{{- end }}
+          {{- if eq .Arch "riscv64"}}CC=riscv64-linux-gnu-gcc{{- end }}
+        {{- end }}
+
 # -- Container images via ko -------------------------------------------------
 # GITHUB_REPOSITORY (e.g. "ThalesGroup/k8s-kms-plugin") is set by the workflow.
 kos:
@@ -120,15 +150,30 @@ nfpms:
 
 # -- Archives ----------------------------------------------------------------
 archives:
+  # Deployable: k8s-kms-plugin only. Scoped via ids so the testing helper is
+  # never bundled into the production artifacts.
   - id: binary-uncompressed
+    ids:
+      - k8s-kms-plugin
     formats:
       - binary
     name_template: "{{ .Binary }}"
     allow_different_binary_count: true
   - id: binary-compressed-archives
+    ids:
+      - k8s-kms-plugin
     formats:
       - zip
       - tar.gz
+    name_template: "{{ .Binary }}"
+    allow_different_binary_count: true
+  # Testing helper: shipped as a standalone raw binary, separate from the
+  # deployable archives above. NOT for production use.
+  - id: dev-tool-create-dev-token
+    ids:
+      - create-dev-token
+    formats:
+      - binary
     name_template: "{{ .Binary }}"
     allow_different_binary_count: true
 

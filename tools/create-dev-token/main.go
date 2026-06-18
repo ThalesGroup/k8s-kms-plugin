@@ -1,7 +1,12 @@
 // SPDX-FileCopyrightText: 2026 Thales Group and the k8s-kms-plugin Contributors
 // SPDX-License-Identifier: MIT
 
-// create-dev-token bootstraps a persistent SoftHSMv3 token with one key of
+// create-dev-token is a DEVELOPMENT / TESTING helper and is NOT part of the
+// k8s-kms-plugin deployable. It MUST NOT be run against a production HSM, and
+// the keys it creates (well-known PINs, fixed CKA_IDs) MUST NOT protect real
+// data.
+//
+// It bootstraps a persistent SoftHSMv3 token with one key of
 // every algorithm family supported by k8s-kms-plugin:
 //
 //	aes-gcm   — AES-256-GCM KEK
@@ -51,7 +56,26 @@ var (
 	labelMLKEM  = []byte("dev-ml-kem-768")
 )
 
+// warnTestingOnly prints a prominent banner making it unmistakable that this
+// tool is a development/testing helper and must never touch a production HSM.
+func warnTestingOnly() {
+	const banner = `╔════════════════════════════════════════════════════════════════════════╗
+║  create-dev-token — DEVELOPMENT / TESTING helper                       ║
+║                                                                        ║
+║  Provisions a throwaway SoftHSMv3 token with WELL-KNOWN PINs and FIXED ║
+║  key IDs for manually exercising k8s-kms-plugin.                       ║
+║                                                                        ║
+║  ⚠️  ⚠️  ⚠️  ⚠️  ⚠️  ⚠️                                                      ║
+║  DO NOT run this against a production HSM, and DO NOT use the keys it  ║
+║  creates to protect real data. For local testing only.                 ║
+╚════════════════════════════════════════════════════════════════════════╝
+`
+	fmt.Fprint(os.Stderr, banner)
+}
+
 func main() {
+	warnTestingOnly()
+
 	lib := flag.String("lib", os.Getenv("P11_LIBRARY"), "path to the SoftHSMv3 shared library (or set P11_LIBRARY)")
 	dir := flag.String("dir", "/tmp/k8s-kms-plugin-devtoken", "directory to create the token store in")
 	pin := flag.String("pin", "1234", "user PIN to set on the token")
@@ -101,31 +125,40 @@ func main() {
 
 	slots, err := p11.GetSlotList(false)
 	if err != nil || len(slots) == 0 {
-		p11.Finalize(); p11.Destroy()
+		p11.Finalize()
+		p11.Destroy()
 		fatalf("C_GetSlotList: %v (slots=%d)", err, len(slots))
 	}
 	if err := p11.InitToken(slots[0], []byte(soPin), tokenLabel); err != nil {
-		p11.Finalize(); p11.Destroy()
+		p11.Finalize()
+		p11.Destroy()
 		fatalf("C_InitToken: %v", err)
 	}
 
 	// After InitToken the token moves to a new slot — re-enumerate.
 	slots, err = p11.GetSlotList(true)
 	if err != nil || len(slots) == 0 {
-		p11.Finalize(); p11.Destroy()
+		p11.Finalize()
+		p11.Destroy()
 		fatalf("C_GetSlotList(true): %v (slots=%d)", err, len(slots))
 	}
 	sh, err := p11.OpenSession(slots[0], pkcs11.CKF_SERIAL_SESSION|pkcs11.CKF_RW_SESSION)
 	if err != nil {
-		p11.Finalize(); p11.Destroy()
+		p11.Finalize()
+		p11.Destroy()
 		fatalf("OpenSession: %v", err)
 	}
 	if err := p11.Login(sh, pkcs11.CKU_SO, []byte(soPin)); err != nil {
-		p11.CloseSession(sh); p11.Finalize(); p11.Destroy()
+		p11.CloseSession(sh)
+		p11.Finalize()
+		p11.Destroy()
 		fatalf("Login(SO): %v", err)
 	}
 	if err := p11.InitPIN(sh, []byte(*pin)); err != nil {
-		p11.Logout(sh); p11.CloseSession(sh); p11.Finalize(); p11.Destroy()
+		p11.Logout(sh)
+		p11.CloseSession(sh)
+		p11.Finalize()
+		p11.Destroy()
 		fatalf("C_InitPIN: %v", err)
 	}
 	p11.Logout(sh)
