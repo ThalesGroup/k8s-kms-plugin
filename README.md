@@ -2,6 +2,12 @@
 
 [![Licence](https://img.shields.io/github/license/Ileriayo/markdown-badges?style=for-the-badge)](./LICENSE)
 [![goreleaser](https://github.com/ThalesGroup/k8s-kms-plugin/actions/workflows/Goreleaser.yaml/badge.svg)](https://github.com/ThalesGroup/k8s-kms-plugin/actions/workflows/Goreleaser.yaml)
+[![Build](https://github.com/ThalesGroup/k8s-kms-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/ThalesGroup/k8s-kms-plugin/actions/workflows/ci.yml)
+[![Lint](https://github.com/ThalesGroup/k8s-kms-plugin/actions/workflows/lint.yml/badge.svg)](https://github.com/ThalesGroup/k8s-kms-plugin/actions/workflows/lint.yml)
+[![Secret Scan](https://github.com/ThalesGroup/k8s-kms-plugin/actions/workflows/secret-scan.yml/badge.svg)](https://github.com/ThalesGroup/k8s-kms-plugin/actions/workflows/secret-scan.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/ThalesGroup/k8s-kms-plugin/badge)](https://scorecard.dev/viewer/?uri=github.com/ThalesGroup/k8s-kms-plugin)
+[![Go Report Card](https://goreportcard.com/badge/github.com/ThalesGroup/k8s-kms-plugin)](https://goreportcard.com/report/github.com/ThalesGroup/k8s-kms-plugin)
+[![GitHub release](https://img.shields.io/github/v/release/ThalesGroup/k8s-kms-plugin)](https://github.com/ThalesGroup/k8s-kms-plugin/releases/latest)
 
 `k8s-kms-plugin serve` implements the [Kubernetes KMS v2 API](https://pkg.go.dev/k8s.io/kms/apis/v2) protocol as a gRPC service that leverages a remote or local HSM via PKCS11.
 `k8s-kms-plugin serve rotation` supports key rotation operations.
