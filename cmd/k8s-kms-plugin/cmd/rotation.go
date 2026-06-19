@@ -10,7 +10,6 @@ import (
 	"log/slog"
 	"net"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/ThalesGroup/crypto11"
@@ -20,7 +19,6 @@ import (
 	"github.com/ThalesGroup/k8s-kms-plugin/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	k8skmsv2 "k8s.io/kms/apis/v2"
@@ -32,14 +30,13 @@ import (
 type ViperFlagsRotation struct {
 	// PKCS #11 & KMS plugin parameters
 	OldAlgorithmFamily string `mapstructure:"old-algorithm-family"`
-	OldCaTLSCert       string `mapstructure:"old-tls-ca"`
 	OldNativePath      string `mapstructure:"old-native-path"`
 	OldP11Label        string `mapstructure:"old-p11-label"`
 	OldP11Lib          string `mapstructure:"old-p11-lib"`
 	OldP11Pin          string `mapstructure:"old-p11-pin"`
 	OldP11Slot         int    `mapstructure:"old-p11-slot"`
 	OldProvider        string `mapstructure:"old-provider"`
-	OldSocketPath      string `mapstructure:"old-socket"` // Unix socket path for TPM or HSM
+	OldSocketPath      string `mapstructure:"old-socket"` // Unix socket path for old KEK HSM
 
 	// CKA_ID and CKA_LABEL
 	OldDekKeyLabel  string `mapstructure:"old-p11-key-label"`
@@ -132,34 +129,16 @@ Using both CLI Flags, environment variables and configuration file and serving o
 			logging.Fatal("failed to initialize rotated provider for old KEK", "cobra_cmd", cmd.Use, "error", err)
 		}
 
-		// gRPC server
-		g := new(errgroup.Group)
-		var grpcTCP, grpcUNIX net.Listener
-
-		if vprFlgsServe.EnableTCP {
-			// vprFlgsServe.Port needs to be converted from uint16 to string
-			grpcAddr := net.JoinHostPort(vprFlgsServe.Host, strconv.FormatUint(uint64(vprFlgsServe.Port), 10))
-
-			if grpcTCP, err = net.Listen("tcp", grpcAddr); err != nil {
-				return
-			}
-
-			g.Go(func() error { return grpcRotation(grpcTCP, p) })
+		_ = os.Remove(vprFlgsServe.SocketPath)
+		var grpcUNIX net.Listener
+		if grpcUNIX, err = net.Listen("unix", vprFlgsServe.SocketPath); err != nil {
+			return
 		}
+		// Grant group read/write so a co-located client (e.g. kube-apiserver
+		// running under a shared gid) can connect to the socket.
+		os.Chmod(vprFlgsServe.SocketPath, 0775)
 
-		if !vprFlgsServe.DisableSocket {
-			_ = os.Remove(vprFlgsServe.SocketPath)
-			if grpcUNIX, err = net.Listen("unix", vprFlgsServe.SocketPath); err != nil {
-				return
-			}
-
-			// Grant group read/write so a co-located client (e.g. kube-apiserver
-			// running under a shared gid) can connect to the socket.
-			os.Chmod(vprFlgsServe.SocketPath, 0775)
-			g.Go(func() error { return grpcRotation(grpcUNIX, p) })
-		}
-
-		if err = g.Wait(); err != nil {
+		if err = grpcRotation(grpcUNIX, p); err != nil {
 			slog.Error("gRPC server error", "cobra_cmd", cmd.Use, "error", err)
 		}
 
@@ -176,7 +155,6 @@ func init() {
 		return []string{"aes-gcm", "aes-cbc", "rsa-oaep", "ml-kem"}, cobra.ShellCompDirectiveNoFileComp
 	})
 	rotationCmd.MarkFlagRequired("old-algorithm-family")
-	rotationCmd.Flags().String("old-tls-ca", "", "TLS CA cert for old KEK")
 	rotationCmd.Flags().String("old-native-path", "", "Native path for old KEK")
 	rotationCmd.Flags().String("old-p11-label", "", "P11 token label for old KEK")
 	rotationCmd.Flags().String("old-p11-lib", "", "Path to P11 library/client for old KEK")
@@ -327,7 +305,6 @@ func grpcRotation(gl net.Listener, p providers.Provider) (err error) {
 	reflection.Register(gs)
 
 	slog.Info("serving on socket", "address", gl.Addr().String())
-	slog.Log(context.Background(), logging.LevelTrace, "grpc port", "port", vprFlgsServe.Port)
 
 START:
 	if err = gs.Serve(gl); err != nil {

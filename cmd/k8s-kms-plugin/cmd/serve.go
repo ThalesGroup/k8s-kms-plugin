@@ -15,7 +15,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"strconv"
 	"time"
 
 	"github.com/ThalesGroup/crypto11"
@@ -28,23 +27,12 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
 
 // ViperFlagsServe defines a struct to hold the values of cobra CLI flags and use viper to populate them
 type ViperFlagsServe struct {
-	// gRPC server parameters
-	AllowAny      bool   `mapstructure:"allow-any"`
-	DisableSocket bool   `mapstructure:"disable-socket"`
-	EnableTCP     bool   `mapstructure:"enable-server"`
-	Host          string `mapstructure:"host"`
-	Port          uint16 `mapstructure:"port"`
-	ServerTLSCert string `mapstructure:"tls-certificate"`
-	ServerTLSKey  string `mapstructure:"tls-key"`
-	CaTLSCert     string `mapstructure:"tls-ca"`
-
 	// PKCS #11 & KMS plugin parameters
 	AlgorithmFamily string `mapstructure:"algorithm-family"`
 	NativePath      string `mapstructure:"native-path"`
@@ -53,7 +41,7 @@ type ViperFlagsServe struct {
 	P11Pin          string `mapstructure:"p11-pin"`
 	P11Slot         int    `mapstructure:"p11-slot"`
 	Provider        string `mapstructure:"provider"`
-	SocketPath      string `mapstructure:"socket"` // Unix socket path for TPM or HSM
+	SocketPath      string `mapstructure:"socket"` // Unix socket path
 
 	// PKCS #11 CKA_ID and CKA_LABEL of active KEK key
 	CreateKey    bool   `mapstructure:"auto-create"`
@@ -121,7 +109,7 @@ func sanitizeViperFlagsServe(f *ViperFlagsServe) error {
 	if len(f.HmacKeyLabel) > maxCkaLabelBytes {
 		return fmt.Errorf("--p11-hmac-label: length %d exceeds maximum of %d bytes", len(f.HmacKeyLabel), maxCkaLabelBytes)
 	}
-	if !f.DisableSocket && len(f.SocketPath) > maxUnixSocketPathLen {
+	if len(f.SocketPath) > maxUnixSocketPathLen {
 		return fmt.Errorf("--socket: path length %d exceeds Unix socket maximum of %d bytes", len(f.SocketPath), maxUnixSocketPathLen)
 	}
 	return nil
@@ -201,33 +189,16 @@ Using AES-CBC with HMAC authentication, using CKA_ID, using CLI flags and servin
 			logging.Fatal("failed to initialize provider", "cobra_cmd", cmd.Use, "error", err)
 		}
 
-		g := new(errgroup.Group)
-		var grpcTCP, grpcUNIX net.Listener
-
-		if vprFlgsServe.EnableTCP {
-			// vprFlgsServe.Port needs to be converted from uint16 to string
-			grpcAddr := net.JoinHostPort(vprFlgsServe.Host, strconv.FormatUint(uint64(vprFlgsServe.Port), 10))
-
-			if grpcTCP, err = net.Listen("tcp", grpcAddr); err != nil {
-				return
-			}
-
-			g.Go(func() error { return grpcServe(grpcTCP, p) })
+		_ = os.Remove(vprFlgsServe.SocketPath)
+		var grpcUNIX net.Listener
+		if grpcUNIX, err = net.Listen("unix", vprFlgsServe.SocketPath); err != nil {
+			return
 		}
+		// Grant group read/write so a co-located client (e.g. kube-apiserver
+		// running under a shared gid) can connect to the socket.
+		os.Chmod(vprFlgsServe.SocketPath, 0775)
 
-		if !vprFlgsServe.DisableSocket {
-			_ = os.Remove(vprFlgsServe.SocketPath)
-			if grpcUNIX, err = net.Listen("unix", vprFlgsServe.SocketPath); err != nil {
-				return
-			}
-
-			// Grant group read/write so a co-located client (e.g. kube-apiserver
-			// running under a shared gid) can connect to the socket.
-			os.Chmod(vprFlgsServe.SocketPath, 0775)
-			g.Go(func() error { return grpcServe(grpcUNIX, p) })
-		}
-
-		if err = g.Wait(); err != nil {
+		if err = grpcServe(grpcUNIX, p); err != nil {
 			slog.Error("gRPC server error", "cobra_cmd", cmd.Use, "error", err)
 		}
 
@@ -243,17 +214,6 @@ func init() {
 	// (like StringVar, BoolVar, Uint16Var, etc...) as we do not need to access the cobra flag values directly. This is
 	// because we use Viper to retrieve the values of the flags.
 
-	// unix socket server options
-	serveCmd.PersistentFlags().Bool("disable-socket", false, "Disable socket based server.")
-
-	// tcp server options
-	serveCmd.PersistentFlags().Bool("enable-server", false, "Enable TLS based server.")
-	serveCmd.PersistentFlags().String("tls-ca", "certs/ca.crt", "TLS CA cert.")
-	serveCmd.PersistentFlags().String("tls-key", "certs/tls.key", "TLS server key.")
-	serveCmd.PersistentFlags().String("tls-certificate", "certs/tls.crt", "TLS server cert.")
-
-	serveCmd.PersistentFlags().Bool("allow-any", false, "Allow any device (accepts all ids/secrets).")
-
 	algFamilyDefault := AlgorithmFamilyAESGCM
 	serveCmd.PersistentFlags().Var(&algFamilyDefault, "algorithm-family", "Encryption mechanism. Possible values: aes-gcm, aes-cbc, rsa-oaep, ml-kem.")
 	serveCmd.RegisterFlagCompletionFunc("algorithm-family", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -265,7 +225,6 @@ func init() {
 	serveCmd.PersistentFlags().Bool("auto-create", false, "Auto create the keys if needed.")
 	serveCmd.PersistentFlags().String("p11-key-label", "", "Key Label (CKA_LABEL) for the KMS KEK. The key must have a CKA_ID set on the HSM — it is stored as the KEK ID in Kubernetes etcd.")
 	serveCmd.PersistentFlags().String("p11-hmac-label", "", "Key Label (CKA_LABEL) for the HMAC key. The key must have a CKA_ID set on the HSM.")
-	serveCmd.PersistentFlags().String("host", "0.0.0.0", "Hostname without port.")
 	serveCmd.PersistentFlags().String("p11-key-id", "", "Key ID CKA_ID for KMS KEK.")
 	serveCmd.PersistentFlags().String("p11-hmac-id", "", "Key ID CKA_ID for KMS HMAC.")
 	serveCmd.PersistentFlags().StringP("native-path", "p", ".keys", "Path to key store for native provider(Files only).")
@@ -273,7 +232,6 @@ func init() {
 	serveCmd.PersistentFlags().String("p11-lib", "", "Path to p11 library/client.")
 	serveCmd.PersistentFlags().String("p11-pin", "", "HSM PIN. If omitted, prompted interactively (input hidden). Pass an empty string explicitly to use a no-PIN token.")
 	serveCmd.PersistentFlags().Int("p11-slot", 0, "P11 token slot.")
-	serveCmd.PersistentFlags().Uint16("port", 31400, "TCP Port for gRPC service.")
 	// Provider
 	serveCmd.PersistentFlags().String("provider", "p11", "Provider. Possible values: p11, softhsm, luna, dpod.")
 	serveCmd.RegisterFlagCompletionFunc("provider", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -366,7 +324,6 @@ func grpcServe(gl net.Listener, p providers.Provider) (err error) {
 	reflection.Register(gs)
 
 	slog.Info("serving on socket", "address", gl.Addr().String())
-	slog.Log(context.Background(), logging.LevelTrace, "grpc port", "port", vprFlgsServe.Port)
 
 START:
 	if err = gs.Serve(gl); err != nil {

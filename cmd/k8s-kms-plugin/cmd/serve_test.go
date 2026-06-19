@@ -163,7 +163,7 @@ func TestSanitizeViperFlagsServe_LabelLimits(t *testing.T) {
 }
 
 // TestSanitizeViperFlagsServe_SocketPathLimit verifies that Unix socket paths over
-// 107 bytes are rejected, but only when the socket is not disabled.
+// 107 bytes are rejected.
 func TestSanitizeViperFlagsServe_SocketPathLimit(t *testing.T) {
 	atLimit := strings.Repeat("a", maxUnixSocketPathLen)
 	overLimit := strings.Repeat("a", maxUnixSocketPathLen+1)
@@ -179,14 +179,9 @@ func TestSanitizeViperFlagsServe_SocketPathLimit(t *testing.T) {
 			"",
 		},
 		{
-			"over limit socket enabled",
+			"over limit",
 			ViperFlagsServe{AlgorithmFamily: "aes-gcm", SocketPath: overLimit},
 			"--socket",
-		},
-		{
-			"over limit socket disabled",
-			ViperFlagsServe{AlgorithmFamily: "aes-gcm", SocketPath: overLimit, DisableSocket: true},
-			"",
 		},
 	}
 	for _, tc := range cases {
