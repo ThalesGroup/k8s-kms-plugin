@@ -16,7 +16,7 @@ development and integration testing of `k8s-kms-plugin` as it supports all four 
 
 - [1. Install `SoftHSMv3`](#1-install-softhsmv3)
 - [2. Bootstrap a development token with `create-dev-token`](#2-bootstrap-a-development-token-with-create-dev-token)
-  - [2.1. Build `create-dev-token`](#21-build-create-dev-token)
+  - [2.1. Get `create-dev-token`](#21-get-create-dev-token)
   - [2.2. Run `create-dev-token`](#22-run-create-dev-token)
   - [2.3. Inspect the token](#23-inspect-the-token)
 - [3. Start `k8s-kms-plugin serve`](#3-start-k8s-kms-plugin-serve)
@@ -64,14 +64,27 @@ Keys provisioned:
 | `dev-rsa-2048-oaep`   | `rsa-oaep`       | RSA-2048 key pair         |
 | `dev-ml-kem-768`      | `ml-kem`         | ML-KEM-768 key pair       |
 
-### 2.1. Build `create-dev-token`
+### 2.1. Get `create-dev-token`
+
+**From GitHub releases** (recommended — no Go toolchain required):
+
+Download `create-dev-token_testing-only_linux_<arch>_<version>` from the
+[releases page](https://github.com/ThalesGroup/k8s-kms-plugin/releases) and rename it:
+
+```sh
+mv create-dev-token_testing-only_linux_amd64_v1.2.3 create-dev-token
+chmod +x create-dev-token
+./create-dev-token --version
+```
+
+**Build from source** (version-stamped from `git describe`):
 
 ```sh
 cd tools/create-dev-token
 make build
 ```
 
-Or run it directly without building:
+**No build** (Go ≥ 1.22 required):
 
 ```sh
 go run ./tools/create-dev-token --help
@@ -79,16 +92,19 @@ go run ./tools/create-dev-token --help
 
 ### 2.2. Run `create-dev-token`
 
+Use `eval` (or `source <(...)`) to create the token **and** export `SOFTHSM2_CONF` into the current shell in one step:
+
 ```sh
-PKCS11_MODULE=/path/to/libsofthsm3.so \
-  go run ./tools/create-dev-token \
-    --dir /tmp/k8s-kms-plugin-devtoken \
-    --pin 1234
+# Pre-built binary
+eval "$(create-dev-token --lib "$PKCS11_MODULE")"
+
+# Or with go run (from the repo root):
+eval "$(go run ./tools/create-dev-token --lib "$PKCS11_MODULE")"
 ```
 
-On success, the tool prints `export SOFTHSM2_CONF=…` and ready-to-paste `k8s-kms-plugin serve` commands for every algorithm family.
+All progress output and the ready-to-paste `k8s-kms-plugin serve` commands go to **stderr** (visible in the terminal). Only `export SOFTHSM2_CONF=…` goes to **stdout** so that `eval`/`source` captures it cleanly. Pass `--no-env-export` to suppress the stdout export line.
 
-Set the config path in every terminal session that accesses the token:
+`SOFTHSM2_CONF` is now set in the current session. For new terminal sessions:
 
 ```sh
 export SOFTHSM2_CONF=/tmp/k8s-kms-plugin-devtoken/softhsm2.conf

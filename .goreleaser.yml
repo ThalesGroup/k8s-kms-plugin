@@ -84,6 +84,8 @@ builds:
       - amd64
       - arm64    # aarch64
       - riscv64
+    ldflags:
+      - "-X main.version={{ .Version }}"
     env:
       - >-
         {{- if eq .Os "linux" }}

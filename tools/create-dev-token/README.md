@@ -10,50 +10,84 @@
 
 `create-dev-token` bootstraps a **persistent** SoftHSMv3 token with one key of every algorithm family supported by `k8s-kms-plugin`:
 
-| Label | Algorithm | Key type |
-|---|---|---|
-| `dev-aes-gcm-kek` | `aes-gcm` | AES-256-GCM symmetric key |
-| `dev-aes-cbc-kek` | `aes-cbc` | AES-256-CBC symmetric key |
-| `dev-hmac-sha256` | `aes-cbc` | Generic-256 HMAC key (paired with CBC) |
-| `dev-rsa-2048-oaep` | `rsa-oaep` | RSA-2048 key pair |
-| `dev-ml-kem-768` | `ml-kem` | ML-KEM-768 key pair (skipped on SoftHSMv2) |
+| Label               | Algorithm  | Key type                                   |
+|---------------------|------------|--------------------------------------------|
+| `dev-aes-gcm-kek`   | `aes-gcm`  | AES-256-GCM symmetric key                  |
+| `dev-aes-cbc-kek`   | `aes-cbc`  | AES-256-CBC symmetric key                  |
+| `dev-hmac-sha256`   | `aes-cbc`  | Generic-256 HMAC key (paired with CBC)     |
+| `dev-rsa-2048-oaep` | `rsa-oaep` | RSA-2048 key pair                          |
+| `dev-ml-kem-768`    | `ml-kem`   | ML-KEM-768 key pair (skipped on SoftHSMv2) |
 
 The store survives across runs and is intended for interactive testing with `p11tool`, `pkcs11-tool`, and `k8s-kms-plugin serve`.
 
 ## Prerequisites
 
-| Tool | Purpose |
-|---|---|
-| Go ≥ 1.22 | `go run ./tools/create-dev-token` |
-| SoftHSMv3 | `libsofthsmv3.so` — build from [pqctoday-org/pqctoday-hsm](https://github.com/pqctoday-org/pqctoday-hsm) |
-| `pkcs11-tool` | Inspect the token (optional, from `opensc` package) |
-| `p11tool` | Inspect the token (optional, from `gnutls-bin` package) |
+| Tool          | Purpose                                                                                                  |
+|---------------|----------------------------------------------------------------------------------------------------------|
+| SoftHSMv3     | `libsofthsmv3.so` — build from [pqctoday-org/pqctoday-hsm](https://github.com/pqctoday-org/pqctoday-hsm) |
+| `pkcs11-tool` | Inspect the token (optional, from `opensc` package)                                                      |
+| `p11tool`     | Inspect the token (optional, from `gnutls-bin` package)                                                  |
+| Go ≥ 1.22     | Only needed if building from source or using `go run`                                                    |
 
-SoftHSMv2 migth also works for aes-gcm / aes-cbc / rsa-oaep. ML-KEM-768 requires SoftHSMv3.
+SoftHSMv2 might also work for aes-gcm / aes-cbc / rsa-oaep. ML-KEM-768 requires SoftHSMv3.
+
+## Get the binary
+
+**From GitHub releases** (recommended — no Go toolchain required):
+
+Download `create-dev-token_testing-only_linux_<arch>_<version>` from the
+[releases page](https://github.com/ThalesGroup/k8s-kms-plugin/releases) and rename it:
+
+```bash
+mv create-dev-token_testing-only_linux_amd64_v1.2.3 create-dev-token
+chmod +x create-dev-token
+./create-dev-token --version
+```
+
+**Build from source** (version-stamped from `git describe`):
+
+```bash
+# From the repo root
+make -C tools/create-dev-token build
+# Binary is placed at tools/create-dev-token/create-dev-token
+```
+
+**No build** (Go ≥ 1.22 required):
+
+```bash
+go run ./tools/create-dev-token --help
+```
 
 ## Create the token
 
+Use `eval` (or `source <(...)`) to create the token **and** export `SOFTHSM2_CONF` into the current shell in one step:
+
 ```bash
-PKCS11_MODULE=/path/to/libsofthsmv3.so \
-  go run ./tools/create-dev-token \
-    --dir /tmp/k8s-kms-plugin-devtoken
+# Pre-built binary
+eval "$(create-dev-token --lib /path/to/libsofthsmv3.so)"
+
+# Or with go run (from the repo root, no build step)
+eval "$(go run ./tools/create-dev-token --lib /path/to/libsofthsmv3.so)"
 ```
+
+All progress output and the ready-to-paste command list go to **stderr** (visible in the terminal).
+Only `export SOFTHSM2_CONF=…` goes to **stdout** so that `eval`/`source` captures it cleanly.
 
 All flags are optional except `--lib` (or `PKCS11_MODULE`):
 
-| Flag | Default | Description |
-|---|---|---|
-| `--lib` | `$PKCS11_MODULE` | Path to the SoftHSMv3 shared library |
-| `--dir` | `/tmp/k8s-kms-plugin-devtoken` | Directory to create the token store in |
-| `--pin` | `1234` | User PIN to set on the token |
+| Flag              | Default                        | Description                                      |
+|-------------------|--------------------------------|--------------------------------------------------|
+| `--lib`           | `$PKCS11_MODULE`               | Path to the SoftHSMv3 shared library             |
+| `--dir`           | `/tmp/k8s-kms-plugin-devtoken` | Directory to create the token store in           |
+| `--pin`           | `1234`                         | User PIN to set on the token                     |
+| `--no-env-export` | `false`                        | Do not print `export SOFTHSM2_CONF=…` to stdout  |
+| `--version`       |                                | Print version and exit                           |
 
 The program creates `--dir`, writes a `softhsm2.conf` inside it, initialises the PKCS\#11 token, and generates all keys. It exits with an error if `--dir` already exists, so there is no risk of silently overwriting an existing store.
 
-On success it prints `export SOFTHSM2_CONF=…` and ready-to-paste commands for every tool.
-
 ## Inspect the token
 
-Set the config path in every terminal session that needs to access the token:
+`SOFTHSM2_CONF` is already set in the session where `eval` ran. For any new terminal session:
 
 ```bash
 export SOFTHSM2_CONF=/tmp/k8s-kms-plugin-devtoken/softhsm2.conf

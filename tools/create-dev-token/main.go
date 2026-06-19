@@ -23,6 +23,12 @@
 //	  --lib   /path/to/libsofthsmv3.so \
 //	  --dir   /tmp/k8s-kms-plugin-devtoken   # default
 //	  --pin   1234                            # default
+//
+// To automatically export SOFTHSM2_CONF into the current shell session:
+//
+//	eval "$(create-dev-token --lib /path/to/libsofthsmv3.so)"
+//	# or
+//	source <(create-dev-token --lib /path/to/libsofthsmv3.so)
 package main
 
 import (
@@ -35,6 +41,32 @@ import (
 	"github.com/ThalesGroup/crypto11"
 	pkcs11 "github.com/eclipse-keypont/pkcs11-go/cryptoki"
 )
+
+// version is set at build time via -ldflags "-X main.version=<git-describe>".
+var version = "dev"
+
+// ANSI color codes; zeroed when NO_COLOR is set (https://no-color.org).
+var (
+	cReset  string
+	cBold   string
+	cDim    string
+	cRed    string
+	cGreen  string
+	cYellow string
+	cCyan   string
+)
+
+func init() {
+	if os.Getenv("NO_COLOR") == "" {
+		cReset  = "\033[0m"
+		cBold   = "\033[1m"
+		cDim    = "\033[2m"
+		cRed    = "\033[31m"
+		cGreen  = "\033[32m"
+		cYellow = "\033[33m"
+		cCyan   = "\033[36m"
+	}
+}
 
 const (
 	tokenLabel = "k8s-kms-plugin-dev"
@@ -70,25 +102,31 @@ func warnTestingOnly() {
 ║  creates to protect real data. For local testing only.                 ║
 ╚════════════════════════════════════════════════════════════════════════╝
 `
-	fmt.Fprint(os.Stderr, banner)
+	fmt.Fprint(os.Stderr, cBold+cYellow+banner+cReset)
 }
 
 func main() {
 	warnTestingOnly()
 
-	lib := flag.String("lib", os.Getenv("PKCS11_MODULE"), "path to the SoftHSMv3 shared library (or set PKCS11_MODULE)")
-	dir := flag.String("dir", "/tmp/k8s-kms-plugin-devtoken", "directory to create the token store in")
-	pin := flag.String("pin", "1234", "user PIN to set on the token")
-	flag.Parse()
-
-	if *lib == "" {
-		fmt.Fprintln(os.Stderr, "error: --lib is required (or set PKCS11_MODULE)")
+	fatalf := func(format string, a ...any) {
+		fmt.Fprintf(os.Stderr, cBold+cRed+"error: "+cReset+format+"\n", a...)
 		os.Exit(1)
 	}
 
-	fatalf := func(format string, a ...any) {
-		fmt.Fprintf(os.Stderr, "error: "+format+"\n", a...)
-		os.Exit(1)
+	lib          := flag.String("lib", os.Getenv("PKCS11_MODULE"), "path to the SoftHSMv3 shared library (or set PKCS11_MODULE)")
+	dir          := flag.String("dir", "/tmp/k8s-kms-plugin-devtoken", "directory to create the token store in")
+	pin          := flag.String("pin", "1234", "user PIN to set on the token")
+	ver          := flag.Bool("version", false, "print version and exit")
+	noEnvExport  := flag.Bool("no-env-export", false, "do not print 'export SOFTHSM2_CONF=...' to stdout")
+	flag.Parse()
+
+	if *ver {
+		fmt.Printf("create-dev-token %s\n", version)
+		os.Exit(0)
+	}
+
+	if *lib == "" {
+		fatalf("--lib is required (or set PKCS11_MODULE)")
 	}
 
 	// ── Create SoftHSM directory ─────────────────────────────────────────────
@@ -110,7 +148,7 @@ func main() {
 		fatalf("WriteFile %s: %v", confPath, err)
 	}
 	os.Setenv("SOFTHSM2_CONF", confPath)
-	fmt.Printf("✔ SoftHSM store created: %s\n", *dir)
+	fmt.Fprintf(os.Stderr, "%s✔%s SoftHSM store created: %s\n", cBold+cGreen, cReset, *dir)
 
 	// ── Initialise token (C_InitToken + C_InitPIN) ────────────────────────────
 
@@ -165,7 +203,7 @@ func main() {
 	p11.CloseSession(sh)
 	p11.Finalize()
 	p11.Destroy()
-	fmt.Printf("✔ Token initialised   label=%s  SO-PIN=%s  user-PIN=%s\n", tokenLabel, soPin, *pin)
+	fmt.Fprintf(os.Stderr, "%s✔%s Token initialised   label=%s  SO-PIN=%s  user-PIN=%s\n", cBold+cGreen, cReset, tokenLabel, soPin, *pin)
 
 	// ── Connect via crypto11 ──────────────────────────────────────────────────
 
@@ -186,7 +224,7 @@ func main() {
 		fatalf("GenerateSecretKeyWithLabel AES-256-GCM: %v", err)
 	}
 	_ = gcmKey
-	fmt.Printf("✔ AES-256-GCM KEK     key label=%s  id=0x%02x\n", labelAESGCM, idAESGCM)
+	fmt.Fprintf(os.Stderr, "%s✔%s AES-256-GCM KEK     key label=%s  id=0x%02x\n", cBold+cGreen, cReset, labelAESGCM, idAESGCM)
 
 	// ── AES-256-CBC KEK ───────────────────────────────────────────────────────
 
@@ -195,7 +233,7 @@ func main() {
 		fatalf("GenerateSecretKeyWithLabel AES-256-CBC: %v", err)
 	}
 	_ = cbcKey
-	fmt.Printf("✔ AES-256-CBC KEK     key label=%s  id=0x%02x\n", labelAESCBC, idAESCBC)
+	fmt.Fprintf(os.Stderr, "%s✔%s AES-256-CBC KEK     key label=%s  id=0x%02x\n", cBold+cGreen, cReset, labelAESCBC, idAESCBC)
 
 	// ── HMAC-SHA256 key (CKK_GENERIC_SECRET, CKA_SIGN=true) ──────────────────
 
@@ -214,7 +252,7 @@ func main() {
 		fatalf("GenerateSecretKeyWithAttributes HMAC-SHA256: %v", err)
 	}
 	_ = hmacKey
-	fmt.Printf("✔ HMAC-SHA256         key label=%s  id=0x%02x\n", labelHMAC, idHMAC)
+	fmt.Fprintf(os.Stderr, "%s✔%s HMAC-SHA256         key label=%s  id=0x%02x\n", cBold+cGreen, cReset, labelHMAC, idHMAC)
 
 	// ── RSA-2048 key pair ──────────────────────────────────────────────────────
 
@@ -223,42 +261,45 @@ func main() {
 		fatalf("GenerateRSAKeyPairWithLabel RSA-2048: %v", err)
 	}
 	_ = rsaKP
-	fmt.Printf("✔ RSA-2048-OAEP       key label=%s  id=0x%02x\n", labelRSA, idRSA)
+	fmt.Fprintf(os.Stderr, "%s✔%s RSA-2048-OAEP       key label=%s  id=0x%02x\n", cBold+cGreen, cReset, labelRSA, idRSA)
 
 	// ── ML-KEM-768 key pair (skipped gracefully if unsupported) ──────────────
 
 	mlkemKP, err := ctx.GenerateMLKEMKeyPairWithLabel(idMLKEM, labelMLKEM, crypto11.MLKEM768)
 	if err != nil {
-		fmt.Printf("⚠ ML-KEM-768 skipped  (token does not support CKM_ML_KEM_KEY_PAIR_GEN: %v)\n", err)
-		fmt.Printf("  Requires SoftHSMv3 from https://github.com/pqctoday-org/pqctoday-hsm\n")
+		fmt.Fprintf(os.Stderr, "%s⚠%s ML-KEM-768 skipped  (token does not support CKM_ML_KEM_KEY_PAIR_GEN: %v)\n", cBold+cYellow, cReset, err)
+		fmt.Fprintf(os.Stderr, "  Requires SoftHSMv3 from https://github.com/pqctoday-org/pqctoday-hsm\n")
 	} else {
 		_ = mlkemKP
-		fmt.Printf("✔ ML-KEM-768          key label=%s  id=0x%02x\n", labelMLKEM, idMLKEM)
+		fmt.Fprintf(os.Stderr, "%s✔%s ML-KEM-768          key label=%s  id=0x%02x\n", cBold+cGreen, cReset, labelMLKEM, idMLKEM)
 	}
 
 	// ── Print usage instructions ───────────────────────────────────────────────
 
-	hr := strings.Repeat("─", 76)
-	fmt.Printf(`
+	hr := cDim + strings.Repeat("─", 76) + cReset
+	// section returns a dim header line padded to 76 visible columns.
+	// All titles are ASCII so len() == display width.
+	section := func(title string) string {
+		return cDim + "── " + title + " " + strings.Repeat("─", 72-len(title)) + cReset
+	}
+	v := func(s string) string { return cCyan + s + cReset }
+
+	fmt.Fprintf(os.Stderr, `
 %s
-Token store : %s
-Token label : %s
-User PIN    : %s
-SOFTHSM2_CONF=%s
+Token store   : %s
+Token label   : %s
+User PIN      : %s
+SOFTHSM2_CONF : %s
 %s
 
-Set this in every terminal session before using the token:
-
-  export SOFTHSM2_CONF="%s"
-
-── List all objects with p11tool ─────────────────────────────────────────────
+%s
 
   GNUTLS_SO_PIN="%s" GNUTLS_PIN="%s" p11tool \
     --provider "%s" \
     --login \
     --list-all "pkcs11:token=%s"
 
-── List all objects with pkcs11-tool ────────────────────────────────────────
+%s
 
   pkcs11-tool \
     --module "%s" \
@@ -266,7 +307,7 @@ Set this in every terminal session before using the token:
     --token-label "%s" \
     --list-objects
 
-── k8s-kms-plugin: AES-GCM ──────────────────────────────────────────────────
+%s
 
   k8s-kms-plugin serve \
     --socket /run/user/$(id -u)/k8s-kms-plugin-dev.sock \
@@ -276,7 +317,7 @@ Set this in every terminal session before using the token:
     --p11-key-label %s \
     --algorithm-family aes-gcm
 
-── k8s-kms-plugin: AES-CBC + HMAC ──────────────────────────────────────────
+%s
 
   k8s-kms-plugin serve \
     --socket /run/user/$(id -u)/k8s-kms-plugin-dev.sock \
@@ -287,7 +328,7 @@ Set this in every terminal session before using the token:
     --p11-hmac-label  %s \
     --algorithm-family aes-cbc
 
-── k8s-kms-plugin: RSA-OAEP ─────────────────────────────────────────────────
+%s
 
   k8s-kms-plugin serve \
     --socket /run/user/$(id -u)/k8s-kms-plugin-dev.sock \
@@ -297,7 +338,7 @@ Set this in every terminal session before using the token:
     --p11-key-label %s \
     --algorithm-family rsa-oaep
 
-── k8s-kms-plugin: ML-KEM ───────────────────────────────────────────────────
+%s
 
   k8s-kms-plugin serve \
     --socket /run/user/$(id -u)/k8s-kms-plugin-dev.sock \
@@ -307,7 +348,7 @@ Set this in every terminal session before using the token:
     --p11-key-label %s \
     --algorithm-family ml-kem
 
-── grpcurl round-trip test ──────────────────────────────────────────────────
+%s
 
   cd scripts/grpcurl
   ./grpcurl-roundtrip-test.sh "hello dev token" \
@@ -315,21 +356,44 @@ Set this in every terminal session before using the token:
 
 %s
 `,
-		hr, *dir, tokenLabel, *pin, confPath, hr,
-		// export
-		confPath,
+		hr,
+		v(*dir), v(tokenLabel), v(*pin), v(confPath),
+		hr,
 		// p11tool
+		section("List all objects with p11tool"),
 		soPin, *pin, *lib, tokenLabel,
 		// pkcs11-tool
+		section("List all objects with pkcs11-tool"),
 		*lib, *pin, tokenLabel,
-		// aes-gcm serve
+		// aes-gcm
+		section("k8s-kms-plugin: AES-GCM"),
 		*lib, tokenLabel, *pin, labelAESGCM,
-		// aes-cbc serve
+		// aes-cbc
+		section("k8s-kms-plugin: AES-CBC + HMAC"),
 		*lib, tokenLabel, *pin, labelAESCBC, labelHMAC,
-		// rsa-oaep serve
+		// rsa-oaep
+		section("k8s-kms-plugin: RSA-OAEP"),
 		*lib, tokenLabel, *pin, labelRSA,
-		// ml-kem serve
+		// ml-kem
+		section("k8s-kms-plugin: ML-KEM"),
 		*lib, tokenLabel, *pin, labelMLKEM,
+		// grpcurl
+		section("grpcurl round-trip test"),
 		hr,
 	)
+
+	// ── Export SOFTHSM2_CONF to stdout for eval / source ──────────────────────
+	//
+	// All informational output above goes to stderr so that eval captures only
+	// this export statement:
+	//
+	//   eval "$(create-dev-token --lib ... --dir ... --pin ...)"
+	//   source <(create-dev-token --lib ... --dir ... --pin ...)
+
+	if !*noEnvExport {
+		fmt.Fprintf(os.Stderr, "%s⚡%s SOFTHSM2_CONF exported to stdout — apply in current shell:\n", cBold+cCyan, cReset)
+		fmt.Fprintf(os.Stderr, "   eval \"$(create-dev-token --lib \"%s\" --dir \"%s\" --pin \"%s\")\"\n", *lib, *dir, *pin)
+		fmt.Fprintf(os.Stderr, "   Pass --no-env-export to suppress.\n\n")
+		fmt.Printf("export SOFTHSM2_CONF=%q\n", confPath)
+	}
 }
