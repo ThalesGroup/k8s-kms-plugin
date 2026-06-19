@@ -6,13 +6,13 @@
 //
 // Required environment variables:
 //
-//	P11_LIBRARY   path to the PKCS#11 shared library
-//	P11_PIN       user PIN (default: 1234)
+//	PKCS11_MODULE   path to the PKCS#11 shared library
+//	PKCS11_PIN       user PIN (default: 1234)
 //
 // The k8s-kms-plugin binary must be built before running these tests:
 //
 //	make build
-//	P11_LIBRARY=/usr/lib/softhsm/libsofthsm2.so go test -v ./test/e2e/
+//	PKCS11_MODULE=/usr/lib/softhsm/libsofthsm2.so go test -v ./test/e2e/
 //
 // aes-gcm, aes-cbc and rsa-oaep work with SoftHSMv2 or SoftHSMv3.
 // ml-kem requires SoftHSMv3: https://github.com/pqctoday-org/pqctoday-hsm
@@ -46,11 +46,11 @@ const (
 
 // TestMain bootstraps an ephemeral SoftHSM token, verifies it, connects
 // crypto11, locates the plugin binary, then runs all tests.
-// Without P11_LIBRARY the whole suite is skipped cleanly.
+// Without PKCS11_MODULE the whole suite is skipped cleanly.
 func TestMain(m *testing.M) {
-	lib := os.Getenv("P11_LIBRARY")
+	lib := os.Getenv("PKCS11_MODULE")
 	if lib == "" {
-		fmt.Fprintln(os.Stderr, "P11_LIBRARY not set — skipping e2e tests")
+		fmt.Fprintln(os.Stderr, "PKCS11_MODULE not set — skipping e2e tests")
 		os.Exit(0)
 	}
 
@@ -120,14 +120,14 @@ func initSoftHSMToken(modulePath string) func() {
 
 	os.Setenv("SOFTHSM2_CONF", conf)
 
-	if os.Getenv("P11_PIN") == "" {
-		os.Setenv("P11_PIN", e2eDefaultPin)
+	if os.Getenv("PKCS11_PIN") == "" {
+		os.Setenv("PKCS11_PIN", e2eDefaultPin)
 	}
-	userPin := os.Getenv("P11_PIN")
+	userPin := os.Getenv("PKCS11_PIN")
 
 	ctx, err := pkcs11.New(modulePath)
 	if err != nil {
-		panic("initSoftHSMToken: failed to load P11_LIBRARY: " + modulePath + ": " + err.Error())
+		panic("initSoftHSMToken: failed to load PKCS11_MODULE: " + modulePath + ": " + err.Error())
 	}
 	if err := ctx.Initialize(); err != nil {
 		ctx.Destroy()
@@ -178,7 +178,7 @@ func initSoftHSMToken(modulePath string) func() {
 	ctx.Finalize()
 	ctx.Destroy()
 
-	os.Setenv("P11_TOKEN", e2eTokenLabel)
+	os.Setenv("PKCS11_TOKEN", e2eTokenLabel)
 	fmt.Printf("initSoftHSMToken: token %q ready in %s\n", e2eTokenLabel, dir)
 
 	return func() { os.RemoveAll(dir) }
@@ -220,7 +220,7 @@ func verifySoftHSMToken(modulePath string) {
 		if err != nil {
 			panic("verifySoftHSMToken: OpenSession: " + err.Error())
 		}
-		if err := ctx.Login(sh, pkcs11.CKU_USER, []byte(os.Getenv("P11_PIN"))); err != nil {
+		if err := ctx.Login(sh, pkcs11.CKU_USER, []byte(os.Getenv("PKCS11_PIN"))); err != nil {
 			ctx.CloseSession(sh)
 			panic("verifySoftHSMToken: Login(USER): " + err.Error())
 		}
@@ -235,9 +235,9 @@ func verifySoftHSMToken(modulePath string) {
 // initCrypto11 connects testCtx and testConfig to the ephemeral token.
 func initCrypto11() {
 	testConfig = &crypto11.Config{
-		Path:       os.Getenv("P11_LIBRARY"),
-		TokenLabel: os.Getenv("P11_TOKEN"),
-		Pin:        os.Getenv("P11_PIN"),
+		Path:       os.Getenv("PKCS11_MODULE"),
+		TokenLabel: os.Getenv("PKCS11_TOKEN"),
+		Pin:        os.Getenv("PKCS11_PIN"),
 	}
 	var err error
 	if testCtx, err = crypto11.Configure(testConfig); err != nil {

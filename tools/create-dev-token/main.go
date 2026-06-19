@@ -76,13 +76,13 @@ func warnTestingOnly() {
 func main() {
 	warnTestingOnly()
 
-	lib := flag.String("lib", os.Getenv("P11_LIBRARY"), "path to the SoftHSMv3 shared library (or set P11_LIBRARY)")
+	lib := flag.String("lib", os.Getenv("PKCS11_MODULE"), "path to the SoftHSMv3 shared library (or set PKCS11_MODULE)")
 	dir := flag.String("dir", "/tmp/k8s-kms-plugin-devtoken", "directory to create the token store in")
 	pin := flag.String("pin", "1234", "user PIN to set on the token")
 	flag.Parse()
 
 	if *lib == "" {
-		fmt.Fprintln(os.Stderr, "error: --lib is required (or set P11_LIBRARY)")
+		fmt.Fprintln(os.Stderr, "error: --lib is required (or set PKCS11_MODULE)")
 		os.Exit(1)
 	}
 

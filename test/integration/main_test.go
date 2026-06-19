@@ -22,10 +22,10 @@ var (
 	testCtx    *crypto11.Context
 )
 
-// TestMain bootstraps an ephemeral SoftHSM token when P11_LIBRARY is set,
+// TestMain bootstraps an ephemeral SoftHSM token when PKCS11_MODULE is set,
 // runs all tests against it, then cleans up.
 //
-// Without P11_LIBRARY the suite exits immediately with no failures; individual
+// Without PKCS11_MODULE the suite exits immediately with no failures; individual
 // tests guard themselves with skipIfNoLibrary so the output is clean.
 //
 // Both SoftHSMv2 (AES-GCM, AES-CBC, RSA-OAEP) and SoftHSMv3 (ML-KEM) are
@@ -37,11 +37,11 @@ var (
 //
 // Example usage:
 //
-//	P11_LIBRARY=/usr/lib/softhsm/libsofthsm2.so \
-//	P11_PIN=1234 \
+//	PKCS11_MODULE=/usr/lib/softhsm/libsofthsm2.so \
+//	PKCS11_PIN=1234 \
 //	go test -v ./test/integration/
 func TestMain(m *testing.M) {
-	lib := os.Getenv("P11_LIBRARY")
+	lib := os.Getenv("PKCS11_MODULE")
 	if lib == "" {
 		// No library configured — skip cleanly without panicking.
 		os.Exit(m.Run())
@@ -74,7 +74,7 @@ const (
 //  3. C_GetSlotList(tokenPresent=true)                  → find the new slot
 //  4. C_OpenSession / C_Login(SO) / C_InitPIN           → set user PIN
 //
-// Sets SOFTHSM2_CONF, P11_TOKEN, and P11_PIN environment variables so that
+// Sets SOFTHSM2_CONF, PKCS11_TOKEN, and PKCS11_PIN environment variables so that
 // crypto11 and all test helpers pick up the right token automatically.
 // Returns a teardown function that removes the temp directory.
 func initSoftHSMToken(modulePath string) func() {
@@ -101,15 +101,15 @@ func initSoftHSMToken(modulePath string) func() {
 	// Must be set before the module is loaded so SoftHSM reads the right config.
 	os.Setenv("SOFTHSM2_CONF", conf)
 
-	if os.Getenv("P11_PIN") == "" {
-		os.Setenv("P11_PIN", integrationDefaultPin)
+	if os.Getenv("PKCS11_PIN") == "" {
+		os.Setenv("PKCS11_PIN", integrationDefaultPin)
 	}
-	userPin := os.Getenv("P11_PIN")
+	userPin := os.Getenv("PKCS11_PIN")
 
 	// ── Load module ───────────────────────────────────────────────────────────
 	ctx, err := pkcs11.New(modulePath)
 	if err != nil {
-		panic("initSoftHSMToken: failed to load P11_LIBRARY: " + modulePath + ": " + err.Error())
+		panic("initSoftHSMToken: failed to load PKCS11_MODULE: " + modulePath + ": " + err.Error())
 	}
 	if err := ctx.Initialize(); err != nil {
 		ctx.Destroy()
@@ -165,7 +165,7 @@ func initSoftHSMToken(modulePath string) func() {
 	ctx.Destroy()
 
 	// Publish the token label so crypto11 and tests find the right token.
-	os.Setenv("P11_TOKEN", integrationTokenLabel)
+	os.Setenv("PKCS11_TOKEN", integrationTokenLabel)
 
 	fmt.Printf("initSoftHSMToken: token %q initialised in %s\n", integrationTokenLabel, dir)
 
@@ -180,7 +180,7 @@ func initSoftHSMToken(modulePath string) func() {
 //   - exactly one initialised token is visible
 //   - its label matches integrationTokenLabel
 //   - CKF_TOKEN_INITIALIZED and CKF_USER_PIN_INITIALIZED are set
-//   - a user login with P11_PIN succeeds
+//   - a user login with PKCS11_PIN succeeds
 //
 // Panics with a descriptive message on failure so a mis-configured token
 // causes an immediate, obvious failure rather than cryptic test errors later.
@@ -229,7 +229,7 @@ func verifySoftHSMToken(modulePath string) {
 		if err != nil {
 			panic(fmt.Sprintf("verifySoftHSMToken: OpenSession on token %q: %v", integrationTokenLabel, err))
 		}
-		if err := ctx.Login(sh, pkcs11.CKU_USER, []byte(os.Getenv("P11_PIN"))); err != nil {
+		if err := ctx.Login(sh, pkcs11.CKU_USER, []byte(os.Getenv("PKCS11_PIN"))); err != nil {
 			ctx.CloseSession(sh)
 			panic(fmt.Sprintf("verifySoftHSMToken: Login(USER) on token %q: %v", integrationTokenLabel, err))
 		}
@@ -249,9 +249,9 @@ func verifySoftHSMToken(modulePath string) {
 // created. Called once after verifySoftHSMToken.
 func initCrypto11() {
 	testConfig = &crypto11.Config{
-		Path:       os.Getenv("P11_LIBRARY"),
-		TokenLabel: os.Getenv("P11_TOKEN"),
-		Pin:        os.Getenv("P11_PIN"),
+		Path:       os.Getenv("PKCS11_MODULE"),
+		TokenLabel: os.Getenv("PKCS11_TOKEN"),
+		Pin:        os.Getenv("PKCS11_PIN"),
 	}
 	var err error
 	if testCtx, err = crypto11.Configure(testConfig); err != nil {

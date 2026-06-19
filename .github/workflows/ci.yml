@@ -5,15 +5,10 @@
 # (release.yml) only runs on tags and the security suite (security.yaml) only
 # scans, so without this nothing type-checks a PR.
 #
-# Tests are intentionally NOT run here. The suite needs a SoftHSMv3 PKCS#11
-# module at runtime:
-#
-#   SOFTHSM3_MODULE=.../libsofthsmv3.so go test ./...
-#
-# and libsofthsmv3.so is not yet distributed as a prebuilt artifact — building
-# it from C++ source on every run would be slow and fragile. `go build` has no
-# such dependency. Add a test job once libsofthsmv3.so can be provisioned
-# (prebuilt download or a cached build step).
+# Unit tests (pkg/, cmd/) run here without an HSM and are used as the compile
+# gate. e2e and integration tests self-skip cleanly when PKCS11_MODULE is not
+# set — they require libsofthsmv3.so from https://github.com/pqctoday-org/pqctoday-hsm
+# which is not yet distributed as a prebuilt artifact.
 
 name: CI
 
@@ -35,8 +30,8 @@ env:
   CGO_ENABLED: "1"
 
 jobs:
-  build:
-    name: Vet & build
+  build-test:
+    name: Vet, build & test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -55,3 +50,8 @@ jobs:
 
       - name: Build
         run: go build ./...
+
+      - name: Test
+        # e2e and integration suites skip cleanly when PKCS11_MODULE is unset.
+        # Unit tests in pkg/ and cmd/ run unconditionally.
+        run: go test -count=1 ./...

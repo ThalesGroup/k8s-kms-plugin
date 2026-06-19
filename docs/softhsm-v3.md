@@ -36,16 +36,16 @@ After installation, locate the shared library. Common paths:
 
 ```sh
 # Debian / Ubuntu
-export P11_LIBRARY="/usr/local/lib/softhsm/libsofthsm3.so"
+export PKCS11_MODULE="/usr/local/lib/softhsm/libsofthsm3.so"
 
 # or if installed to the default prefix
-export P11_LIBRARY="/usr/lib/softhsm/libsofthsm3.so"
+export PKCS11_MODULE="/usr/lib/softhsm/libsofthsm3.so"
 ```
 
 Verify the library loads correctly:
 
 ```sh
-pkcs11-tool --module "$P11_LIBRARY" --show-info
+pkcs11-tool --module "$PKCS11_MODULE" --show-info
 ```
 
 
@@ -80,7 +80,7 @@ go run ./tools/create-dev-token --help
 ### 2.2. Run `create-dev-token`
 
 ```sh
-P11_LIBRARY=/path/to/libsofthsm3.so \
+PKCS11_MODULE=/path/to/libsofthsm3.so \
   go run ./tools/create-dev-token \
     --dir /tmp/k8s-kms-plugin-devtoken \
     --pin 1234
@@ -106,7 +106,7 @@ With `pkcs11-tool` (from the `opensc` package):
 
 ```sh
 pkcs11-tool \
-  --module "$P11_LIBRARY" \
+  --module "$PKCS11_MODULE" \
   --login --pin 1234 \
   --token-label k8s-kms-plugin-dev \
   --list-objects
@@ -116,7 +116,7 @@ With `p11tool` (from the `gnutls-bin` package):
 
 ```sh
 GNUTLS_SO_PIN="0000" GNUTLS_PIN="1234" p11tool \
-  --provider "$P11_LIBRARY" \
+  --provider "$PKCS11_MODULE" \
   --login \
   --list-all "pkcs11:token=k8s-kms-plugin-dev"
 ```
@@ -135,7 +135,7 @@ k8s-kms-plugin \
   serve \
     --log-level=trace \
     --socket "$SOCKET" \
-    --p11-lib   "$P11_LIBRARY" \
+    --p11-lib   "$PKCS11_MODULE" \
     --p11-label k8s-kms-plugin-dev \
     --p11-pin   1234 \
     --p11-key-label dev-aes-gcm-kek \
@@ -150,7 +150,7 @@ k8s-kms-plugin \
   serve \
     --log-level=trace \
     --socket "$SOCKET" \
-    --p11-lib        "$P11_LIBRARY" \
+    --p11-lib        "$PKCS11_MODULE" \
     --p11-label      k8s-kms-plugin-dev \
     --p11-pin        1234 \
     --p11-key-label  dev-aes-cbc-kek \
@@ -166,7 +166,7 @@ k8s-kms-plugin \
   serve \
     --log-level=trace \
     --socket "$SOCKET" \
-    --p11-lib   "$P11_LIBRARY" \
+    --p11-lib   "$PKCS11_MODULE" \
     --p11-label k8s-kms-plugin-dev \
     --p11-pin   1234 \
     --p11-key-label dev-rsa-2048-oaep \
@@ -181,7 +181,7 @@ k8s-kms-plugin \
   serve \
     --log-level=trace \
     --socket "$SOCKET" \
-    --p11-lib   "$P11_LIBRARY" \
+    --p11-lib   "$PKCS11_MODULE" \
     --p11-label k8s-kms-plugin-dev \
     --p11-pin   1234 \
     --p11-key-label dev-ml-kem-768 \

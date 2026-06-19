@@ -34,16 +34,16 @@ SoftHSMv2 migth also works for aes-gcm / aes-cbc / rsa-oaep. ML-KEM-768 requires
 ## Create the token
 
 ```bash
-P11_LIBRARY=/path/to/libsofthsmv3.so \
+PKCS11_MODULE=/path/to/libsofthsmv3.so \
   go run ./tools/create-dev-token \
     --dir /tmp/k8s-kms-plugin-devtoken
 ```
 
-All flags are optional except `--lib` (or `P11_LIBRARY`):
+All flags are optional except `--lib` (or `PKCS11_MODULE`):
 
 | Flag | Default | Description |
 |---|---|---|
-| `--lib` | `$P11_LIBRARY` | Path to the SoftHSMv3 shared library |
+| `--lib` | `$PKCS11_MODULE` | Path to the SoftHSMv3 shared library |
 | `--dir` | `/tmp/k8s-kms-plugin-devtoken` | Directory to create the token store in |
 | `--pin` | `1234` | User PIN to set on the token |
 

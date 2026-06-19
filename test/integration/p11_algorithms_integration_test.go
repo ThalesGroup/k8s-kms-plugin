@@ -5,9 +5,9 @@
 //
 // Required environment variables (inherited from p11_integration_test.go init()):
 //
-//	P11_LIBRARY  — path to the PKCS#11 shared library
-//	P11_TOKEN    — token label
-//	P11_PIN      — token PIN
+//	PKCS11_MODULE  — path to the PKCS#11 shared library
+//	PKCS11_TOKEN    — token label
+//	PKCS11_PIN      — token PIN
 //
 // AES-GCM, AES-CBC and RSA-OAEP tests run against SoftHSMv2 or any PKCS#11 token.
 // ML-KEM tests require SoftHSMv3 from https://github.com/pqctoday-org/pqctoday-hsm
@@ -32,13 +32,13 @@ import (
 
 const testPlaintext = "the quick brown fox jumps over the lazy dog"
 
-// skipIfNoLibrary skips the test when P11_LIBRARY is not set, which means the
+// skipIfNoLibrary skips the test when PKCS11_MODULE is not set, which means the
 // init() in p11_integration_test.go already panicked. Guard every test with this
 // so the suite can run as a no-op in environments without an HSM.
 func skipIfNoLibrary(t *testing.T) {
 	t.Helper()
-	if os.Getenv("P11_LIBRARY") == "" {
-		t.Skip("P11_LIBRARY not set — skipping integration test")
+	if os.Getenv("PKCS11_MODULE") == "" {
+		t.Skip("PKCS11_MODULE not set — skipping integration test")
 	}
 }
 

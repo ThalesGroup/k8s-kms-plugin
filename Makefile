@@ -34,8 +34,8 @@ BINARY_NAME = $(PROJECT_NAME)
 
 # For dev
 SECRET_NAME=gcr-json-key
-P11_TOKEN=ajak
-P11_PIN=password
+PKCS11_TOKEN=ajak
+PKCS11_PIN=password
 ## Pipeline
 
 # Go parameters
@@ -58,7 +58,7 @@ build-debug:
 		$(info use cmd : dlv --listen=:2345 --headless=true --api-version=2 --accept-multiclient exec k8s-kms-plugin)
 		$(info will listen to port 2345)
 run:
-		@go run cmd/k8s-kms-plugin/main.go serve --disable-socket --enable-server --p11-lib /usr/local/lib/softhsm/libsofthsm2.so --p11-pin $(P11_PIN) --p11-label $(P11_TOKEN)
+		@go run cmd/k8s-kms-plugin/main.go serve --disable-socket --enable-server --p11-lib /usr/local/lib/softhsm/libsofthsm2.so --p11-pin $(PKCS11_PIN) --p11-label $(PKCS11_TOKEN)
 
 
 dev:
@@ -75,7 +75,7 @@ p11tool-list:
 		@kubectl exec -it k8s-kms-plugin-server -- p11tool --lib /usr/lib/softhsm/libsofthsm2.so --pin changeme --token default list
 
 p11tool-delete:
-		@kubectl exec -it k8s-kms-plugin-server -- p11tool --lib /usr/lib/softhsm/libsofthsm2.so --pin $(P11_PIN) --token $(P11_TOKEN) delete
+		@kubectl exec -it k8s-kms-plugin-server -- p11tool --lib /usr/lib/softhsm/libsofthsm2.so --pin $(PKCS11_PIN) --token $(PKCS11_TOKEN) delete
 
 
 release:

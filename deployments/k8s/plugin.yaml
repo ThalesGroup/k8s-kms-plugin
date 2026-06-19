@@ -31,9 +31,9 @@ spec:
         - name: P11_LIBRARY
 #          value: /usr/lib64/libsofthsm2.so # Centos
           value: /usr/lib/softhsm/libsofthsm2.so # Ubuntu
-        - name: P11_TOKEN
+        - name: PKCS11_TOKEN
           value: default
-        - name: P11_PIN
+        - name: PKCS11_PIN
           value: changeme
     - name: e2e-test
       image: "gcr.io/thalescpl-io/k8s-kms-plugin/server"
