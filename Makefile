@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Thales Group and the k8s-kms-plugin Contributors
 # SPDX-License-Identifier: MIT
 
-.PHONY: all lint build coverage dev gen
+.PHONY: all lint build coverage dev gen notices
 
 all: build
 
@@ -40,6 +40,11 @@ PKCS11_PIN=password
 
 # Go parameters
 CGO_ENABLED := "1"
+
+## Licenses
+notices:
+		@go-licenses report ./... --ignore github.com/ThalesGroup/k8s-kms-plugin --template go-licenses.tpl > NOTICES.md
+		@echo "NOTICES.md generated"
 
 lint:
 		@golangci-lint run
