@@ -14,6 +14,8 @@
 //	make build
 //	PKCS11_MODULE=/usr/lib/softhsm/libsofthsm2.so go test -v ./test/e2e/
 //
+// `make build` places the binary in dist/k8s-kms-plugin.
+//
 // aes-gcm, aes-cbc and rsa-oaep work with SoftHSMv2 or SoftHSMv3.
 // ml-kem requires SoftHSMv3: https://github.com/pqctoday-org/pqctoday-hsm
 package e2e
@@ -78,21 +80,25 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-// findPluginBin looks for the k8s-kms-plugin binary at the repo root
-// (where `make build` places it) and then falls back to PATH.
+// findPluginBin looks for the k8s-kms-plugin binary in dist/ (where `make
+// build` places it), then at the repo root (legacy location), then in PATH.
 func findPluginBin(root string) string {
-	candidate := filepath.Join(root, "k8s-kms-plugin")
-	if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
-		return candidate
+	candidates := []string{
+		filepath.Join(root, "dist", "k8s-kms-plugin"),
+		filepath.Join(root, "k8s-kms-plugin"),
 	}
-	// Fallback to PATH.
+	for _, c := range candidates {
+		if info, err := os.Stat(c); err == nil && !info.IsDir() {
+			return c
+		}
+	}
 	for _, dir := range filepath.SplitList(os.Getenv("PATH")) {
 		p := filepath.Join(dir, "k8s-kms-plugin")
 		if info, err := os.Stat(p); err == nil && !info.IsDir() {
 			return p
 		}
 	}
-	panic("k8s-kms-plugin binary not found in repo root or PATH — run 'make build' first")
+	panic("k8s-kms-plugin binary not found in dist/, repo root, or PATH — run 'make build' first")
 }
 
 // initSoftHSMToken creates a temporary directory, writes softhsm2.conf, and
