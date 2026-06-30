@@ -9,7 +9,6 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.10.1
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/tools v0.40.0 // indirect
 	google.golang.org/grpc v1.79.3
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af // indirect
 )
@@ -39,7 +38,6 @@ require (
 	github.com/hashicorp/go-version v1.8.0
 	github.com/lmittmann/tint v1.1.3
 	golang.org/x/term v0.44.0
-	golang.org/x/tools/cmd/cover v0.1.0-deprecated
 	k8s.io/kms v0.36.2
 )
 
