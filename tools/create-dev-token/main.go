@@ -350,8 +350,41 @@ SOFTHSM2_CONF : %s
 
 %s
 
+  # Step 1 — start serve with the OLD KEK (AES-CBC), then in another terminal
+  # run the roundtrip test in verbose mode to capture the EncryptResponse:
+  k8s-kms-plugin serve \
+    --socket /run/user/$(id -u)/k8s-kms-plugin-dev.sock \
+    --p11-lib        "%s" \
+    --p11-label      "%s" \
+    --p11-pin        "%s" \
+    --p11-key-label   %s \
+    --p11-hmac-label  %s \
+    --algorithm-family aes-cbc
+
+  cd scripts/grpcurl && VERBOSE=true ./grpcurl-roundtrip-test.sh "hello rotation" \
+    /run/user/$(id -u)/k8s-kms-plugin-dev.sock
+
+  # Step 2 — stop the plugin, then start serve rotation (ACTIVE=RSA-OAEP, OLD=AES-CBC)
+  # and run the command printed by VERBOSE=true ./grpcurl-roundtrip-test.sh above:
+  k8s-kms-plugin serve \
+    --socket /run/user/$(id -u)/k8s-kms-plugin-dev.sock \
+    --p11-lib        "%s" \
+    --p11-label      "%s" \
+    --p11-pin        "%s" \
+    --p11-key-label   %s \
+    --algorithm-family rsa-oaep \
+    rotation \
+      --old-p11-lib        "%s" \
+      --old-p11-label      "%s" \
+      --old-p11-pin        "%s" \
+      --old-p11-key-label   %s \
+      --old-p11-hmac-label  %s \
+      --old-algorithm-family aes-cbc
+
+%s
+
   cd scripts/grpcurl
-  ./grpcurl-roundtrip-test.sh "hello dev token" \
+  ./grpcurl-roundtrip-test.sh "this is a secret" \
     /run/user/$(id -u)/k8s-kms-plugin-dev.sock
 
 %s
@@ -377,6 +410,11 @@ SOFTHSM2_CONF : %s
 		// ml-kem
 		section("k8s-kms-plugin: ML-KEM"),
 		*lib, tokenLabel, *pin, labelMLKEM,
+		// serve rotation
+		section("k8s-kms-plugin: serve rotation (AES-CBC → RSA-OAEP)"),
+		*lib, tokenLabel, *pin, labelAESCBC, labelHMAC,
+		*lib, tokenLabel, *pin, labelRSA,
+		*lib, tokenLabel, *pin, labelAESCBC, labelHMAC,
 		// grpcurl
 		section("grpcurl round-trip test"),
 		hr,
@@ -391,9 +429,12 @@ SOFTHSM2_CONF : %s
 	//   source <(create-dev-token --lib ... --dir ... --pin ...)
 
 	if !*noEnvExport {
-		fmt.Fprintf(os.Stderr, "%s⚡%s SOFTHSM2_CONF exported to stdout — apply in current shell:\n", cBold+cCyan, cReset)
-		fmt.Fprintf(os.Stderr, "   eval \"$(create-dev-token --lib \"%s\" --dir \"%s\" --pin \"%s\")\"\n", *lib, *dir, *pin)
-		fmt.Fprintf(os.Stderr, "   Pass --no-env-export to suppress.\n\n")
+		fmt.Fprintf(os.Stderr, "%s⚡%s stdout / stderr split\n", cBold+cCyan, cReset)
+		fmt.Fprintf(os.Stderr, "   All progress and command examples above → %sstderr%s (visible in terminal)\n", cBold, cReset)
+		fmt.Fprintf(os.Stderr, "   Only %sexport SOFTHSM2_CONF=…%s             → %sstdout%s (captured by eval / source)\n\n", cBold, cReset, cBold, cReset)
+		fmt.Fprintf(os.Stderr, "   Apply SOFTHSM2_CONF in the current shell:\n")
+		fmt.Fprintf(os.Stderr, "     eval \"$(create-dev-token --lib \"%s\" --dir \"%s\" --pin \"%s\")\"\n", *lib, *dir, *pin)
+		fmt.Fprintf(os.Stderr, "   Pass --no-env-export to suppress the stdout export.\n\n")
 		fmt.Printf("export SOFTHSM2_CONF=%q\n", confPath)
 	}
 }

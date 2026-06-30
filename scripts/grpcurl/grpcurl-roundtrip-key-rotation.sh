@@ -17,6 +17,20 @@ if ! command -v base64 >/dev/null 2>&1; then
   exit 1
 fi
 
+print_jwe_header() {
+  local jwe b64
+  jwe=$(printf '%s' "$1" | base64 -d)
+  b64=$(printf '%s' "$jwe" | cut -d. -f1 | tr -- '-_' '+/')
+  case $((${#b64} % 4)) in
+    2) b64="${b64}==" ;;
+    3) b64="${b64}=" ;;
+  esac
+  echo "🔑 JWE Header:"
+  echo '```json'
+  printf '%s' "$b64" | base64 -d | jq
+  echo '```'
+}
+
 API_PROTO_URL="https://raw.githubusercontent.com/kubernetes/kms/refs/tags/v0.34.1/apis/v2/api.proto"
 if [[ ! -f api.proto ]]; then
   echo "api.proto file not found. Downloading protobufer API file from ${API_PROTO_URL}..."
@@ -49,110 +63,145 @@ if [[ -z "$PLAINTEXT_ACTIVE_KEY_ID" || -z "$SOCKET" ]]; then
   echo ""
   echo "Then it does a DecryptRequest with the ID of the OLD KEK and shows the decrypted ciphertext."
   echo ""
-  echo "Set VERBOSE=true to dump full JSON responses."
+  echo "Set VERBOSE=true to dump full JSON requests and responses."
   exit 1
 fi
 
-echo -e "\n=========================================================="
-echo "▶️ Testing ACTIVE KEK Status, Encrypt and Decrypt requests"
-# ---- Base64-encode plaintext ----
-PLAINTEXT_BASE64_ACTIVE=$(echo -n "$PLAINTEXT_ACTIVE_KEY_ID" | base64)
-echo "🔐 Input plaintext ACTIVE KEK: $PLAINTEXT_ACTIVE_KEY_ID"
-echo "🔐 Base64 encoded: $PLAINTEXT_BASE64_ACTIVE"
+echo "# 🔄 KMS v2 Key Rotation Round-Trip Test"
+echo ""
+[[ "$VERBOSE" == true ]] && echo "🔍 Verbose: enabled" || echo "🔇 Verbose: disabled — set \`VERBOSE=true\` to see full JSON requests and responses"
+
+echo ""
+echo "---"
+echo ""
+echo "## ▶️ Active KEK — Status, Encrypt & Decrypt"
 echo ""
 
-echo "1️⃣ ℹ️ Status Request & Response ACTIVE KEK"
-# ---- Get key_id from Status ---- 
+# ---- Base64-encode plaintext ----
+PLAINTEXT_BASE64_ACTIVE=$(echo -n "$PLAINTEXT_ACTIVE_KEY_ID" | base64)
+echo "🔐 Input plaintext: \`$PLAINTEXT_ACTIVE_KEY_ID\`"
+echo "🔐 Base64 encoded: \`$PLAINTEXT_BASE64_ACTIVE\`"
+
+echo ""
+echo "### 1️⃣ Status"
+echo ""
+
+# ---- Get key_id from Status ----
+STATUS_REQUEST='{}'
+[[ "$VERBOSE" == true ]] && { echo "📤 StatusRequest:"; echo '```json'; echo "$STATUS_REQUEST" | jq; echo '```'; echo ""; }
+
 STATUS_RESPONSE=$(grpcurl \
   -plaintext \
   -proto api.proto \
-  -d '{}' \
+  -d "$STATUS_REQUEST" \
   -unix \
   unix://"$SOCKET" \
   v2.KeyManagementService.Status)
 
-echo ""
-[[ "$VERBOSE" == true ]] && echo "📦 Full Status response:" && echo "$STATUS_RESPONSE" | jq
+[[ "$VERBOSE" == true ]] && { echo "📥 StatusResponse:"; echo '```json'; echo "$STATUS_RESPONSE" | jq; echo '```'; echo ""; }
 
 KEY_ID=$(echo "$STATUS_RESPONSE" | jq -r .keyId)
-echo "🧾 key_id from Status: $KEY_ID"
+echo "🧾 key_id (ACTIVE KEK): \`$KEY_ID\`"
+
+echo ""
+echo "### 2️⃣ Encrypt"
+echo ""
 
 # ---- Encrypt ----
-echo ""
-echo "2️⃣ ℹ️ Encrypt Request & Response"
+ENCRYPT_REQUEST="{\"plaintext\": \"$PLAINTEXT_BASE64_ACTIVE\", \"uid\": \"test-enc-1\"}"
+[[ "$VERBOSE" == true ]] && { echo "📤 EncryptRequest:"; echo '```json'; echo "$ENCRYPT_REQUEST" | jq; echo '```'; echo ""; }
 
 ENCRYPT_RESPONSE=$(grpcurl \
   -plaintext \
   -proto api.proto \
-  -d "{\"plaintext\": \"$PLAINTEXT_BASE64_ACTIVE\", \"uid\": \"test-enc-1\"}" \
+  -d "$ENCRYPT_REQUEST" \
   -unix \
   unix://"$SOCKET" \
   v2.KeyManagementService.Encrypt)
 
-[[ "$VERBOSE" == true ]] && echo "📦 Full Encrypt response:" && echo "$ENCRYPT_RESPONSE" | jq
+[[ "$VERBOSE" == true ]] && { echo "📥 EncryptResponse:"; echo '```json'; echo "$ENCRYPT_RESPONSE" | jq; echo '```'; echo ""; }
 
 CIPHERTEXT=$(echo "$ENCRYPT_RESPONSE" | jq -r .ciphertext)
-echo "🗄️  Ciphertext (base64): $CIPHERTEXT"
+[[ "$VERBOSE" == true ]] && { echo "🗄️ Ciphertext (base64):"; echo '```'; echo "$CIPHERTEXT"; echo '```'; echo ""; }
+print_jwe_header "$CIPHERTEXT"
+echo ""
+
+echo "### 3️⃣ Decrypt"
+echo ""
 
 # ---- Decrypt ----
-echo ""
-echo "3️⃣ ℹ️ Decrypt Request & Response"
+DECRYPT_REQUEST="{\"ciphertext\": \"$CIPHERTEXT\", \"uid\": \"test-dec-1\", \"key_id\": \"$KEY_ID\"}"
+[[ "$VERBOSE" == true ]] && { echo "📤 DecryptRequest:"; echo '```json'; echo "$DECRYPT_REQUEST" | jq; echo '```'; echo ""; }
 
 DECRYPT_RESPONSE=$(grpcurl \
   -plaintext \
   -proto api.proto \
-  -d "{\"ciphertext\": \"$CIPHERTEXT\", \"uid\": \"test-dec-1\", \"key_id\": \"$KEY_ID\"}" \
+  -d "$DECRYPT_REQUEST" \
   -unix \
   unix://"$SOCKET" \
   v2.KeyManagementService.Decrypt)
 
-[[ "$VERBOSE" == true ]] && echo "📦 Full Decrypt response:" && echo "$DECRYPT_RESPONSE" | jq
+[[ "$VERBOSE" == true ]] && { echo "📥 DecryptResponse:"; echo '```json'; echo "$DECRYPT_RESPONSE" | jq; echo '```'; echo ""; }
 
 DECRYPTED_BASE64=$(echo "$DECRYPT_RESPONSE" | jq -r .plaintext)
 DECRYPTED_TEXT=$(echo "$DECRYPTED_BASE64" | base64 -d)
+echo "🔓 Decrypted text: \`$DECRYPTED_TEXT\`"
 
-echo "🔓 Decrypted text: $DECRYPTED_TEXT"
+echo ""
+echo "### 4️⃣ Summary"
+echo ""
 
 # ---- Compare ----
-echo ""
-echo "4️⃣ ℹ️ Summary for ACTIVE KEK"
 if [[ "$DECRYPTED_TEXT" == "$PLAINTEXT_ACTIVE_KEY_ID" ]]; then
   echo "✅ Round-trip encryption/decryption successful!"
 else
-  echo "❌ Decryption mismatch! Expected '$PLAINTEXT_ACTIVE_KEY_ID' but got '$DECRYPTED_TEXT'"
+  echo "❌ Decryption mismatch! Expected \`$PLAINTEXT_ACTIVE_KEY_ID\` but got \`$DECRYPTED_TEXT\`"
   exit 1
 fi
 
-echo -e "\n=========================================================="
-echo "▶️ Testing OLD ROTATED KEK DecryptRequest"
+echo ""
+echo "---"
+echo ""
+echo "## ▶️ Old Rotated KEK — Decrypt"
+echo ""
 
-[[ "$VERBOSE" == true ]] && echo "OLD EncryptResponse JSON" && echo "$ENCRYPT_RESPONSE_OLD_KEY_ID" | base64 -d | jq
+[[ "$VERBOSE" == true ]] && { echo "📦 OLD EncryptResponse JSON:"; echo '```json'; echo "$ENCRYPT_RESPONSE_OLD_KEY_ID" | base64 -d | jq; echo '```'; echo ""; }
 
 OLD_P11_KEY_ID=$(echo "$ENCRYPT_RESPONSE_OLD_KEY_ID" | base64 -d | jq -r .keyId)
 CIPHERTEXT_OLD_KEY_ID=$(echo "$ENCRYPT_RESPONSE_OLD_KEY_ID" | base64 -d | jq -r .ciphertext)
+echo "🧾 key_id (OLD KEK): \`$OLD_P11_KEY_ID\`"
+echo ""
+print_jwe_header "$CIPHERTEXT_OLD_KEY_ID"
+echo ""
 
-# decrypt with old kek
-echo "ℹ️ Decrypt Request & Response"
+echo "### Decrypt"
+echo ""
+
+# ---- Decrypt with old KEK ----
+DECRYPT_REQUEST_OLD="{\"ciphertext\": \"$CIPHERTEXT_OLD_KEY_ID\", \"uid\": \"test-dec-1\", \"key_id\": \"$OLD_P11_KEY_ID\"}"
+[[ "$VERBOSE" == true ]] && { echo "📤 DecryptRequest:"; echo '```json'; echo "$DECRYPT_REQUEST_OLD" | jq; echo '```'; echo ""; }
 
 DECRYPT_RESPONSE_OLD_KEY_ID=$(grpcurl \
   -plaintext \
   -proto api.proto \
-  -d "{\"ciphertext\": \"$CIPHERTEXT_OLD_KEY_ID\", \"uid\": \"test-dec-1\", \"key_id\": \"$OLD_P11_KEY_ID\"}" \
+  -d "$DECRYPT_REQUEST_OLD" \
   -unix \
   unix://"$SOCKET" \
   v2.KeyManagementService.Decrypt)
 
-[[ "$VERBOSE" == true ]] && echo "📦 Full DecryptResponse JSON:" && echo "$DECRYPT_RESPONSE_OLD_KEY_ID" | jq
+[[ "$VERBOSE" == true ]] && { echo "📥 DecryptResponse:"; echo '```json'; echo "$DECRYPT_RESPONSE_OLD_KEY_ID" | jq; echo '```'; echo ""; }
 
 DECRYPTED_BASE64_OLD_KEY_ID=$(echo "$DECRYPT_RESPONSE_OLD_KEY_ID" | jq -r .plaintext)
 DECRYPTED_TEXT_OLD_KEY_ID=$(echo "$DECRYPTED_BASE64_OLD_KEY_ID" | base64 -d)
+echo "🔓 Decrypted text: \`$DECRYPTED_TEXT_OLD_KEY_ID\`"
 
 echo ""
-echo "ℹ️ Summary for OLD KEK"
+echo "### Summary"
+echo ""
 
 if [[ "$DECRYPTED_TEXT_OLD_KEY_ID" == "$PLAINTEXT_OLD_KEY_ID" ]]; then
   echo "✅ Rotation decryption successful!"
 else
-  echo "❌ Key rotation Decryption mismatch! Expected '$PLAINTEXT_OLD_KEY_ID' but got '$DECRYPTED_TEXT_OLD_KEY_ID'"
+  echo "❌ Key rotation decryption mismatch! Expected \`$PLAINTEXT_OLD_KEY_ID\` but got \`$DECRYPTED_TEXT_OLD_KEY_ID\`"
   exit 1
 fi
