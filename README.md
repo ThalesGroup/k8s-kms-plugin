@@ -277,6 +277,8 @@ Move the `k8s-kms-plugin` binary to a relevant location under your `$PATH`, for 
 
 You should have `make`, `git` and `go` installed. Review the content of the [`Makefile`](./Makefile) file for more details.
 
+[`NOTICES.md`](./NOTICES.md) lists all third-party dependency licenses and is auto-generated via `make notices` (requires [`go-licenses`](https://github.com/google/go-licenses)).
+
 **`CGO`** is required to build the plugin: **make sure you are using the right C Library** (glibc or musl) for your target
 environment. Do not build on musl libc if you intend to use the plugin on a non-musl environment (glibc).
 
