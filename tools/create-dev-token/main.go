@@ -246,7 +246,7 @@ func main() {
 		fatalf("GenerateSecretKeyWithLabel AES-256-GCM: %v", err)
 	}
 	_ = gcmKey
-	fmt.Fprintf(os.Stderr, "%s✔%s AES-256-GCM KEK     key label=%s  id=0x%02x\n", cBold+cGreen, cReset, labelAESGCM, idAESGCM)
+	fmt.Fprintf(os.Stderr, "%s✔%s AES-256-GCM KEK     key label=%-17s  id=0x%02x\n", cBold+cGreen, cReset, labelAESGCM, idAESGCM)
 
 	// ── AES-256-CBC KEK ───────────────────────────────────────────────────────
 
@@ -255,7 +255,7 @@ func main() {
 		fatalf("GenerateSecretKeyWithLabel AES-256-CBC: %v", err)
 	}
 	_ = cbcKey
-	fmt.Fprintf(os.Stderr, "%s✔%s AES-256-CBC KEK     key label=%s  id=0x%02x\n", cBold+cGreen, cReset, labelAESCBC, idAESCBC)
+	fmt.Fprintf(os.Stderr, "%s✔%s AES-256-CBC KEK     key label=%-17s  id=0x%02x\n", cBold+cGreen, cReset, labelAESCBC, idAESCBC)
 
 	// ── HMAC-SHA256 key (CKK_GENERIC_SECRET, CKA_SIGN=true) ──────────────────
 
@@ -274,7 +274,7 @@ func main() {
 		fatalf("GenerateSecretKeyWithAttributes HMAC-SHA256: %v", err)
 	}
 	_ = hmacKey
-	fmt.Fprintf(os.Stderr, "%s✔%s HMAC-SHA256         key label=%s  id=0x%02x\n", cBold+cGreen, cReset, labelHMAC, idHMAC)
+	fmt.Fprintf(os.Stderr, "%s✔%s HMAC-SHA256         key label=%-17s  id=0x%02x\n", cBold+cGreen, cReset, labelHMAC, idHMAC)
 
 	// ── RSA key pairs ──────────────────────────────────────────────────────────
 
@@ -283,21 +283,21 @@ func main() {
 		fatalf("GenerateRSAKeyPairWithLabel RSA-2048: %v", err)
 	}
 	_ = rsa2048KP
-	fmt.Fprintf(os.Stderr, "%s✔%s RSA-2048-OAEP       key label=%s  id=0x%02x\n", cBold+cGreen, cReset, labelRSA2048, idRSA2048)
+	fmt.Fprintf(os.Stderr, "%s✔%s RSA-2048-OAEP       key label=%-17s  id=0x%02x\n", cBold+cGreen, cReset, labelRSA2048, idRSA2048)
 
 	rsa3072KP, err := ctx.GenerateRSAKeyPairWithLabel(idRSA3072, labelRSA3072, 3072)
 	if err != nil {
 		fatalf("GenerateRSAKeyPairWithLabel RSA-3072: %v", err)
 	}
 	_ = rsa3072KP
-	fmt.Fprintf(os.Stderr, "%s✔%s RSA-3072-OAEP       key label=%s  id=0x%02x\n", cBold+cGreen, cReset, labelRSA3072, idRSA3072)
+	fmt.Fprintf(os.Stderr, "%s✔%s RSA-3072-OAEP       key label=%-17s  id=0x%02x\n", cBold+cGreen, cReset, labelRSA3072, idRSA3072)
 
 	rsa4096KP, err := ctx.GenerateRSAKeyPairWithLabel(idRSA4096, labelRSA4096, 4096)
 	if err != nil {
 		fatalf("GenerateRSAKeyPairWithLabel RSA-4096: %v", err)
 	}
 	_ = rsa4096KP
-	fmt.Fprintf(os.Stderr, "%s✔%s RSA-4096-OAEP       key label=%s  id=0x%02x\n", cBold+cGreen, cReset, labelRSA4096, idRSA4096)
+	fmt.Fprintf(os.Stderr, "%s✔%s RSA-4096-OAEP       key label=%-17s  id=0x%02x\n", cBold+cGreen, cReset, labelRSA4096, idRSA4096)
 
 	// ── ML-KEM key pairs (skipped gracefully if unsupported) ─────────────────
 
@@ -319,7 +319,7 @@ func main() {
 			continue
 		}
 		_ = mlkemKP
-		fmt.Fprintf(os.Stderr, "%s✔%s %-19s key label=%s  id=0x%02x\n", cBold+cGreen, cReset, m.name, m.label, m.id)
+		fmt.Fprintf(os.Stderr, "%s✔%s %-19s key label=%-17s  id=0x%02x\n", cBold+cGreen, cReset, m.name, m.label, m.id)
 	}
 
 	// ── Print usage instructions ───────────────────────────────────────────────
