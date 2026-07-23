@@ -71,6 +71,10 @@ func init() {
 const (
 	tokenLabel = "k8s-kms-plugin-dev"
 	soPin      = "0000"
+	// defaultSocket is the unix-socket path used in the printed k8s-kms-plugin
+	// serve / grpcurl examples. It is kept as the literal shell expansion
+	// /run/user/$(id -u)/… so the examples stay copy-paste portable.
+	defaultSocket = "/run/user/$(id -u)/k8s-kms-plugin-dev.sock"
 )
 
 // Fixed short CKA_IDs — stable across runs, easy to reference in p11tool URIs.
@@ -114,8 +118,6 @@ func warnTestingOnly() {
 }
 
 func main() {
-	warnTestingOnly()
-
 	fatalf := func(format string, a ...any) {
 		fmt.Fprintf(os.Stderr, cBold+cRed+"error: "+cReset+format+"\n", a...)
 		os.Exit(1)
@@ -124,14 +126,26 @@ func main() {
 	lib := flag.String("lib", os.Getenv("PKCS11_MODULE"), "path to the SoftHSMv3 shared library (or set PKCS11_MODULE)")
 	dir := flag.String("dir", "/tmp/k8s-kms-plugin-devtoken", "directory to create the token store in")
 	pin := flag.String("pin", "1234", "user PIN to set on the token")
+	socket := flag.String("socket", defaultSocket, "unix-socket path used in the printed k8s-kms-plugin serve / grpcurl examples")
 	ver := flag.Bool("version", false, "print version and exit")
 	noEnvExport := flag.Bool("no-env-export", false, "do not print 'export SOFTHSM2_CONF=...' to stdout")
+
+	// The testing-only warning banner is shown on -h / --help (and on flag-parse
+	// errors) before the flag list, but NOT for --version, which stays clean.
+	flag.Usage = func() {
+		warnTestingOnly()
+		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
+		flag.PrintDefaults()
+	}
 	flag.Parse()
 
 	if *ver {
 		fmt.Printf("create-dev-token %s\n", version)
 		os.Exit(0)
 	}
+
+	// Print the warning banner when actually provisioning a token.
+	warnTestingOnly()
 
 	if *lib == "" {
 		fatalf("--lib is required (or set PKCS11_MODULE)")
@@ -324,6 +338,7 @@ Token store   : %s
 Token label   : %s
 User PIN      : %s
 SOFTHSM2_CONF : %s
+Socket path   : %s
 %s
 
 %s
@@ -344,7 +359,7 @@ SOFTHSM2_CONF : %s
 %s
 
   k8s-kms-plugin serve \
-    --socket /run/user/$(id -u)/k8s-kms-plugin-dev.sock \
+    --socket %s \
     --p11-lib   "%s" \
     --p11-label "%s" \
     --p11-pin   "%s" \
@@ -354,7 +369,7 @@ SOFTHSM2_CONF : %s
 %s
 
   k8s-kms-plugin serve \
-    --socket /run/user/$(id -u)/k8s-kms-plugin-dev.sock \
+    --socket %s \
     --p11-lib        "%s" \
     --p11-label      "%s" \
     --p11-pin        "%s" \
@@ -365,7 +380,7 @@ SOFTHSM2_CONF : %s
 %s
 
   k8s-kms-plugin serve \
-    --socket /run/user/$(id -u)/k8s-kms-plugin-dev.sock \
+    --socket %s \
     --p11-lib   "%s" \
     --p11-label "%s" \
     --p11-pin   "%s" \
@@ -374,7 +389,7 @@ SOFTHSM2_CONF : %s
 
   # or with the RSA-3072 key pair:
   k8s-kms-plugin serve \
-    --socket /run/user/$(id -u)/k8s-kms-plugin-dev.sock \
+    --socket %s \
     --p11-lib   "%s" \
     --p11-label "%s" \
     --p11-pin   "%s" \
@@ -383,7 +398,7 @@ SOFTHSM2_CONF : %s
 
   # or with the RSA-4096 key pair:
   k8s-kms-plugin serve \
-    --socket /run/user/$(id -u)/k8s-kms-plugin-dev.sock \
+    --socket %s \
     --p11-lib   "%s" \
     --p11-label "%s" \
     --p11-pin   "%s" \
@@ -393,7 +408,7 @@ SOFTHSM2_CONF : %s
 %s
 
   k8s-kms-plugin serve \
-    --socket /run/user/$(id -u)/k8s-kms-plugin-dev.sock \
+    --socket %s \
     --p11-lib   "%s" \
     --p11-label "%s" \
     --p11-pin   "%s" \
@@ -402,7 +417,7 @@ SOFTHSM2_CONF : %s
 
   # or with ML-KEM-512 / ML-KEM-1024:
   k8s-kms-plugin serve \
-    --socket /run/user/$(id -u)/k8s-kms-plugin-dev.sock \
+    --socket %s \
     --p11-lib   "%s" \
     --p11-label "%s" \
     --p11-pin   "%s" \
@@ -410,7 +425,7 @@ SOFTHSM2_CONF : %s
     --algorithm-family ml-kem
 
   k8s-kms-plugin serve \
-    --socket /run/user/$(id -u)/k8s-kms-plugin-dev.sock \
+    --socket %s \
     --p11-lib   "%s" \
     --p11-label "%s" \
     --p11-pin   "%s" \
@@ -422,7 +437,7 @@ SOFTHSM2_CONF : %s
   # Step 1 — start serve with the OLD KEK (AES-CBC), then in another terminal
   # run the roundtrip test in verbose mode to capture the EncryptResponse:
   k8s-kms-plugin serve \
-    --socket /run/user/$(id -u)/k8s-kms-plugin-dev.sock \
+    --socket %s \
     --p11-lib        "%s" \
     --p11-label      "%s" \
     --p11-pin        "%s" \
@@ -431,12 +446,12 @@ SOFTHSM2_CONF : %s
     --algorithm-family aes-cbc
 
   cd scripts/grpcurl && VERBOSE=true ./grpcurl-roundtrip-test.sh "hello rotation" \
-    /run/user/$(id -u)/k8s-kms-plugin-dev.sock
+    %s
 
   # Step 2 — stop the plugin, then start serve rotation (ACTIVE=RSA-OAEP, OLD=AES-CBC)
   # and run the command printed by VERBOSE=true ./grpcurl-roundtrip-test.sh above:
   k8s-kms-plugin serve \
-    --socket /run/user/$(id -u)/k8s-kms-plugin-dev.sock \
+    --socket %s \
     --p11-lib        "%s" \
     --p11-label      "%s" \
     --p11-pin        "%s" \
@@ -454,12 +469,13 @@ SOFTHSM2_CONF : %s
 
   cd scripts/grpcurl
   ./grpcurl-roundtrip-test.sh "this is a secret" \
-    /run/user/$(id -u)/k8s-kms-plugin-dev.sock
+    %s
 
 %s
 `,
 		hr,
 		v(*dir), v(tokenLabel), v(*pin), v(confPath),
+		v(*socket),
 		hr,
 		// p11tool
 		section("List all objects with p11tool"),
@@ -469,27 +485,29 @@ SOFTHSM2_CONF : %s
 		*lib, *pin, tokenLabel,
 		// aes-gcm
 		section("k8s-kms-plugin: AES-GCM"),
-		*lib, tokenLabel, *pin, labelAESGCM,
+		*socket, *lib, tokenLabel, *pin, labelAESGCM,
 		// aes-cbc
 		section("k8s-kms-plugin: AES-CBC + HMAC"),
-		*lib, tokenLabel, *pin, labelAESCBC, labelHMAC,
+		*socket, *lib, tokenLabel, *pin, labelAESCBC, labelHMAC,
 		// rsa-oaep
 		section("k8s-kms-plugin: RSA-OAEP"),
-		*lib, tokenLabel, *pin, labelRSA2048,
-		*lib, tokenLabel, *pin, labelRSA3072,
-		*lib, tokenLabel, *pin, labelRSA4096,
+		*socket, *lib, tokenLabel, *pin, labelRSA2048,
+		*socket, *lib, tokenLabel, *pin, labelRSA3072,
+		*socket, *lib, tokenLabel, *pin, labelRSA4096,
 		// ml-kem
 		section("k8s-kms-plugin: ML-KEM"),
-		*lib, tokenLabel, *pin, labelMLKEM768,
-		*lib, tokenLabel, *pin, labelMLKEM512,
-		*lib, tokenLabel, *pin, labelMLKEM1024,
+		*socket, *lib, tokenLabel, *pin, labelMLKEM768,
+		*socket, *lib, tokenLabel, *pin, labelMLKEM512,
+		*socket, *lib, tokenLabel, *pin, labelMLKEM1024,
 		// serve rotation
 		section("k8s-kms-plugin: serve rotation (AES-CBC → RSA-OAEP)"),
-		*lib, tokenLabel, *pin, labelAESCBC, labelHMAC,
-		*lib, tokenLabel, *pin, labelRSA2048,
+		*socket, *lib, tokenLabel, *pin, labelAESCBC, labelHMAC,
+		*socket,
+		*socket, *lib, tokenLabel, *pin, labelRSA2048,
 		*lib, tokenLabel, *pin, labelAESCBC, labelHMAC,
 		// grpcurl
 		section("grpcurl round-trip test"),
+		*socket,
 		hr,
 	)
 

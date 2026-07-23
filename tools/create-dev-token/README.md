@@ -79,13 +79,14 @@ Only `export SOFTHSM2_CONF=…` goes to **stdout** so that `eval`/`source` captu
 
 All flags are optional except `--lib` (or `PKCS11_MODULE`):
 
-| Flag              | Default                        | Description                                      |
-|-------------------|--------------------------------|--------------------------------------------------|
-| `--lib`           | `$PKCS11_MODULE`               | Path to the SoftHSMv3 shared library             |
-| `--dir`           | `/tmp/k8s-kms-plugin-devtoken` | Directory to create the token store in           |
-| `--pin`           | `1234`                         | User PIN to set on the token                     |
-| `--no-env-export` | `false`                        | Do not print `export SOFTHSM2_CONF=…` to stdout  |
-| `--version`       |                                | Print version and exit                           |
+| Flag              | Default                                          | Description                                      |
+|-------------------|--------------------------------------------------|--------------------------------------------------|
+| `--lib`           | `$PKCS11_MODULE`                                 | Path to the SoftHSMv3 shared library             |
+| `--dir`           | `/tmp/k8s-kms-plugin-devtoken`                   | Directory to create the token store in           |
+| `--pin`           | `1234`                                           | User PIN to set on the token                     |
+| `--socket`        | `/run/user/$(id -u)/k8s-kms-plugin-dev.sock`     | Unix-socket path used in the printed serve/grpcurl examples |
+| `--no-env-export` | `false`                                          | Do not print `export SOFTHSM2_CONF=…` to stdout  |
+| `--version`       |                                                  | Print version and exit                           |
 
 The program creates `--dir`, writes a `softhsm2.conf` inside it, initialises the PKCS\#11 token, and generates all keys. It exits with an error if `--dir` already exists, so there is no risk of silently overwriting an existing store.
 
