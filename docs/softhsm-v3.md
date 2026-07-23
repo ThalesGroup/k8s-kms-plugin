@@ -61,8 +61,12 @@ Keys provisioned:
 | `dev-aes-gcm-kek`     | `aes-gcm`        | AES-256-GCM symmetric key |
 | `dev-aes-cbc-kek`     | `aes-cbc`        | AES-256-CBC symmetric key |
 | `dev-hmac-sha256`     | `aes-cbc`        | Generic-256 HMAC key (paired with CBC) |
-| `dev-rsa-2048-oaep`   | `rsa-oaep`       | RSA-2048 key pair         |
-| `dev-ml-kem-768`      | `ml-kem`         | ML-KEM-768 key pair       |
+| `dev-rsa-2048-oaep`   | `rsa-oaep`       | RSA-2048 key pair                          |
+| `dev-rsa-3072-oaep`   | `rsa-oaep`       | RSA-3072 key pair                          |
+| `dev-rsa-4096-oaep`   | `rsa-oaep`       | RSA-4096 key pair                          |
+| `dev-ml-kem-512`      | `ml-kem`         | ML-KEM-512 key pair (skipped on SoftHSMv2) |
+| `dev-ml-kem-768`      | `ml-kem`         | ML-KEM-768 key pair (skipped on SoftHSMv2) |
+| `dev-ml-kem-1024`     | `ml-kem`         | ML-KEM-1024 key pair (skipped on SoftHSMv2)|
 
 ### 2.1. Get `create-dev-token`
 
@@ -188,6 +192,8 @@ k8s-kms-plugin \
     --p11-key-label dev-rsa-2048-oaep \
     --algorithm-family rsa-oaep
 ```
+
+Swap `--p11-key-label` to `dev-rsa-3072-oaep` or `dev-rsa-4096-oaep` to use the RSA-3072 / RSA-4096 key pairs instead.
 
 ### 3.4. ML-KEM
 

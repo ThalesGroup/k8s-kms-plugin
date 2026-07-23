@@ -16,7 +16,11 @@
 | `dev-aes-cbc-kek`   | `aes-cbc`  | AES-256-CBC symmetric key                  |
 | `dev-hmac-sha256`   | `aes-cbc`  | Generic-256 HMAC key (paired with CBC)     |
 | `dev-rsa-2048-oaep` | `rsa-oaep` | RSA-2048 key pair                          |
+| `dev-rsa-3072-oaep` | `rsa-oaep` | RSA-3072 key pair                          |
+| `dev-rsa-4096-oaep` | `rsa-oaep` | RSA-4096 key pair                          |
+| `dev-ml-kem-512`    | `ml-kem`   | ML-KEM-512 key pair (skipped on SoftHSMv2) |
 | `dev-ml-kem-768`    | `ml-kem`   | ML-KEM-768 key pair (skipped on SoftHSMv2) |
+| `dev-ml-kem-1024`   | `ml-kem`   | ML-KEM-1024 key pair (skipped on SoftHSMv2)|
 
 The store survives across runs and is intended for interactive testing with `p11tool`, `pkcs11-tool`, and `k8s-kms-plugin serve`.
 
@@ -29,7 +33,7 @@ The store survives across runs and is intended for interactive testing with `p11
 | `p11tool`     | Inspect the token (optional, from `gnutls-bin` package)                                                  |
 | Go ≥ 1.22     | Only needed if building from source or using `go run`                                                    |
 
-SoftHSMv2 might also work for aes-gcm / aes-cbc / rsa-oaep. ML-KEM-768 requires SoftHSMv3.
+SoftHSMv2 might also work for aes-gcm / aes-cbc / rsa-oaep. ML-KEM requires SoftHSMv3.
 
 ## Get the binary
 
@@ -153,7 +157,9 @@ k8s-kms-plugin serve \
   --algorithm-family rsa-oaep
 ```
 
-### ML-KEM-768
+Swap `--p11-key-label` to `dev-rsa-3072-oaep` or `dev-rsa-4096-oaep` to use the RSA-3072 / RSA-4096 key pairs instead.
+
+### ML-KEM
 
 ```bash
 k8s-kms-plugin serve \
@@ -164,6 +170,8 @@ k8s-kms-plugin serve \
   --p11-key-label dev-ml-kem-768 \
   --algorithm-family ml-kem
 ```
+
+Swap `--p11-key-label` to `dev-ml-kem-512` or `dev-ml-kem-1024` to use the other parameter sets.
 
 ## Round-trip test with grpcurl
 

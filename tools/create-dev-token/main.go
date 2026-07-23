@@ -11,8 +11,8 @@
 //
 //	aes-gcm   — AES-256-GCM KEK
 //	aes-cbc   — AES-256-CBC KEK  +  HMAC-SHA256 authentication key
-//	rsa-oaep  — RSA-2048-OAEP key pair
-//	ml-kem    — ML-KEM-768 key pair (skipped if the token does not support it)
+//	rsa-oaep  — RSA-2048-OAEP, RSA-3072-OAEP and RSA-4096-OAEP key pairs
+//	ml-kem    — ML-KEM-512, ML-KEM-768 and ML-KEM-1024 key pairs (skipped if the token does not support them)
 //
 // The resulting store can be inspected with p11tool / pkcs11-tool and used
 // directly with k8s-kms-plugin serve.  It is intentionally NOT deleted on exit.
@@ -58,13 +58,13 @@ var (
 
 func init() {
 	if os.Getenv("NO_COLOR") == "" {
-		cReset  = "\033[0m"
-		cBold   = "\033[1m"
-		cDim    = "\033[2m"
-		cRed    = "\033[31m"
-		cGreen  = "\033[32m"
+		cReset = "\033[0m"
+		cBold = "\033[1m"
+		cDim = "\033[2m"
+		cRed = "\033[31m"
+		cGreen = "\033[32m"
 		cYellow = "\033[33m"
-		cCyan   = "\033[36m"
+		cCyan = "\033[36m"
 	}
 }
 
@@ -75,17 +75,25 @@ const (
 
 // Fixed short CKA_IDs — stable across runs, easy to reference in p11tool URIs.
 var (
-	idAESGCM = []byte{0x01}
-	idAESCBC = []byte{0x02}
-	idHMAC   = []byte{0x03}
-	idRSA    = []byte{0x04}
-	idMLKEM  = []byte{0x05}
+	idAESGCM    = []byte{0x01}
+	idAESCBC    = []byte{0x02}
+	idHMAC      = []byte{0x03}
+	idRSA2048   = []byte{0x04}
+	idRSA3072   = []byte{0x05}
+	idRSA4096   = []byte{0x06}
+	idMLKEM512  = []byte{0x07}
+	idMLKEM768  = []byte{0x08}
+	idMLKEM1024 = []byte{0x09}
 
-	labelAESGCM = []byte("dev-aes-gcm-kek")
-	labelAESCBC = []byte("dev-aes-cbc-kek")
-	labelHMAC   = []byte("dev-hmac-sha256")
-	labelRSA    = []byte("dev-rsa-2048-oaep")
-	labelMLKEM  = []byte("dev-ml-kem-768")
+	labelAESGCM    = []byte("dev-aes-gcm-kek")
+	labelAESCBC    = []byte("dev-aes-cbc-kek")
+	labelHMAC      = []byte("dev-hmac-sha256")
+	labelRSA2048   = []byte("dev-rsa-2048-oaep")
+	labelRSA3072   = []byte("dev-rsa-3072-oaep")
+	labelRSA4096   = []byte("dev-rsa-4096-oaep")
+	labelMLKEM512  = []byte("dev-ml-kem-512")
+	labelMLKEM768  = []byte("dev-ml-kem-768")
+	labelMLKEM1024 = []byte("dev-ml-kem-1024")
 )
 
 // warnTestingOnly prints a prominent banner making it unmistakable that this
@@ -113,11 +121,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	lib          := flag.String("lib", os.Getenv("PKCS11_MODULE"), "path to the SoftHSMv3 shared library (or set PKCS11_MODULE)")
-	dir          := flag.String("dir", "/tmp/k8s-kms-plugin-devtoken", "directory to create the token store in")
-	pin          := flag.String("pin", "1234", "user PIN to set on the token")
-	ver          := flag.Bool("version", false, "print version and exit")
-	noEnvExport  := flag.Bool("no-env-export", false, "do not print 'export SOFTHSM2_CONF=...' to stdout")
+	lib := flag.String("lib", os.Getenv("PKCS11_MODULE"), "path to the SoftHSMv3 shared library (or set PKCS11_MODULE)")
+	dir := flag.String("dir", "/tmp/k8s-kms-plugin-devtoken", "directory to create the token store in")
+	pin := flag.String("pin", "1234", "user PIN to set on the token")
+	ver := flag.Bool("version", false, "print version and exit")
+	noEnvExport := flag.Bool("no-env-export", false, "do not print 'export SOFTHSM2_CONF=...' to stdout")
 	flag.Parse()
 
 	if *ver {
@@ -254,24 +262,50 @@ func main() {
 	_ = hmacKey
 	fmt.Fprintf(os.Stderr, "%s✔%s HMAC-SHA256         key label=%s  id=0x%02x\n", cBold+cGreen, cReset, labelHMAC, idHMAC)
 
-	// ── RSA-2048 key pair ──────────────────────────────────────────────────────
+	// ── RSA key pairs ──────────────────────────────────────────────────────────
 
-	rsaKP, err := ctx.GenerateRSAKeyPairWithLabel(idRSA, labelRSA, 2048)
+	rsa2048KP, err := ctx.GenerateRSAKeyPairWithLabel(idRSA2048, labelRSA2048, 2048)
 	if err != nil {
 		fatalf("GenerateRSAKeyPairWithLabel RSA-2048: %v", err)
 	}
-	_ = rsaKP
-	fmt.Fprintf(os.Stderr, "%s✔%s RSA-2048-OAEP       key label=%s  id=0x%02x\n", cBold+cGreen, cReset, labelRSA, idRSA)
+	_ = rsa2048KP
+	fmt.Fprintf(os.Stderr, "%s✔%s RSA-2048-OAEP       key label=%s  id=0x%02x\n", cBold+cGreen, cReset, labelRSA2048, idRSA2048)
 
-	// ── ML-KEM-768 key pair (skipped gracefully if unsupported) ──────────────
-
-	mlkemKP, err := ctx.GenerateMLKEMKeyPairWithLabel(idMLKEM, labelMLKEM, crypto11.MLKEM768)
+	rsa3072KP, err := ctx.GenerateRSAKeyPairWithLabel(idRSA3072, labelRSA3072, 3072)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s⚠%s ML-KEM-768 skipped  (token does not support CKM_ML_KEM_KEY_PAIR_GEN: %v)\n", cBold+cYellow, cReset, err)
-		fmt.Fprintf(os.Stderr, "  Requires SoftHSMv3 from https://github.com/pqctoday-org/pqctoday-hsm\n")
-	} else {
+		fatalf("GenerateRSAKeyPairWithLabel RSA-3072: %v", err)
+	}
+	_ = rsa3072KP
+	fmt.Fprintf(os.Stderr, "%s✔%s RSA-3072-OAEP       key label=%s  id=0x%02x\n", cBold+cGreen, cReset, labelRSA3072, idRSA3072)
+
+	rsa4096KP, err := ctx.GenerateRSAKeyPairWithLabel(idRSA4096, labelRSA4096, 4096)
+	if err != nil {
+		fatalf("GenerateRSAKeyPairWithLabel RSA-4096: %v", err)
+	}
+	_ = rsa4096KP
+	fmt.Fprintf(os.Stderr, "%s✔%s RSA-4096-OAEP       key label=%s  id=0x%02x\n", cBold+cGreen, cReset, labelRSA4096, idRSA4096)
+
+	// ── ML-KEM key pairs (skipped gracefully if unsupported) ─────────────────
+
+	mlkemParamSets := []struct {
+		name  string
+		id    []byte
+		label []byte
+		set   crypto11.MLKEMParameterSet
+	}{
+		{"ML-KEM-512", idMLKEM512, labelMLKEM512, crypto11.MLKEM512},
+		{"ML-KEM-768", idMLKEM768, labelMLKEM768, crypto11.MLKEM768},
+		{"ML-KEM-1024", idMLKEM1024, labelMLKEM1024, crypto11.MLKEM1024},
+	}
+	for _, m := range mlkemParamSets {
+		mlkemKP, err := ctx.GenerateMLKEMKeyPairWithLabel(m.id, m.label, m.set)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s⚠%s %s skipped  (token does not support CKM_ML_KEM_KEY_PAIR_GEN: %v)\n", cBold+cYellow, cReset, m.name, err)
+			fmt.Fprintf(os.Stderr, "  Requires SoftHSMv3 from https://github.com/pqctoday-org/pqctoday-hsm\n")
+			continue
+		}
 		_ = mlkemKP
-		fmt.Fprintf(os.Stderr, "%s✔%s ML-KEM-768          key label=%s  id=0x%02x\n", cBold+cGreen, cReset, labelMLKEM, idMLKEM)
+		fmt.Fprintf(os.Stderr, "%s✔%s %-19s key label=%s  id=0x%02x\n", cBold+cGreen, cReset, m.name, m.label, m.id)
 	}
 
 	// ── Print usage instructions ───────────────────────────────────────────────
@@ -338,7 +372,42 @@ SOFTHSM2_CONF : %s
     --p11-key-label %s \
     --algorithm-family rsa-oaep
 
+  # or with the RSA-3072 key pair:
+  k8s-kms-plugin serve \
+    --socket /run/user/$(id -u)/k8s-kms-plugin-dev.sock \
+    --p11-lib   "%s" \
+    --p11-label "%s" \
+    --p11-pin   "%s" \
+    --p11-key-label %s \
+    --algorithm-family rsa-oaep
+
+  # or with the RSA-4096 key pair:
+  k8s-kms-plugin serve \
+    --socket /run/user/$(id -u)/k8s-kms-plugin-dev.sock \
+    --p11-lib   "%s" \
+    --p11-label "%s" \
+    --p11-pin   "%s" \
+    --p11-key-label %s \
+    --algorithm-family rsa-oaep
+
 %s
+
+  k8s-kms-plugin serve \
+    --socket /run/user/$(id -u)/k8s-kms-plugin-dev.sock \
+    --p11-lib   "%s" \
+    --p11-label "%s" \
+    --p11-pin   "%s" \
+    --p11-key-label %s \
+    --algorithm-family ml-kem
+
+  # or with ML-KEM-512 / ML-KEM-1024:
+  k8s-kms-plugin serve \
+    --socket /run/user/$(id -u)/k8s-kms-plugin-dev.sock \
+    --p11-lib   "%s" \
+    --p11-label "%s" \
+    --p11-pin   "%s" \
+    --p11-key-label %s \
+    --algorithm-family ml-kem
 
   k8s-kms-plugin serve \
     --socket /run/user/$(id -u)/k8s-kms-plugin-dev.sock \
@@ -406,14 +475,18 @@ SOFTHSM2_CONF : %s
 		*lib, tokenLabel, *pin, labelAESCBC, labelHMAC,
 		// rsa-oaep
 		section("k8s-kms-plugin: RSA-OAEP"),
-		*lib, tokenLabel, *pin, labelRSA,
+		*lib, tokenLabel, *pin, labelRSA2048,
+		*lib, tokenLabel, *pin, labelRSA3072,
+		*lib, tokenLabel, *pin, labelRSA4096,
 		// ml-kem
 		section("k8s-kms-plugin: ML-KEM"),
-		*lib, tokenLabel, *pin, labelMLKEM,
+		*lib, tokenLabel, *pin, labelMLKEM768,
+		*lib, tokenLabel, *pin, labelMLKEM512,
+		*lib, tokenLabel, *pin, labelMLKEM1024,
 		// serve rotation
 		section("k8s-kms-plugin: serve rotation (AES-CBC → RSA-OAEP)"),
 		*lib, tokenLabel, *pin, labelAESCBC, labelHMAC,
-		*lib, tokenLabel, *pin, labelRSA,
+		*lib, tokenLabel, *pin, labelRSA2048,
 		*lib, tokenLabel, *pin, labelAESCBC, labelHMAC,
 		// grpcurl
 		section("grpcurl round-trip test"),
