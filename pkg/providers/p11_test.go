@@ -18,6 +18,7 @@ import (
 	"github.com/ThalesGroup/gose/jose"
 	pkcs11 "github.com/eclipse-keypont/pkcs11-go/cryptoki"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -400,43 +401,79 @@ func TestIsPKCS11AuthenticationError(t *testing.T) {
 	assert.False(t, IsPKCS11AuthenticationError(otherErr))
 }
 
-// mockMLKEMKeyPair is a minimal crypto11.MLKEMKeyPair for unit-testing mlkemAlgFromKey.
-// Only ParameterSet() matters; the other methods are no-ops.
-type mockMLKEMKeyPair struct {
-	paramSet crypto11.MLKEMParameterSet
+// TestPutEncapsulation_NilAnnotations covers the common case: a freshly built
+// EncryptResponse with a nil Annotations map must be lazily initialized.
+func TestPutEncapsulation_NilAnnotations(t *testing.T) {
+	resp := &k8skmsv2.EncryptResponse{}
+	ct := []byte{0x01, 0x02, 0x03}
+
+	putEncapsulation(resp, ct)
+
+	require.NotNil(t, resp.Annotations)
+	assert.Equal(t, ct, resp.Annotations[KemCTAnnotationKey])
+	assert.Len(t, resp.Annotations, 1, "putEncapsulation must not touch any other annotation key")
 }
 
-func (m *mockMLKEMKeyPair) ParameterSet() crypto11.MLKEMParameterSet { return m.paramSet }
-func (m *mockMLKEMKeyPair) Encapsulate(_ crypto11.AttributeSet) ([]byte, *crypto11.MLKEMSharedSecret, error) {
-	return nil, nil, nil
-}
-func (m *mockMLKEMKeyPair) Decapsulate(_ []byte, _ crypto11.AttributeSet) (*crypto11.MLKEMSharedSecret, error) {
-	return nil, nil
-}
-func (m *mockMLKEMKeyPair) Delete() error { return nil }
-
-func TestMlkemAlgFromKey(t *testing.T) {
-	cases := []struct {
-		paramSet crypto11.MLKEMParameterSet
-		wantAlg  jose.Alg
-	}{
-		{crypto11.MLKEM512, jose.AlgMLKEM512KMAC128},
-		{crypto11.MLKEM768, jose.AlgMLKEM768KMAC256},
-		{crypto11.MLKEM1024, jose.AlgMLKEM1024KMAC256},
+// TestPutEncapsulation_ExistingAnnotations covers a pre-populated Annotations map: the
+// KEM ciphertext must be added alongside existing entries, not replace the map.
+func TestPutEncapsulation_ExistingAnnotations(t *testing.T) {
+	resp := &k8skmsv2.EncryptResponse{
+		Annotations: map[string][]byte{"other.example.org": []byte("keep-me")},
 	}
-	for _, tc := range cases {
-		kp := &mockMLKEMKeyPair{paramSet: tc.paramSet}
-		got, err := mlkemAlgFromKey(kp)
-		assert.NoError(t, err)
-		assert.Equal(t, tc.wantAlg, got)
-	}
+	ct := []byte{0xAA, 0xBB}
+
+	putEncapsulation(resp, ct)
+
+	assert.Equal(t, []byte("keep-me"), resp.Annotations["other.example.org"])
+	assert.Equal(t, ct, resp.Annotations[KemCTAnnotationKey])
 }
 
-func TestMlkemAlgFromKey_UnknownParameterSet(t *testing.T) {
-	kp := &mockMLKEMKeyPair{paramSet: 9999}
-	_, err := mlkemAlgFromKey(kp)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "unsupported ML-KEM parameter set")
+// TestGetEncapsulation_Present covers a DecryptRequest carrying the kem-ct annotation
+// round-tripped from a prior Encrypt call.
+func TestGetEncapsulation_Present(t *testing.T) {
+	ct := []byte{0xDE, 0xAD, 0xBE, 0xEF}
+	req := &k8skmsv2.DecryptRequest{
+		Annotations: map[string][]byte{KemCTAnnotationKey: ct},
+	}
+
+	got, ok := getEncapsulation(req)
+	assert.True(t, ok)
+	assert.Equal(t, ct, got)
+}
+
+// TestGetEncapsulation_Absent covers a DecryptRequest for an object produced by a
+// classical (non-ML-KEM) algorithm family, which never carries this annotation.
+func TestGetEncapsulation_Absent(t *testing.T) {
+	req := &k8skmsv2.DecryptRequest{}
+
+	got, ok := getEncapsulation(req)
+	assert.False(t, ok)
+	assert.Nil(t, got)
+}
+
+// TestPutAlgorithmFamily_NilAnnotations covers the common case: a freshly built
+// EncryptResponse with a nil Annotations map must be lazily initialized.
+func TestPutAlgorithmFamily_NilAnnotations(t *testing.T) {
+	resp := &k8skmsv2.EncryptResponse{}
+
+	putAlgorithmFamily(resp, AlgMLKEM)
+
+	require.NotNil(t, resp.Annotations)
+	assert.Equal(t, []byte("ml-kem"), resp.Annotations[AlgorithmFamilyAnnotationKey])
+}
+
+// TestPutAlgorithmFamily_ExistingAnnotations covers a pre-populated Annotations map (e.g.
+// one that already carries the ML-KEM kem-ct annotation): the algorithm-family entry must be
+// added alongside existing entries, not replace the map.
+func TestPutAlgorithmFamily_ExistingAnnotations(t *testing.T) {
+	resp := &k8skmsv2.EncryptResponse{
+		Annotations: map[string][]byte{KemCTAnnotationKey: {0x01, 0x02}},
+	}
+
+	putAlgorithmFamily(resp, AlgAESGCM)
+
+	assert.Equal(t, []byte{0x01, 0x02}, resp.Annotations[KemCTAnnotationKey])
+	assert.Equal(t, []byte("aes-gcm"), resp.Annotations[AlgorithmFamilyAnnotationKey])
 }
 
 // mockJweEncryptor is a no-op gose.JweEncryptor used in concurrency tests.

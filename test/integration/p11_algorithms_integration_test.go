@@ -23,7 +23,6 @@ import (
 	"github.com/ThalesGroup/gose/jose"
 	"github.com/ThalesGroup/k8s-kms-plugin/pkg/providers"
 	"github.com/google/uuid"
-	pkcs11 "github.com/eclipse-keypont/pkcs11-go/cryptoki"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -68,14 +67,6 @@ func jweEncHeader(t *testing.T, ciphertext []byte) jose.Enc {
 	return jwe.ProtectedHeader.Enc
 }
 
-// jweAlgHeader unmarshals a compact JWE and returns its alg header value.
-func jweAlgHeader(t *testing.T, ciphertext []byte) jose.Alg {
-	t.Helper()
-	var jwe jose.JweRfc7516Compact
-	require.NoError(t, jwe.Unmarshal(string(ciphertext)))
-	return jwe.ProtectedHeader.Alg
-}
-
 // newP11WithLabel creates a P11 provider identified by CKA_LABEL (no CKA_ID supplied).
 func newP11WithLabel(t *testing.T, label string, alg jose.Alg) *providers.P11 {
 	t.Helper()
@@ -113,7 +104,9 @@ func newP11CBCWithLabel(t *testing.T, kekLabel, hmacLabel string) *providers.P11
 }
 
 // encryptDecryptRoundtrip is a shared helper that encrypts and then decrypts,
-// asserting the recovered plaintext equals the original.
+// asserting the recovered plaintext equals the original. Annotations are forwarded from
+// the EncryptResponse to the DecryptRequest, mirroring the apiserver's round-trip guarantee
+// (required for ML-KEM, whose KEM ciphertext travels in annotations).
 func encryptDecryptRoundtrip(t *testing.T, p *providers.P11, plaintext []byte) *k8skmsv2.EncryptResponse {
 	t.Helper()
 	encResp, err := p.Encrypt(context.Background(), &k8skmsv2.EncryptRequest{
@@ -123,8 +116,9 @@ func encryptDecryptRoundtrip(t *testing.T, p *providers.P11, plaintext []byte) *
 	require.NotNil(t, encResp)
 
 	decResp, err := p.Decrypt(context.Background(), &k8skmsv2.DecryptRequest{
-		Ciphertext: encResp.GetCiphertext(),
-		KeyId:      encResp.GetKeyId(),
+		Ciphertext:  encResp.GetCiphertext(),
+		KeyId:       encResp.GetKeyId(),
+		Annotations: encResp.GetAnnotations(),
 	})
 	require.NoError(t, err)
 	assert.Equal(t, plaintext, decResp.GetPlaintext())
@@ -218,9 +212,21 @@ func TestRSAOAEP_EncryptDecrypt(t *testing.T) {
 // ML-KEM — requires SoftHSMv3 (pqctoday-org/pqctoday-hsm)
 // ---------------------------------------------------------------------------
 
-// testMLKEM exercises the full NewP11 → Encrypt → Decrypt cycle for one ML-KEM
-// parameter set and verifies that the produced JWE carries the expected algorithm.
-func testMLKEM(t *testing.T, paramSet crypto11.MLKEMParameterSet, wantAlg jose.Alg) {
+// mlkemCiphertextLen maps each ML-KEM parameter set to its raw KEM encapsulation
+// ciphertext (CT) size in bytes, per FIPS 203.
+var mlkemCiphertextLen = map[crypto11.MLKEMParameterSet]int{
+	crypto11.MLKEM512:  768,
+	crypto11.MLKEM768:  1088,
+	crypto11.MLKEM1024: 1568,
+}
+
+// testMLKEM exercises the full NewP11 → Encrypt → Decrypt cycle for one ML-KEM parameter
+// set and verifies the KMS v2 binary envelope contract: the KEM ciphertext (key
+// establishment material) travels in the kem-ct Annotations entry sized to the parameter
+// set's CT length, the algorithm-family Annotations entry echoes "ml-kem", and
+// EncryptResponse.Ciphertext (the AEAD-wrapped DEK seed) stays well under the KMS v2 1 kB
+// limit — this is the case a JWE-shaped envelope could not satisfy for ML-KEM-768/1024.
+func testMLKEM(t *testing.T, paramSet crypto11.MLKEMParameterSet) {
 	t.Helper()
 	skipIfNoLibrary(t)
 
@@ -230,32 +236,65 @@ func testMLKEM(t *testing.T, paramSet crypto11.MLKEMParameterSet, wantAlg jose.A
 	kp, err := testCtx.GenerateMLKEMKeyPairWithLabel(id, []byte(label), paramSet)
 	if err != nil {
 		// SoftHSMv2 does not support ML-KEM; require SoftHSMv3.
-		if pkcs11.Error(pkcs11.CKR_MECHANISM_INVALID) == pkcs11.Error(0) || err != nil {
-			t.Skipf("HSM does not support ML-KEM (param set %d): %v — requires SoftHSMv3 from pqctoday-org/pqctoday-hsm", paramSet, err)
-		}
+		t.Skipf("HSM does not support ML-KEM (param set %d): %v — requires SoftHSMv3 from pqctoday-org/pqctoday-hsm", paramSet, err)
 	}
-	require.NoError(t, err)
 	t.Cleanup(func() { _ = kp.Delete() })
 
 	p := newP11WithLabel(t, label, providers.AlgMLKEM)
 	encResp := encryptDecryptRoundtrip(t, p, []byte(testPlaintext))
 
-	// The JWE alg header must match the specific ML-KEM parameter set
-	// (set by gose from the key's ParameterSet(), not from the --algorithm-family flag).
-	assert.Equal(t, wantAlg, jweAlgHeader(t, encResp.GetCiphertext()),
-		"JWE alg header should match ML-KEM parameter set %d", paramSet)
+	assert.Lessf(t, len(encResp.GetCiphertext()), 1024,
+		"EncryptResponse.ciphertext must stay under the KMS v2 1 kB limit, got %d bytes", len(encResp.GetCiphertext()))
+
+	annotations := encResp.GetAnnotations()
+	require.Len(t, annotations, 2, "expected a kem-ct annotation and an algorithm-family annotation")
+
+	ct, ok := annotations[providers.KemCTAnnotationKey]
+	require.True(t, ok, "missing %s annotation", providers.KemCTAnnotationKey)
+	assert.Equal(t, mlkemCiphertextLen[paramSet], len(ct),
+		"KEM ciphertext annotation length should match parameter set %d", paramSet)
+
+	assert.Equal(t, []byte("ml-kem"), annotations[providers.AlgorithmFamilyAnnotationKey])
 }
 
 func TestMLKEM_512_EncryptDecrypt(t *testing.T) {
-	testMLKEM(t, crypto11.MLKEM512, jose.AlgMLKEM512KMAC128)
+	testMLKEM(t, crypto11.MLKEM512)
 }
 
 func TestMLKEM_768_EncryptDecrypt(t *testing.T) {
-	testMLKEM(t, crypto11.MLKEM768, jose.AlgMLKEM768KMAC256)
+	testMLKEM(t, crypto11.MLKEM768)
 }
 
 func TestMLKEM_1024_EncryptDecrypt(t *testing.T) {
-	testMLKEM(t, crypto11.MLKEM1024, jose.AlgMLKEM1024KMAC256)
+	testMLKEM(t, crypto11.MLKEM1024)
+}
+
+// TestMLKEM_Uniqueness verifies the KMS v2 uniqueness requirement: encrypting the same
+// plaintext twice yields distinct ciphertext and distinct kem-ct annotation values, since
+// ML-KEM encapsulation and the AES-GCM nonce are both freshly randomized per call.
+func TestMLKEM_Uniqueness(t *testing.T) {
+	skipIfNoLibrary(t)
+
+	id := newTestID(t)
+	label := newTestLabel(t)
+
+	kp, err := testCtx.GenerateMLKEMKeyPairWithLabel(id, []byte(label), crypto11.MLKEM768)
+	if err != nil {
+		t.Skipf("HSM does not support ML-KEM: %v — requires SoftHSMv3 from pqctoday-org/pqctoday-hsm", err)
+	}
+	t.Cleanup(func() { _ = kp.Delete() })
+
+	p := newP11WithLabel(t, label, providers.AlgMLKEM)
+
+	resp1, err := p.Encrypt(context.Background(), &k8skmsv2.EncryptRequest{Plaintext: []byte(testPlaintext)})
+	require.NoError(t, err)
+	resp2, err := p.Encrypt(context.Background(), &k8skmsv2.EncryptRequest{Plaintext: []byte(testPlaintext)})
+	require.NoError(t, err)
+
+	assert.NotEqual(t, resp1.GetCiphertext(), resp2.GetCiphertext())
+	assert.NotEqual(t,
+		resp1.GetAnnotations()[providers.KemCTAnnotationKey],
+		resp2.GetAnnotations()[providers.KemCTAnnotationKey])
 }
 
 // ---------------------------------------------------------------------------

@@ -6,6 +6,7 @@ package providers
 import (
 	"context"
 	"crypto"
+	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/binary"
@@ -45,6 +46,49 @@ const (
 	// AlgMLKEM routes to ML-KEM hybrid encryption; variant is negotiated from the HSM key.
 	AlgMLKEM jose.Alg = "ml-kem"
 )
+
+const (
+	// KemCTAnnotationKey is the KMS v2 EncryptResponse.Annotations / DecryptRequest.Annotations
+	// key under which the raw ML-KEM encapsulation ciphertext (CT) travels. The apiserver
+	// round-trips annotations verbatim from Encrypt to the matching Decrypt, so this is the
+	// channel that carries the KEM ciphertext across the two RPCs. It must be a valid RFC 1123
+	// DNS subdomain per the KMS v2 API contract. Access it only via putEncapsulation /
+	// getEncapsulation so a future move to a dedicated EncryptResponse field is a one-line change.
+	KemCTAnnotationKey = "kem-ct.k8s-kms-plugin.keysealer.eclipse.org"
+
+	// AlgorithmFamilyAnnotationKey is the KMS v2 EncryptResponse.Annotations key carrying the
+	// plugin's active --algorithm-family value (e.g. "aes-gcm", "ml-kem") as informational
+	// metadata. Set on every EncryptResponse regardless of algorithm family.
+	AlgorithmFamilyAnnotationKey = "algorithm-family.k8s-kms-plugin.keysealer.eclipse.org"
+
+	// mlkemNonceSize is the AES-GCM nonce length used in the ML-KEM ciphertext binary layout:
+	// nonce (mlkemNonceSize bytes) || AES-GCM-Seal-output (encrypted DEK seed || 16-byte tag).
+	mlkemNonceSize = 12
+)
+
+// putEncapsulation places the ML-KEM encapsulation ciphertext into resp.Annotations.
+func putEncapsulation(resp *k8skmsv2.EncryptResponse, ct []byte) {
+	if resp.Annotations == nil {
+		resp.Annotations = map[string][]byte{}
+	}
+	resp.Annotations[KemCTAnnotationKey] = ct
+}
+
+// getEncapsulation retrieves the ML-KEM encapsulation ciphertext from req.Annotations.
+// ok is false if the request carries no kem-ct annotation, i.e. it was not produced by the
+// ML-KEM path.
+func getEncapsulation(req *k8skmsv2.DecryptRequest) (ct []byte, ok bool) {
+	ct, ok = req.GetAnnotations()[KemCTAnnotationKey]
+	return ct, ok
+}
+
+// putAlgorithmFamily records the active --algorithm-family value on resp.Annotations.
+func putAlgorithmFamily(resp *k8skmsv2.EncryptResponse, alg jose.Alg) {
+	if resp.Annotations == nil {
+		resp.Annotations = map[string][]byte{}
+	}
+	resp.Annotations[AlgorithmFamilyAnnotationKey] = []byte(alg)
+}
 
 const (
 	// maxCkaIDHexLen is the maximum length of a hex-encoded PKCS#11 CKA_ID (255 bytes → 510 hex chars).
@@ -497,8 +541,8 @@ func (p *P11) makeAeadKey(ctx *crypto11.Context, rng io.Reader, kek *crypto11.Se
 
 // aesGcmAlgFromKey queries the HSM key's CKA_VALUE_LEN attribute and maps the
 // key length in bytes to the corresponding jose AES-GCM algorithm constant.
-// Unlike mlkemAlgFromKey, an explicit ctx.GetAttribute call is required because
-// the key size is not exposed through the crypto11.SecretKey interface.
+// An explicit ctx.GetAttribute call is required because the key size is not
+// exposed through the crypto11.SecretKey interface.
 func aesGcmAlgFromKey(ctx *crypto11.Context, key *crypto11.SecretKey) (jose.Alg, error) {
 	attr, err := ctx.GetAttribute(key, crypto11.CkaValueLen)
 	if err != nil {
@@ -522,23 +566,6 @@ func aesGcmAlgFromKey(ctx *crypto11.Context, key *crypto11.SecretKey) (jose.Alg,
 		return jose.AlgA256GCM, nil
 	default:
 		return "", fmt.Errorf("unsupported AES key length %d bytes", keyLenBytes)
-	}
-}
-
-// mlkemAlgFromKey returns the specific jose ML-KEM algorithm constant for the given key pair
-// by reading its parameter set directly via ParameterSet() — no ctx attribute lookup is needed
-// since the parameter set is part of the MLKEMKeyPair interface, similar to how RSA key pairs
-// carry their key type without requiring an extra attribute query.
-func mlkemAlgFromKey(kp crypto11.MLKEMKeyPair) (jose.Alg, error) {
-	switch kp.ParameterSet() {
-	case crypto11.MLKEM512:
-		return jose.AlgMLKEM512KMAC128, nil
-	case crypto11.MLKEM768:
-		return jose.AlgMLKEM768KMAC256, nil
-	case crypto11.MLKEM1024:
-		return jose.AlgMLKEM1024KMAC256, nil
-	default:
-		return "", fmt.Errorf("unsupported ML-KEM parameter set %d", kp.ParameterSet())
 	}
 }
 
@@ -946,7 +973,18 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 		Ciphertext: []byte(out),
 		KeyId:      p.GetKekKeyIdString(),
 	}
+	putAlgorithmFamily(resp, p.algorithmFamily)
+	slog.Log(ctx, logging.LevelTrace, "Encrypt: returning response", "algorithm", p.algorithmFamily, "ciphertextLen", len(resp.Ciphertext), "annotationSizes", annotationSizes(resp.Annotations))
 	return resp, nil
+}
+
+// annotationSizes maps an EncryptResponse.Annotations map to key -> byte length, for logging.
+func annotationSizes(annotations map[string][]byte) map[string]int {
+	sizes := make(map[string]int, len(annotations))
+	for k, v := range annotations {
+		sizes[k] = len(v)
+	}
+	return sizes
 }
 
 func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
@@ -1031,52 +1069,158 @@ func (p *P11) Status(ctx context.Context, request *k8skmsv2.StatusRequest) (stat
 	return statusResponse, nil
 }
 
-// encryptMLKEM encrypts req.Plaintext using ML-KEM hybrid encryption via gose JWE.
-// The HSM performs the KEM encapsulation; the shared secret is extracted and passed to
-// gose's KMAC KDF before AES-GCM content encryption, producing a compact JWE string.
+// mlkemSharedSecretTemplate returns the PKCS#11 attribute template used when deriving an
+// ML-KEM shared secret on the HSM: a transient (non-token) AES-256 session object with
+// CKA_EXTRACTABLE=true, so Bytes() can retrieve the raw shared secret for
+// crypto11.MLKEMDeriveKey.
+func mlkemSharedSecretTemplate() crypto11.AttributeSet {
+	a := crypto11.NewAttributeSet()
+	_ = a.Set(crypto11.CkaClass, pkcs11.CKO_SECRET_KEY)
+	_ = a.Set(crypto11.CkaKeyType, pkcs11.CKK_AES)
+	_ = a.Set(crypto11.CkaValueLen, 32)
+	_ = a.Set(crypto11.CkaToken, false)
+	_ = a.Set(crypto11.CkaSensitive, false)
+	_ = a.Set(crypto11.CkaExtractable, true)
+	return a
+}
+
+// encryptMLKEM encrypts req.Plaintext (the DEK seed) for the ML-KEM algorithm family.
 //
-// NOTE: this replaces the previous custom binary envelope format (mlkem_envelope.go).
-// Ciphertexts produced by older plugin versions are NOT decryptable by this implementation.
+// Unlike the other algorithm families, the output is not a JWE: ML-KEM is a Key
+// Encapsulation Mechanism, so it produces two artifacts — the KEM ciphertext (key
+// establishment material, no payload) and the AEAD-wrapped seed (the actual encrypted
+// data) — which are placed in the two fields the KMS v2 API already provides for them:
+// the KEM ciphertext goes to EncryptResponse.Annotations (via putEncapsulation) and the
+// AEAD-wrapped seed goes to EncryptResponse.Ciphertext. This keeps Ciphertext at ~60 bytes,
+// well under the KMS v2 1 kB limit, where a JWE compact serialization would not fit for
+// ML-KEM-768/1024. The HSM performs the KEM encapsulation; the shared secret is extracted
+// and passed through crypto11.MLKEMDeriveKey's KMAC KDF to derive the AES key.
 func (p *P11) encryptMLKEM(ctx context.Context, req *k8skmsv2.EncryptRequest) (*k8skmsv2.EncryptResponse, error) {
 	kp, err := p.ctx.FindMLKEMKeyPair(p.kekCkaId, p.GetKekCkaLabelByteA())
 	if err != nil {
+		slog.Error("encryptMLKEM: cannot find ML-KEM key pair", "uid", req.GetUid(), "label", p.kekCkaLabel, "keyId", p.GetKekKeyIdString(), "error", err)
 		return nil, fmt.Errorf("encryptMLKEM: cannot find ML-KEM key pair (label=%s id=%x): %w", p.kekCkaLabel, p.kekCkaId, err)
 	}
-	hsmKey, err := hsm.NewDecapsPrivMlKemHsmKey(kp, p.GetKekKeyIdString())
+
+	kemCt, ss, err := kp.Encapsulate(mlkemSharedSecretTemplate())
 	if err != nil {
-		return nil, fmt.Errorf("encryptMLKEM: failed to create HSM key wrapper: %w", err)
+		slog.Error("encryptMLKEM: encapsulation failed", "uid", req.GetUid(), "keyId", p.GetKekKeyIdString(), "error", err)
+		return nil, fmt.Errorf("encryptMLKEM: encapsulation failed: %w", err)
 	}
-	encKey, err := hsmKey.Encapsulator()
+	sharedSecret, err := ss.Bytes()
 	if err != nil {
-		return nil, fmt.Errorf("encryptMLKEM: failed to get encapsulation key: %w", err)
+		slog.Error("encryptMLKEM: failed to extract shared secret", "uid", req.GetUid(), "keyId", p.GetKekKeyIdString(), "error", err)
+		return nil, fmt.Errorf("encryptMLKEM: failed to extract shared secret: %w", err)
 	}
+	defer clear(sharedSecret)
+
+	derivedKey, err := crypto11.MLKEMDeriveKey(kp.ParameterSet(), sharedSecret)
+	if err != nil {
+		slog.Error("encryptMLKEM: KDF failed", "uid", req.GetUid(), "keyId", p.GetKekKeyIdString(), "parameterSet", kp.ParameterSet(), "error", err)
+		return nil, fmt.Errorf("encryptMLKEM: KDF failed: %w", err)
+	}
+	defer clear(derivedKey)
+
 	rng, err := p.ctx.NewRandomReader()
 	if err != nil {
+		slog.Error("encryptMLKEM: cannot get HSM random reader", "uid", req.GetUid(), "error", err)
 		return nil, fmt.Errorf("encryptMLKEM: cannot get HSM random reader: %w", err)
 	}
-	encryptor, err := gose.NewJweMlKemEncryptorImpl(encKey, rng)
-	if err != nil {
-		return nil, fmt.Errorf("encryptMLKEM: failed to create JWE encryptor: %w", err)
+	nonce := make([]byte, mlkemNonceSize)
+	if _, err = io.ReadFull(rng, nonce); err != nil {
+		slog.Error("encryptMLKEM: failed to generate nonce", "uid", req.GetUid(), "error", err)
+		return nil, fmt.Errorf("encryptMLKEM: failed to generate nonce: %w", err)
 	}
-	jweStr, err := encryptor.Encrypt(req.GetPlaintext(), nil)
+
+	block, err := aes.NewCipher(derivedKey)
 	if err != nil {
-		return nil, fmt.Errorf("encryptMLKEM: JWE encryption failed: %w", err)
+		slog.Error("encryptMLKEM: failed to create AES cipher", "uid", req.GetUid(), "error", err)
+		return nil, fmt.Errorf("encryptMLKEM: failed to create AES cipher: %w", err)
 	}
-	slog.Log(ctx, logging.LevelTrace, "encryptMLKEM: produced JWE", "bytes", len(jweStr))
-	return &k8skmsv2.EncryptResponse{
-		Ciphertext: []byte(jweStr),
+	aead, err := cipher.NewGCM(block)
+	if err != nil {
+		slog.Error("encryptMLKEM: failed to create GCM", "uid", req.GetUid(), "error", err)
+		return nil, fmt.Errorf("encryptMLKEM: failed to create GCM: %w", err)
+	}
+	// sealed = encrypted seed || 16-byte tag.
+	sealed := aead.Seal(nil, nonce, req.GetPlaintext(), nil)
+
+	ciphertext := make([]byte, 0, len(nonce)+len(sealed))
+	ciphertext = append(ciphertext, nonce...)
+	ciphertext = append(ciphertext, sealed...)
+
+	resp := &k8skmsv2.EncryptResponse{
+		Ciphertext: ciphertext,
 		KeyId:      p.GetKekKeyIdString(),
-	}, nil
+	}
+	putEncapsulation(resp, kemCt)
+	putAlgorithmFamily(resp, p.algorithmFamily)
+	slog.Log(ctx, logging.LevelTrace, "encryptMLKEM: returning response", "ciphertextLen", len(resp.Ciphertext), "annotationSizes", annotationSizes(resp.Annotations))
+	return resp, nil
 }
 
-// decryptMLKEMWithContext decrypts a compact JWE produced by encryptMLKEM using actualCtx.
-// Supports both the active and rotation HSM contexts.
+// decryptMLKEMWithContext decrypts a binary envelope produced by encryptMLKEM using actualCtx.
+// Supports both the active and rotation HSM contexts. The KEM ciphertext travels in
+// req.Annotations (round-tripped verbatim by the apiserver from the matching Encrypt call);
+// its absence means this object was not produced by the ML-KEM path.
 func (p *P11) decryptMLKEMWithContext(req *k8skmsv2.DecryptRequest, actualCtx *crypto11.Context) ([]byte, error) {
-	keyStore := hsm.NewDecapsPrivMlKemHsmKeyStore(actualCtx)
-	decryptor := gose.NewJweMlKemDecryptorImpl(keyStore)
-	plaintext, _, err := decryptor.Decrypt(string(req.GetCiphertext()))
+	kemCt, ok := getEncapsulation(req)
+	if !ok {
+		slog.Error("decryptMLKEM: missing kem-ct annotation on DecryptRequest", "uid", req.GetUid(), "keyId", req.GetKeyId(), "annotationKey", KemCTAnnotationKey)
+		return nil, fmt.Errorf("decryptMLKEM: missing %q annotation on DecryptRequest", KemCTAnnotationKey)
+	}
+
+	reqKeyId, err := hex.DecodeString(req.GetKeyId())
 	if err != nil {
-		return nil, fmt.Errorf("decryptMLKEM: JWE decryption failed: %w", err)
+		slog.Error("decryptMLKEM: invalid key_id hex", "uid", req.GetUid(), "keyId", req.GetKeyId(), "error", err)
+		return nil, fmt.Errorf("decryptMLKEM: invalid key_id hex %q: %w", req.GetKeyId(), err)
+	}
+	kp, err := actualCtx.FindMLKEMKeyPair(reqKeyId, nil)
+	if err != nil {
+		slog.Error("decryptMLKEM: cannot resolve ML-KEM private key", "uid", req.GetUid(), "keyId", req.GetKeyId(), "error", err)
+		return nil, fmt.Errorf("decryptMLKEM: cannot resolve ML-KEM private key (key_id=%s): %w", req.GetKeyId(), err)
+	}
+
+	ss, err := kp.Decapsulate(kemCt, mlkemSharedSecretTemplate())
+	if err != nil {
+		slog.Error("decryptMLKEM: decapsulation failed", "uid", req.GetUid(), "keyId", req.GetKeyId(), "error", err)
+		return nil, fmt.Errorf("decryptMLKEM: decapsulation failed: %w", err)
+	}
+	sharedSecret, err := ss.Bytes()
+	if err != nil {
+		slog.Error("decryptMLKEM: failed to extract shared secret", "uid", req.GetUid(), "keyId", req.GetKeyId(), "error", err)
+		return nil, fmt.Errorf("decryptMLKEM: failed to extract shared secret: %w", err)
+	}
+	defer clear(sharedSecret)
+
+	derivedKey, err := crypto11.MLKEMDeriveKey(kp.ParameterSet(), sharedSecret)
+	if err != nil {
+		slog.Error("decryptMLKEM: KDF failed", "uid", req.GetUid(), "keyId", req.GetKeyId(), "parameterSet", kp.ParameterSet(), "error", err)
+		return nil, fmt.Errorf("decryptMLKEM: KDF failed: %w", err)
+	}
+	defer clear(derivedKey)
+
+	ciphertext := req.GetCiphertext()
+	if len(ciphertext) < mlkemNonceSize {
+		slog.Error("decryptMLKEM: ciphertext too short", "uid", req.GetUid(), "keyId", req.GetKeyId(), "gotBytes", len(ciphertext), "minBytes", mlkemNonceSize)
+		return nil, fmt.Errorf("decryptMLKEM: ciphertext too short: got %d bytes, need at least %d", len(ciphertext), mlkemNonceSize)
+	}
+	nonce, sealed := ciphertext[:mlkemNonceSize], ciphertext[mlkemNonceSize:]
+
+	block, err := aes.NewCipher(derivedKey)
+	if err != nil {
+		slog.Error("decryptMLKEM: failed to create AES cipher", "uid", req.GetUid(), "keyId", req.GetKeyId(), "error", err)
+		return nil, fmt.Errorf("decryptMLKEM: failed to create AES cipher: %w", err)
+	}
+	aead, err := cipher.NewGCM(block)
+	if err != nil {
+		slog.Error("decryptMLKEM: failed to create GCM", "uid", req.GetUid(), "keyId", req.GetKeyId(), "error", err)
+		return nil, fmt.Errorf("decryptMLKEM: failed to create GCM: %w", err)
+	}
+	plaintext, err := aead.Open(nil, nonce, sealed, nil)
+	if err != nil {
+		slog.Error("decryptMLKEM: authenticated decryption failed", "uid", req.GetUid(), "keyId", req.GetKeyId(), "error", err)
+		return nil, fmt.Errorf("decryptMLKEM: authenticated decryption failed: %w", err)
 	}
 	return plaintext, nil
 }

@@ -134,9 +134,27 @@ type statusResponse struct {
 type encryptResponse struct {
 	Ciphertext string `json:"ciphertext"`
 	KeyId      string `json:"keyId"`
+	// Annotations values are base64-encoded bytes (protojson map<string,bytes> encoding).
+	// ML-KEM populates exactly one entry here (the KEM ciphertext); other algorithm
+	// families leave it empty.
+	Annotations map[string]string `json:"annotations"`
 }
 type decryptResponse struct {
 	Plaintext string `json:"plaintext"` // base64-encoded bytes field
+}
+
+// marshalAnnotations renders an EncryptResponse.Annotations map (already base64-encoded
+// strings, as decoded from protojson) back into the JSON object literal grpcurl expects for
+// DecryptRequest.annotations. Mirrors the apiserver's round-trip guarantee: whatever Encrypt
+// returned in annotations must be sent back unchanged on the matching Decrypt.
+func marshalAnnotations(t *testing.T, annotations map[string]string) string {
+	t.Helper()
+	if len(annotations) == 0 {
+		return "{}"
+	}
+	b, err := json.Marshal(annotations)
+	require.NoError(t, err)
+	return string(b)
 }
 
 // callGrpcurl invokes grpcurl and returns the combined stdout+stderr output.
@@ -174,6 +192,7 @@ func kmsRoundtrip(t *testing.T, socket string) {
 
 	// Shared state passed between sequential sub-tests.
 	var keyId, ciphertext string
+	var annotations map[string]string
 
 	t.Run("Status", func(t *testing.T) {
 		var resp statusResponse
@@ -192,13 +211,15 @@ func kmsRoundtrip(t *testing.T, socket string) {
 		require.NotEmpty(t, resp.Ciphertext, "Encrypt.ciphertext must not be empty")
 		ciphertext = resp.Ciphertext
 		keyId = resp.KeyId // prefer the keyId from EncryptResponse
+		annotations = resp.Annotations
 	})
 	if t.Failed() {
 		return // Decrypt would fail without a valid ciphertext
 	}
 
 	t.Run("Decrypt", func(t *testing.T) {
-		body := fmt.Sprintf(`{"ciphertext":%q,"uid":"e2e-dec","key_id":%q}`, ciphertext, keyId)
+		body := fmt.Sprintf(`{"ciphertext":%q,"uid":"e2e-dec","key_id":%q,"annotations":%s}`,
+			ciphertext, keyId, marshalAnnotations(t, annotations))
 		var resp decryptResponse
 		require.NoError(t, json.Unmarshal(callGrpcurl(t, socket, "Decrypt", body), &resp))
 		recovered, err := base64.StdEncoding.DecodeString(resp.Plaintext)
