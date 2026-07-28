@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Thales Group and the k8s-kms-plugin Contributors
 # SPDX-License-Identifier: MIT
 
-.PHONY: all lint build build-linux-amd64 build-linux-amd64-debug build-linux-arm64 build-linux-arm64-debug build-linux-riscv64 build-linux-riscv64-debug coverage test test-integration test-e2e gen notices clean
+.PHONY: all lint lint-fix build build-linux-amd64 build-linux-amd64-debug build-linux-arm64 build-linux-arm64-debug build-linux-riscv64 build-linux-riscv64-debug coverage test test-integration test-e2e gen notices clean
 
 all: build-linux-amd64 build-linux-arm64 build-linux-riscv64
 
@@ -23,8 +23,8 @@ BUILD_DATE ?= $(shell date -u --iso-8601=seconds)
 
 # Go Flags
 GIT_INFO_LDFLAGS = -X '$(GO_MODULE_NAME)/pkg/version.RawGitDescribe=$(VERSION)' \
-	-X '$(GO_MODULE_NAME)/pkg/version.GitCommitIdLong=$(COMMIT_LONG)' \
-	-X '$(GO_MODULE_NAME)/pkg/version.GitCommitIdShort=$(COMMIT_SHORT)' \
+	-X '$(GO_MODULE_NAME)/pkg/version.GitCommitIDLong=$(COMMIT_LONG)' \
+	-X '$(GO_MODULE_NAME)/pkg/version.GitCommitIDShort=$(COMMIT_SHORT)' \
 	-X '$(GO_MODULE_NAME)/pkg/version.GoVersion=$(GO_VERSION)' \
 	-X '$(GO_MODULE_NAME)/pkg/version.BuildPlatform=$(BUILD_PLATFORM)' \
 	-X '$(GO_MODULE_NAME)/pkg/version.BuildDate=$(BUILD_DATE)' \
@@ -44,10 +44,26 @@ notices:
 		@go-licenses report ./... --ignore github.com/ThalesGroup/k8s-kms-plugin --template go-licenses.tpl > NOTICES.md
 		@echo "NOTICES.md generated"
 
-## Lint & SAST
-lint:
-		@CGO_ENABLED=$(CGO_ENABLED) GOFLAGS=-mod=vendor golangci-lint run
+GOLANGCI_LINT ?= golangci-lint
 
+lint:
+		@command -v $(GOLANGCI_LINT) >/dev/null 2>&1 || { \
+		    echo "golangci-lint not found. Install the v2 binary with:"; \
+		    echo "  go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest"; \
+		    exit 1; \
+		}
+		CGO_ENABLED=$(CGO_ENABLED) GOFLAGS=-mod=vendor $(GOLANGCI_LINT) run
+
+# Auto-fix the mechanically-fixable findings (formatting, some conversions):
+lint-fix:
+		@command -v $(GOLANGCI_LINT) >/dev/null 2>&1 || { \
+		    echo "golangci-lint not found. Install the v2 binary with:"; \
+		    echo "  go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest"; \
+		    exit 1; \
+		}
+		CGO_ENABLED=$(CGO_ENABLED) GOFLAGS=-mod=vendor $(GOLANGCI_LINT) run --fix
+
+## SAST
 coverage:
 		mkdir -p build
 		CGO_ENABLED=$(CGO_ENABLED) GOFLAGS=-mod=vendor go test -race -v -coverprofile build/coverage.out ./pkg/... ./cmd/...
