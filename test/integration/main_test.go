@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ThalesGroup/crypto11"
+	"github.com/eclipse-keypont/crypto11/v2"
 	pkcs11 "github.com/eclipse-keypont/pkcs11-go/cryptoki"
 )
 

@@ -19,10 +19,10 @@ import (
 
 	"sync"
 
-	"github.com/ThalesGroup/crypto11"
-	"github.com/ThalesGroup/gose"
-	"github.com/ThalesGroup/gose/hsm"
-	"github.com/ThalesGroup/gose/jose"
+	"github.com/eclipse-keypont/crypto11/v2"
+	"github.com/eclipse-keypont/gose"
+	"github.com/eclipse-keypont/gose/hsm"
+	"github.com/eclipse-keypont/gose/jose"
 	pkcs11 "github.com/eclipse-keypont/pkcs11-go/cryptoki"
 	"github.com/google/uuid"
 	"google.golang.org/grpc"

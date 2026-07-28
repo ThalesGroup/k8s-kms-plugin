@@ -8,7 +8,7 @@ package providers
 import (
 	"context"
 
-	"github.com/ThalesGroup/gose/jose"
+	"github.com/eclipse-keypont/gose/jose"
 	"google.golang.org/grpc"
 
 	k8skmsv2 "k8s.io/kms/apis/v2"

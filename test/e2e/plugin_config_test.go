@@ -23,7 +23,7 @@ import (
 	"os/exec"
 	"testing"
 
-	"github.com/ThalesGroup/crypto11"
+	"github.com/eclipse-keypont/crypto11/v2"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ThalesGroup/k8s-kms-plugin/pkg/providers"

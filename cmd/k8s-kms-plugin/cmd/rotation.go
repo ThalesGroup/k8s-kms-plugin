@@ -12,8 +12,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/ThalesGroup/crypto11"
-	"github.com/ThalesGroup/gose/jose"
+	"github.com/eclipse-keypont/crypto11/v2"
+	"github.com/eclipse-keypont/gose/jose"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"

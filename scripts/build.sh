@@ -46,8 +46,8 @@ function init(){
       echo "Dev mode enabled"
       echo "Build using branch ${branch_name}"
       git switch "${branch_name}"
-      eval GOPROXY=direct go get -u "github.com/ThalesGroup/crypto11@${branch_name}"
-      eval GOPROXY=direct go get -u "github.com/ThalesGroup/gose@${branch_name}"
+      eval GOPROXY=direct go get -u "github.com/eclipse-keypont/crypto11/v2@${branch_name}"
+      eval GOPROXY=direct go get -u "github.com/eclipse-keypont/gose@${branch_name}"
       go mod tidy
     fi
 

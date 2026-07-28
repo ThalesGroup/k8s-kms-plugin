@@ -31,19 +31,13 @@ require (
 )
 
 require (
-	github.com/ThalesGroup/crypto11 v1.7.0-rc1
-	github.com/ThalesGroup/gose v0.13.0-rc1
 	github.com/creack/pty v1.1.24
+	github.com/eclipse-keypont/crypto11/v2 v2.0.0-rc3
+	github.com/eclipse-keypont/gose v1.0.0-rc1
 	github.com/hashicorp/go-version v1.9.0
 	github.com/lmittmann/tint v1.2.0
 	golang.org/x/term v0.45.0
 	k8s.io/kms v0.36.3
-)
-
-replace (
-	github.com/ThalesGroup/crypto11 v1.7.0-rc1 => ../crypto11.github.com.ThalesGroup
-	github.com/ThalesGroup/gose v0.13.0-rc1 => ../gose.github.com.ThalesGroup
-	github.com/eclipse-keypont/pkcs11-go v1.0.0 => ../pkcs11-go
 )
 
 require (

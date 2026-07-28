@@ -4,10 +4,10 @@ This project uses the following third-party Go modules.
 
 | Package | License | License URL |
 |---------|---------|-------------|
-| `github.com/ThalesGroup/crypto11` | MIT | N/A |
-| `github.com/ThalesGroup/gose` | MIT | N/A |
 | `github.com/clipperhouse/uax29/v2/graphemes` | MIT | [Link](https://github.com/clipperhouse/uax29/blob/v2.7.0/LICENSE) |
 | `github.com/cpuguy83/go-md2man/v2/md2man` | MIT | [Link](https://github.com/cpuguy83/go-md2man/blob/v2.0.7/LICENSE.md) |
+| `github.com/eclipse-keypont/crypto11/v2` | MIT | N/A |
+| `github.com/eclipse-keypont/gose` | MIT | N/A |
 | `github.com/eclipse-keypont/pkcs11-go` | MIT | N/A |
 | `github.com/fsnotify/fsnotify` | BSD-3-Clause | [Link](https://github.com/fsnotify/fsnotify/blob/v1.9.0/LICENSE) |
 | `github.com/google/uuid` | BSD-3-Clause | [Link](https://github.com/google/uuid/blob/v1.6.0/LICENSE) |

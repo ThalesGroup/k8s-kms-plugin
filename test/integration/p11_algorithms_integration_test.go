@@ -19,8 +19,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ThalesGroup/crypto11"
-	"github.com/ThalesGroup/gose/jose"
+	"github.com/eclipse-keypont/crypto11/v2"
+	"github.com/eclipse-keypont/gose/jose"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

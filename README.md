@@ -98,8 +98,8 @@ TL;DR: For a quick start experience, try the `k8s-kms-plugin` with a software (v
 
 The [`k8s-kms-plugin`](https://github.com/ThalesGroup/k8s-kms-plugin) uses `gose`  and `crypto11`:
 
-- [github.com/ThalesGroup/gose](https://github.com/ThalesGroup/gose): support in GoLang for JOSE JSON Objects Signing and Encryption;
-- [github.com/ThalesGroup/crypto11](https://github.com/ThalesGroup/crypto11): Implements crypto.Signer abd crypto.Decrypter for PKCS#11 devices;
+- [github.com/eclipse-keypont/gose](https://github.com/eclipse-keypont/gose): support in GoLang for JOSE JSON Objects Signing and Encryption;
+- [github.com/eclipse-keypont/crypto11](https://github.com/eclipse-keypont/crypto11): Implements crypto.Signer abd crypto.Decrypter for PKCS#11 devices;
 - [k8s.io/kms/apis/v2](https://pkg.go.dev/k8s.io/kms/apis/v2) (source code: https://github.com/kubernetes/kms): KMS v2 API & gRPC protobuf API files.
 
 > 🚧 Note: We will work on providing a full nested SBOM later.
@@ -501,7 +501,7 @@ If you need to build using `crypto11` and `gose` development branches :
 # In gose repo
 # in a dev branch
 go switch -c my-dev-branch
-GOPROXY=direct go get -u github.com/ThalesGroup/crypto11@my-dev-branch
+GOPROXY=direct go get -u github.com/eclipse-keypont/crypto11/v2@my-dev-branch
 go mod tidy
 git add go.mod
 git commit -S -s -m "dev: update gose with crytpo11 dev changes"
@@ -512,8 +512,8 @@ git push
 
 ```sh
 go switch -c my-dev-branch
-GOPROXY=direct go get -u github.com/ThalesGroup/crypto11@my-dev-branch
-GOPROXY=direct go get -u github.com/ThalesGroup/gose@my-dev-branch
+GOPROXY=direct go get -u github.com/eclipse-keypont/crypto11/v2@my-dev-branch
+GOPROXY=direct go get -u github.com/eclipse-keypont/gose@my-dev-branch
 go mod tidy
 make build
 ```
