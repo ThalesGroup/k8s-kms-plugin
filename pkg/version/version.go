@@ -1,14 +1,18 @@
 // SPDX-FileCopyrightText: 2026 Thales Group and the k8s-kms-plugin Contributors
 // SPDX-License-Identifier: MIT
 
+// Package version exposes k8s-kms-plugin build metadata populated at compile
+// time via Go LDFLAGS (git describe, commit, build date, etc.) and formats it
+// for CLI and logging output.
 package version
 
 import (
 	"encoding/json"
 	"fmt"
 
-	go_version "github.com/hashicorp/go-version"
 	"log/slog"
+
+	go_version "github.com/hashicorp/go-version"
 	"gopkg.in/yaml.v2"
 )
 
@@ -16,28 +20,28 @@ import (
 var (
 	RawGitDescribe     string
 	GitDirtyStr        string // "true" or "false" but as strings as they are retrieved from git bash
-	GitCommitIdShort   string
-	GitCommitIdLong    string
+	GitCommitIDShort   string
+	GitCommitIDLong    string
 	GitCommitTimestamp string
 	GoVersion          string
 	BuildPlatform      string
 	BuildDate          string
 )
 
-// VersionDetails represents the JSON & YAML output structure.
-type VersionDetails struct {
-	VersionData VersionData `json:"k8s-kms-plugin" yaml:"k8s-kms-plugin"`
+// Details represents the JSON & YAML output structure.
+type Details struct {
+	VersionData Data `json:"k8s-kms-plugin" yaml:"k8s-kms-plugin"`
 }
 
-// VersionData holds structured versioning details.
-type VersionData struct {
+// Data holds structured versioning details.
+type Data struct {
 	Major              uint64 `json:"major" yaml:"major"`
 	Minor              uint64 `json:"minor" yaml:"minor"`
 	Patch              uint64 `json:"patch" yaml:"patch"`
 	Version            string `json:"version" yaml:"version"` // raw git describe
 	IsGitDirty         bool   `json:"isGitDirty" yaml:"isGitDirty"`
-	GitCommitIdLong    string `json:"gitCommitIdLong" yaml:"gitCommitIdLong"`
-	GitCommitIdShort   string `json:"gitCommitIdShort" yaml:"gitCommitIdShort"`
+	GitCommitIDLong    string `json:"gitCommitIdLong" yaml:"gitCommitIdLong"`
+	GitCommitIDShort   string `json:"gitCommitIdShort" yaml:"gitCommitIdShort"`
 	GitCommitTimestamp string `json:"gitCommitTimestamp" yaml:"gitCommitTimestamp"`
 	GoVersion          string `json:"goVersion" yaml:"goVersion"`
 	BuildDate          string `json:"buildDate" yaml:"buildDate"`
@@ -65,13 +69,16 @@ func IsDirty(isDirtyStr string) (bool, error) {
 	}
 }
 
+// NewVersionData assembles a Data from the LDFLAGS-populated build metadata
+// variables. If RawGitDescribe is not a parsable semantic version (e.g. a
+// plain commit hash on an untagged checkout), Major/Minor/Patch are left
 // unset (zero v0.0.0).
-func NewVersionData() (VersionData, error) {
-	// this is a minimal content of the VersionData information
-	versionData := VersionData{
+func NewVersionData() (Data, error) {
+	// this is a minimal content of the Data information
+	versionData := Data{
 		Version:            RawGitDescribe,
-		GitCommitIdLong:    GitCommitIdLong,
-		GitCommitIdShort:   GitCommitIdShort,
+		GitCommitIDLong:    GitCommitIDLong,
+		GitCommitIDShort:   GitCommitIDShort,
 		GitCommitTimestamp: GitCommitTimestamp,
 		GoVersion:          GoVersion,
 		BuildDate:          BuildDate,
@@ -110,17 +117,17 @@ func NewVersionData() (VersionData, error) {
 	return versionData, nil
 }
 
-// NewVersionDetails creates a new VersionDetails object using NewVersionData.
-func NewVersionDetails() (VersionDetails, error) {
+// NewVersionDetails creates a new Details object using NewVersionData.
+func NewVersionDetails() (Details, error) {
 	versionData, err := NewVersionData()
 	if err != nil {
-		return VersionDetails{}, err
+		return Details{}, err
 	}
-	return VersionDetails{VersionData: versionData}, nil
+	return Details{VersionData: versionData}, nil
 }
 
-// returnJsonVersion returns the version as a JSON object.
-func returnJsonVersion(prettyPrint bool) ([]byte, error) {
+// returnJSONVersion returns the version as a JSON object.
+func returnJSONVersion(prettyPrint bool) ([]byte, error) {
 	versionDetails, err := NewVersionDetails()
 	if err != nil {
 		return nil, err
@@ -159,19 +166,19 @@ func LogVersion() {
 	slog.Debug("k8s-kms-plugin version details",
 		"build-date", versionData.BuildDate,
 		"build-platform", versionData.BuildPlatform,
-		"commit", versionData.GitCommitIdLong,
+		"commit", versionData.GitCommitIDLong,
 		"go-version", versionData.GoVersion,
 		"raw-git-describe", versionData.Version,
 		"is-git-dirty", versionData.IsGitDirty,
-		"short-commit", versionData.GitCommitIdShort,
+		"short-commit", versionData.GitCommitIDShort,
 	)
 }
 
-// VersionOutputToString returns the version as a formatted string.
-func VersionOutputToString(outputFormat string, prettyPrint bool) string {
+// OutputToString returns the version as a formatted string.
+func OutputToString(outputFormat string, prettyPrint bool) string {
 	switch outputFormat {
 	case "json":
-		data, err := returnJsonVersion(prettyPrint)
+		data, err := returnJSONVersion(prettyPrint)
 		if err != nil {
 			slog.Error("Failed to generate JSON version output", "error", err)
 			return "Error generating JSON output"

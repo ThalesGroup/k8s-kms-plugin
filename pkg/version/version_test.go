@@ -17,8 +17,8 @@ import (
 func resetGlobals() {
 	RawGitDescribe = ""
 	GitDirtyStr = ""
-	GitCommitIdShort = ""
-	GitCommitIdLong = ""
+	GitCommitIDShort = ""
+	GitCommitIDLong = ""
 	GitCommitTimestamp = ""
 	GoVersion = ""
 	BuildDate = ""
@@ -203,7 +203,7 @@ func TestNewVersionData_Defaults(t *testing.T) {
 	}
 }
 
-// TestVersionOutput_JSON tests the VersionOutputToString function with a full
+// TestVersionOutput_JSON tests the OutputToString function with a full
 // set of non-zero global variables. The test ensures that the function returns
 // a JSON object with all the expected fields.
 func TestVersionOutput_JSON(t *testing.T) {
@@ -211,20 +211,20 @@ func TestVersionOutput_JSON(t *testing.T) {
 
 	RawGitDescribe = "v0.1.2"
 	GitDirtyStr = "false"
-	GitCommitIdLong = "abc123"
-	GitCommitIdShort = "abc"
+	GitCommitIDLong = "abc123"
+	GitCommitIDShort = "abc"
 	GitCommitTimestamp = "2025-01-01T00:00:00Z"
 	GoVersion = "go1.23"
 	BuildDate = "2025-01-01T01:00:00Z"
 	BuildPlatform = "amd64"
 
-	out := VersionOutputToString("json", true)
+	out := OutputToString("json", true)
 	if !strings.Contains(out, `"version": "v0.1.2"`) {
 		t.Errorf("Output missing version: %s", out)
 	}
 }
 
-// TestVersionOutput_YAML tests the VersionOutputToString function with a full
+// TestVersionOutput_YAML tests the OutputToString function with a full
 // set of non-zero global variables and output format set to "yaml". The test
 // ensures that the function returns a YAML object with all the expected fields.
 func TestVersionOutput_YAML(t *testing.T) {
@@ -232,14 +232,14 @@ func TestVersionOutput_YAML(t *testing.T) {
 
 	GitDirtyStr = "true"
 	RawGitDescribe = "v0.1.2"
-	out := VersionOutputToString("yaml", false)
+	out := OutputToString("yaml", false)
 
 	if !strings.Contains(out, "version: v0.1.2") {
 		t.Errorf("Expected YAML output to include version, got: %s", out)
 	}
 }
 
-// TestReturnJsonVersion_Valid tests the returnJsonVersion function with a valid
+// TestReturnJsonVersion_Valid tests the returnJSONVersion function with a valid
 // set of global variables (version, dirty string). The test ensures that the
 // function returns a valid JSON object without any error.
 func TestReturnJsonVersion_Valid(t *testing.T) {
@@ -247,12 +247,12 @@ func TestReturnJsonVersion_Valid(t *testing.T) {
 	RawGitDescribe = "v1.2.3"
 	GitDirtyStr = "false"
 
-	out, err := returnJsonVersion(false)
+	out, err := returnJSONVersion(false)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
 
-	var v VersionDetails
+	var v Details
 	err = json.Unmarshal(out, &v)
 	if err != nil {
 		t.Fatalf("Failed to parse JSON: %v", err)
@@ -265,7 +265,7 @@ func TestTopLevelKey_JSON(t *testing.T) {
 	RawGitDescribe = "v0.3.0"
 	GitDirtyStr = "true"
 
-	data, err := returnJsonVersion(false)
+	data, err := returnJSONVersion(false)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -289,24 +289,24 @@ func TestTopLevelKey_YAML(t *testing.T) {
 	}
 }
 
-// Validate that VersionDetails can be marshaled and unmarshaled without data loss
+// Validate that Details can be marshaled and unmarshaled without data loss
 func TestVersionDetailsRoundTrip(t *testing.T) {
 	resetGlobals()
 	RawGitDescribe = "v0.3.0"
 	GitDirtyStr = "true"
-	GitCommitIdShort = "abc123"
-	GitCommitIdLong = "abc123456"
+	GitCommitIDShort = "abc123"
+	GitCommitIDLong = "abc123456"
 	GitCommitTimestamp = "2025-04-15T00:00:00Z"
 	GoVersion = "go1.23"
 	BuildDate = "2025-04-15T01:00:00Z"
 	BuildPlatform = "x86_64"
 
-	jsonData, err := returnJsonVersion(false)
+	jsonData, err := returnJSONVersion(false)
 	if err != nil {
 		t.Fatalf("Error generating JSON: %v", err)
 	}
 
-	var details VersionDetails
+	var details Details
 	if err := json.Unmarshal(jsonData, &details); err != nil {
 		t.Fatalf("Error parsing JSON: %v", err)
 	}
