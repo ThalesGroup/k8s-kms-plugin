@@ -15,10 +15,11 @@ import (
 	"time"
 
 	"github.com/ThalesGroup/crypto11"
-	"github.com/ThalesGroup/k8s-kms-plugin/pkg/providers"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ThalesGroup/k8s-kms-plugin/pkg/providers"
 )
 
 const (
@@ -88,10 +89,10 @@ func startPlugin(t *testing.T, socket string, extraArgs ...string) *pluginProces
 	args := append(
 		[]string{
 			"serve",
-			"--socket",    socket,
-			"--p11-lib",   testConfig.Path,
+			"--socket", socket,
+			"--p11-lib", testConfig.Path,
 			"--p11-label", testConfig.TokenLabel,
-			"--p11-pin",   testConfig.Pin,
+			"--p11-pin", testConfig.Pin,
 			"--log-level", "debug",
 		},
 		extraArgs...,
@@ -129,11 +130,11 @@ func waitForSocket(t *testing.T, socket string) {
 // ── gRPC helpers ──────────────────────────────────────────────────────────────
 
 type statusResponse struct {
-	KeyId string `json:"keyId"`
+	KeyID string `json:"keyID"`
 }
 type encryptResponse struct {
 	Ciphertext string `json:"ciphertext"`
-	KeyId      string `json:"keyId"`
+	KeyID      string `json:"keyID"`
 	// Annotations values are base64-encoded bytes (protojson map<string,bytes> encoding).
 	// ML-KEM populates exactly one entry here (the KEM ciphertext); other algorithm
 	// families leave it empty.
@@ -191,17 +192,17 @@ func kmsRoundtrip(t *testing.T, socket string) {
 	plaintextB64 := base64.StdEncoding.EncodeToString([]byte(e2ePlaintext))
 
 	// Shared state passed between sequential sub-tests.
-	var keyId, ciphertext string
+	var keyID, ciphertext string
 	var annotations map[string]string
 
 	t.Run("Status", func(t *testing.T) {
 		var resp statusResponse
 		require.NoError(t, json.Unmarshal(callGrpcurl(t, socket, "Status", `{}`), &resp))
-		require.NotEmpty(t, resp.KeyId, "Status.keyId must not be empty")
-		keyId = resp.KeyId
+		require.NotEmpty(t, resp.KeyID, "Status.keyID must not be empty")
+		keyID = resp.KeyID
 	})
 	if t.Failed() {
-		return // Encrypt / Decrypt would fail without a valid keyId
+		return // Encrypt / Decrypt would fail without a valid keyID
 	}
 
 	t.Run("Encrypt", func(t *testing.T) {
@@ -210,7 +211,7 @@ func kmsRoundtrip(t *testing.T, socket string) {
 		require.NoError(t, json.Unmarshal(callGrpcurl(t, socket, "Encrypt", body), &resp))
 		require.NotEmpty(t, resp.Ciphertext, "Encrypt.ciphertext must not be empty")
 		ciphertext = resp.Ciphertext
-		keyId = resp.KeyId // prefer the keyId from EncryptResponse
+		keyID = resp.KeyID // prefer the keyID from EncryptResponse
 		annotations = resp.Annotations
 	})
 	if t.Failed() {
@@ -219,7 +220,7 @@ func kmsRoundtrip(t *testing.T, socket string) {
 
 	t.Run("Decrypt", func(t *testing.T) {
 		body := fmt.Sprintf(`{"ciphertext":%q,"uid":"e2e-dec","key_id":%q,"annotations":%s}`,
-			ciphertext, keyId, marshalAnnotations(t, annotations))
+			ciphertext, keyID, marshalAnnotations(t, annotations))
 		var resp decryptResponse
 		require.NoError(t, json.Unmarshal(callGrpcurl(t, socket, "Decrypt", body), &resp))
 		recovered, err := base64.StdEncoding.DecodeString(resp.Plaintext)
@@ -288,7 +289,7 @@ func TestPlugin_AESCBC(t *testing.T) {
 
 	runPluginTest(t,
 		"--algorithm-family", string(providers.AlgAESCBC),
-		"--p11-key-label",  kekLabel,
+		"--p11-key-label", kekLabel,
 		"--p11-hmac-label", hmacLabel,
 	)
 }

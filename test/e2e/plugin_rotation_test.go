@@ -12,9 +12,10 @@ import (
 
 	"github.com/ThalesGroup/crypto11"
 	"github.com/ThalesGroup/gose/jose"
-	"github.com/ThalesGroup/k8s-kms-plugin/pkg/providers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ThalesGroup/k8s-kms-plugin/pkg/providers"
 )
 
 const rotationPlaintext = "the quick brown fox jumps over the lazy dog — k8s-kms-plugin rotation e2e"
@@ -23,8 +24,8 @@ const rotationPlaintext = "the quick brown fox jumps over the lazy dog — k8s-k
 
 // captureEncryptResponse starts a standalone plugin with the given extra serve
 // args, encrypts rotationPlaintext, stops the plugin, and returns the ciphertext,
-// keyId, and annotations from the EncryptResponse.
-func captureEncryptResponse(t *testing.T, extraArgs ...string) (ciphertext, keyId string, annotations map[string]string) {
+// keyID, and annotations from the EncryptResponse.
+func captureEncryptResponse(t *testing.T, extraArgs ...string) (ciphertext, keyID string, annotations map[string]string) {
 	t.Helper()
 	sock := socketPath(t)
 	t.Cleanup(func() { os.Remove(sock) })
@@ -39,31 +40,31 @@ func captureEncryptResponse(t *testing.T, extraArgs ...string) (ciphertext, keyI
 	var resp encryptResponse
 	require.NoError(t, json.Unmarshal(callGrpcurl(t, sock, "Encrypt", body), &resp))
 	require.NotEmpty(t, resp.Ciphertext, "pre-rotation Encrypt.ciphertext must not be empty")
-	require.NotEmpty(t, resp.KeyId, "pre-rotation Encrypt.keyId must not be empty")
-	return resp.Ciphertext, resp.KeyId, resp.Annotations
+	require.NotEmpty(t, resp.KeyID, "pre-rotation Encrypt.keyID must not be empty")
+	return resp.Ciphertext, resp.KeyID, resp.Annotations
 }
 
 // kmsRotationRoundtrip exercises a running rotation plugin on socket.
 // It runs four sequential sub-tests:
-//  1. Status — must return a keyId different from oldKeyId (the rotated key).
-//  2. EncryptWithNewKeyDuringRotation — Encrypt must succeed and return the new keyId.
+//  1. Status — must return a keyID different from oldKeyID (the rotated key).
+//  2. EncryptWithNewKeyDuringRotation — Encrypt must succeed and return the new keyID.
 //  3. DecryptWithNewKeyDuringRotation — round-trip decryption of the just-encrypted ciphertext.
-//  4. DecryptWithOldKeyDuringRotation — oldCiphertext (encrypted with oldKeyId before rotation)
+//  4. DecryptWithOldKeyDuringRotation — oldCiphertext (encrypted with oldKeyID before rotation)
 //     must still decrypt to rotationPlaintext.
-func kmsRotationRoundtrip(t *testing.T, socket, oldCiphertext, oldKeyId string, oldAnnotations map[string]string) {
+func kmsRotationRoundtrip(t *testing.T, socket, oldCiphertext, oldKeyID string, oldAnnotations map[string]string) {
 	t.Helper()
 
 	plaintextB64 := base64.StdEncoding.EncodeToString([]byte(rotationPlaintext))
 
-	var newKeyId, activeCiphertext string
+	var newKeyID, activeCiphertext string
 	var activeAnnotations map[string]string
 
 	t.Run("Status", func(t *testing.T) {
 		var resp statusResponse
 		require.NoError(t, json.Unmarshal(callGrpcurl(t, socket, "Status", `{}`), &resp))
-		require.NotEmpty(t, resp.KeyId, "Status.keyId must not be empty")
-		assert.NotEqual(t, oldKeyId, resp.KeyId, "rotation plugin must advertise a different active key than the rotated one")
-		newKeyId = resp.KeyId
+		require.NotEmpty(t, resp.KeyID, "Status.keyID must not be empty")
+		assert.NotEqual(t, oldKeyID, resp.KeyID, "rotation plugin must advertise a different active key than the rotated one")
+		newKeyID = resp.KeyID
 	})
 	if t.Failed() {
 		return
@@ -74,7 +75,7 @@ func kmsRotationRoundtrip(t *testing.T, socket, oldCiphertext, oldKeyId string, 
 		var resp encryptResponse
 		require.NoError(t, json.Unmarshal(callGrpcurl(t, socket, "Encrypt", body), &resp))
 		require.NotEmpty(t, resp.Ciphertext, "Encrypt.ciphertext must not be empty")
-		assert.Equal(t, newKeyId, resp.KeyId, "Encrypt.keyId must match the active key from Status")
+		assert.Equal(t, newKeyID, resp.KeyID, "Encrypt.keyID must match the active key from Status")
 		activeCiphertext = resp.Ciphertext
 		activeAnnotations = resp.Annotations
 	})
@@ -84,7 +85,7 @@ func kmsRotationRoundtrip(t *testing.T, socket, oldCiphertext, oldKeyId string, 
 
 	t.Run("DecryptWithNewKeyDuringRotation", func(t *testing.T) {
 		body := fmt.Sprintf(`{"ciphertext":%q,"uid":"rot-dec-new","key_id":%q,"annotations":%s}`,
-			activeCiphertext, newKeyId, marshalAnnotations(t, activeAnnotations))
+			activeCiphertext, newKeyID, marshalAnnotations(t, activeAnnotations))
 		var resp decryptResponse
 		require.NoError(t, json.Unmarshal(callGrpcurl(t, socket, "Decrypt", body), &resp))
 		recovered, err := base64.StdEncoding.DecodeString(resp.Plaintext)
@@ -94,7 +95,7 @@ func kmsRotationRoundtrip(t *testing.T, socket, oldCiphertext, oldKeyId string, 
 
 	t.Run("DecryptWithOldKeyDuringRotation", func(t *testing.T) {
 		body := fmt.Sprintf(`{"ciphertext":%q,"uid":"rot-dec-old","key_id":%q,"annotations":%s}`,
-			oldCiphertext, oldKeyId, marshalAnnotations(t, oldAnnotations))
+			oldCiphertext, oldKeyID, marshalAnnotations(t, oldAnnotations))
 		var resp decryptResponse
 		require.NoError(t, json.Unmarshal(callGrpcurl(t, socket, "Decrypt", body), &resp))
 		recovered, err := base64.StdEncoding.DecodeString(resp.Plaintext)
@@ -125,10 +126,10 @@ func runRotationTest(t *testing.T, oldServeArgs, newServeArgs, oldRotationArgs [
 
 	// Phase 1: standalone "serve" with the old key — named sub-test so the step
 	// is visible in the test report alongside the rotation sub-tests.
-	var oldCiphertext, oldKeyId string
+	var oldCiphertext, oldKeyID string
 	var oldAnnotations map[string]string
 	t.Run("EncryptWithOldKeyBeforeRotation", func(t *testing.T) {
-		oldCiphertext, oldKeyId, oldAnnotations = captureEncryptResponse(t, oldServeArgs...)
+		oldCiphertext, oldKeyID, oldAnnotations = captureEncryptResponse(t, oldServeArgs...)
 	})
 	if t.Failed() {
 		return
@@ -149,7 +150,7 @@ func runRotationTest(t *testing.T, oldServeArgs, newServeArgs, oldRotationArgs [
 	defer proc.stop()
 	waitForSocket(t, sock)
 
-	kmsRotationRoundtrip(t, sock, oldCiphertext, oldKeyId, oldAnnotations)
+	kmsRotationRoundtrip(t, sock, oldCiphertext, oldKeyID, oldAnnotations)
 }
 
 // ── Per-algorithm key generation and CLI arg helpers ─────────────────────────
@@ -234,15 +235,14 @@ func TestRotation(t *testing.T) {
 		name   string
 	}
 	algos := []algoEntry{
-		{providers.AlgAESGCM,  "AESGCM"},
-		{providers.AlgAESCBC,  "AESCBC"},
+		{providers.AlgAESGCM, "AESGCM"},
+		{providers.AlgAESCBC, "AESCBC"},
 		{providers.AlgRSAOAEP, "RSAOAEP"},
-		{providers.AlgMLKEM,   "MLKEM"},
+		{providers.AlgMLKEM, "MLKEM"},
 	}
 
 	for _, oldEntry := range algos {
 		for _, newEntry := range algos {
-			oldEntry, newEntry := oldEntry, newEntry // pin loop variables
 			t.Run(fmt.Sprintf("From%s_To%s", oldEntry.name, newEntry.name), func(t *testing.T) {
 				oldKekLabel, oldHmacLabel := generateKeyForAlgo(t, oldEntry.family)
 				newKekLabel, newHmacLabel := generateKeyForAlgo(t, newEntry.family)
@@ -256,4 +256,3 @@ func TestRotation(t *testing.T) {
 		}
 	}
 }
-
