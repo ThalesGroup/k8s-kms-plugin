@@ -69,7 +69,7 @@ func init() {
 }
 
 const (
-	tokenLabel = "k8s-kms-plugin-dev"
+	tokenLabel = "k8s-kms-plugin-dev" //nolint:gosec // not a credential: it's the PKCS#11 token label, not a secret value
 	soPin      = "0000"
 	// defaultSocket is the unix-socket path used in the printed k8s-kms-plugin
 	// serve / grpcurl examples. It is kept as the literal shell expansion
@@ -169,7 +169,7 @@ func main() {
 	if err := os.WriteFile(confPath, []byte(confContent), 0600); err != nil {
 		fatalf("WriteFile %s: %v", confPath, err)
 	}
-	os.Setenv("SOFTHSM2_CONF", confPath)
+	_ = os.Setenv("SOFTHSM2_CONF", confPath)
 	fmt.Fprintf(os.Stderr, "%s✔%s SoftHSM store created: %s\n", cBold+cGreen, cReset, *dir)
 
 	// ── Initialise token (C_InitToken + C_InitPIN) ────────────────────────────
@@ -185,12 +185,12 @@ func main() {
 
 	slots, err := p11.GetSlotList(false)
 	if err != nil || len(slots) == 0 {
-		p11.Finalize()
+		_ = p11.Finalize()
 		p11.Destroy()
 		fatalf("C_GetSlotList: %v (slots=%d)", err, len(slots))
 	}
 	if err := p11.InitToken(slots[0], []byte(soPin), tokenLabel); err != nil {
-		p11.Finalize()
+		_ = p11.Finalize()
 		p11.Destroy()
 		fatalf("C_InitToken: %v", err)
 	}
@@ -198,32 +198,32 @@ func main() {
 	// After InitToken the token moves to a new slot — re-enumerate.
 	slots, err = p11.GetSlotList(true)
 	if err != nil || len(slots) == 0 {
-		p11.Finalize()
+		_ = p11.Finalize()
 		p11.Destroy()
 		fatalf("C_GetSlotList(true): %v (slots=%d)", err, len(slots))
 	}
 	sh, err := p11.OpenSession(slots[0], pkcs11.CKF_SERIAL_SESSION|pkcs11.CKF_RW_SESSION)
 	if err != nil {
-		p11.Finalize()
+		_ = p11.Finalize()
 		p11.Destroy()
 		fatalf("OpenSession: %v", err)
 	}
 	if err := p11.Login(sh, pkcs11.CKU_SO, []byte(soPin)); err != nil {
-		p11.CloseSession(sh)
-		p11.Finalize()
+		_ = p11.CloseSession(sh)
+		_ = p11.Finalize()
 		p11.Destroy()
 		fatalf("Login(SO): %v", err)
 	}
 	if err := p11.InitPIN(sh, []byte(*pin)); err != nil {
-		p11.Logout(sh)
-		p11.CloseSession(sh)
-		p11.Finalize()
+		_ = p11.Logout(sh)
+		_ = p11.CloseSession(sh)
+		_ = p11.Finalize()
 		p11.Destroy()
 		fatalf("C_InitPIN: %v", err)
 	}
-	p11.Logout(sh)
-	p11.CloseSession(sh)
-	p11.Finalize()
+	_ = p11.Logout(sh)
+	_ = p11.CloseSession(sh)
+	_ = p11.Finalize()
 	p11.Destroy()
 	fmt.Fprintf(os.Stderr, "%s✔%s Token initialised   label=%s  SO-PIN=%s  user-PIN=%s\n", cBold+cGreen, cReset, tokenLabel, soPin, *pin)
 
@@ -237,7 +237,7 @@ func main() {
 	if err != nil {
 		fatalf("crypto11.Configure: %v", err)
 	}
-	defer ctx.Close()
+	defer func() { _ = ctx.Close() }()
 
 	// ── AES-256-GCM KEK ───────────────────────────────────────────────────────
 
