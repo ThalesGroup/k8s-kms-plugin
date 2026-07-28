@@ -14,14 +14,15 @@ import (
 
 	"github.com/ThalesGroup/crypto11"
 	"github.com/ThalesGroup/gose/jose"
-	"github.com/ThalesGroup/k8s-kms-plugin/pkg/logging"
-	"github.com/ThalesGroup/k8s-kms-plugin/pkg/providers"
-	"github.com/ThalesGroup/k8s-kms-plugin/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	k8skmsv2 "k8s.io/kms/apis/v2"
+
+	"github.com/ThalesGroup/k8s-kms-plugin/pkg/logging"
+	"github.com/ThalesGroup/k8s-kms-plugin/pkg/providers"
+	"github.com/ThalesGroup/k8s-kms-plugin/pkg/version"
 )
 
 // ViperFlagsRotation defines a struct to hold the values of cobra CLI flags and use viper to populate them
@@ -102,7 +103,7 @@ Using both CLI Flags, environment variables and configuration file and serving o
 		}
 		return nil
 	},
-	RunE: func(cmd *cobra.Command, args []string) (err error) {
+	RunE: func(cmd *cobra.Command, _ []string) (err error) {
 		// Show the version of the k8s-kms-plugin and commit ID
 		version.LogVersion()
 
@@ -136,7 +137,9 @@ Using both CLI Flags, environment variables and configuration file and serving o
 		}
 		// Grant group read/write so a co-located client (e.g. kube-apiserver
 		// running under a shared gid) can connect to the socket.
-		os.Chmod(vprFlgsServe.SocketPath, 0775)
+		if err := os.Chmod(vprFlgsServe.SocketPath, 0775); err != nil { //nolint:gosec // group access is intentional, see comment above
+			slog.Error("error setting socket permissions", "path", vprFlgsServe.SocketPath, "error", err)
+		}
 
 		if err = grpcRotation(grpcUNIX, p); err != nil {
 			slog.Error("gRPC server error", "cobra_cmd", cmd.Use, "error", err)
@@ -151,10 +154,14 @@ func init() {
 
 	oldAlgFamilyDefault := AlgorithmFamilyAESGCM
 	rotationCmd.Flags().Var(&oldAlgFamilyDefault, "old-algorithm-family", "Encryption mechanism of the old KEK. Possible values: aes-gcm, aes-cbc, rsa-oaep, ml-kem.")
-	rotationCmd.RegisterFlagCompletionFunc("old-algorithm-family", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if err := rotationCmd.RegisterFlagCompletionFunc("old-algorithm-family", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		return []string{"aes-gcm", "aes-cbc", "rsa-oaep", "ml-kem"}, cobra.ShellCompDirectiveNoFileComp
-	})
-	rotationCmd.MarkFlagRequired("old-algorithm-family")
+	}); err != nil {
+		slog.Error("error registering flag completion function", "flag", "old-algorithm-family", "error", err)
+	}
+	if err := rotationCmd.MarkFlagRequired("old-algorithm-family"); err != nil {
+		slog.Error("error marking flag required", "flag", "old-algorithm-family", "error", err)
+	}
 	rotationCmd.Flags().String("old-native-path", "", "Native path for old KEK")
 	rotationCmd.Flags().String("old-p11-label", "", "P11 token label for old KEK")
 	rotationCmd.Flags().String("old-p11-lib", "", "Path to P11 library/client for old KEK")

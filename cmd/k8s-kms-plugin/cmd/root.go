@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026 Thales Group and the k8s-kms-plugin Contributors
 // SPDX-License-Identifier: MIT
 
+// Package cmd implements the k8s-kms-plugin cobra CLI: the root command plus
+// the serve, serve rotation, docs, and version subcommands.
 package cmd
 
 import (
@@ -9,10 +11,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/ThalesGroup/k8s-kms-plugin/pkg/logging"
 	"github.com/lmittmann/tint"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/ThalesGroup/k8s-kms-plugin/pkg/logging"
 )
 
 // cobra root CLI flags. They are mostly not used because we use viper that binds the cobra flags
@@ -50,7 +53,7 @@ k8s-kms-plugin prioritizes configuration sources as follows: CLI flags > environ
 
 Project Page: https://github.com/ThalesGroup/k8s-kms-plugin
 `,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		slog.Warn("No subcommand provided. Please use one of the available subcommands. Showing help message.")
 		return cmd.Help()
 	},
@@ -90,23 +93,31 @@ func init() {
 	// logging level
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Set log level to \"debug\". This is equivalent to using --log-level=debug. Flags --log-level and --debug flag are mutually exclusive. Env var: K8S_KMS_PLUGIN_DEBUG.")
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info", "Set log level. Possible values: trace, debug, info, warn, error, quiet. Flags --log-level and --debug flag are mutually exclusive. Env var: K8S_KMS_PLUGIN_LOG_LEVEL.")
-	rootCmd.RegisterFlagCompletionFunc("log-level", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if err := rootCmd.RegisterFlagCompletionFunc("log-level", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		return []string{"trace", "debug", "info", "warn", "error", "quiet"}, cobra.ShellCompDirectiveNoFileComp
-	})
+	}); err != nil {
+		slog.Error("error registering flag completion function", "flag", "log-level", "error", err)
+	}
 	rootCmd.PersistentFlags().StringVar(&logFormat, "log-format", "text", "Log output format. Possible values: text, json. Env var: K8S_KMS_PLUGIN_LOG_FORMAT")
-	rootCmd.RegisterFlagCompletionFunc("log-format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if err := rootCmd.RegisterFlagCompletionFunc("log-format", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		return []string{"text", "json"}, cobra.ShellCompDirectiveNoFileComp
-	})
+	}); err != nil {
+		slog.Error("error registering flag completion function", "flag", "log-format", "error", err)
+	}
 	rootCmd.MarkFlagsMutuallyExclusive("log-level", "debug") // --log-level and --debug flag are mutually exclusive since debug is an alias for log-level=debug
 }
 
 // initConfig reads in config file and ENV variables if set and populate CLI flags buffer thanks to viper
 func initConfig() {
 	// Parse config file with viper
-	ReadViperConfigE(viper.GetViper(), rootCmd)
+	if err := ReadViperConfigE(viper.GetViper(), rootCmd); err != nil {
+		slog.Error("error reading viper config", "error", err)
+	}
 
 	// Initialize and populate cobra CLI root flags values with viper
-	InitViperSubCmdE(viper.GetViper(), rootCmd, &vprFlgsRoot)
+	if err := InitViperSubCmdE(viper.GetViper(), rootCmd, &vprFlgsRoot); err != nil {
+		slog.Error("error initializing viper", "cobra_cmd", rootCmd.Use, "error", err)
+	}
 
 	// Determine log level
 	if rootCmd.Flags().Lookup("debug").Changed {
@@ -139,9 +150,9 @@ func initConfig() {
 			ReplaceAttr: logging.ReplaceAttr,
 		})
 	case "text":
-		handler = tint.NewHandler(os.Stderr, opts)
+		handler = tint.NewTextHandler(os.Stderr, opts)
 	default:
-		handler = tint.NewHandler(os.Stderr, opts)
+		handler = tint.NewTextHandler(os.Stderr, opts)
 		slog.Error("unknown log format", "format", vprFlgsRoot.LogFormat)
 	}
 	slog.SetDefault(slog.New(handler))

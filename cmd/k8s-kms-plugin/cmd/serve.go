@@ -20,10 +20,11 @@ import (
 	"github.com/ThalesGroup/crypto11"
 	"github.com/ThalesGroup/gose/jose"
 
+	k8skmsv2 "k8s.io/kms/apis/v2"
+
 	"github.com/ThalesGroup/k8s-kms-plugin/pkg/logging"
 	"github.com/ThalesGroup/k8s-kms-plugin/pkg/providers"
 	version "github.com/ThalesGroup/k8s-kms-plugin/pkg/version"
-	k8skmsv2 "k8s.io/kms/apis/v2"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -58,6 +59,7 @@ var vprFlgsServe ViperFlagsServe
 // mechanism only — key size and parameter set are derived from the HSM key at runtime.
 type AlgorithmFamily string
 
+// Supported AlgorithmFamily values.
 const (
 	AlgorithmFamilyAESGCM  AlgorithmFamily = "aes-gcm"
 	AlgorithmFamilyAESCBC  AlgorithmFamily = "aes-cbc"
@@ -65,9 +67,13 @@ const (
 	AlgorithmFamilyMLKEM   AlgorithmFamily = "ml-kem"
 )
 
-// AlgorithmFamily implements pflag.Value so cobra validates the flag at parse time.
+// String implements pflag.Value.
 func (a *AlgorithmFamily) String() string { return string(*a) }
-func (a *AlgorithmFamily) Type() string   { return "algorithmFamily" }
+
+// Type implements pflag.Value.
+func (a *AlgorithmFamily) Type() string { return "algorithmFamily" }
+
+// Set implements pflag.Value so cobra validates the flag at parse time.
 func (a *AlgorithmFamily) Set(s string) error {
 	if err := validateAlgorithmFamily(s); err != nil {
 		return err
@@ -157,7 +163,7 @@ Using AES-CBC with HMAC authentication, using CKA_ID, using CLI flags and servin
 `,
 	GroupID: "kmscmdsgrpmain",
 	// Initialize and populate cobra CLI flags values with viper during the Persistent pre-run
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 		if err := InitViperSubCmdE(viper.GetViper(), cmd, &vprFlgsServe); err != nil {
 			slog.Error("Error initializing Viper", "cobra_cmd", cmd.Use, "error", err)
 			return err
@@ -167,7 +173,7 @@ Using AES-CBC with HMAC authentication, using CKA_ID, using CLI flags and servin
 		}
 		return nil
 	},
-	RunE: func(cmd *cobra.Command, args []string) (err error) {
+	RunE: func(cmd *cobra.Command, _ []string) (err error) {
 		// Show the version of the k8s-kms-plugin and commit ID
 		version.LogVersion()
 
@@ -196,7 +202,9 @@ Using AES-CBC with HMAC authentication, using CKA_ID, using CLI flags and servin
 		}
 		// Grant group read/write so a co-located client (e.g. kube-apiserver
 		// running under a shared gid) can connect to the socket.
-		os.Chmod(vprFlgsServe.SocketPath, 0775)
+		if chmodErr := os.Chmod(vprFlgsServe.SocketPath, 0775); chmodErr != nil { //nolint:gosec // group access is intentional, see comment above
+			slog.Error("error setting socket permissions", "path", vprFlgsServe.SocketPath, "error", chmodErr)
+		}
 
 		if err = grpcServe(grpcUNIX, p); err != nil {
 			slog.Error("gRPC server error", "cobra_cmd", cmd.Use, "error", err)
@@ -216,9 +224,11 @@ func init() {
 
 	algFamilyDefault := AlgorithmFamilyAESGCM
 	serveCmd.PersistentFlags().Var(&algFamilyDefault, "algorithm-family", "Encryption mechanism. Possible values: aes-gcm, aes-cbc, rsa-oaep, ml-kem.")
-	serveCmd.RegisterFlagCompletionFunc("algorithm-family", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if err := serveCmd.RegisterFlagCompletionFunc("algorithm-family", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		return []string{"aes-gcm", "aes-cbc", "rsa-oaep", "ml-kem"}, cobra.ShellCompDirectiveNoFileComp
-	})
+	}); err != nil {
+		slog.Error("error registering flag completion function", "flag", "algorithm-family", "error", err)
+	}
 
 	// These flags comes from root
 	// These flags does not need to store their values in variable because we use the viper structure ViperFlagsServe to do this
@@ -234,9 +244,11 @@ func init() {
 	serveCmd.PersistentFlags().Int("p11-slot", 0, "P11 token slot.")
 	// Provider
 	serveCmd.PersistentFlags().String("provider", "p11", "Provider. Possible values: p11, softhsm, luna, dpod.")
-	serveCmd.RegisterFlagCompletionFunc("provider", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if err := serveCmd.RegisterFlagCompletionFunc("provider", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		return []string{"p11", "softhsm", "luna", "dpod"}, cobra.ShellCompDirectiveNoFileComp
-	})
+	}); err != nil {
+		slog.Error("error registering flag completion function", "flag", "provider", "error", err)
+	}
 
 	// Socket
 	serveCmd.PersistentFlags().String("socket", filepath.Join(os.TempDir(), "run", "hsm-plugin-server.sock"), "Unix Socket. Example: /run/user/$(id -u $USER)/k8s-kms-plugin.sock.")
@@ -333,7 +345,7 @@ START:
 	return
 }
 
-func unknownServiceHandler(srv interface{}, stream grpc.ServerStream) error {
+func unknownServiceHandler(srv interface{}, _ grpc.ServerStream) error {
 	typeOfSrv := reflect.TypeOf(srv)
 	slog.Info("unknown service handler", "type", typeOfSrv, "service", srv)
 	return nil

@@ -41,16 +41,18 @@ Examples:
   # JSON string.
   k8s-kms-plugin version -o json --pretty=false`,
 	// Initialize and populate cobra CLI flags values with viper during the Persistent pre-run
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 		if err := InitViperSubCmdE(viper.GetViper(), cmd, &vprFlgsVersion); err != nil {
 			slog.Error("Error initializing Viper", "cobra_cmd", cmd.Use, "error", err)
 			return err
 		}
 		return nil
 	},
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(cmd *cobra.Command, _ []string) {
 		// Output version info
-		fmt.Fprintln(cmd.OutOrStdout(), version.VersionOutputToString(vprFlgsVersion.OutputFormat, vprFlgsVersion.PrettyPrintVersion))
+		if _, err := fmt.Fprintln(cmd.OutOrStdout(), version.OutputToString(vprFlgsVersion.OutputFormat, vprFlgsVersion.PrettyPrintVersion)); err != nil {
+			slog.Error("error writing version output", "error", err)
+		}
 	},
 }
 
@@ -64,11 +66,15 @@ func init() {
 
 	// Here you will define your flags and configuration settings.
 	versionCmd.Flags().StringVarP(&outputFormat, "output", "o", "", "Format of the version output. One of 'yaml' or 'json'. Env var: K8S_KMS_PLUGIN_VERSION_OUTPUT")
-	versionCmd.RegisterFlagCompletionFunc("output", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if err := versionCmd.RegisterFlagCompletionFunc("output", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		return []string{"yaml", "json"}, cobra.ShellCompDirectiveNoFileComp
-	})
+	}); err != nil {
+		slog.Error("error registering flag completion function", "flag", "output", "error", err)
+	}
 	versionCmd.Flags().BoolVarP(&prettyPrintVersion, "pretty", "P", true, "Activate pretty print output for JSON. Env var: K8S_KMS_PLUGIN_VERSION_PRETTY")
-	versionCmd.RegisterFlagCompletionFunc("pretty", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if err := versionCmd.RegisterFlagCompletionFunc("pretty", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		return []string{"true", "false"}, cobra.ShellCompDirectiveNoFileComp
-	})
+	}); err != nil {
+		slog.Error("error registering flag completion function", "flag", "pretty", "error", err)
+	}
 }

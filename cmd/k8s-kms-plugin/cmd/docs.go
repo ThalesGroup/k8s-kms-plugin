@@ -12,17 +12,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ThalesGroup/k8s-kms-plugin/pkg/logging"
-	"github.com/ThalesGroup/k8s-kms-plugin/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
+	"github.com/ThalesGroup/k8s-kms-plugin/pkg/logging"
+	"github.com/ThalesGroup/k8s-kms-plugin/pkg/version"
+
 	"github.com/jedib0t/go-pretty/v6/table"
 )
 
-// ViperFlagsServe defines a struct to hold the values of cobra CLI flags and use viper to populate them
+// ViperFlagsDocs defines a struct to hold the values of cobra CLI flags and use viper to populate them
 type ViperFlagsDocs struct {
 	Format    string `mapstructure:"format"`
 	OutputDir string `mapstructure:"output-dir"`
@@ -37,14 +38,14 @@ var docsCmd = &cobra.Command{
 	Short: "Generate CLI documentation",
 	Long:  `Generate CLI documentation (markdown, man, rst, html)"`,
 	// Initialize and populate cobra CLI flags values with viper during the Persistent pre-run
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 		if err := InitViperSubCmdE(viper.GetViper(), cmd, &vprFlgsDocs); err != nil {
 			slog.Error("Error initializing Viper", "cobra_cmd", cmd.Use, "error", err)
 			return err
 		}
 		return nil
 	},
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		err := generateCobraDocs(vprFlgsDocs.Format, vprFlgsDocs.OutputDir)
 		if err != nil {
 			slog.Error("error generating docs", "format", vprFlgsDocs.Format, "output_dir", vprFlgsDocs.OutputDir, "error", err)
@@ -56,10 +57,12 @@ var docsCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(docsCmd)
 
-	docsCmd.Flags().StringP("format", "f", "markdown", "Docs Output format. Prefered is markdown. Supported formats: markdown, man, rst, yaml, cli-table-csv, cli-table-pretty, cli-table-html, all.")
-	docsCmd.RegisterFlagCompletionFunc("format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	docsCmd.Flags().StringP("format", "f", "markdown", "Docs Output format. Preferred is markdown. Supported formats: markdown, man, rst, yaml, cli-table-csv, cli-table-pretty, cli-table-html, all.")
+	if err := docsCmd.RegisterFlagCompletionFunc("format", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		return []string{"markdown", "man", "rst", "yaml", "cli-table-csv", "cli-table-pretty", "cli-table-html", "all"}, cobra.ShellCompDirectiveNoFileComp
-	})
+	}); err != nil {
+		slog.Error("error registering flag completion function", "flag", "format", "error", err)
+	}
 
 	docsCmd.Flags().StringP("output-dir", "o", filepath.Join(os.TempDir(), fmt.Sprintf("k8s-kms-plugin-docs-%s", time.Now().Format(time.RFC3339))), "Output directory")
 }
@@ -130,11 +133,15 @@ func getFlagTable(c *cobra.Command, format string) string {
 }
 
 func writeFlagTableToFile(c *cobra.Command, format string, filename string) error {
-	f, err := os.Create(filename)
+	f, err := os.Create(filename) //nolint:gosec // filename derives from the operator-supplied --output-dir CLI flag, not untrusted input
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		if closeErr := f.Close(); closeErr != nil {
+			slog.Error("error closing file", "path", filename, "error", closeErr)
+		}
+	}()
 	_, err = f.WriteString(getFlagTable(c, format))
 	return err
 }
@@ -228,19 +235,19 @@ func writeMarkdownReadme(dir string) error {
 	readme := strings.Builder{}
 	readme.WriteString("# k8s-kms-plugin CLI Documentation\n\n")
 	readme.WriteString("This documentation is auto-generated from `k8s-kms-plugin`:\n\n")
-	readme.WriteString(fmt.Sprintf("- version `%s`\n- commit `%s`\n- build date %s.\n\n",
-		version.RawGitDescribe, version.GitCommitIdLong, version.BuildDate))
+	fmt.Fprintf(&readme, "- version `%s`\n- commit `%s`\n- build date %s.\n\n",
+		version.RawGitDescribe, version.GitCommitIDLong, version.BuildDate)
 
 	readme.WriteString("## Available Command Documentation\n\n")
 	for _, f := range files {
 		if !f.IsDir() && strings.HasSuffix(f.Name(), ".md") {
-			readme.WriteString(fmt.Sprintf("- [%s](%s)\n", strings.TrimSuffix(f.Name(), ".md"), f.Name()))
+			fmt.Fprintf(&readme, "- [%s](%s)\n", strings.TrimSuffix(f.Name(), ".md"), f.Name())
 		}
 	}
 
 	readme.WriteString("##### Auto Generated README.md file using `k8s-kms-plugin docs -f markdown`\n")
 
-	return os.WriteFile(filepath.Join(dir, "README.md"), []byte(readme.String()), 0644)
+	return os.WriteFile(filepath.Join(dir, "README.md"), []byte(readme.String()), 0600)
 }
 
 // generateCobraDocs generates CLI documentation for the k8s-kms-plugin in the specified format.
@@ -259,7 +266,7 @@ func generateCobraDocs(format, out string) error {
 	// Create the output directory if it doesn't already exist
 	if _, err := os.Stat(out); os.IsNotExist(err) {
 		slog.Log(context.Background(), logging.LevelTrace, "creating output directory", "path", out)
-		if err := os.MkdirAll(out, 0755); err != nil {
+		if err := os.MkdirAll(out, 0750); err != nil {
 			return fmt.Errorf("error creating output directory %s: %w", out, err)
 		}
 	} else if err != nil {
@@ -337,7 +344,7 @@ func generateCobraDocs(format, out string) error {
 		for _, dir := range []string{"rst", "markdown", "man", "yaml", "csv", "html", "txt"} {
 			if _, err := os.Stat(filepath.Join(out, dir)); os.IsNotExist(err) {
 				slog.Log(context.Background(), logging.LevelTrace, "creating output directory", "path", filepath.Join(out, dir))
-				if err := os.MkdirAll(filepath.Join(out, dir), 0755); err != nil {
+				if err := os.MkdirAll(filepath.Join(out, dir), 0750); err != nil {
 					return fmt.Errorf("error creating output directory %s: %w", filepath.Join(out, dir), err)
 				}
 			} else if err != nil {

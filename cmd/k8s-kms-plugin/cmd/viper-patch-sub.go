@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,11 +13,12 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/ThalesGroup/k8s-kms-plugin/pkg/logging"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+
+	"github.com/ThalesGroup/k8s-kms-plugin/pkg/logging"
 )
 
 // UnmarshalSubMergedE is a temporary fix to a flaw in viper.Sub("section") that ignores the flag/env/default/override
@@ -136,7 +138,9 @@ func InitViperSubCmdE(v *viper.Viper, cobraCmd *cobra.Command, target any) error
 	// In this situation, cobra will give an error even is viper set the value.
 	cobraCmd.Flags().VisitAll(func(f *pflag.Flag) {
 		if viper.IsSet(f.Name) && viper.GetString(f.Name) != "" {
-			cobraCmd.Flags().Set(f.Name, viper.GetString(f.Name))
+			if err := cobraCmd.Flags().Set(f.Name, viper.GetString(f.Name)); err != nil {
+				slog.Error("error syncing viper value to cobra flag", "flag", f.Name, "error", err)
+			}
 		}
 	})
 
@@ -156,7 +160,7 @@ func InitViperSubCmdE(v *viper.Viper, cobraCmd *cobra.Command, target any) error
 // If a config file is not found, it logs a trace error and continues with
 // cobra's default values. Otherwise, it reads in the config file and returns
 // an error if there was a problem doing so.
-func ReadViperConfigE(v *viper.Viper, cmd *cobra.Command) error {
+func ReadViperConfigE(_ *viper.Viper, cmd *cobra.Command) error {
 	// use a configuration file parsed by viper
 	if cmd.Flags().Lookup("config").Changed && cfgFile != "" {
 		slog.Log(context.Background(), logging.LevelTrace, "case config file from the flag", "config_file", cfgFile)
@@ -182,7 +186,8 @@ func ReadViperConfigE(v *viper.Viper, cmd *cobra.Command) error {
 
 	// If a config file is not found, log a trace error. Otherwise, read it in.
 	if err := viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+		var configFileNotFoundError viper.ConfigFileNotFoundError
+		if errors.As(err, &configFileNotFoundError) {
 			slog.Log(context.Background(), logging.LevelTrace, "No config file found; continue with cobra default values")
 		} else {
 			// Config file was found but another error occurred
