@@ -14,7 +14,7 @@ import (
 
 // isTermFn/readPassFn stubs shared across tests.
 var (
-	neverTerminal = func(int) bool { return false }
+	neverTerminal  = func(int) bool { return false }
 	alwaysTerminal = func(int) bool { return true }
 	// panicRead asserts that readPassFn is never reached (e.g. when viper already has the value).
 	panicRead = func(int) ([]byte, error) { panic("readPassFn must not be called") }

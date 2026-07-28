@@ -17,10 +17,11 @@ import (
 	"time"
 
 	"github.com/ThalesGroup/crypto11"
-	"github.com/ThalesGroup/k8s-kms-plugin/pkg/providers"
 	"github.com/creack/pty"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ThalesGroup/k8s-kms-plugin/pkg/providers"
 )
 
 // TestPIN_MissingNonInteractive confirms that the plugin exits immediately with
@@ -101,7 +102,7 @@ func TestPIN_InteractivePrompt(t *testing.T) {
 		"--algorithm-family", string(providers.AlgAESGCM),
 		"--log-level", "debug",
 	)
-	cmd.Stdin = pts      // subprocess stdin is the slave PTY — term.IsTerminal returns true
+	cmd.Stdin = pts // subprocess stdin is the slave PTY — term.IsTerminal returns true
 	cmd.Stdout = logFile
 	cmd.Stderr = logFile
 

@@ -21,10 +21,11 @@ import (
 
 	"github.com/ThalesGroup/crypto11"
 	"github.com/ThalesGroup/gose/jose"
-	"github.com/ThalesGroup/k8s-kms-plugin/pkg/providers"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ThalesGroup/k8s-kms-plugin/pkg/providers"
 
 	k8skmsv2 "k8s.io/kms/apis/v2"
 )
@@ -337,10 +338,10 @@ func TestAESGCM_KeyRotation(t *testing.T) {
 		testConfig, false,
 		"", newLabel, "", "",
 		providers.AlgAESGCM,
-		true,          // isKeyRotation
-		testConfig,    // oldConfig (same token)
-		"", oldLabel,  // old KEK by label
-		"", "",        // no old HMAC
+		true,         // isKeyRotation
+		testConfig,   // oldConfig (same token)
+		"", oldLabel, // old KEK by label
+		"", "", // no old HMAC
 		providers.AlgAESGCM,
 	)
 	require.NoError(t, err)

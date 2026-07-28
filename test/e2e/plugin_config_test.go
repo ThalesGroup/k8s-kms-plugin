@@ -24,8 +24,9 @@ import (
 	"testing"
 
 	"github.com/ThalesGroup/crypto11"
-	"github.com/ThalesGroup/k8s-kms-plugin/pkg/providers"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ThalesGroup/k8s-kms-plugin/pkg/providers"
 )
 
 // ── Local helper ──────────────────────────────────────────────────────────────
@@ -166,10 +167,10 @@ func TestConfig_EnvVars(t *testing.T) {
 			// Serve-level flags — env prefix is K8S_KMS_PLUGIN_SERVE
 			"K8S_KMS_PLUGIN_SERVE_SOCKET":           sock,
 			"K8S_KMS_PLUGIN_SERVE_P11_LIB":          testConfig.Path,
-			"K8S_KMS_PLUGIN_SERVE_P11_LABEL":         testConfig.TokenLabel,
-			"K8S_KMS_PLUGIN_SERVE_P11_PIN":           testConfig.Pin,
-			"K8S_KMS_PLUGIN_SERVE_P11_KEY_LABEL":     label,
-			"K8S_KMS_PLUGIN_SERVE_ALGORITHM_FAMILY":  string(providers.AlgAESGCM),
+			"K8S_KMS_PLUGIN_SERVE_P11_LABEL":        testConfig.TokenLabel,
+			"K8S_KMS_PLUGIN_SERVE_P11_PIN":          testConfig.Pin,
+			"K8S_KMS_PLUGIN_SERVE_P11_KEY_LABEL":    label,
+			"K8S_KMS_PLUGIN_SERVE_ALGORITHM_FAMILY": string(providers.AlgAESGCM),
 		},
 		"serve",
 	)
