@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026 Thales Group and the k8s-kms-plugin Contributors
 // SPDX-License-Identifier: MIT
 
+// Package logging provides slog helpers shared across k8s-kms-plugin: custom
+// log levels, a tint-based handler attribute formatter, and a fatal-log helper.
 package logging
 
 import (
