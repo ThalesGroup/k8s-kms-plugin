@@ -23,13 +23,14 @@ import (
 	"github.com/ThalesGroup/gose"
 	"github.com/ThalesGroup/gose/hsm"
 	"github.com/ThalesGroup/gose/jose"
-	"github.com/ThalesGroup/k8s-kms-plugin/pkg/logging"
-	"github.com/google/uuid"
 	pkcs11 "github.com/eclipse-keypont/pkcs11-go/cryptoki"
+	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	k8skmsv2 "k8s.io/kms/apis/v2"
+
+	"github.com/ThalesGroup/k8s-kms-plugin/pkg/logging"
 )
 
 // Algorithm sentinels used in P11.algorithmFamily for routing. Values match the user-facing
@@ -137,7 +138,8 @@ func IsPKCS11AuthenticationError(err error) bool {
 		return false
 	}
 
-	pkErr, ok := errors.Unwrap(err).(pkcs11.Error)
+	var pkErr pkcs11.Error
+	ok := errors.As(errors.Unwrap(err), &pkErr)
 	if !ok {
 		return false
 	}
@@ -167,27 +169,27 @@ type P11 struct {
 	mu sync.RWMutex
 
 	// active KEK parameters
-	createKey    bool                         // Indicates whether the k8s-kms-plugin should create a new key. TODO: explain the use case of when should the k8s-kms-plugin create the key, or create a new cobra command
-	config       *crypto11.Config             // Active configuration for the crypto11 library
-	ctx          *crypto11.Context            // Active cryptographic context for key operations
-	encryptors   map[string]gose.JweEncryptor // Active Map of JWE encryptors used for encryption operations
-	decryptors   map[string]gose.JweDecryptor // Active Map of JWE decryptors used for decryption operations
-	kekCkaId     []byte                       // Active Key Encryption Key KEK Identifier & CKA_ID
-	kekCkaLabel  string                       // Active KEK CKA_LABEL utf8
-	hmacCkaId    []byte                       // Active HMAC key CKA_ID for AES-CBC + HMAC
-	hmacCkaLabel string                       // Active HMAC key CKA_LABEL utf8 for AES-CBC + HMAC
-	algorithmFamily jose.Alg                  // The active cryptographic algorithm family being used
+	createKey       bool                         // Indicates whether the k8s-kms-plugin should create a new key. TODO: explain the use case of when should the k8s-kms-plugin create the key, or create a new cobra command
+	config          *crypto11.Config             // Active configuration for the crypto11 library
+	ctx             *crypto11.Context            // Active cryptographic context for key operations
+	encryptors      map[string]gose.JweEncryptor // Active Map of JWE encryptors used for encryption operations
+	decryptors      map[string]gose.JweDecryptor // Active Map of JWE decryptors used for decryption operations
+	kekCkaID        []byte                       // Active Key Encryption Key KEK Identifier & CKA_ID
+	kekCkaLabel     string                       // Active KEK CKA_LABEL utf8
+	hmacCkaID       []byte                       // Active HMAC key CKA_ID for AES-CBC + HMAC
+	hmacCkaLabel    string                       // Active HMAC key CKA_LABEL utf8 for AES-CBC + HMAC
+	algorithmFamily jose.Alg                     // The active cryptographic algorithm family being used
 
 	// KEK Key rotation feature for KMS v2
 	oldConfig *crypto11.Config  // for key rotation
 	oldCtx    *crypto11.Context // for key rotation
 	// no encryptors since the old KEK keys are used for decryption only
-	oldDecryptors   map[string]gose.JweDecryptor // for key rotation
-	oldKekCkaId     []byte                       // Key Encryption Key KEK Identifier & CKA_ID of old KEK being rotated
-	oldKekCkaLabel  string                       // CKA_LABEL utf8 of old KEK being rotated
-	oldHmacCkaId    []byte                       // CKA_ID of old HMAC key being rotated
-	oldHmacCkaLabel string                       // CKA_LABEL utf8 of old HMAC key being rotated
-	oldAlgorithmFamily jose.Alg                  // algorithm family of old KEK being rotated
+	oldDecryptors      map[string]gose.JweDecryptor // for key rotation
+	oldKekCkaID        []byte                       // Key Encryption Key KEK Identifier & CKA_ID of old KEK being rotated
+	oldKekCkaLabel     string                       // CKA_LABEL utf8 of old KEK being rotated
+	oldHmacCkaID       []byte                       // CKA_ID of old HMAC key being rotated
+	oldHmacCkaLabel    string                       // CKA_LABEL utf8 of old HMAC key being rotated
+	oldAlgorithmFamily jose.Alg                     // algorithm family of old KEK being rotated
 }
 
 // NewP11 creates a new P11 instance.
@@ -196,7 +198,7 @@ type P11 struct {
 //
 // The createKey argument is a boolean that indicates whether the P11 instance
 // should create a default key with the given label. TODO: explain the use case
-// when this would be needed, eventualy move this to a new command.
+// when this would be needed, eventually move this to a new command.
 //
 // The kekkeyid argument is the Key Encryption Key (KEK) identifier.
 // This is the PKCS #11 CKA_ID.
@@ -219,7 +221,7 @@ func NewP11(
 	kekkeyid string,
 	k8sKekLabel string,
 	hmacKeyLabel string,
-	hmacCkaId string,
+	hmacCkaID string,
 	algorithm jose.Alg,
 
 	// key rotation
@@ -228,13 +230,13 @@ func NewP11(
 	oldKekkeyid string,
 	oldKekCkaLabel string,
 	oldHmacKeyLabel string,
-	oldHmacCkaId string,
+	oldHmacCkaID string,
 	oldAlgorithm jose.Alg,
 ) (p *P11, err error) {
 	p = &P11{
 		// active KEK parameters
-		config:       config,
-		createKey:    createKey,
+		config:          config,
+		createKey:       createKey,
 		algorithmFamily: algorithm,
 
 		// only in case of key rotation
@@ -266,15 +268,15 @@ func NewP11(
 	// the k8sKekLabel.
 	// CKA_ID is mandatory to provide the KEK ID to the status requests from Kubernetes' Status
 	// Request, so we need to retrieve it mandatorily from the HSM if provided empty.
-	// TODO USE SetKekKeyIdString instead of conversions in the method
-	p.kekCkaId, p.kekCkaLabel, err = GetKeyIdAndLabel(p, kekkeyid, k8sKekLabel)
+	// TODO USE SetKekKeyIDString instead of conversions in the method
+	p.kekCkaID, p.kekCkaLabel, err = GetKeyIDAndLabel(p, kekkeyid, k8sKekLabel)
 	if err != nil {
 		return
 	}
 
 	// in case the user provide the CKA_ID or the CKA_LABEL of HMAC key
 	if p.algorithmFamily == AlgAESCBC {
-		p.hmacCkaId, p.hmacCkaLabel, err = GetKeyIdAndLabel(p, hmacCkaId, hmacKeyLabel)
+		p.hmacCkaID, p.hmacCkaLabel, err = GetKeyIDAndLabel(p, hmacCkaID, hmacKeyLabel)
 		if err != nil {
 			return
 		}
@@ -284,32 +286,35 @@ func NewP11(
 	if isKeyRotation {
 		// in case the user provide the OLD CKA_ID or the OLD CKA_LABEL of OLD HMAC key
 		if p.oldAlgorithmFamily == AlgAESCBC {
-			if oldHmacCkaId == "" && oldHmacKeyLabel != "" { // get id by label
+			if oldHmacCkaID == "" && oldHmacKeyLabel != "" { // get id by label
 				// old HMAC
 				p.oldHmacCkaLabel = oldHmacKeyLabel
 
-				if p.oldHmacCkaId, err = FindCkaAttrByIdOrLabel(p.oldCtx, p.oldAlgorithmFamily, crypto11.CkaId, nil, []byte(p.oldHmacCkaLabel)); err != nil {
+				if p.oldHmacCkaID, err = FindCkaAttrByIDOrLabel(p.oldCtx, p.oldAlgorithmFamily, crypto11.CkaId, nil, []byte(p.oldHmacCkaLabel)); err != nil {
 					slog.Error("NewP11: failed to find HMAC CKA_ID by label", "error", err)
 					return nil, err
 				}
 
-			} else if oldHmacCkaId != "" && oldHmacKeyLabel == "" { // get label by id
-				p.SetOldHmacKeyIdString(oldHmacCkaId)
+			} else if oldHmacCkaID != "" && oldHmacKeyLabel == "" { // get label by id
+				if err = p.SetOldHmacKeyIDString(oldHmacCkaID); err != nil {
+					slog.Error("NewP11: failed to set old HMAC CKA_ID", "error", err)
+					return nil, err
+				}
 
 				var labelBuf []byte
-				if labelBuf, err = FindCkaAttrByIdOrLabel(p.oldCtx, p.oldAlgorithmFamily, crypto11.CkaLabel, p.oldHmacCkaId, nil); err != nil {
+				if labelBuf, err = FindCkaAttrByIDOrLabel(p.oldCtx, p.oldAlgorithmFamily, crypto11.CkaLabel, p.oldHmacCkaID, nil); err != nil {
 					slog.Error("NewP11: failed to find old HMAC CKA_LABEL by ID", "error", err)
 					return nil, err
 				}
 
 				p.oldHmacCkaLabel = string(labelBuf)
 
-			} else if oldHmacCkaId == "" && oldHmacKeyLabel == "" {
-				slog.Error("NewP11: oldHmacCkaId and oldHmacKeyLabel are both empty, please provide one of them")
-				return nil, fmt.Errorf("NewP11: oldHmacCkaId and oldHmacKeyLabel are both empty, please provide one of them")
+			} else if oldHmacCkaID == "" && oldHmacKeyLabel == "" {
+				slog.Error("NewP11: oldHmacCkaID and oldHmacKeyLabel are both empty, please provide one of them")
+				return nil, fmt.Errorf("NewP11: oldHmacCkaID and oldHmacKeyLabel are both empty, please provide one of them")
 			} else {
-				slog.Error("NewP11: both oldHmacCkaId and oldHmacKeyLabel are provided, please provide only one")
-				return nil, fmt.Errorf("NewP11: both oldHmacCkaId and oldHmacKeyLabel are provided, please provide only one")
+				slog.Error("NewP11: both oldHmacCkaID and oldHmacKeyLabel are provided, please provide only one")
+				return nil, fmt.Errorf("NewP11: both oldHmacCkaID and oldHmacKeyLabel are provided, please provide only one")
 			}
 		}
 
@@ -318,7 +323,7 @@ func NewP11(
 			slog.Log(context.Background(), logging.LevelTrace, "NewP11: kek key id (CKA_ID) is empty. Find CKA_ID by CKA_LABEL", "label", k8sKekLabel)
 			p.oldKekCkaLabel = oldKekCkaLabel
 
-			if p.oldKekCkaId, err = FindCkaAttrByIdOrLabel(p.oldCtx, p.oldAlgorithmFamily, crypto11.CkaId, nil, []byte(p.oldKekCkaLabel)); err != nil {
+			if p.oldKekCkaID, err = FindCkaAttrByIDOrLabel(p.oldCtx, p.oldAlgorithmFamily, crypto11.CkaId, nil, []byte(p.oldKekCkaLabel)); err != nil {
 				slog.Error("NewP11: failed to find OLD KEK CKA_ID by label", "error", err)
 				return nil, err
 			}
@@ -327,10 +332,13 @@ func NewP11(
 		// find old KEK label with ID
 		if oldKekkeyid != "" && oldKekCkaLabel == "" {
 			slog.Log(context.Background(), logging.LevelTrace, "NewP11: k8sKekLabel (CKA_LABEL) is empty but kekkeyid (CKA_ID) is not empty. Find CKA_LABEL by CKA_ID", "keyId", oldKekkeyid)
-			p.SetOldKekKeyIdString(oldKekkeyid)
+			if err = p.SetOldKekKeyIDString(oldKekkeyid); err != nil {
+				slog.Error("NewP11: failed to set old KEK CKA_ID", "error", err)
+				return nil, err
+			}
 
 			var labelBuf []byte
-			if labelBuf, err = FindCkaAttrByIdOrLabel(p.oldCtx, p.oldAlgorithmFamily, crypto11.CkaLabel, p.oldKekCkaId, nil); err != nil {
+			if labelBuf, err = FindCkaAttrByIDOrLabel(p.oldCtx, p.oldAlgorithmFamily, crypto11.CkaLabel, p.oldKekCkaID, nil); err != nil {
 				slog.Error("NewP11: failed to find OLD KEK CKA_LABEL by CKA_ID", "error", err)
 				return nil, err
 			}
@@ -345,7 +353,7 @@ func NewP11(
 		} else {
 			// Check if the default key exists - if not, create it
 			var foundDefaultDek *crypto11.SecretKey
-			if foundDefaultDek, err = p.ctx.FindKey(p.kekCkaId, p.GetKekCkaLabelByteA()); nil != err {
+			if foundDefaultDek, err = p.ctx.FindKey(p.kekCkaID, p.GetKekCkaLabelByteA()); nil != err {
 				return
 			}
 			if nil == foundDefaultDek {
@@ -366,34 +374,35 @@ func NewP11(
 	return
 }
 
-func (p *P11) SetKekKeyIdFromBytes(keyID []byte) error {
+// SetKekKeyIDFromBytes sets the internal active KEK CKA_ID from raw bytes.
+func (p *P11) SetKekKeyIDFromBytes(keyID []byte) error {
 	if keyID == nil {
 		return fmt.Errorf("keyID cannot be nil")
 	}
-	p.kekCkaId = keyID
+	p.kekCkaID = keyID
 	return nil
 }
 
-// SetKekKeyIdString sets the internal CKA_ID from a hex-encoded string.
-func (p *P11) SetKekKeyIdString(hexKeyID string) error {
+// SetKekKeyIDString sets the internal CKA_ID from a hex-encoded string.
+func (p *P11) SetKekKeyIDString(hexKeyID string) error {
 	if err := validateHexKeyID(hexKeyID); err != nil {
-		slog.Error("SetKekKeyIdString: invalid hex key ID", "error", err)
+		slog.Error("SetKekKeyIDString: invalid hex key ID", "error", err)
 		return err
 	}
 	kid, err := hex.DecodeString(hexKeyID)
 	if err != nil {
-		slog.Error("SetKekKeyIdString: failed to decode hex key ID", "error", err)
+		slog.Error("SetKekKeyIDString: failed to decode hex key ID", "error", err)
 		return fmt.Errorf("invalid hex KeyID: %w", err)
 	}
-	p.kekCkaId = kid
+	p.kekCkaID = kid
 	return nil
 }
 
-// GetKekKeyIdString returns the Key Encryption Key (KEK)  identifier as a
+// GetKekKeyIDString returns the Key Encryption Key (KEK)  identifier as a
 // hex-encoded string. This identifier is used to uniquely identify the
 // encryption key within the PKCS#11 CKA_ID context.
-func (p *P11) GetKekKeyIdString() string {
-	return hex.EncodeToString(p.kekCkaId)
+func (p *P11) GetKekKeyIDString() string {
+	return hex.EncodeToString(p.kekCkaID)
 }
 
 // GetKekCkaLabelByteA returns the KEK's CKA_LABEL as a UTF-8 encoded byte slice.
@@ -401,53 +410,53 @@ func (p *P11) GetKekCkaLabelByteA() []byte {
 	return []byte(p.kekCkaLabel)
 }
 
-// SetHmacKeyIdString sets the internal HMAC Key ID from a hex-encoded string.
-func (p *P11) SetHmacKeyIdString(hexHmacKeyID string) error {
+// SetHmacKeyIDString sets the internal HMAC Key ID from a hex-encoded string.
+func (p *P11) SetHmacKeyIDString(hexHmacKeyID string) error {
 	if err := validateHexKeyID(hexHmacKeyID); err != nil {
-		slog.Error("SetHmacKeyIdString: invalid hex HMAC key ID", "error", err)
+		slog.Error("SetHmacKeyIDString: invalid hex HMAC key ID", "error", err)
 		return err
 	}
-	hmacId, err := hex.DecodeString(hexHmacKeyID)
+	hmacID, err := hex.DecodeString(hexHmacKeyID)
 	if err != nil {
-		slog.Error("SetHmacKeyIdString: failed to decode hex HMAC key ID", "error", err)
+		slog.Error("SetHmacKeyIDString: failed to decode hex HMAC key ID", "error", err)
 		return fmt.Errorf("invalid hex HMAC KeyID: %w", err)
 	}
-	p.hmacCkaId = hmacId
+	p.hmacCkaID = hmacID
 	return nil
 }
 
-// GetHmacKeyIdString returns the HMAC Key ID as a hex-encoded string.
-func (p *P11) GetHmacKeyIdString() string {
-	return hex.EncodeToString(p.hmacCkaId)
+// GetHmacKeyIDString returns the HMAC Key ID as a hex-encoded string.
+func (p *P11) GetHmacKeyIDString() string {
+	return hex.EncodeToString(p.hmacCkaID)
 }
 
-// SetOldHmacKeyIdString sets the internal old HMAC Key ID from a hex-encoded string.
-func (p *P11) SetOldHmacKeyIdString(hexOldHmacKeyID string) error {
+// SetOldHmacKeyIDString sets the internal old HMAC Key ID from a hex-encoded string.
+func (p *P11) SetOldHmacKeyIDString(hexOldHmacKeyID string) error {
 	if err := validateHexKeyID(hexOldHmacKeyID); err != nil {
-		slog.Error("SetOldHmacKeyIdString: invalid hex old HMAC key ID", "error", err)
+		slog.Error("SetOldHmacKeyIDString: invalid hex old HMAC key ID", "error", err)
 		return err
 	}
-	oldHmacId, err := hex.DecodeString(hexOldHmacKeyID)
+	oldHmacID, err := hex.DecodeString(hexOldHmacKeyID)
 	if err != nil {
-		slog.Error("SetOldHmacKeyIdString: failed to decode hex old HMAC key ID", "error", err)
+		slog.Error("SetOldHmacKeyIDString: failed to decode hex old HMAC key ID", "error", err)
 		return fmt.Errorf("invalid hex HMAC KeyID: %w", err)
 	}
-	p.oldHmacCkaId = oldHmacId
+	p.oldHmacCkaID = oldHmacID
 	return nil
 }
 
-// SetOldKekKeyIdString sets the internal old KEK CKA_ID from a hex-encoded string.
-func (p *P11) SetOldKekKeyIdString(hexOldKeyID string) error {
+// SetOldKekKeyIDString sets the internal old KEK CKA_ID from a hex-encoded string.
+func (p *P11) SetOldKekKeyIDString(hexOldKeyID string) error {
 	if err := validateHexKeyID(hexOldKeyID); err != nil {
-		slog.Error("SetOldKekKeyIdString: invalid hex old KEK key ID", "error", err)
+		slog.Error("SetOldKekKeyIDString: invalid hex old KEK key ID", "error", err)
 		return err
 	}
 	kid, err := hex.DecodeString(hexOldKeyID)
 	if err != nil {
-		slog.Error("SetOldKekKeyIdString: failed to decode hex old KEK key ID", "error", err)
+		slog.Error("SetOldKekKeyIDString: failed to decode hex old KEK key ID", "error", err)
 		return fmt.Errorf("invalid hex KeyID: %w", err)
 	}
-	p.oldKekCkaId = kid
+	p.oldKekCkaID = kid
 	return nil
 }
 
@@ -461,7 +470,7 @@ func (p *P11) SetEncryptor(encryptor gose.JweEncryptor) error {
 	if p.encryptors == nil {
 		p.encryptors = make(map[string]gose.JweEncryptor)
 	}
-	p.encryptors[p.GetKekKeyIdString()] = encryptor
+	p.encryptors[p.GetKekKeyIDString()] = encryptor
 	return nil
 }
 
@@ -486,7 +495,7 @@ func (p *P11) SetDecryptor(decryptor gose.JweDecryptor) error {
 	if p.decryptors == nil {
 		p.decryptors = make(map[string]gose.JweDecryptor)
 	}
-	p.decryptors[p.GetKekKeyIdString()] = decryptor
+	p.decryptors[p.GetKekKeyIDString()] = decryptor
 	return nil
 }
 
@@ -527,14 +536,14 @@ func (p *P11) Close() (err error) {
 func (p *P11) makeAeadKey(ctx *crypto11.Context, rng io.Reader, kek *crypto11.SecretKey, kid string) (aek gose.AeadEncryptionKey, err error) {
 	var aead cipher.AEAD
 	if aead, err = kek.NewGCM(); err != nil {
-		return nil, fmt.Errorf("error while creating new gcm cipher: %v", err)
+		return nil, fmt.Errorf("error while creating new gcm cipher: %w", err)
 	}
 	alg, err := aesGcmAlgFromKey(ctx, kek)
 	if err != nil {
-		return nil, fmt.Errorf("error detecting AES-GCM key size: %v", err)
+		return nil, fmt.Errorf("error detecting AES-GCM key size: %w", err)
 	}
 	if aek, err = gose.NewAesGcmCryptor(aead, rng, kid, alg, kekKeyOps); err != nil {
-		return nil, fmt.Errorf("error while creating aead key: %v", err)
+		return nil, fmt.Errorf("error while creating aead key: %w", err)
 	}
 	return
 }
@@ -576,7 +585,7 @@ func aesGcmAlgFromKey(ctx *crypto11.Context, key *crypto11.SecretKey) (jose.Alg,
 func getIVFromDecryptRequest(req *k8skmsv2.DecryptRequest) (iv []byte, err error) {
 	var jwe jose.JweRfc7516Compact
 	if err = jwe.Unmarshal(string(req.GetCiphertext())); err != nil {
-		return nil, fmt.Errorf("error unmarshalling the jwe: %v", err)
+		return nil, fmt.Errorf("error unmarshalling the jwe: %w", err)
 	}
 	if len(jwe.InitializationVector) == 0 {
 		return nil, fmt.Errorf("no initialization vector found in jwe")
@@ -584,7 +593,7 @@ func getIVFromDecryptRequest(req *k8skmsv2.DecryptRequest) (iv []byte, err error
 	return jwe.InitializationVector, nil
 }
 
-// Decrypt
+// Decrypt decrypts an EncryptedObject-wrapped ciphertext for a Kubernetes KMS v2 DecryptRequest.
 // TODO with kms-provider v2 api, the decrypt request body changed as : https://github.com/kubernetes/kms/blob/cf5ec9691661916fb7911e4545ed38d518f0430e/apis/v2/api.pb.go#L133C1-L133C17
 //
 //	  the protobuf of the k8s-kms-plugin should be changed according to the new version of the api
@@ -600,15 +609,15 @@ func getIVFromDecryptRequest(req *k8skmsv2.DecryptRequest) (iv []byte, err error
 //		 // Additional metadata that was sent by the KMS plugin during encryption.
 //	  // NOT	SURE IF IT IS NECESSARY FOR US
 //		 Annotations          map[string][]byte
-func (p *P11) Decrypt(ctx context.Context, req *k8skmsv2.DecryptRequest) (resp *k8skmsv2.DecryptResponse, err error) {
+func (p *P11) Decrypt(_ context.Context, req *k8skmsv2.DecryptRequest) (resp *k8skmsv2.DecryptResponse, err error) {
 	var out []byte // buffer for the DecryptResponse.Plaintext
 	var isRotation bool
 
 	// Support key rotation
 	switch req.KeyId {
-	case p.GetKekKeyIdString():
+	case p.GetKekKeyIDString():
 		isRotation = false
-	case hex.EncodeToString(p.oldKekCkaId):
+	case hex.EncodeToString(p.oldKekCkaID):
 		isRotation = true
 	default:
 		slog.Error("Decrypt: unknown key ID", "key_id", req.GetKeyId())
@@ -637,7 +646,7 @@ func (p *P11) decryptWithContext(req *k8skmsv2.DecryptRequest, isRotation bool) 
 	var actualDecryptors map[string]gose.JweDecryptor
 	var actualAlgo jose.Alg
 	var actualKekCkaLabel string
-	var actualHmacCkaId []byte
+	var actualHmacCkaID []byte
 	var actualHmacCkaLabel string
 
 	var decryptor gose.JweDecryptor // buffer
@@ -651,14 +660,14 @@ func (p *P11) decryptWithContext(req *k8skmsv2.DecryptRequest, isRotation bool) 
 		actualDecryptors = p.oldDecryptors
 		actualAlgo = p.oldAlgorithmFamily
 		actualKekCkaLabel = p.oldKekCkaLabel
-		actualHmacCkaId = p.oldHmacCkaId
+		actualHmacCkaID = p.oldHmacCkaID
 		actualHmacCkaLabel = p.oldHmacCkaLabel
 	} else {
 		actualCtx = p.ctx
 		actualDecryptors = p.decryptors
 		actualAlgo = p.algorithmFamily
 		actualKekCkaLabel = p.kekCkaLabel
-		actualHmacCkaId = p.hmacCkaId
+		actualHmacCkaID = p.hmacCkaID
 		actualHmacCkaLabel = p.hmacCkaLabel
 	}
 	p.mu.RUnlock()
@@ -685,10 +694,10 @@ func (p *P11) decryptWithContext(req *k8skmsv2.DecryptRequest, isRotation bool) 
 		}
 
 		// convert the string DecryptRequest.KeyId containing a hex representation as string to hex []byte
-		var reqKekKeyIdByteA []byte
-		if reqKekKeyIdByteA, err = hex.DecodeString(req.GetKeyId()); err != nil {
+		var reqKekKeyIDByteA []byte
+		if reqKekKeyIDByteA, err = hex.DecodeString(req.GetKeyId()); err != nil {
 			slog.Error("error while decoding the key id", "DecryptRequest.KeyId", req.GetKeyId(), "error", err)
-			return nil, fmt.Errorf("error while decoding the key id: %v", err)
+			return nil, fmt.Errorf("error while decoding the key id: %w", err)
 		}
 
 		switch actualAlgo {
@@ -699,7 +708,7 @@ func (p *P11) decryptWithContext(req *k8skmsv2.DecryptRequest, isRotation bool) 
 			var kek *crypto11.SecretKey
 
 			// Since the DecryptRequest comes from kubernetes, the only information k8s has is the keyId via the StatusResponse
-			if kek, err = actualCtx.FindKey(reqKekKeyIdByteA, nil); nil != err {
+			if kek, err = actualCtx.FindKey(reqKekKeyIDByteA, nil); nil != err {
 				slog.Error("error while finding key by CKA_ID", "DecryptRequest.KeyId", req.GetKeyId(), "error", err)
 				return nil, err
 			}
@@ -725,7 +734,7 @@ func (p *P11) decryptWithContext(req *k8skmsv2.DecryptRequest, isRotation bool) 
 			slog.Log(context.Background(), logging.LevelTrace, "p11:Decrypt case", "algorithm", AlgAESCBC)
 			// get kek by id
 			var kek *crypto11.SecretKey
-			if kek, err = actualCtx.FindKey(reqKekKeyIdByteA, nil); nil != err {
+			if kek, err = actualCtx.FindKey(reqKekKeyIDByteA, nil); nil != err {
 				slog.Error("error finding key by ID", "error", err)
 				return nil, err
 			}
@@ -738,18 +747,18 @@ func (p *P11) decryptWithContext(req *k8skmsv2.DecryptRequest, isRotation bool) 
 			// Initialize the CBC key for decryption
 			var blockMode crypto11.BlockModeCloser
 			if blockMode, err = kek.NewCBCDecrypterCloser(iv); err != nil {
-				return nil, fmt.Errorf("error initializing block cipher: %v", err)
+				return nil, fmt.Errorf("error initializing block cipher: %w", err)
 			}
 
 			cbcKey := gose.NewAesCbcCryptor(blockMode, req.GetKeyId(), jose.AlgA256CBC)
 			// Initialize the hmac key for authentication
 			var hmacp11Key *crypto11.SecretKey
-			if hmacp11Key, err = actualCtx.FindKey(actualHmacCkaId, []byte(actualHmacCkaLabel)); err != nil {
-				return nil, fmt.Errorf("error getting hmac key from HSM with label '%s' or id '%s': %v", actualHmacCkaLabel, actualHmacCkaId, err)
+			if hmacp11Key, err = actualCtx.FindKey(actualHmacCkaID, []byte(actualHmacCkaLabel)); err != nil {
+				return nil, fmt.Errorf("error getting hmac key from HSM with label '%s' or id '%s': %w", actualHmacCkaLabel, actualHmacCkaID, err)
 			}
 			var hash hash.Hash
 			if hash, err = hmacp11Key.NewHMAC(pkcs11.CKM_SHA256_HMAC, 0); err != nil {
-				return nil, fmt.Errorf("error initializing SHA26 with key '%s': %v", actualHmacCkaLabel, err)
+				return nil, fmt.Errorf("error initializing SHA26 with key '%s': %w", actualHmacCkaLabel, err)
 			}
 			hmacKey := gose.NewHmacShaCryptor(actualHmacCkaLabel, hash)
 			// decryptor
@@ -771,21 +780,21 @@ func (p *P11) decryptWithContext(req *k8skmsv2.DecryptRequest, isRotation bool) 
 			slog.Log(context.Background(), logging.LevelTrace, "p11:Decrypt case", "algorithm", AlgRSAOAEP)
 			// load pkcs11 context
 			var rsaKeyPair crypto11.SignerDecrypter
-			if rsaKeyPair, err = actualCtx.FindRSAKeyPair(reqKekKeyIdByteA, nil); err != nil {
-				slog.Error("error finding RSA key pair", "keyId", fmt.Sprintf("%X", reqKekKeyIdByteA), "error", err)
-				return nil, fmt.Errorf("error finding RSA key pair with id %X: %v", reqKekKeyIdByteA, err)
+			if rsaKeyPair, err = actualCtx.FindRSAKeyPair(reqKekKeyIDByteA, nil); err != nil {
+				slog.Error("error finding RSA key pair", "keyId", fmt.Sprintf("%X", reqKekKeyIDByteA), "error", err)
+				return nil, fmt.Errorf("error finding RSA key pair with id %X: %w", reqKekKeyIDByteA, err)
 			}
 
 			var privKey *hsm.AsymmetricDecryptionKey
-			if privKey, err = hsm.NewAsymmetricDecryptionKey(p.ctx, rsaKeyPair, reqKekKeyIdByteA, nil); err != nil {
-				slog.Error("error creating AsymmetricDecryptionKey", "keyId", fmt.Sprintf("%X", reqKekKeyIdByteA), "error", err)
-				return nil, fmt.Errorf("error creating AsymmetricDecryptionKey with id %X: %v", reqKekKeyIdByteA, err)
+			if privKey, err = hsm.NewAsymmetricDecryptionKey(p.ctx, rsaKeyPair, reqKekKeyIDByteA, nil); err != nil {
+				slog.Error("error creating AsymmetricDecryptionKey", "keyId", fmt.Sprintf("%X", reqKekKeyIDByteA), "error", err)
+				return nil, fmt.Errorf("error creating AsymmetricDecryptionKey with id %X: %w", reqKekKeyIDByteA, err)
 			}
 			// create key store from private key
 			var store gose.AsymmetricDecryptionKeyStore
 			if store, err = gose.NewAsymmetricDecryptionKeyStoreImpl(map[string]gose.AsymmetricDecryptionKey{req.GetKeyId(): privKey}); err != nil {
-				slog.Error("error creating AsymmetricDecryptionKeyStore", "keyId", fmt.Sprintf("%X", reqKekKeyIdByteA), "error", err)
-				return nil, fmt.Errorf("error creating AsymmetricDecryptionKeyStore with id %X: %v", reqKekKeyIdByteA, err)
+				slog.Error("error creating AsymmetricDecryptionKeyStore", "keyId", fmt.Sprintf("%X", reqKekKeyIDByteA), "error", err)
+				return nil, fmt.Errorf("error creating AsymmetricDecryptionKeyStore with id %X: %w", reqKekKeyIDByteA, err)
 			}
 
 			// create decryptor
@@ -804,7 +813,7 @@ func (p *P11) decryptWithContext(req *k8skmsv2.DecryptRequest, isRotation bool) 
 	return out, nil
 }
 
-// Encrypt
+// Encrypt encrypts plaintext for a Kubernetes KMS v2 EncryptRequest using the configured KEK algorithm family.
 // TODO support RSA encryption
 //   - load the public key from the KMS and encrypt the cyphertext using gose encryptor
 //   - For the EncryptResponse in https://github.com/kubernetes/kms/blob/cf5ec9691661916fb7911e4545ed38d518f0430e/apis/v2/api.pb.go#L287:
@@ -831,7 +840,7 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 
 	// p.kid is initialized by NewP11
 	p.mu.RLock()
-	encryptor = p.encryptors[p.GetKekKeyIdString()]
+	encryptor = p.encryptors[p.GetKekKeyIDString()]
 	p.mu.RUnlock()
 	if encryptor == nil {
 		// Select algorithm
@@ -840,8 +849,8 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 			slog.Log(ctx, logging.LevelTrace, "p11:Encrypt case", "algorithm", p.algorithmFamily)
 			// Find the KEK in the KMS
 			var kek *crypto11.SecretKey
-			if kek, err = p.ctx.FindKey(p.kekCkaId, p.GetKekCkaLabelByteA()); nil != err {
-				slog.Error("Encrypt: cannot find a symmetric key", "algorithm", p.algorithmFamily, "label", p.kekCkaLabel, "keyId", p.GetKekKeyIdString(), "error", err)
+			if kek, err = p.ctx.FindKey(p.kekCkaID, p.GetKekCkaLabelByteA()); nil != err {
+				slog.Error("Encrypt: cannot find a symmetric key", "algorithm", p.algorithmFamily, "label", p.kekCkaLabel, "keyId", p.GetKekKeyIDString(), "error", err)
 				return
 			}
 
@@ -868,8 +877,8 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 			slog.Log(ctx, logging.LevelTrace, "p11:Encrypt case", "algorithm", AlgAESCBC)
 			// Find the KEK in the KMS
 			var kek *crypto11.SecretKey
-			if kek, err = p.ctx.FindKey(p.kekCkaId, p.GetKekCkaLabelByteA()); nil != err {
-				slog.Error("Encrypt: cannot find a symmetric key", "algorithm", p.algorithmFamily, "label", p.kekCkaLabel, "keyId", p.GetKekKeyIdString(), "error", err)
+			if kek, err = p.ctx.FindKey(p.kekCkaID, p.GetKekCkaLabelByteA()); nil != err {
+				slog.Error("Encrypt: cannot find a symmetric key", "algorithm", p.algorithmFamily, "label", p.kekCkaLabel, "keyId", p.GetKekKeyIDString(), "error", err)
 				return
 			}
 
@@ -887,20 +896,20 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 			// Initialize the CBC key for encryption
 			var blockMode crypto11.BlockModeCloser
 			if blockMode, err = kek.NewCBCEncrypterCloser(iv); err != nil {
-				return nil, fmt.Errorf("error initializing block cipher: %v", err)
+				return nil, fmt.Errorf("error initializing block cipher: %w", err)
 			}
 			// jose.AlgA256CBC is the only standardized JWE AES-CBC key size (unlike AES-GCM
 			// which exists as AlgA128GCM / AlgA192GCM / AlgA256GCM). The key on the HSM must be 256-bit.
-			cbcKey := gose.NewAesCbcCryptor(blockMode, p.GetKekKeyIdString(), jose.AlgA256CBC)
+			cbcKey := gose.NewAesCbcCryptor(blockMode, p.GetKekKeyIDString(), jose.AlgA256CBC)
 
 			// Initialize the hmac key for authentication TODO: consider allowing user to use a CKA_ID to get the HMAC key
 			var hmacp11Key *crypto11.SecretKey
-			if hmacp11Key, err = p.ctx.FindKey(p.hmacCkaId, []byte(p.hmacCkaLabel)); err != nil {
-				return nil, fmt.Errorf("error getting hmac key from HSM with label '%s' and id '%s': %v", p.hmacCkaLabel, p.GetHmacKeyIdString(), err)
+			if hmacp11Key, err = p.ctx.FindKey(p.hmacCkaID, []byte(p.hmacCkaLabel)); err != nil {
+				return nil, fmt.Errorf("error getting hmac key from HSM with label '%s' and id '%s': %w", p.hmacCkaLabel, p.GetHmacKeyIDString(), err)
 			}
 			var hash hash.Hash
 			if hash, err = hmacp11Key.NewHMAC(pkcs11.CKM_SHA256_HMAC, 0); err != nil {
-				return nil, fmt.Errorf("error initializing CKM_SHA256_HMAC with key '%s': %v", p.hmacCkaLabel, err)
+				return nil, fmt.Errorf("error initializing CKM_SHA256_HMAC with key '%s': %w", p.hmacCkaLabel, err)
 			}
 			hmacKey := gose.NewHmacShaCryptor(p.hmacCkaLabel, hash)
 			// encryptor
@@ -934,8 +943,8 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 			//         "kid":"2011-04-29"
 			//    }
 			var rsaKeyPair crypto11.SignerDecrypter
-			if rsaKeyPair, err = p.ctx.FindRSAKeyPair(p.kekCkaId, p.GetKekCkaLabelByteA()); err != nil {
-				slog.Error("Encrypt: cannot find an rsa key pair", "algorithm", p.algorithmFamily, "label", p.kekCkaLabel, "keyId", p.GetKekKeyIdString(), "error", err)
+			if rsaKeyPair, err = p.ctx.FindRSAKeyPair(p.kekCkaID, p.GetKekCkaLabelByteA()); err != nil {
+				slog.Error("Encrypt: cannot find an rsa key pair", "algorithm", p.algorithmFamily, "label", p.kekCkaLabel, "keyId", p.GetKekKeyIDString(), "error", err)
 				return nil, err
 			}
 
@@ -971,7 +980,7 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 	resp = &k8skmsv2.EncryptResponse{
 		// the bytes array contains the bytes of the marshalled jwe
 		Ciphertext: []byte(out),
-		KeyId:      p.GetKekKeyIdString(),
+		KeyId:      p.GetKekKeyIDString(),
 	}
 	putAlgorithmFamily(resp, p.algorithmFamily)
 	slog.Log(ctx, logging.LevelTrace, "Encrypt: returning response", "algorithm", p.algorithmFamily, "ciphertextLen", len(resp.Ciphertext), "annotationSizes", annotationSizes(resp.Annotations))
@@ -987,7 +996,8 @@ func annotationSizes(annotations map[string][]byte) map[string]int {
 	return sizes
 }
 
-func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+// UnaryInterceptor is a gRPC unary server interceptor that logs each KMS v2 RPC.
+func (p *P11) UnaryInterceptor(ctx context.Context, req interface{}, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 	switch req.(type) {
 	case *k8skmsv2.StatusRequest:
 		{
@@ -1043,17 +1053,17 @@ func (s *P11) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.
 // See https://pkg.go.dev/k8s.io/kms@v0.31.3/apis/v2#KeyManagementServiceClient
 // Also check the content of a StatusResponse
 // See https://pkg.go.dev/k8s.io/kms@v0.31.3/apis/v2#StatusResponse
-func (p *P11) Status(ctx context.Context, request *k8skmsv2.StatusRequest) (statusResponse *k8skmsv2.StatusResponse, err error) {
+func (p *P11) Status(ctx context.Context, _ *k8skmsv2.StatusRequest) (statusResponse *k8skmsv2.StatusResponse, err error) {
 	slog.Log(ctx, logging.LevelTrace, "p11 Status: entering method")
 
 	// NewP11 should populate both KEK ID (CKA_ID) and Key label (CKA_LABEL), but check the content just in case.
-	if p.kekCkaId == nil {
+	if p.kekCkaID == nil {
 		err = errors.New("KEK ID is nil")
 		slog.Error("p11 Status: error due to missing KEK ID", "error", err)
 		return
 	}
 
-	if len(p.kekCkaId) == 0 {
+	if len(p.kekCkaID) == 0 {
 		err = errors.New("KEK ID is empty")
 		slog.Error("p11 Status: error due to missing KEK ID", "error", err)
 		return
@@ -1062,7 +1072,7 @@ func (p *P11) Status(ctx context.Context, request *k8skmsv2.StatusRequest) (stat
 	statusResponse = &k8skmsv2.StatusResponse{
 		Version: "v2",
 		Healthz: "ok",
-		KeyId:   p.GetKekKeyIdString(),
+		KeyId:   p.GetKekKeyIDString(),
 	}
 
 	slog.Log(ctx, logging.LevelTrace, "StatusResponse", "Version", statusResponse.Version, "Healthz", statusResponse.Healthz, "KeyId", statusResponse.KeyId)
@@ -1096,27 +1106,27 @@ func mlkemSharedSecretTemplate() crypto11.AttributeSet {
 // ML-KEM-768/1024. The HSM performs the KEM encapsulation; the shared secret is extracted
 // and passed through crypto11.MLKEMDeriveKey's KMAC KDF to derive the AES key.
 func (p *P11) encryptMLKEM(ctx context.Context, req *k8skmsv2.EncryptRequest) (*k8skmsv2.EncryptResponse, error) {
-	kp, err := p.ctx.FindMLKEMKeyPair(p.kekCkaId, p.GetKekCkaLabelByteA())
+	kp, err := p.ctx.FindMLKEMKeyPair(p.kekCkaID, p.GetKekCkaLabelByteA())
 	if err != nil {
-		slog.Error("encryptMLKEM: cannot find ML-KEM key pair", "uid", req.GetUid(), "label", p.kekCkaLabel, "keyId", p.GetKekKeyIdString(), "error", err)
-		return nil, fmt.Errorf("encryptMLKEM: cannot find ML-KEM key pair (label=%s id=%x): %w", p.kekCkaLabel, p.kekCkaId, err)
+		slog.Error("encryptMLKEM: cannot find ML-KEM key pair", "uid", req.GetUid(), "label", p.kekCkaLabel, "keyId", p.GetKekKeyIDString(), "error", err)
+		return nil, fmt.Errorf("encryptMLKEM: cannot find ML-KEM key pair (label=%s id=%x): %w", p.kekCkaLabel, p.kekCkaID, err)
 	}
 
 	kemCt, ss, err := kp.Encapsulate(mlkemSharedSecretTemplate())
 	if err != nil {
-		slog.Error("encryptMLKEM: encapsulation failed", "uid", req.GetUid(), "keyId", p.GetKekKeyIdString(), "error", err)
+		slog.Error("encryptMLKEM: encapsulation failed", "uid", req.GetUid(), "keyId", p.GetKekKeyIDString(), "error", err)
 		return nil, fmt.Errorf("encryptMLKEM: encapsulation failed: %w", err)
 	}
 	sharedSecret, err := ss.Bytes()
 	if err != nil {
-		slog.Error("encryptMLKEM: failed to extract shared secret", "uid", req.GetUid(), "keyId", p.GetKekKeyIdString(), "error", err)
+		slog.Error("encryptMLKEM: failed to extract shared secret", "uid", req.GetUid(), "keyId", p.GetKekKeyIDString(), "error", err)
 		return nil, fmt.Errorf("encryptMLKEM: failed to extract shared secret: %w", err)
 	}
 	defer clear(sharedSecret)
 
 	derivedKey, err := crypto11.MLKEMDeriveKey(kp.ParameterSet(), sharedSecret)
 	if err != nil {
-		slog.Error("encryptMLKEM: KDF failed", "uid", req.GetUid(), "keyId", p.GetKekKeyIdString(), "parameterSet", kp.ParameterSet(), "error", err)
+		slog.Error("encryptMLKEM: KDF failed", "uid", req.GetUid(), "keyId", p.GetKekKeyIDString(), "parameterSet", kp.ParameterSet(), "error", err)
 		return nil, fmt.Errorf("encryptMLKEM: KDF failed: %w", err)
 	}
 	defer clear(derivedKey)
@@ -1151,7 +1161,7 @@ func (p *P11) encryptMLKEM(ctx context.Context, req *k8skmsv2.EncryptRequest) (*
 
 	resp := &k8skmsv2.EncryptResponse{
 		Ciphertext: ciphertext,
-		KeyId:      p.GetKekKeyIdString(),
+		KeyId:      p.GetKekKeyIDString(),
 	}
 	putEncapsulation(resp, kemCt)
 	putAlgorithmFamily(resp, p.algorithmFamily)
@@ -1170,12 +1180,12 @@ func (p *P11) decryptMLKEMWithContext(req *k8skmsv2.DecryptRequest, actualCtx *c
 		return nil, fmt.Errorf("decryptMLKEM: missing %q annotation on DecryptRequest", KemCTAnnotationKey)
 	}
 
-	reqKeyId, err := hex.DecodeString(req.GetKeyId())
+	reqKeyID, err := hex.DecodeString(req.GetKeyId())
 	if err != nil {
 		slog.Error("decryptMLKEM: invalid key_id hex", "uid", req.GetUid(), "keyId", req.GetKeyId(), "error", err)
 		return nil, fmt.Errorf("decryptMLKEM: invalid key_id hex %q: %w", req.GetKeyId(), err)
 	}
-	kp, err := actualCtx.FindMLKEMKeyPair(reqKeyId, nil)
+	kp, err := actualCtx.FindMLKEMKeyPair(reqKeyID, nil)
 	if err != nil {
 		slog.Error("decryptMLKEM: cannot resolve ML-KEM private key", "uid", req.GetUid(), "keyId", req.GetKeyId(), "error", err)
 		return nil, fmt.Errorf("decryptMLKEM: cannot resolve ML-KEM private key (key_id=%s): %w", req.GetKeyId(), err)
@@ -1225,8 +1235,8 @@ func (p *P11) decryptMLKEMWithContext(req *k8skmsv2.DecryptRequest, actualCtx *c
 	return plaintext, nil
 }
 
-// FindCkaAttrByIdOrLabel find a CKA attribute like CKA_ID or CKA_LABEL by id or by label.
-func FindCkaAttrByIdOrLabel(ctx *crypto11.Context, algorithm jose.Alg, ckaAttr crypto11.AttributeType, id, label []byte) ([]byte, error) {
+// FindCkaAttrByIDOrLabel find a CKA attribute like CKA_ID or CKA_LABEL by id or by label.
+func FindCkaAttrByIDOrLabel(ctx *crypto11.Context, algorithm jose.Alg, ckaAttr crypto11.AttributeType, id, label []byte) ([]byte, error) {
 	var outBuf []byte // output buffers
 
 	if ( // find ID by label
@@ -1244,57 +1254,55 @@ func FindCkaAttrByIdOrLabel(ctx *crypto11.Context, algorithm jose.Alg, ckaAttr c
 			// Find the key in the KMS for AES symmetric algorithms
 			var symKey *crypto11.SecretKey
 			if symKey, err = ctx.FindKey(id, label); nil != err {
-				slog.Error("FindCkaAttrByIdOrLabel: cannot find a symmetric key", "algorithm", algorithm, "label", fmt.Sprintf("%x", label), "id", fmt.Sprintf("%x", id), "error", err)
+				slog.Error("FindCkaAttrByIDOrLabel: cannot find a symmetric key", "algorithm", algorithm, "label", fmt.Sprintf("%x", label), "id", fmt.Sprintf("%x", id), "error", err)
 				return nil, err
 			}
 
 			// Get the CKA_ID to obtain the KEK key id
 			var attr *crypto11.Attribute
 			if attr, err = ctx.GetAttribute(symKey, ckaAttr); err != nil {
-				slog.Error("FindCkaAttrByIdOrLabel: cannot get the CKA_ attribute", "ckaAttr", ckaAttr, "algorithm", algorithm, "label", fmt.Sprintf("%x", label), "id", fmt.Sprintf("%x", id), "error", err)
+				slog.Error("FindCkaAttrByIDOrLabel: cannot get the CKA_ attribute", "ckaAttr", ckaAttr, "algorithm", algorithm, "label", fmt.Sprintf("%x", label), "id", fmt.Sprintf("%x", id), "error", err)
 				return nil, err
-			} else {
-				outBuf = attr.Value
 			}
+			outBuf = attr.Value
 		case AlgRSAOAEP:
 			// Find the key in the KMS for RSA asymmetric algorithms
 			var rsaKeyPair crypto11.SignerDecrypter
 			if rsaKeyPair, err = ctx.FindRSAKeyPair(id, label); err != nil {
-				slog.Error("FindCkaAttrByIdOrLabel: cannot find an rsa key pair", "label", fmt.Sprintf("%x", label), "id", fmt.Sprintf("%x", id), "error", err)
+				slog.Error("FindCkaAttrByIDOrLabel: cannot find an rsa key pair", "label", fmt.Sprintf("%x", label), "id", fmt.Sprintf("%x", id), "error", err)
 				return nil, err
 			}
 
 			// Get the key id by key label
 			var attr *crypto11.Attribute
 			if attr, err = ctx.GetAttribute(rsaKeyPair, ckaAttr); err != nil {
-				slog.Error("FindCkaAttrByIdOrLabel: cannot get the CKA_ attribute", "ckaAttr", ckaAttr, "algorithm", algorithm, "label", fmt.Sprintf("%x", label), "id", fmt.Sprintf("%x", id), "error", err)
+				slog.Error("FindCkaAttrByIDOrLabel: cannot get the CKA_ attribute", "ckaAttr", ckaAttr, "algorithm", algorithm, "label", fmt.Sprintf("%x", label), "id", fmt.Sprintf("%x", id), "error", err)
 				return nil, err
-			} else {
-				outBuf = attr.Value
 			}
+			outBuf = attr.Value
 		case AlgMLKEM:
 			// Find the ML-KEM key pair on the HSM
 			var mlkemKP crypto11.MLKEMKeyPair
 			if mlkemKP, err = ctx.FindMLKEMKeyPair(id, label); err != nil {
-				slog.Error("FindCkaAttrByIdOrLabel: cannot find ML-KEM key pair", "label", fmt.Sprintf("%x", label), "id", fmt.Sprintf("%x", id), "error", err)
+				slog.Error("FindCkaAttrByIDOrLabel: cannot find ML-KEM key pair", "label", fmt.Sprintf("%x", label), "id", fmt.Sprintf("%x", id), "error", err)
 				return nil, err
 			}
 			var attr *crypto11.Attribute
 			if attr, err = ctx.GetAttribute(mlkemKP, ckaAttr); err != nil {
-				slog.Error("FindCkaAttrByIdOrLabel: cannot get CKA_ attribute for ML-KEM key", "ckaAttr", ckaAttr, "label", fmt.Sprintf("%x", label), "id", fmt.Sprintf("%x", id), "error", err)
+				slog.Error("FindCkaAttrByIDOrLabel: cannot get CKA_ attribute for ML-KEM key", "ckaAttr", ckaAttr, "label", fmt.Sprintf("%x", label), "id", fmt.Sprintf("%x", id), "error", err)
 				return nil, err
 			}
 			outBuf = attr.Value
 		}
 	} else {
-		slog.Error("FindCkaAttrByIdOrLabel: cannot find a key with parameters", "id", fmt.Sprintf("%x", id), "label", fmt.Sprintf("%x", label))
-		return nil, fmt.Errorf("FindCkaAttrByIdOrLabel: cannot find a key with parameters id%x and label%x", id, label)
+		slog.Error("FindCkaAttrByIDOrLabel: cannot find a key with parameters", "id", fmt.Sprintf("%x", id), "label", fmt.Sprintf("%x", label))
+		return nil, fmt.Errorf("FindCkaAttrByIDOrLabel: cannot find a key with parameters id%x and label%x", id, label)
 	}
 
 	return outBuf, nil
 }
 
-// GetKeyIdAndLabel checks the CKA_ID and CKA_LABEL of a key from the P11 provider, and returns
+// GetKeyIDAndLabel checks the CKA_ID and CKA_LABEL of a key from the P11 provider, and returns
 // both of the value from one or the other.
 // Indeed, Key ID and Key Label are mutually exclusive and at least one must be provided.
 // If the Key ID is provided only, this function retrieves the label of the key.
@@ -1302,53 +1310,53 @@ func FindCkaAttrByIdOrLabel(ctx *crypto11.Context, algorithm jose.Alg, ckaAttr c
 // If the key Label is provided and the key is retrieved without a Key ID from the HSM, the process
 // exits with a fatal error. Indeed, the K8S KMS v2 protocol requires a Key ID (CKA_ID) for status
 // requests.
-func GetKeyIdAndLabel(p *P11, keyId string, keyLabel string) (resultKeyId []byte, resultKeyLabel string, err error) {
+func GetKeyIDAndLabel(p *P11, keyID string, keyLabel string) (resultKeyID []byte, resultKeyLabel string, err error) {
 	var resultKeyLabelBytes []byte
-	if keyId == "" && keyLabel != "" {
+	if keyID == "" && keyLabel != "" {
 		if err = validateCkaLabel(keyLabel); err != nil {
-			slog.Error("GetKeyIdAndLabel: invalid CKA_LABEL", "error", err)
+			slog.Error("GetKeyIDAndLabel: invalid CKA_LABEL", "error", err)
 			return nil, "", err
 		}
 		slog.Log(context.Background(), logging.LevelTrace, "NewP11: key id (CKA_ID) is empty. Find CKA_ID by CKA_LABEL", "label", keyLabel)
 		resultKeyLabel = keyLabel
 
 		keyLabelBytes := []byte(keyLabel)
-		resultKeyId, err = FindCkaAttrByIdOrLabel(p.ctx, p.algorithmFamily, crypto11.CkaId, nil, keyLabelBytes)
+		resultKeyID, err = FindCkaAttrByIDOrLabel(p.ctx, p.algorithmFamily, crypto11.CkaId, nil, keyLabelBytes)
 		if err != nil {
 			slog.Error("no key found in HSM with the given CKA_LABEL — verify the label matches a key present on the configured PKCS#11 token",
 				"label", resultKeyLabel, "error", err)
 			return nil, "", err
 		}
 
-		if len(resultKeyId) == 0 {
+		if len(resultKeyID) == 0 {
 			logging.Fatal("key found by CKA_LABEL has no CKA_ID set",
 				"label", keyLabel,
 				"reason", "CKA_ID is used as the KEK ID stored in Kubernetes etcd; it must be stable and unambiguous to guarantee secret recoverability",
 				"action", "set a CKA_ID on this key using your HSM management tool (e.g. pkcs11-tool --id <hex-id>) before starting the plugin")
 		}
-	} else if keyId != "" && keyLabel == "" {
+	} else if keyID != "" && keyLabel == "" {
 		// Case: KEK ID already provided by user at startup with flag --p11-key-id
 		// If k8sKekLabel is empty but kekkeyid is not nil, we can get the key label by the key id. But
 		// the only purpose of this is for logging messages, as the CKA_LABEL is not use in the KMS v2
 		// API calls.
 		// But we could use EncryptResponse.Annotations and DecryptRequest.Annotations to store
 		// the value of the key label CKA_LABEL.
-		slog.Log(context.Background(), logging.LevelTrace, "NewP11: key label (CKA_LABEL) is empty but key id (CKA_ID) is not empty. Find CKA_LABEL by CKA_ID", "keyId", keyId)
-		if err = validateHexKeyID(keyId); err != nil {
-			slog.Error("GetKeyIdAndLabel: invalid hex key ID format", "error", err)
-			return nil, "", fmt.Errorf("GetKeyIdAndLabel: invalid hex key ID: %w", err)
+		slog.Log(context.Background(), logging.LevelTrace, "NewP11: key label (CKA_LABEL) is empty but key id (CKA_ID) is not empty. Find CKA_LABEL by CKA_ID", "keyId", keyID)
+		if err = validateHexKeyID(keyID); err != nil {
+			slog.Error("GetKeyIDAndLabel: invalid hex key ID format", "error", err)
+			return nil, "", fmt.Errorf("GetKeyIDAndLabel: invalid hex key ID: %w", err)
 		}
-		resultKeyId, err = hex.DecodeString(keyId)
+		resultKeyID, err = hex.DecodeString(keyID)
 		if err != nil {
-			return nil, "", fmt.Errorf("NewP11: cannot decode string CKA_ID into hex expected format '%s': %w", keyId, err)
+			return nil, "", fmt.Errorf("NewP11: cannot decode string CKA_ID into hex expected format '%s': %w", keyID, err)
 		}
 
-		if resultKeyLabelBytes, err = FindCkaAttrByIdOrLabel(p.ctx, p.algorithmFamily, crypto11.CkaLabel, resultKeyId, nil); err != nil {
-			slog.Error("NewP11: failed to find key CKA_LABEL by CKA_ID", "keyId", fmt.Sprintf("%x", resultKeyId), "error", err)
+		if resultKeyLabelBytes, err = FindCkaAttrByIDOrLabel(p.ctx, p.algorithmFamily, crypto11.CkaLabel, resultKeyID, nil); err != nil {
+			slog.Error("NewP11: failed to find key CKA_LABEL by CKA_ID", "keyId", fmt.Sprintf("%x", resultKeyID), "error", err)
 			return nil, "", err
 		}
 		resultKeyLabel = string(resultKeyLabelBytes)
-	} else if keyId == "" && keyLabel == "" {
+	} else if keyID == "" && keyLabel == "" {
 		const errMsg = "NewP11: key ID (CKA_ID) and key label (CKA_LABEL) are both empty, please provide one of them"
 		slog.Error(errMsg)
 		return nil, "", errors.New(errMsg)

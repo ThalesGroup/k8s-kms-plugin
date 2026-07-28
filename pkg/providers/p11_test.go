@@ -61,11 +61,11 @@ func TestP11_SetKekKeyIdString(t *testing.T) {
 	p := &P11{}
 
 	hexKeyID := "abcd1234"
-	err := p.SetKekKeyIdString(hexKeyID)
+	err := p.SetKekKeyIDString(hexKeyID)
 
 	assert.NoError(t, err)
 	expected, _ := hex.DecodeString(hexKeyID)
-	assert.Equal(t, expected, p.kekCkaId)
+	assert.Equal(t, expected, p.kekCkaID)
 }
 
 func TestP11_SetKekKeyIdString_Validation(t *testing.T) {
@@ -84,7 +84,7 @@ func TestP11_SetKekKeyIdString_Validation(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			p := &P11{}
-			err := p.SetKekKeyIdString(tc.input)
+			err := p.SetKekKeyIDString(tc.input)
 			if tc.wantErr == "" {
 				assert.NoError(t, err)
 			} else {
@@ -108,7 +108,7 @@ func TestP11_SetHmacKeyIdString_Validation(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			p := &P11{}
-			err := p.SetHmacKeyIdString(tc.input)
+			err := p.SetHmacKeyIDString(tc.input)
 			if tc.wantErr == "" {
 				assert.NoError(t, err)
 			} else {
@@ -132,7 +132,7 @@ func TestP11_SetOldHmacKeyIdString_Validation(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			p := &P11{}
-			err := p.SetOldHmacKeyIdString(tc.input)
+			err := p.SetOldHmacKeyIDString(tc.input)
 			if tc.wantErr == "" {
 				assert.NoError(t, err)
 			} else {
@@ -156,7 +156,7 @@ func TestP11_SetOldKekKeyIdString_Validation(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			p := &P11{}
-			err := p.SetOldKekKeyIdString(tc.input)
+			err := p.SetOldKekKeyIDString(tc.input)
 			if tc.wantErr == "" {
 				assert.NoError(t, err)
 			} else {
@@ -171,7 +171,7 @@ func TestP11_SetOldKekKeyIdString_Validation(t *testing.T) {
 // on the DecryptRequest.KeyId when the decryptor is not yet cached.
 func TestP11_DecryptWithContext_InvalidKeyId(t *testing.T) {
 	p := &P11{
-		kekCkaId:        []byte{0x01},
+		kekCkaID:        []byte{0x01},
 		algorithmFamily: AlgAESGCM,
 		decryptors:      map[string]gose.JweDecryptor{},
 	}
@@ -199,10 +199,10 @@ func TestP11_DecryptWithContext_InvalidKeyId(t *testing.T) {
 
 func TestP11_GetKekKeyIdString(t *testing.T) {
 	p := &P11{
-		kekCkaId: []byte{0xab, 0xcd, 0x12, 0x34},
+		kekCkaID: []byte{0xab, 0xcd, 0x12, 0x34},
 	}
 
-	result := p.GetKekKeyIdString()
+	result := p.GetKekKeyIDString()
 
 	assert.Equal(t, "abcd1234", result)
 }
@@ -221,19 +221,19 @@ func TestP11_SetHmacKeyIdString(t *testing.T) {
 	p := &P11{}
 
 	hexHmacKeyID := "ef567890"
-	err := p.SetHmacKeyIdString(hexHmacKeyID)
+	err := p.SetHmacKeyIDString(hexHmacKeyID)
 
 	assert.NoError(t, err)
 	expected, _ := hex.DecodeString(hexHmacKeyID)
-	assert.Equal(t, expected, p.hmacCkaId)
+	assert.Equal(t, expected, p.hmacCkaID)
 }
 
 func TestP11_GetHmacKeyIdString(t *testing.T) {
 	p := &P11{
-		hmacCkaId: []byte{0xef, 0x56, 0x78, 0x90},
+		hmacCkaID: []byte{0xef, 0x56, 0x78, 0x90},
 	}
 
-	result := p.GetHmacKeyIdString()
+	result := p.GetHmacKeyIDString()
 
 	assert.Equal(t, "ef567890", result)
 }
@@ -242,28 +242,28 @@ func TestP11_SetOldHmacKeyIdString(t *testing.T) {
 	p := &P11{}
 
 	hexOldHmacKeyID := "1234abcd"
-	err := p.SetOldHmacKeyIdString(hexOldHmacKeyID)
+	err := p.SetOldHmacKeyIDString(hexOldHmacKeyID)
 
 	assert.NoError(t, err)
 	expected, _ := hex.DecodeString(hexOldHmacKeyID)
-	assert.Equal(t, expected, p.oldHmacCkaId)
+	assert.Equal(t, expected, p.oldHmacCkaID)
 }
 
 func TestP11_SetOldKekKeyIdString(t *testing.T) {
 	p := &P11{}
 
 	hexOldKeyID := "5678cdef"
-	err := p.SetOldKekKeyIdString(hexOldKeyID)
+	err := p.SetOldKekKeyIDString(hexOldKeyID)
 
 	assert.NoError(t, err)
 	expected, _ := hex.DecodeString(hexOldKeyID)
-	assert.Equal(t, expected, p.oldKekCkaId)
+	assert.Equal(t, expected, p.oldKekCkaID)
 }
 
 // Tests for Status method
 func TestP11_Status_Success(t *testing.T) {
 	p := &P11{
-		kekCkaId: []byte{0x12, 0x34, 0x56, 0x78},
+		kekCkaID: []byte{0x12, 0x34, 0x56, 0x78},
 	}
 
 	ctx := context.Background()
@@ -280,7 +280,7 @@ func TestP11_Status_Success(t *testing.T) {
 
 func TestP11_Status_NilKekId(t *testing.T) {
 	p := &P11{
-		kekCkaId: nil,
+		kekCkaID: nil,
 	}
 
 	ctx := context.Background()
@@ -294,7 +294,7 @@ func TestP11_Status_NilKekId(t *testing.T) {
 
 func TestP11_Status_EmptyKekId(t *testing.T) {
 	p := &P11{
-		kekCkaId: []byte{},
+		kekCkaID: []byte{},
 	}
 
 	ctx := context.Background()
@@ -495,9 +495,9 @@ func (m *mockJweDecryptor) Decrypt(_ string) ([]byte, []byte, error) {
 // The test avoids any HSM interaction by pre-populating the maps so that
 // Encrypt and Decrypt find a cached entry and return early without calling
 // into crypto11.
-func TestP11_MapAccess_Race(t *testing.T) {
+func TestP11_MapAccess_Race(_ *testing.T) {
 	const hexID = "01"
-	p := &P11{kekCkaId: []byte{0x01}}
+	p := &P11{kekCkaID: []byte{0x01}}
 
 	_ = p.SetEncryptors(map[string]gose.JweEncryptor{hexID: &mockJweEncryptor{}})
 	_ = p.SetDecryptors(map[string]gose.JweDecryptor{hexID: &mockJweDecryptor{}})
@@ -539,8 +539,8 @@ func TestP11_MapAccess_Race(t *testing.T) {
 // TestP11_SetEncryptor_Race verifies that single-entry writes (SetEncryptor,
 // SetDecryptor) racing against full-map replacements (SetEncryptors,
 // SetDecryptors) do not produce data races.
-func TestP11_SetEncryptor_Race(t *testing.T) {
-	p := &P11{kekCkaId: []byte{0x01}}
+func TestP11_SetEncryptor_Race(_ *testing.T) {
+	p := &P11{kekCkaID: []byte{0x01}}
 	_ = p.SetEncryptors(map[string]gose.JweEncryptor{})
 	_ = p.SetDecryptors(map[string]gose.JweDecryptor{})
 
@@ -619,12 +619,12 @@ func TestValidateCkaLabel(t *testing.T) {
 }
 
 // TestGetKeyIdAndLabel_LabelTooLong confirms that validateCkaLabel fires in
-// GetKeyIdAndLabel before any HSM call is attempted.
+// GetKeyIDAndLabel before any HSM call is attempted.
 func TestGetKeyIdAndLabel_LabelTooLong(t *testing.T) {
 	p := &P11{algorithmFamily: AlgAESGCM}
 	tooLong := strings.Repeat("a", maxCkaLabelLen+1)
 
-	_, _, err := GetKeyIdAndLabel(p, "", tooLong)
+	_, _, err := GetKeyIDAndLabel(p, "", tooLong)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "exceeds PKCS#11 maximum")
@@ -676,10 +676,10 @@ func TestUnaryInterceptor_EncryptRequest_Validation(t *testing.T) {
 // TestUnaryInterceptor_DecryptRequest_Validation checks that missing key ID,
 // empty ciphertext, and oversized ciphertext are rejected before the handler.
 func TestUnaryInterceptor_DecryptRequest_Validation(t *testing.T) {
-	p := &P11{kekCkaId: []byte{0x01}}
+	p := &P11{kekCkaID: []byte{0x01}}
 	ctx := context.Background()
 	info := &grpc.UnaryServerInfo{}
-	validKeyID := p.GetKekKeyIdString()
+	validKeyID := p.GetKekKeyIDString()
 
 	cases := []struct {
 		name     string
