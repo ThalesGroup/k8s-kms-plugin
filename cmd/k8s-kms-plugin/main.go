@@ -4,7 +4,7 @@
 // Package main is the entry point for the k8s-kms-plugin binary.
 package main
 
-import "github.com/ThalesGroup/k8s-kms-plugin/cmd/k8s-kms-plugin/cmd"
+import "github.com/eclipse-keysealer/k8s-kms-plugin/cmd/k8s-kms-plugin/cmd"
 
 func main() {
 	cmd.Execute()

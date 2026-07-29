@@ -73,7 +73,7 @@ Keys provisioned:
 **From GitHub releases** (recommended — no Go toolchain required):
 
 Download `create-dev-token_testing-only_linux_<arch>_<version>` from the
-[releases page](https://github.com/ThalesGroup/k8s-kms-plugin/releases) and rename it:
+[releases page](https://github.com/eclipse-keysealer/k8s-kms-plugin/releases) and rename it:
 
 ```sh
 mv create-dev-token_testing-only_linux_amd64_v1.2.3 create-dev-token

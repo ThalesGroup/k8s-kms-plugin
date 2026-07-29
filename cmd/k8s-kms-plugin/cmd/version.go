@@ -8,7 +8,7 @@ import (
 
 	"log/slog"
 
-	version "github.com/ThalesGroup/k8s-kms-plugin/pkg/version"
+	version "github.com/eclipse-keysealer/k8s-kms-plugin/pkg/version"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

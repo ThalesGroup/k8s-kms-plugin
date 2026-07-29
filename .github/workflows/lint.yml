@@ -15,7 +15,6 @@ permissions:
   contents: read
 
 env:
-  GOFLAGS: -mod=vendor
   CGO_ENABLED: "1"
 
 jobs:

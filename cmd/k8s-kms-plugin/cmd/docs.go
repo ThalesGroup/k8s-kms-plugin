@@ -17,8 +17,8 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
-	"github.com/ThalesGroup/k8s-kms-plugin/pkg/logging"
-	"github.com/ThalesGroup/k8s-kms-plugin/pkg/version"
+	"github.com/eclipse-keysealer/k8s-kms-plugin/pkg/logging"
+	"github.com/eclipse-keysealer/k8s-kms-plugin/pkg/version"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 )

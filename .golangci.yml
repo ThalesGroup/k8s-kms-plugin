@@ -41,4 +41,4 @@ formatters:
   settings:
     goimports:
       local-prefixes:
-        - github.com/ThalesGroup/k8s-kms-plugin
+        - github.com/eclipse-keysealer/k8s-kms-plugin

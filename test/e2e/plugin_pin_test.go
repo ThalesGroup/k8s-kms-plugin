@@ -16,12 +16,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/eclipse-keypont/crypto11/v2"
 	"github.com/creack/pty"
+	"github.com/eclipse-keypont/crypto11/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ThalesGroup/k8s-kms-plugin/pkg/providers"
+	"github.com/eclipse-keysealer/k8s-kms-plugin/pkg/providers"
 )
 
 // TestPIN_MissingNonInteractive confirms that the plugin exits immediately with

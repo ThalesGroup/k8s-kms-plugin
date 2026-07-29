@@ -1,4 +1,4 @@
-module github.com/ThalesGroup/k8s-kms-plugin
+module github.com/eclipse-keysealer/k8s-kms-plugin
 
 go 1.26.4
 

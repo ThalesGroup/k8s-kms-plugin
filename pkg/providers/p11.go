@@ -30,7 +30,7 @@ import (
 	"google.golang.org/grpc/status"
 	k8skmsv2 "k8s.io/kms/apis/v2"
 
-	"github.com/ThalesGroup/k8s-kms-plugin/pkg/logging"
+	"github.com/eclipse-keysealer/k8s-kms-plugin/pkg/logging"
 )
 
 // Algorithm sentinels used in P11.algorithmFamily for routing. Values match the user-facing

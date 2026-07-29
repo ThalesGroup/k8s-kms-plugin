@@ -22,9 +22,9 @@ import (
 
 	k8skmsv2 "k8s.io/kms/apis/v2"
 
-	"github.com/ThalesGroup/k8s-kms-plugin/pkg/logging"
-	"github.com/ThalesGroup/k8s-kms-plugin/pkg/providers"
-	version "github.com/ThalesGroup/k8s-kms-plugin/pkg/version"
+	"github.com/eclipse-keysealer/k8s-kms-plugin/pkg/logging"
+	"github.com/eclipse-keysealer/k8s-kms-plugin/pkg/providers"
+	version "github.com/eclipse-keysealer/k8s-kms-plugin/pkg/version"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -300,7 +300,7 @@ func initProvider() (p providers.Provider, err error) {
 		config.SlotNumber = &vprFlgsServe.P11Slot
 	}
 	// init the provider for active key only (no key rotation)
-	// TODO: See https://github.com/ThalesGroup/k8s-kms-plugin/issues/40#issuecomment-2593267852
+	// TODO: See https://github.com/eclipse-keysealer/k8s-kms-plugin/issues/40#issuecomment-2593267852
 	if p, err = providers.NewP11(
 		config,
 		vprFlgsServe.CreateKey,

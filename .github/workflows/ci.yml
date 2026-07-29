@@ -22,10 +22,6 @@ permissions:
   contents: read
 
 env:
-  # The module pins crypto11/gose/pkcs11-go via local `replace` directives that
-  # do not exist on the runner; resolve everything from the committed vendor/
-  # tree explicitly rather than relying on Go's implicit vendor auto-detection.
-  GOFLAGS: -mod=vendor
   # The plugin links the PKCS#11 stack through cgo.
   CGO_ENABLED: "1"
 

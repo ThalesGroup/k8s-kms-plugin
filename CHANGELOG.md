@@ -1,7 +1,7 @@
 # Changelog
 
 All notable changes to k8s-kms-plugin are documented in this file. For the full commit-level
-history see [GitHub Releases](https://github.com/ThalesGroup/k8s-kms-plugin/releases).
+history see [GitHub Releases](https://github.com/eclipse-keysealer/k8s-kms-plugin/releases).
 
 ## v1.0.0 — first stable release: KMS v2, PKCS#11 v3.2 and ML-KEM
 
@@ -33,6 +33,8 @@ and [pkcs11-go](https://github.com/eclipse-keypont/pkcs11-go) from the
   `github.com/eclipse-keypont/crypto11/v2`, `github.com/ThalesGroup/gose` →
   `github.com/eclipse-keypont/gose`, both now consumed as published releases (no `replace`
   directives).
+- Repository and Go module path moved from `github.com/ThalesGroup/k8s-kms-plugin` to
+  `github.com/eclipse-keysealer/k8s-kms-plugin`.
 
 ### Added
 
@@ -91,4 +93,4 @@ API on `miekg/pkcs11`. Notable tagged milestones:
   validation tags, not functional releases.
 
 Full commit history for this era is available via `git log 0.7.0` or the
-[GitHub Releases](https://github.com/ThalesGroup/k8s-kms-plugin/releases) page.
+[GitHub Releases](https://github.com/eclipse-keysealer/k8s-kms-plugin/releases) page.

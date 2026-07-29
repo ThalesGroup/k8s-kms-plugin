@@ -18,7 +18,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
-	"github.com/ThalesGroup/k8s-kms-plugin/pkg/logging"
+	"github.com/eclipse-keysealer/k8s-kms-plugin/pkg/logging"
 )
 
 // UnmarshalSubMergedE is a temporary fix to a flaw in viper.Sub("section") that ignores the flag/env/default/override

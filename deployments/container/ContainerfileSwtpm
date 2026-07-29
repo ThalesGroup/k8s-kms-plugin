@@ -109,9 +109,9 @@ ENTRYPOINT ["/bin/bash", "-s"]
 # See https://github.com/opencontainers/image-spec/blob/main/annotations.md
 #ARG LABEL_CREATED=""
 #ARG LABEL_AUTHOR="Thales Open Source <oss@thalesgroup.com>"
-#ARG LABEL_URL="https://github.com/ThalesGroup/k8s-kms-plugin"
-#ARG LABEL_DOCUMENTATION="https://github.com/ThalesGroup/k8s-kms-plugin"
-#ARG LABEL_SOURCE="https://github.com/ThalesGroup/k8s-kms-plugin"
+#ARG LABEL_URL="https://github.com/eclipse-keysealer/k8s-kms-plugin"
+#ARG LABEL_DOCUMENTATION="https://github.com/eclipse-keysealer/k8s-kms-plugin"
+#ARG LABEL_SOURCE="https://github.com/eclipse-keysealer/k8s-kms-plugin"
 #ARG LABEL_VERSION=""
 #ARG LABEL_REVISION=""
 #ARG LABEL_VENDOR="Thales"

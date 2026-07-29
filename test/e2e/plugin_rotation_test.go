@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ThalesGroup/k8s-kms-plugin/pkg/providers"
+	"github.com/eclipse-keysealer/k8s-kms-plugin/pkg/providers"
 )
 
 const rotationPlaintext = "the quick brown fox jumps over the lazy dog — k8s-kms-plugin rotation e2e"

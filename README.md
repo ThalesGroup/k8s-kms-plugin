@@ -1,13 +1,14 @@
 # `k8s-kms-plugin` 🔐
 
 [![Licence](https://img.shields.io/github/license/Ileriayo/markdown-badges?style=for-the-badge)](./LICENSE)
-[![goreleaser](https://github.com/ThalesGroup/k8s-kms-plugin/actions/workflows/Goreleaser.yaml/badge.svg)](https://github.com/ThalesGroup/k8s-kms-plugin/actions/workflows/Goreleaser.yaml)
-[![Build](https://github.com/ThalesGroup/k8s-kms-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/ThalesGroup/k8s-kms-plugin/actions/workflows/ci.yml)
-[![Lint](https://github.com/ThalesGroup/k8s-kms-plugin/actions/workflows/lint.yml/badge.svg)](https://github.com/ThalesGroup/k8s-kms-plugin/actions/workflows/lint.yml)
-[![Secret Scan](https://github.com/ThalesGroup/k8s-kms-plugin/actions/workflows/secret-scan.yml/badge.svg)](https://github.com/ThalesGroup/k8s-kms-plugin/actions/workflows/secret-scan.yml)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/ThalesGroup/k8s-kms-plugin/badge)](https://scorecard.dev/viewer/?uri=github.com/ThalesGroup/k8s-kms-plugin)
-[![Go Report Card](https://goreportcard.com/badge/github.com/ThalesGroup/k8s-kms-plugin)](https://goreportcard.com/report/github.com/ThalesGroup/k8s-kms-plugin)
-[![GitHub release](https://img.shields.io/github/v/release/ThalesGroup/k8s-kms-plugin)](https://github.com/ThalesGroup/k8s-kms-plugin/releases/latest)
+[![Go Reference](https://pkg.go.dev/badge/github.com/eclipse-keysealer/k8s-kms-plugin.svg)](https://pkg.go.dev/github.com/eclipse-keysealer/k8s-kms-plugin)
+[![Build](https://github.com/eclipse-keysealer/k8s-kms-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/eclipse-keysealer/k8s-kms-plugin/actions/workflows/ci.yml)
+[![Lint](https://github.com/eclipse-keysealer/k8s-kms-plugin/actions/workflows/lint.yml/badge.svg)](https://github.com/eclipse-keysealer/k8s-kms-plugin/actions/workflows/lint.yml)
+[![Secret Scan](https://github.com/eclipse-keysealer/k8s-kms-plugin/actions/workflows/secret-scan.yml/badge.svg)](https://github.com/eclipse-keysealer/k8s-kms-plugin/actions/workflows/secret-scan.yml)
+[![Release](https://github.com/eclipse-keysealer/k8s-kms-plugin/actions/workflows/release.yml/badge.svg)](https://github.com/eclipse-keysealer/k8s-kms-plugin/actions/workflows/release.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/eclipse-keysealer/k8s-kms-plugin/badge)](https://scorecard.dev/viewer/?uri=github.com/eclipse-keysealer/k8s-kms-plugin)
+[![GitHub release](https://img.shields.io/github/v/release/eclipse-keysealer/k8s-kms-plugin)](https://github.com/eclipse-keysealer/k8s-kms-plugin/releases/latest)
+[![Changelog](https://img.shields.io/badge/changelog-v1.0.0-blue)](./CHANGELOG.md)
 
 `k8s-kms-plugin serve` implements the [Kubernetes KMS v2 API](https://pkg.go.dev/k8s.io/kms/apis/v2) protocol as a gRPC service that leverages a remote or local HSM via PKCS11.
 `k8s-kms-plugin serve rotation` supports key rotation operations.
@@ -96,7 +97,7 @@ TL;DR: For a quick start experience, try the `k8s-kms-plugin` with a software (v
 
 ### 2.1. Architecture
 
-The [`k8s-kms-plugin`](https://github.com/ThalesGroup/k8s-kms-plugin) uses `gose`  and `crypto11`:
+The [`k8s-kms-plugin`](https://github.com/eclipse-keysealer/k8s-kms-plugin) uses `gose`  and `crypto11`:
 
 - [github.com/eclipse-keypont/gose](https://github.com/eclipse-keypont/gose): support in GoLang for JOSE JSON Objects Signing and Encryption;
 - [github.com/eclipse-keypont/crypto11](https://github.com/eclipse-keypont/crypto11): Implements crypto.Signer abd crypto.Decrypter for PKCS#11 devices;
@@ -199,7 +200,7 @@ curl -sfL https://get.k3s.io | K3S_DEBUG=true INSTALL_K3S_VERSION=v1.33.1+k3s1 s
 ### 3.2. Install `k8s-kms-plugin` From Official Packages
 
 As of now, `k8s-kms-plugin`'s Github Action Build Recipe supports building `apk`, `deb`, `rpm` and `archlinux` for
-Linux x86 platform. Check the different package artefacts from the [releases](https://github.com/ThalesGroup/k8s-kms-plugin/releases)
+Linux x86 platform. Check the different package artefacts from the [releases](https://github.com/eclipse-keysealer/k8s-kms-plugin/releases)
 tab.
 
 > 🚧 **Note**: The packages are not available on official repos yet.

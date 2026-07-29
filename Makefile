@@ -7,7 +7,7 @@ all: build-linux-amd64 build-linux-arm64 build-linux-riscv64
 
 # Project name
 PROJECT_NAME := k8s-kms-plugin
-GO_MODULE_NAME := "github.com/ThalesGroup/$(PROJECT_NAME)"
+GO_MODULE_NAME := "github.com/eclipse-keysealer/$(PROJECT_NAME)"
 BINARY_NAME = $(PROJECT_NAME)
 
 # Useful variables for build metadata
@@ -41,7 +41,7 @@ LINUX_RISCV64_GCC := riscv64-linux-gnu-gcc
 
 ## Licenses
 notices:
-		@go-licenses report ./... --ignore github.com/ThalesGroup/k8s-kms-plugin --template go-licenses.tpl > NOTICES.md
+		@go-licenses report ./... --ignore github.com/eclipse-keysealer/k8s-kms-plugin --template go-licenses.tpl > NOTICES.md
 		@echo "NOTICES.md generated"
 
 GOLANGCI_LINT ?= golangci-lint
@@ -52,7 +52,7 @@ lint:
 		    echo "  go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest"; \
 		    exit 1; \
 		}
-		CGO_ENABLED=$(CGO_ENABLED) GOFLAGS=-mod=vendor $(GOLANGCI_LINT) run
+		CGO_ENABLED=$(CGO_ENABLED) $(GOLANGCI_LINT) run
 
 # Auto-fix the mechanically-fixable findings (formatting, some conversions):
 lint-fix:
@@ -61,12 +61,12 @@ lint-fix:
 		    echo "  go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest"; \
 		    exit 1; \
 		}
-		CGO_ENABLED=$(CGO_ENABLED) GOFLAGS=-mod=vendor $(GOLANGCI_LINT) run --fix
+		CGO_ENABLED=$(CGO_ENABLED) $(GOLANGCI_LINT) run --fix
 
 ## SAST
 coverage:
 		mkdir -p build
-		CGO_ENABLED=$(CGO_ENABLED) GOFLAGS=-mod=vendor go test -race -v -coverprofile build/coverage.out ./pkg/... ./cmd/...
+		CGO_ENABLED=$(CGO_ENABLED) go test -race -v -coverprofile build/coverage.out ./pkg/... ./cmd/...
 		go tool cover -html=build/coverage.out -o build/coverage.html
 
 ## Build
@@ -119,13 +119,13 @@ doc:
 
 ## Testing
 test:
-		@CGO_ENABLED=$(CGO_ENABLED) GOFLAGS=-mod=vendor go test -race ./pkg/... ./cmd/...
+		@CGO_ENABLED=$(CGO_ENABLED) go test -race ./pkg/... ./cmd/...
 
 test-integration:
-		@CGO_ENABLED=$(CGO_ENABLED) GOFLAGS=-mod=vendor go test -race -v ./test/integration/...
+		@CGO_ENABLED=$(CGO_ENABLED) go test -race -v ./test/integration/...
 
 test-e2e: build
-		@CGO_ENABLED=$(CGO_ENABLED) GOFLAGS=-mod=vendor go test -race -v ./test/e2e/...
+		@CGO_ENABLED=$(CGO_ENABLED) go test -race -v ./test/e2e/...
 
 ## Release
 release-local-test:

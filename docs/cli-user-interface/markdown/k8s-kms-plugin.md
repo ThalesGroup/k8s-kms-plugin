@@ -9,7 +9,7 @@ using KMS v2.
 
 k8s-kms-plugin prioritizes configuration sources as follows: CLI flags > environment variables > configuration files > default settings.
 
-Project Page: https://github.com/ThalesGroup/k8s-kms-plugin
+Project Page: https://github.com/eclipse-keysealer/k8s-kms-plugin
 
 
 ```

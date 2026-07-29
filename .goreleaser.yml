@@ -95,7 +95,7 @@ builds:
         {{- end }}
 
 # -- Container images via ko -------------------------------------------------
-# GITHUB_REPOSITORY (e.g. "ThalesGroup/k8s-kms-plugin") is set by the workflow.
+# GITHUB_REPOSITORY (e.g. "eclipse-keysealer/k8s-kms-plugin") is set by the workflow.
 kos:
   - repositories:
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY }}
@@ -124,7 +124,7 @@ nfpms:
     file_name_template: "{{ .ConventionalFileName }}"
     license: "MIT"
     vendor: "ThalesGroup"
-    homepage: https://github.com/ThalesGroup/k8s-kms-plugin
+    homepage: https://github.com/eclipse-keysealer/k8s-kms-plugin
     maintainer: Thales Open Source <oss@thalesgroup.com>
     description: |-
       gRPC service that leverages a remote or local HSM/TPM to encrypt Kubernetes data at-rest with KMS v2.

@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/ThalesGroup/k8s-kms-plugin/pkg/logging"
+	"github.com/eclipse-keysealer/k8s-kms-plugin/pkg/logging"
 )
 
 // cobra root CLI flags. They are mostly not used because we use viper that binds the cobra flags
@@ -51,7 +51,7 @@ using KMS v2.
 
 k8s-kms-plugin prioritizes configuration sources as follows: CLI flags > environment variables > configuration files > default settings.
 
-Project Page: https://github.com/ThalesGroup/k8s-kms-plugin
+Project Page: https://github.com/eclipse-keysealer/k8s-kms-plugin
 `,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		slog.Warn("No subcommand provided. Please use one of the available subcommands. Showing help message.")

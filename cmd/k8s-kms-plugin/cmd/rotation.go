@@ -20,9 +20,9 @@ import (
 	"google.golang.org/grpc/reflection"
 	k8skmsv2 "k8s.io/kms/apis/v2"
 
-	"github.com/ThalesGroup/k8s-kms-plugin/pkg/logging"
-	"github.com/ThalesGroup/k8s-kms-plugin/pkg/providers"
-	"github.com/ThalesGroup/k8s-kms-plugin/pkg/version"
+	"github.com/eclipse-keysealer/k8s-kms-plugin/pkg/logging"
+	"github.com/eclipse-keysealer/k8s-kms-plugin/pkg/providers"
+	"github.com/eclipse-keysealer/k8s-kms-plugin/pkg/version"
 )
 
 // ViperFlagsRotation defines a struct to hold the values of cobra CLI flags and use viper to populate them
@@ -276,7 +276,7 @@ func initRotatedProvider() (pRot providers.Provider, err error) {
 		oldConfig.SlotNumber = &vprFlgsRotation.OldP11Slot
 	}
 	// init the provider
-	// TODO: See https://github.com/ThalesGroup/k8s-kms-plugin/issues/40#issuecomment-2593267852
+	// TODO: See https://github.com/eclipse-keysealer/k8s-kms-plugin/issues/40#issuecomment-2593267852
 	if pRot, err = providers.NewP11(
 		oldConfig,
 		vprFlgsServe.CreateKey,
