@@ -86,9 +86,9 @@ the documentation index: [`docs/README.md`](./docs/README.md).
 - [7. Vulnerability check 💣](#7-vulnerability-check-)
   - [7.1. Locally, before pushing](#71-locally-before-pushing)
   - [7.2. In CI (GitHub Actions)](#72-in-ci-github-actions)
-- [8. Signing artifacts 📝](#8-signing-artifacts-)
+- [8. Release Signing \& Attestations 📝](#8-release-signing--attestations-)
 - [9. Verifying the authenticity of an artifact 📝🔍](#9-verifying-the-authenticity-of-an-artifact-)
-- [10. Verifying the SLSA attestation of a container](#10-verifying-the-slsa-attestation-of-a-container)
+- [10. Verifying the container image and its SLSA provenance](#10-verifying-the-container-image-and-its-slsa-provenance)
 
 ## 1. Definions & Accronyms 🔎
 
@@ -874,59 +874,116 @@ criteria Scorecard grades.
 > 🚧 **Note**: `govulncheck` covers the Go dependency tree only. The PKCS #11 library loaded at runtime
 > (SoftHSM, vendor middleware, …) is outside its reach and must be kept up to date by whoever operates the HSM.
 
-## 8. Signing artifacts 📝
+## 8. Release Signing & Attestations 📝
 
-> 🚧 TODO: This section needs to be updated.
+Pushing a `v*` tag runs Github Action [`release.yml`](./.github/workflows/release.yml), which builds, signs, attests and publishes
+everything **without any human interaction**.
 
-During the release workflow, certificates and signatures of artifacts are generated.
-They are signed by a tool named cosign using a keyless mode.
-It required an authentication by clicking in links present in logs.
+Signing is **keyless**: `cosign` obtains a short-lived certificate from Sigstore's Fulcio CA using the OIDC token
+GitHub issues to the job (`id-token: write`), and records the signature in the Rekor transparency log. No key
+material, no secrets, and — unlike earlier releases of this project — **no authentication links to click in the job
+logs**.
 
-![Screenshot of one example of logs containing three authentication links generating tokens](docs/images/cosign/AuthLinksCosign.png)
+What a release produces:
 
-Once you click on one, you can submit a verification code that will redirect you to three types of authentication. Then click on Github authentication.
+| Artifact                                                              | Signature / attestation                                                        |
+|------------------------------------------------------------------------|---------------------------------------------------------------------------------|
+| Binaries (`linux/amd64`, `arm64`, `riscv64`)                           | `<artifact>-keyless.sig` + `<artifact>-keyless.pem` (`cosign sign-blob`)         |
+| Packages (`apk`, `deb`, `rpm`, `pkg.tar.zst`)                          | idem                                                                             |
+| `checksums.txt`                                                        | idem                                                                             |
+| SBOMs — SPDX & CycloneDX (`syft`) and a CycloneDX VEX (`trivy`)        | idem, plus in-toto attestations via [`actions/attest`](https://github.com/actions/attest) |
+| Container image `ghcr.io/eclipse-keysealer/k8s-kms-plugin`             | `cosign sign` on the exact `image@digest`; signature stored in the registry and Rekor |
+| SLSA3 provenance — binaries (`*.intoto.jsonl`) and image               | [`slsa-github-generator`](https://github.com/slsa-framework/slsa-github-generator) `v2.1.0` reusable workflows |
 
-![Screenshot of the interface for submitting a code](docs/images/cosign/CodeSubmit.png)
+The pipeline then **verifies its own output** before finishing: the `verify-provenance` job re-downloads the
+published assets and runs `slsa-verifier` against both the binaries and the image
+([`verify-slsa`](./.github/actions/verify-slsa/action.yaml)). A release that cannot be verified fails the workflow.
 
-Do these actions for every authentication links and the signatures and the certificates will be generated with the artifacts in the release.
+> The signing identity is the release workflow itself:
+> `https://github.com/eclipse-keysealer/k8s-kms-plugin/.github/workflows/release.yml@refs/tags/<tag>`.
+> Every verification command below pins that identity — this is what makes the signature meaningful, so never
+> verify without `--certificate-identity` / `--certificate-identity-regexp`.
 
 ## 9. Verifying the authenticity of an artifact 📝🔍
 
-> 🚧 TODO: This section needs to be updated.
-
-You need to downloads 3 files : [ _**[file.txt]**_, _**[file].pem**_, _**[file].sig**_]
-
-If you don't have, install cosign by typing the commands below :
-
-  ```bash
-  curl -O -L "https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64"
-  sudo mv cosign-linux-amd64 /usr/local/bin/cosign
-  sudo chmod +x /usr/local/bin/cosign
-  ```
-
-For a verification with cosign installed and pay attention to modify the name of the files :
-
-  ```bash
-  COSIGN_EXPERIMENTAL=1 cosign verify-blob --cert [file]-keyless.pem --signature [file]-keyless.sig --certificate-oidc-issuer "https://github.com/login/oauth" --certificate-identity [ Mail adress of the owner of the repo ] [file]
-  ```
-
-Or using Podman without installing cosign :
+Install [`cosign`](https://github.com/sigstore/cosign) (v2 or later — `COSIGN_EXPERIMENTAL` is no longer needed):
 
 ```bash
-podman run --rm -it gcr.io/projectsigstore/cosign:v1.13.0 COSIGN_EXPERIMENTAL=1 cosign verify-blob --cert [file]-keyless.pem --signature [file]-keyless.sig --certificate-oidc-issuer "https://github.com/login/oauth" --certificate-identity [ Mail adress of the owner of the repo ] [file]
+go install github.com/sigstore/cosign/v2/cmd/cosign@latest
 ```
 
-## 10. Verifying the SLSA attestation of a container
-
-> 🚧 TODO: This section needs to be updated.
-
-The image's attestation of provenance has been issued by a specific oidc-issuer that is 'https://token.actions.githubusercontent.com' in this repository.
-In the next command example, it is required to replace digest by the digest of the image that needs to be verified and the owner of the repo.
+Download the artifact together with its `-keyless.sig` and `-keyless.pem` files from the
+[releases page](https://github.com/eclipse-keysealer/k8s-kms-plugin/releases), then:
 
 ```bash
-cosign verify-attestation \
-      --type slsaprovenance \
-      --certificate-identity-regexp="https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@refs/tags/*" \
-      --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-      ghcr.io/OWNER/k8s-kms-plugin@digest | jq .payload -r | base64 --decode | jq
+TAG=v1.0.0
+VERSION=${TAG#v}                              # goreleaser strips the leading "v"
+FILE=k8s-kms-plugin_linux_amd64_${VERSION}
+
+cosign verify-blob \
+  --certificate "${FILE}-keyless.pem" \
+  --signature   "${FILE}-keyless.sig" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  --certificate-identity "https://github.com/eclipse-keysealer/k8s-kms-plugin/.github/workflows/release.yml@refs/tags/${TAG}" \
+  "${FILE}"
 ```
+
+Expected output: `Verified OK`.
+
+The same command verifies packages, SBOMs and `k8s-kms-plugin_checksums.txt` — each ships its own `.sig` / `.pem`
+pair. Verifying the checksums file once and then checking hashes locally covers every artifact at once:
+
+```bash
+sha256sum --check --ignore-missing k8s-kms-plugin_checksums.txt
+```
+
+The SBOMs (`k8s-kms-plugin-<version>-source.tar.gz.spdx.json`, `.cdx.json` and `.vex.cdx.json`) additionally carry
+GitHub in-toto attestations, verifiable with the `gh` CLI:
+
+```bash
+gh attestation verify "k8s-kms-plugin-${VERSION}-source.tar.gz.spdx.json" \
+  --repo eclipse-keysealer/k8s-kms-plugin
+```
+
+## 10. Verifying the container image and its SLSA provenance
+
+Verify the image signature (replace the tag, or pin a digest with `@sha256:…`):
+
+```bash
+TAG=v1.0.0
+IMAGE=ghcr.io/eclipse-keysealer/k8s-kms-plugin:${TAG}
+
+cosign verify "${IMAGE}" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  --certificate-identity "https://github.com/eclipse-keysealer/k8s-kms-plugin/.github/workflows/release.yml@refs/tags/${TAG}" \
+  | jq .
+```
+
+[SLSA3](https://slsa.dev) provenance answers a different question — *which workflow, from which source revision,
+produced this artifact* — and is checked with
+[`slsa-verifier`](https://github.com/slsa-framework/slsa-verifier) rather than `cosign`:
+
+```bash
+go install github.com/slsa-framework/slsa-verifier/v2/cli/slsa-verifier@v2.7.1
+```
+
+For a downloaded binary, using the `*.intoto.jsonl` published alongside it:
+
+```bash
+slsa-verifier verify-artifact "${FILE}" \
+  --provenance-path "$(ls *.intoto.jsonl | head -1)" \
+  --source-uri github.com/eclipse-keysealer/k8s-kms-plugin \
+  --source-tag "${TAG}"
+```
+
+For the image — the `--builder-id` must match the generator used by the `image-provenance` job:
+
+```bash
+slsa-verifier verify-image "${IMAGE}" \
+  --source-uri github.com/eclipse-keysealer/k8s-kms-plugin \
+  --source-tag "${TAG}" \
+  --builder-id "https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@refs/tags/v2.1.0"
+```
+
+These are the same commands CI runs in [`verify-slsa`](./.github/actions/verify-slsa/action.yaml), so a release that
+reaches the releases page has already passed them once.
