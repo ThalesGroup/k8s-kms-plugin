@@ -77,7 +77,8 @@ the documentation index: [`docs/README.md`](./docs/README.md).
   - [4.5. User Input Priority: CLI \> Env Vars \> Config File \> Default](#45-user-input-priority-cli--env-vars--config-file--default)
   - [4.6. HSM \& TPM Supported Platforms](#46-hsm--tpm-supported-platforms)
 - [5. Development Environment 🔬](#5-development-environment-)
-  - [5.1. Build Against `crypto11` / `gose` Development Branches](#51-build-against-crypto11--gose-development-branches)
+  - [5.1. Running the Tests](#51-running-the-tests)
+  - [5.2. Build Against `crypto11` / `gose` Development Branches](#52-build-against-crypto11--gose-development-branches)
 - [6. Debug Environment 🐛](#6-debug-environment-)
   - [6.1. `delve` Remote Debug](#61-delve-remote-debug)
   - [6.2. `vscode` Debug](#62-vscode-debug)
@@ -386,8 +387,8 @@ environment. See [6.1. `delve` Remote Debug](#61-delve-remote-debug) for how to 
 | `make vet`             | Runs `go vet ./...` — same check as the CI *Vet, build & test* job                          |
 | `make govulncheck`     | Scans for known vulnerabilities (see [7. Vulnerability check 💣](#7-vulnerability-check-)) |
 | `make test`            | Unit tests (`./pkg/...`, `./cmd/...`) with the race detector                               |
-| `make test-integration`| Integration tests (`./test/integration/...`)                                               |
-| `make test-e2e`        | Builds the binary, then runs the end-to-end tests (`./test/e2e/...`)                        |
+| `make test-integration`| Integration tests (`./test/integration/...`) — needs `PKCS11_MODULE`, see [5.1](#51-running-the-tests) |
+| `make test-e2e`        | Builds the binary, then runs the end-to-end tests (`./test/e2e/...`) — needs `PKCS11_MODULE` and `grpcurl`, see [5.1](#51-running-the-tests) |
 | `make coverage`        | Unit test coverage report in `build/coverage.html`                                          |
 | `make doc`             | Regenerates the CLI documentation under `docs/cli-user-interface/`                          |
 | `make notices`         | Regenerates [`NOTICES.md`](./NOTICES.md) (requires `go-licenses`)                           |
@@ -574,15 +575,38 @@ Two of them regenerate tracked files, so re-run them when the relevant source ch
 - `make doc` — after adding or changing a CLI flag or command ([4.4](#44-cli-auto-generated-documentation))
 - `make notices` — after changing dependencies, to refresh [`NOTICES.md`](./NOTICES.md)
 
-`make test-integration` and `make test-e2e` need a PKCS #11 library: set `PKCS11_MODULE` to your SoftHSM library and
-the suites bootstrap their own ephemeral token. Without that variable they exit immediately without failing, so a
-green run does **not** mean the PKCS #11 paths were exercised:
+### 5.1. Running the Tests
+
+| Suite                                          | Command                | Requirements                                                                 |
+|------------------------------------------------|------------------------|-------------------------------------------------------------------------------|
+| Unit ([`pkg/`](./pkg/), [`cmd/`](./cmd/))      | `make test`            | None — pure Go, race detector enabled                                         |
+| Integration ([`test/integration/`](./test/integration/)) | `make test-integration` | `PKCS11_MODULE`                                                    |
+| End-to-end ([`test/e2e/`](./test/e2e/))        | `make test-e2e`        | `PKCS11_MODULE`, [`grpcurl`](https://github.com/fullstorydev/grpcurl) in `$PATH`, and the built binary (`make test-e2e` builds it for you) |
+
+**`PKCS11_MODULE`** points at a PKCS #11 shared library; both suites bootstrap their own ephemeral token from it.
+`PKCS11_PIN` is optional (default `1234`). ML-KEM tests need SoftHSMv3 — see [`docs/softhsm-v3.md`](./docs/softhsm-v3.md);
+the AES and RSA paths also work with SoftHSMv2.
+
+> ⚠️ Without `PKCS11_MODULE` both suites exit **immediately and successfully**, printing only a skip notice. A green
+> run therefore does **not** mean the PKCS #11 paths were exercised — always check that the variable is set.
+
+**`grpcurl`** is required by the end-to-end suite only: it drives the KMS v2 gRPC API over the plugin's unix socket,
+using [`scripts/grpcurl/api.proto`](./scripts/grpcurl/api.proto) as the service definition (the same approach as the
+[`scripts/grpcurl/`](./scripts/grpcurl/) helper scripts, which additionally need `jq`). Unlike a missing
+`PKCS11_MODULE`, a missing `grpcurl` makes the tests **fail** rather than skip.
+
+```sh
+go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest
+```
+
+Running the suites:
 
 ```sh
 PKCS11_MODULE=/usr/local/lib/softhsm/libsofthsm3.so make test-integration
+PKCS11_MODULE=/usr/local/lib/softhsm/libsofthsm3.so make test-e2e
 ```
 
-### 5.1. Build Against `crypto11` / `gose` Development Branches
+### 5.2. Build Against `crypto11` / `gose` Development Branches
 
 `k8s-kms-plugin` consumes [`crypto11`](https://github.com/eclipse-keypont/crypto11) and
 [`gose`](https://github.com/eclipse-keypont/gose) as **published modules** — [`go.mod`](./go.mod) has no `replace`
