@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Thales Group and the k8s-kms-plugin Contributors
 # SPDX-License-Identifier: MIT
 
-.PHONY: all lint lint-fix build build-linux-amd64 build-linux-amd64-debug build-linux-arm64 build-linux-arm64-debug build-linux-riscv64 build-linux-riscv64-debug coverage test test-integration test-e2e gen notices clean
+.PHONY: all lint lint-fix vet govulncheck build build-linux-amd64 build-linux-amd64-debug build-linux-arm64 build-linux-arm64-debug build-linux-riscv64 build-linux-riscv64-debug coverage test test-integration test-e2e doc notices release release-local-test get-ldflags clean
 
 all: build-linux-amd64 build-linux-arm64 build-linux-riscv64
 
@@ -62,6 +62,27 @@ lint-fix:
 		    exit 1; \
 		}
 		CGO_ENABLED=$(CGO_ENABLED) $(GOLANGCI_LINT) run --fix
+
+## Vet
+# Same check as the CI "Vet, build & test" job (.github/workflows/ci.yml).
+vet:
+		CGO_ENABLED=$(CGO_ENABLED) go vet ./...
+
+## Vulnerability scan
+# Runs govulncheck (reachability-aware, cross-checked against the Go vuln DB) —
+# the same check as the CI govulncheck job (.github/workflows/security.yaml).
+#
+# Install govulncheck:
+#   go install golang.org/x/vuln/cmd/govulncheck@latest
+GOVULNCHECK ?= govulncheck
+
+govulncheck:
+		@command -v $(GOVULNCHECK) >/dev/null 2>&1 || { \
+		    echo "govulncheck not found. Install it with:"; \
+		    echo "  go install golang.org/x/vuln/cmd/govulncheck@latest"; \
+		    exit 1; \
+		}
+		CGO_ENABLED=$(CGO_ENABLED) $(GOVULNCHECK) -show verbose ./...
 
 ## SAST
 coverage:
