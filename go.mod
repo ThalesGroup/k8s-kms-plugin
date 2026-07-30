@@ -1,6 +1,6 @@
 module github.com/eclipse-keysealer/k8s-kms-plugin
 
-go 1.26.4
+go 1.26.5
 
 require (
 	github.com/eclipse-keypont/pkcs11-go v1.0.0

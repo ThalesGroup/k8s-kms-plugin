@@ -310,7 +310,7 @@ The build was tested with the following tool versions:
 
 | Tool | Version tested                    | Check with       |
 |------|-----------------------------------|------------------|
-| Go   | `go1.26.4 linux/amd64`            | `go version`     |
+| Go   | `go1.26.5 linux/amd64`            | `go version`     |
 | Make | `GNU Make 4.4.1`                  | `make --version` |
 | Git  | `git version 2.55.0`              | `git version`    |
 | GCC  | native `gcc` (for `CGO_ENABLED=1`) | `gcc --version`  |
