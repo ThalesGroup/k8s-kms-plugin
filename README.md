@@ -69,6 +69,7 @@ the documentation index: [`docs/README.md`](./docs/README.md).
     - [3.3.4. Debug Builds](#334-debug-builds)
     - [3.3.5. Other Useful `make` Targets](#335-other-useful-make-targets)
   - [3.4. Build `k8s-kms-plugin` **locally** from Source with `goreleaser`](#34-build-k8s-kms-plugin-locally-from-source-with-goreleaser)
+  - [3.5. Build the Container Image](#35-build-the-container-image)
 - [4. Documentation, Usage \& User Guides 📚](#4-documentation-usage--user-guides-)
   - [4.1. Where to Find What](#41-where-to-find-what)
   - [4.2. CLI Help Messages](#42-cli-help-messages)
@@ -392,6 +393,8 @@ environment. See [6.1. `delve` Remote Debug](#61-delve-remote-debug) for how to 
 | `make coverage`        | Unit test coverage report in `build/coverage.html`                                          |
 | `make doc`             | Regenerates the CLI documentation under `docs/cli-user-interface/`                          |
 | `make notices`         | Regenerates [`NOTICES.md`](./NOTICES.md) (requires `go-licenses`)                           |
+| `make image`           | Builds the binary, then packages it into a container image from the [`Containerfile`](./Containerfile) (see [3.5](#35-build-the-container-image)) |
+| `make image-from-source` | Same image, but compiled inside the builder stage — no local Go toolchain needed          |
 | `make get-ldflags`     | Prints the `LDFLAGS` used by the build — consumed by `goreleaser` (see [3.4](#34-build-k8s-kms-plugin-locally-from-source-with-goreleaser)) |
 | `make release-local-test` / `make release` | Run `goreleaser` locally (see [3.4](#34-build-k8s-kms-plugin-locally-from-source-with-goreleaser))            |
 | `make clean`           | Removes the `dist/` directory                                                              |
@@ -447,6 +450,68 @@ You can also check out [`ghcr.io/goreleaser/goreleaser-cross`](https://github.co
 which supports standard `glibc`.
 
 Or you can create your own custom image, based on the examples from https://github.com/ThalesGroup/goreleaser-glibc-image.
+
+### 3.5. Build the Container Image
+
+The image published to `ghcr.io` on release is built by [`ko`](https://ko.build/) through
+[`.goreleaser.yml`](./.goreleaser.yml). The [`Containerfile`](./Containerfile) is the local and CI equivalent —
+it is what the Trivy image scan builds ([7.2](#72-in-ci-github-actions)).
+
+It does **not** compile anything by default: the `Makefile` stays the single source of truth for the build flags,
+and the `Containerfile` only packages the artifact it produces.
+
+```bash
+# builds dist/k8s-kms-plugin, then packages it
+make image
+
+# override the engine or the tag
+make image CONTAINER_ENGINE=docker IMAGE=k8s-kms-plugin:dev
+```
+
+Equivalent manual invocation, e.g. to package a specific `goreleaser` artifact:
+
+```bash
+podman build -f Containerfile \
+  --build-arg BINARY=dist/k8s-kms-plugin_linux_amd64_v1.0.0 \
+  -t k8s-kms-plugin:v1.0.0 .
+```
+
+If you have no local Go toolchain, or want a cross-compiled multi-arch image, use the opt-in from-source build,
+which compiles inside the builder stage:
+
+```bash
+make image-from-source
+
+# or, multi-arch (amd64 / arm64 / riscv64 cross-compiled, no emulation)
+docker buildx build --platform linux/amd64,linux/arm64,linux/riscv64 \
+  --build-arg BINARY_SOURCE=source -f Containerfile -t k8s-kms-plugin:dev .
+```
+
+Build context exclusions live in [`.containerignore`](./.containerignore), the single source of truth.
+Podman and Buildah read it directly; `.dockerignore` is a **symlink** to it, since Docker and BuildKit only look for
+that name. Both toolchains therefore apply the same rules from one file, with no second copy to keep in sync.
+
+The image is based on `debian:trixie-slim` (Debian 13), runs as the non-root user `1234:1234`, and carries the
+[OCI image annotations](https://github.com/opencontainers/image-spec/blob/main/annotations.md) (`source`,
+`revision`, `version`, `licenses`, `base.name`, …).
+
+It deliberately ships **no PKCS#11 library** — vendor clients (Thales Luna `Chrystoki`, DPoD, SoftHSM) are
+proprietary and/or host-specific, so bind-mount them at runtime and point `--p11-lib` at the mount:
+
+```bash
+podman run --rm \
+  -v /opt/luna:/opt/luna:ro \
+  -e ChrystokiConfigurationPath=/opt/luna/config \
+  -v /run/k8s-kms-plugin:/run/k8s-kms-plugin \
+  k8s-kms-plugin:dev serve \
+    --provider luna \
+    --p11-lib /opt/luna/lib/libCryptoki2.so \
+    --p11-label mypartition \
+    --p11-key-label kms-kek \
+    --socket /run/k8s-kms-plugin/k8s-kms-plugin.sock
+```
+
+The header of the [`Containerfile`](./Containerfile) documents the remaining build arguments and a SoftHSM example.
 
 ## 4. Documentation, Usage & User Guides 📚
 
@@ -796,7 +861,7 @@ Findings land in the repository's **Security** tab (SARIF), without blocking the
 
 | Workflow                                                    | What it does                                                                              |
 |-------------------------------------------------------------|-------------------------------------------------------------------------------------------|
-| [`security.yaml`](./.github/workflows/security.yaml)        | `govulncheck` (Go vuln DB), **CodeQL** (Go `security-extended` queries), **Trivy** filesystem scan (Go modules & Dockerfiles) and Trivy image scan of `Dockerfile.prod` |
+| [`security.yaml`](./.github/workflows/security.yaml)        | `govulncheck` (Go vuln DB), **CodeQL** (Go `security-extended` queries), **Trivy** filesystem scan (Go modules & Containerfiles) and Trivy image scan of the image built by `make image` from the [`Containerfile`](./Containerfile) |
 | [`lint.yml`](./.github/workflows/lint.yml)                  | `golangci-lint` — the same static analysis as `make lint`                                  |
 | [`ci.yml`](./.github/workflows/ci.yml)                      | `go vet`, build and test                                                                   |
 | [`secret-scan.yml`](./.github/workflows/secret-scan.yml)    | Detects credentials accidentally committed to the repository                               |

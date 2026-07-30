@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Thales Group and the k8s-kms-plugin Contributors
 # SPDX-License-Identifier: MIT
 
-.PHONY: all lint lint-fix vet govulncheck build build-linux-amd64 build-linux-amd64-debug build-linux-arm64 build-linux-arm64-debug build-linux-riscv64 build-linux-riscv64-debug coverage test test-integration test-e2e doc notices release release-local-test get-ldflags clean
+.PHONY: all lint lint-fix vet govulncheck build build-linux-amd64 build-linux-amd64-debug build-linux-arm64 build-linux-arm64-debug build-linux-riscv64 build-linux-riscv64-debug coverage test test-integration test-e2e doc notices image image-from-source release release-local-test get-ldflags clean
 
 all: build-linux-amd64 build-linux-arm64 build-linux-riscv64
 
@@ -147,6 +147,45 @@ test-integration:
 
 test-e2e: build
 		@CGO_ENABLED=$(CGO_ENABLED) go test -race -v ./test/e2e/...
+
+## Container image
+# The Containerfile does not compile anything by default: `image` builds the
+# binary with the LDFLAGS above, then packages dist/$(BINARY_NAME) into the
+# runtime image. The released ghcr.io image is built by ko via goreleaser.
+CONTAINER_ENGINE ?= podman
+IMAGE_REGISTRY ?= ghcr.io
+IMAGE_REPOSITORY ?= eclipse-keysealer/$(PROJECT_NAME)
+IMAGE_TAG ?= $(VERSION)
+IMAGE ?= $(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY):$(IMAGE_TAG)
+
+# OCI annotations that cannot be derived inside the build
+IMAGE_BUILD_ARGS = \
+	--build-arg LABEL_CREATED="$(BUILD_DATE)" \
+	--build-arg LABEL_VERSION="$(VERSION)" \
+	--build-arg LABEL_REVISION="$(COMMIT_LONG)" \
+	--build-arg LABEL_REF_NAME="$(IMAGE_TAG)"
+
+image: build
+		@echo "Makefile: Building container image $(IMAGE) from dist/$(BINARY_NAME)"
+		$(CONTAINER_ENGINE) build -f Containerfile \
+			--build-arg BINARY=$(DIST_DIR)/$(BINARY_NAME) \
+			$(IMAGE_BUILD_ARGS) \
+			-t $(IMAGE) .
+
+# Self-contained variant: compiles inside the builder stage instead of reusing
+# dist/. Useful where `make build` cannot run (no Go toolchain, cross-arch).
+image-from-source:
+		@echo "Makefile: Building container image $(IMAGE) from source"
+		$(CONTAINER_ENGINE) build -f Containerfile \
+			--build-arg BINARY_SOURCE=source \
+			--build-arg VERSION="$(VERSION)" \
+			--build-arg COMMIT_LONG="$(COMMIT_LONG)" \
+			--build-arg COMMIT_SHORT="$(COMMIT_SHORT)" \
+			--build-arg COMMIT_TIMESTAMP="$(COMMIT_TIMESTAMP)" \
+			--build-arg BUILD_DATE="$(BUILD_DATE)" \
+			--build-arg IS_GIT_DIRTY="$(IS_GIT_DIRTY)" \
+			$(IMAGE_BUILD_ARGS) \
+			-t $(IMAGE) .
 
 ## Release
 release-local-test:

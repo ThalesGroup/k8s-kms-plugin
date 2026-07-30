@@ -6,8 +6,8 @@
 # Jobs:
 #   govulncheck : Go-specific vulnerability check against the Go vuln DB (SARIF)
 #   codeql      : GitHub SAST engine, Go security-extended query suite (SARIF)
-#   trivy-fs    : Filesystem scan — CVEs in Go modules & Dockerfiles (SARIF)
-#   trivy-image : Scan the container image built from Dockerfile.prod (SARIF)
+#   trivy-fs    : Filesystem scan — CVEs in Go modules & Containerfiles (SARIF)
+#   trivy-image : Scan the container image built from Containerfile (SARIF)
 #
 # All four jobs upload SARIF to the GitHub Security tab so findings are
 # consolidated in one place without blocking the build.
@@ -124,9 +124,17 @@ jobs:
           category: trivy-fs
 
   # -- 4. Trivy container image scan -----------------------------------------
-  # Builds Dockerfile.prod (amd64) and scans the resulting image for OS-layer
+  # Builds the Containerfile (amd64) and scans the resulting image for OS-layer
   # and application CVEs. Runs on all triggers including schedule — the weekly
   # run is the most valuable since it detects CVEs disclosed since the last push.
+  #
+  # `make image` compiles the binary with the Makefile LDFLAGS and then packages
+  # it, so the scanned image contains exactly the artifact the Makefile produces.
+  #
+  # The build uses podman (preinstalled on the runner), which reads
+  # .containerignore directly rather than through the .dockerignore symlink.
+  # The image is handed to trivy-action as an archive since it lives in podman's
+  # store, not in the docker daemon that trivy-action would otherwise query.
   trivy-image:
     name: Trivy (container image)
     runs-on: ubuntu-latest
@@ -137,15 +145,26 @@ jobs:
 
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          # `make image` derives the version from `git describe`
+          fetch-depth: 0
+
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
+        with:
+          go-version-file: "go.mod"
+          cache: true
 
       - name: Build image for scanning
-        run: docker build -f Dockerfile.prod -t k8s-kms-plugin:scan .
+        run: |
+          make image IMAGE=k8s-kms-plugin:scan
+          # docker-archive, not oci-archive: trivy --input reads the former
+          podman save --format docker-archive -o k8s-kms-plugin-scan.tar k8s-kms-plugin:scan
 
       - name: Trivy image scan
         # aquasecurity/trivy-action v0.36.0
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
-          image-ref: "k8s-kms-plugin:scan"
+          input: "k8s-kms-plugin-scan.tar"
           severity: "CRITICAL,HIGH"
           format: "sarif"
           output: "trivy-image.sarif"

@@ -1,0 +1,61 @@
+# Build context exclusions for `podman build -f Containerfile` (see `make image`).
+#
+# This is the single source of truth. Podman and Buildah read .containerignore
+# first; Docker and BuildKit only ever look for .dockerignore, so .dockerignore
+# is a symlink to this file rather than a second copy that could drift.
+# BuildKit follows a symlinked .dockerignore since Docker 18.09.1
+# (moby/buildkit#733), so both toolchains apply the exact same rules.
+#
+# Caveat: a Git checkout on Windows without symlink support (core.symlinks=false)
+# materialises .dockerignore as a text file containing ".containerignore", which
+# silently drops these exclusions for `docker build`. It never affects podman,
+# which reads this file directly, and it costs build-context upload time rather
+# than changing the resulting image.
+
+# VCS & tooling
+.git
+.github
+.gitlab-ci.yml
+.idea
+.vscode
+.claude
+
+# Build outputs & caches.
+# dist/ is deliberately NOT excluded: the default "prebuilt" build installs
+# dist/k8s-kms-plugin, produced by `make build`. Only the non-binary goreleaser
+# artifacts are dropped from the context.
+build/
+*.test
+*.out
+.socket
+dist/*.json
+dist/*.txt
+dist/*.sig
+dist/*.pem
+dist/*.tar.gz
+dist/*.zip
+dist/*.deb
+dist/*.rpm
+dist/*.apk
+dist/*.pkg.tar.zst
+dist/artifacts.json
+dist/metadata.json
+dist/config.yaml
+
+# Dependencies are resolved by `go mod download` inside the builder stage
+vendor/
+
+# Local secrets, environment and vendor PKCS#11 clients
+.env
+*.pem
+*.key
+files/
+
+# Docs & assets not needed to compile
+docs/
+*.md
+
+# Deployment manifests, scripts and test fixtures
+deployments/
+scripts/
+test/
