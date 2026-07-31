@@ -35,6 +35,13 @@ and [pkcs11-go](https://github.com/eclipse-keypont/pkcs11-go) from the
   directives).
 - Repository and Go module path moved from `github.com/ThalesGroup/k8s-kms-plugin` to
   `github.com/eclipse-keysealer/k8s-kms-plugin`.
+- **Release artifacts are signed with Sigstore bundles instead of detached `.sig` / `.pem` files.**
+  Each binary, package, SBOM and `checksums.txt` now ships a single `<artifact>-keyless.bundle.json`
+  holding the signature, the Fulcio certificate and the Rekor inclusion proof together. Verification
+  changes from `cosign verify-blob --certificate … --signature …` to
+  `cosign verify-blob --bundle <artifact>-keyless.bundle.json …`, and requires **cosign v3 or later**.
+  cosign v3 removed the `--output-signature` / `--output-certificate` flags that produced the old
+  pair, so this is the only supported output format going forward.
 
 ### Added
 
@@ -79,6 +86,9 @@ and [pkcs11-go](https://github.com/eclipse-keypont/pkcs11-go) from the
 ### CI/CD & supply chain
 
 - Release pipeline restructured; all third-party GitHub Actions updated, Trivy and Syft bumped.
+- Blob signing migrated to the Sigstore bundle format (see Breaking changes): the `signs` blocks in
+  `.goreleaser.yml` now pass `--bundle` to `cosign sign-blob`, which is required by cosign v3 and is
+  what `sigstore/cosign-installer` now provides.
 - Reference to the project's Eclipse Foundation donation added to project docs.
 
 ## Pre-1.0 (`ThalesGroup` era, v0.x)

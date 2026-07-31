@@ -21,21 +21,14 @@ version: 2
 project_name: k8s-kms-plugin
 
 env:
-  - GO111MODULE=on
   - CGO_ENABLED=1
-  - LATEST_TAG=,latest
 
+# `go mod tidy` is deliberately NOT run here: it can rewrite go.mod/go.sum during
+# the release, so the published binaries would no longer correspond to the
+# dependency set recorded at the tag. Keep the release a pure read of the tag.
 before:
   hooks:
-    - go mod tidy
     - go mod download
-
-# -- GitLab publishing (uncomment gitlab block in release section to activate) --
-gitlab_urls:
-  api: "{{ .Env.CI_API_V4_URL }}"
-  download: "{{ .Env.CI_SERVER_URL }}"
-  skip_tls_verify: true
-  use_package_registry: true
 
 # -- Build -------------------------------------------------------------------
 # Cross-compilers are installed by the publish-release composite action (apt-get).
@@ -52,6 +45,11 @@ builds:
       - amd64
       - arm64    # aarch64
       - riscv64
+    # -trimpath strips the builder's absolute paths from the binary, so builds
+    # are reproducible from the tag alone. Paired with mod_timestamp above and
+    # matching the kos block, which already sets it.
+    flags:
+      - -trimpath
     ldflags:
       - "{{ .Env.LDFLAGS }}"
     env:
@@ -84,6 +82,8 @@ builds:
       - amd64
       - arm64    # aarch64
       - riscv64
+    flags:
+      - -trimpath
     ldflags:
       - "-X main.version={{ .Version }}"
     env:
@@ -222,6 +222,12 @@ sboms:
       - "--enrich"
       - "all"
 
+  # Unlike the syft blocks above, trivy scans the checked-out workspace rather
+  # than "$artifact": `trivy fs` does not unpack archives, so pointing it at the
+  # source tarball yields an empty SBOM (0 components). The workspace holds the
+  # same files the tarball is built from, but it also accumulates goreleaser's
+  # own output, so dist/ is excluded to keep this document a description of the
+  # source and nothing else — release.yml attests it against the source tarball.
   - id: source-sbom-vex
     artifacts: source
     cmd: trivy
@@ -233,43 +239,47 @@ sboms:
       - "cyclonedx"
       - "--scanners"
       - "vuln"
+      - "--skip-dirs"
+      - "{{ .Env.WORKSPACE }}/dist"
       - "--output"
       - "$document"
       - "{{ .Env.WORKSPACE }}"
 
 # -- Blob signing — keyless cosign (binaries, checksums, packages, SBOMs) ----
 # Container image signing is handled separately in the publish-release action.
-# Cosign v2 keyless is the default; no COSIGN_EXPERIMENTAL flag needed.
+# Keyless is the default; no COSIGN_EXPERIMENTAL flag needed.
+#
+# Output format: a single Sigstore bundle per artifact (`-keyless.bundle.json`),
+# which carries the signature, the Fulcio certificate and the Rekor inclusion
+# proof together. cosign v3 dropped --output-signature/--output-certificate
+# (the separate .sig/.pem pair); --bundle is the only supported output.
+# Verify with: cosign verify-blob --bundle <artifact>-keyless.bundle.json ...
 signs:
   - id: binary-keyless
     cmd: cosign
-    signature: "${artifact}-keyless.sig"
-    certificate: "${artifact}-keyless.pem"
-    args: [sign-blob, "--output-certificate=${certificate}", "--output-signature=${signature}", "-y", "${artifact}"]
+    signature: "${artifact}-keyless.bundle.json"
+    args: [sign-blob, "--bundle=${signature}", "-y", "${artifact}"]
     artifacts: binary
     output: true
 
   - id: checksum-keyless
     cmd: cosign
-    signature: "${artifact}-keyless.sig"
-    certificate: "${artifact}-keyless.pem"
-    args: [sign-blob, "--output-certificate=${certificate}", "--output-signature=${signature}", "-y", "${artifact}"]
+    signature: "${artifact}-keyless.bundle.json"
+    args: [sign-blob, "--bundle=${signature}", "-y", "${artifact}"]
     artifacts: checksum
     output: true
 
   - id: package-keyless
     cmd: cosign
-    signature: "${artifact}-keyless.sig"
-    certificate: "${artifact}-keyless.pem"
-    args: [sign-blob, "--output-certificate=${certificate}", "--output-signature=${signature}", "-y", "${artifact}"]
+    signature: "${artifact}-keyless.bundle.json"
+    args: [sign-blob, "--bundle=${signature}", "-y", "${artifact}"]
     artifacts: package
     output: true
 
   - id: sbom-keyless
     cmd: cosign
-    signature: "${artifact}-keyless.sig"
-    certificate: "${artifact}-keyless.pem"
-    args: [sign-blob, "--output-certificate=${certificate}", "--output-signature=${signature}", "-y", "${artifact}"]
+    signature: "${artifact}-keyless.bundle.json"
+    args: [sign-blob, "--bundle=${signature}", "-y", "${artifact}"]
     artifacts: sbom
     output: true
 
@@ -300,13 +310,14 @@ changelog:
 
 # -- Release -----------------------------------------------------------------
 release:
+  # Safe to leave unconditionally true alongside prerelease:auto — goreleaser
+  # forces make_latest to false whenever it has flagged the tag as a prerelease
+  # (internal/client/github.go), so rc/alpha/beta tags never take the "latest"
+  # label away from the last stable release.
   make_latest: true
   prerelease: auto
   github:
     owner: "{{ .Env.GITHUB_REPOSITORY_OWNER }}"
     name: '{{ .ProjectName }}'
-  #gitlab:
-  #  owner: ""
-  #  name: "{{ .Env.CI_PROJECT_PATH }}"
   footer: |
     ### Thanks to all contributors!

@@ -45,11 +45,15 @@ jobs:
 
     steps:
       # Full history required by goreleaser for changelog generation.
+      # persist-credentials: false — nothing here pushes over git; goreleaser
+      # talks to the API with GITHUB_TOKEN, so the checkout credential would only
+      # sit in .git/config for the rest of the job.
       - name: Checkout
         # actions/checkout v6.0.3
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       # Installs Go, cross-compilers, ko, cosign, syft, trivy, and LDFLAGS.
       # All tool versions live in one place: setup-build-env/action.yml.
@@ -79,13 +83,31 @@ jobs:
       # *.spdx.json      — 1 file (SPDX via syft)
       # *.cdx.json       — 1 file (CycloneDX via syft)
       # *.vex.cdx.json   — 1 file (CycloneDX + VEX via trivy)
+      #
+      # Each glob must resolve to exactly one file. Anything else means the
+      # goreleaser sboms block changed and the attestations below would be
+      # attesting the wrong document, so fail loudly instead of emitting an
+      # empty or multi-line output.
       - name: Locate SBOM files
         id: sboms
         run: |
-          echo "source=$(ls ./dist/*-source.tar.gz)"              >> "$GITHUB_OUTPUT"
-          echo "spdx=$(ls ./dist/*.spdx.json)"                    >> "$GITHUB_OUTPUT"
-          echo "cdx=$(ls ./dist/*.cdx.json | grep -v vex)"        >> "$GITHUB_OUTPUT"
-          echo "vex=$(ls ./dist/*.vex.cdx.json)"                  >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          shopt -s nullglob extglob
+
+          emit() {
+            local name=$1; shift
+            if [[ $# -ne 1 ]]; then
+              echo "::error::expected exactly 1 ${name} file in dist/, found $#: $*"
+              exit 1
+            fi
+            echo "${name}=$1" >> "$GITHUB_OUTPUT"
+          }
+
+          emit source ./dist/*-source.tar.gz
+          emit spdx   ./dist/*.spdx.json
+          emit vex    ./dist/*.vex.cdx.json
+          # *.cdx.json would also match the trivy VEX document; exclude it.
+          emit cdx    ./dist/!(*.vex).cdx.json
 
       - name: Attest SBOM (SPDX)
         # actions/attest v4.1.0
@@ -158,6 +180,7 @@ jobs:
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Verify SLSA provenance
         uses: ./.github/actions/verify-slsa

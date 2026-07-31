@@ -888,7 +888,7 @@ What a release produces:
 
 | Artifact                                                              | Signature / attestation                                                        |
 |------------------------------------------------------------------------|---------------------------------------------------------------------------------|
-| Binaries (`linux/amd64`, `arm64`, `riscv64`)                           | `<artifact>-keyless.sig` + `<artifact>-keyless.pem` (`cosign sign-blob`)         |
+| Binaries (`linux/amd64`, `arm64`, `riscv64`)                           | `<artifact>-keyless.bundle.json` — Sigstore bundle (`cosign sign-blob`)          |
 | Packages (`apk`, `deb`, `rpm`, `pkg.tar.zst`)                          | idem                                                                             |
 | `checksums.txt`                                                        | idem                                                                             |
 | SBOMs — SPDX & CycloneDX (`syft`) and a CycloneDX VEX (`trivy`)        | idem, plus in-toto attestations via [`actions/attest`](https://github.com/actions/attest) |
@@ -906,13 +906,13 @@ published assets and runs `slsa-verifier` against both the binaries and the imag
 
 ## 9. Verifying the authenticity of an artifact 📝🔍
 
-Install [`cosign`](https://github.com/sigstore/cosign) (v2 or later — `COSIGN_EXPERIMENTAL` is no longer needed):
+Install [`cosign`](https://github.com/sigstore/cosign) (v3 or later — `COSIGN_EXPERIMENTAL` is no longer needed):
 
 ```bash
-go install github.com/sigstore/cosign/v2/cmd/cosign@latest
+go install github.com/sigstore/cosign/v3/cmd/cosign@latest
 ```
 
-Download the artifact together with its `-keyless.sig` and `-keyless.pem` files from the
+Download the artifact together with its `-keyless.bundle.json` file from the
 [releases page](https://github.com/eclipse-keysealer/k8s-kms-plugin/releases), then:
 
 ```bash
@@ -921,8 +921,7 @@ VERSION=${TAG#v}                              # goreleaser strips the leading "v
 FILE=k8s-kms-plugin_linux_amd64_${VERSION}
 
 cosign verify-blob \
-  --certificate "${FILE}-keyless.pem" \
-  --signature   "${FILE}-keyless.sig" \
+  --bundle "${FILE}-keyless.bundle.json" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
   --certificate-identity "https://github.com/eclipse-keysealer/k8s-kms-plugin/.github/workflows/release.yml@refs/tags/${TAG}" \
   "${FILE}"
@@ -930,8 +929,11 @@ cosign verify-blob \
 
 Expected output: `Verified OK`.
 
-The same command verifies packages, SBOMs and `k8s-kms-plugin_checksums.txt` — each ships its own `.sig` / `.pem`
-pair. Verifying the checksums file once and then checking hashes locally covers every artifact at once:
+The bundle is a single, self-contained file: it holds the signature, the Fulcio certificate and the Rekor
+inclusion proof that earlier releases shipped as a separate `.sig` / `.pem` pair.
+
+The same command verifies packages, SBOMs and `k8s-kms-plugin_checksums.txt` — each ships its own bundle.
+Verifying the checksums file once and then checking hashes locally covers every artifact at once:
 
 ```bash
 sha256sum --check --ignore-missing k8s-kms-plugin_checksums.txt

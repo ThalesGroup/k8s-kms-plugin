@@ -16,7 +16,7 @@
 #   this action (LDFLAGS runs `make get-ldflags` which needs the Makefile).
 #
 # Tool versions: update here when new releases are available.
-#   SYFT_VERSION=1.45.1  TRIVY_VERSION=0.71.0
+#   COSIGN_VERSION=3.0.6  SYFT_VERSION=1.45.1  TRIVY_VERSION=0.71.0
 
 name: Setup build environment
 description: >
@@ -74,11 +74,19 @@ runs:
       uses: ko-build/setup-ko@d006021bd0c28d1ce33a07e7943d48b079944c8d
 
     # -- Cosign ---------------------------------------------------------------
-    # v2 keyless mode is the default. Signing is fully non-interactive:
+    # Keyless mode is the default. Signing is fully non-interactive:
     # the GitHub OIDC token is used automatically when id-token:write is granted.
+    #
+    # cosign-release is pinned deliberately. Left unpinned, the installer tracks
+    # its own default, which is how the v3 sign-blob change (--output-signature /
+    # --output-certificate replaced by --bundle) reached this pipeline unannounced
+    # and broke the release. Bump this in step with the `signs` block in
+    # .goreleaser.yml.
     - name: Install cosign
       # sigstore/cosign-installer v4.1.2
       uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6
+      with:
+        cosign-release: v3.0.6
 
     # -- Syft -----------------------------------------------------------------
     # Generates SPDX-JSON and CycloneDX-JSON SBOMs, invoked by goreleaser.
