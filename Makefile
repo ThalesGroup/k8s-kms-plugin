@@ -65,10 +65,16 @@ RISCV64_CC_INSTALL_HINT := sudo apt-get install gcc-riscv64-linux-gnu libc6-dev-
 ## Licenses
 # go-licenses renders go-licenses.tpl, which cannot pad the table cells to a
 # common width, so the raw output is piped through align-md-tables.awk.
+#
+# Both stages write to temp files and NOTICES.md is only replaced once the whole
+# chain has succeeded. Writing into it directly would truncate the committed file
+# the moment either stage fails — and go-licenses does fail, e.g. against Go 1.26
+# (google/go-licenses#128) — leaving an empty NOTICES.md behind the error.
 notices:
 		$(call require,go-licenses,go install github.com/google/go-licenses@latest)
-		@go-licenses report ./... --ignore github.com/eclipse-keysealer/k8s-kms-plugin --template go-licenses.tpl > NOTICES.md.tmp
-		@awk -f scripts/align-md-tables.awk NOTICES.md.tmp > NOTICES.md
+		@{ go-licenses report ./... --ignore github.com/eclipse-keysealer/k8s-kms-plugin --template go-licenses.tpl > NOTICES.md.tmp && \
+		   awk -f scripts/align-md-tables.awk NOTICES.md.tmp > NOTICES.md.aligned && \
+		   mv NOTICES.md.aligned NOTICES.md; } || { rm -f NOTICES.md.tmp NOTICES.md.aligned; exit 1; }
 		@rm -f NOTICES.md.tmp
 		@echo "NOTICES.md generated"
 
