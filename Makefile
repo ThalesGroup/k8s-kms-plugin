@@ -63,9 +63,13 @@ ARM64_CC_INSTALL_HINT := sudo apt-get install gcc-aarch64-linux-gnu libc6-dev-ar
 RISCV64_CC_INSTALL_HINT := sudo apt-get install gcc-riscv64-linux-gnu libc6-dev-riscv64-cross
 
 ## Licenses
+# go-licenses renders go-licenses.tpl, which cannot pad the table cells to a
+# common width, so the raw output is piped through align-md-tables.awk.
 notices:
 		$(call require,go-licenses,go install github.com/google/go-licenses@latest)
-		@go-licenses report ./... --ignore github.com/eclipse-keysealer/k8s-kms-plugin --template go-licenses.tpl > NOTICES.md
+		@go-licenses report ./... --ignore github.com/eclipse-keysealer/k8s-kms-plugin --template go-licenses.tpl > NOTICES.md.tmp
+		@awk -f scripts/align-md-tables.awk NOTICES.md.tmp > NOTICES.md
+		@rm -f NOTICES.md.tmp
 		@echo "NOTICES.md generated"
 
 ## Lint
