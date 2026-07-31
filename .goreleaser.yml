@@ -121,7 +121,17 @@ kos:
 nfpms:
   - id: '{{ .ProjectName }}'
     package_name: '{{ .ProjectName }}'
-    file_name_template: "{{ .ConventionalFileName }}"
+    # ConventionalFileName renders prerelease deb/rpm names with a tilde
+    # (k8s-kms-plugin_1.0.0~rc2_amd64.deb). GitHub does not allow '~' in a
+    # release asset name and silently rewrites it to '.', so the published asset
+    # no longer matched the name recorded in checksums.txt and in the SLSA
+    # provenance subjects. Strip it here so the name goreleaser records is the
+    # name users actually download.
+    #
+    # This only renames the file: the version *inside* the package is still
+    # 1.0.0~rc2 (verified with both dpkg control data and rpm headers), so the
+    # tilde keeps doing its job of sorting prereleases below the final release.
+    file_name_template: '{{ replace .ConventionalFileName "~" "." }}'
     license: "MIT"
     vendor: "ThalesGroup"
     homepage: https://github.com/eclipse-keysealer/k8s-kms-plugin

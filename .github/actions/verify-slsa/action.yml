@@ -46,30 +46,110 @@ runs:
 
     # -- Download release assets ----------------------------------------------
     # The binary-provenance job uploads a *.intoto.jsonl to the GitHub Release.
-    # We download it alongside the checksum file for binary verification.
-    - name: Download provenance and checksum
+    #
+    # release.yml feeds the generator `base64-subjects: <checksum file contents>`,
+    # so the provenance subjects are the artifacts *listed in* the checksum file,
+    # one subject per line — the checksum file itself is not a subject. Verifying
+    # it directly therefore always fails with "artifact hash does not match
+    # provenance subject". Drive the download from that list instead, and verify
+    # the artifacts it names.
+    - name: Download provenance, checksum and artifacts
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.github_token }}
+        TAG: ${{ inputs.tag }}
+        REPO: ${{ github.repository }}
+        CHECKSUM_FILE: ${{ inputs.checksum_file }}
       run: |
-        mkdir -p /tmp/verify
-        gh release download "${{ inputs.tag }}" \
-          --repo "${{ github.repository }}" \
-          --pattern "${{ inputs.checksum_file }}" \
+        set -euo pipefail
+        rm -rf /tmp/verify
+        mkdir -p /tmp/verify/all /tmp/verify/artifacts
+
+        gh release download "$TAG" \
+          --repo "$REPO" \
+          --pattern "$CHECKSUM_FILE" \
           --pattern "*.intoto.jsonl" \
           --dir /tmp/verify \
           --clobber
 
+        # Everything, then select by content below. Downloading by name does not
+        # work: GitHub normalises characters it does not allow in asset names, so
+        # the nfpms prerelease packages that goreleaser writes as
+        # "…1.0.0~rc2…" are published as "…1.0.0.rc2…" while the checksum file
+        # and the provenance subjects keep the tilde.
+        gh release download "$TAG" \
+          --repo "$REPO" \
+          --dir /tmp/verify/all \
+          --clobber
+
+        # Match published assets to checksum entries by hash, and restore the
+        # name the checksum file uses so `sha256sum --check` can run below.
+        declare -A want
+        while read -r hash name; do
+          [[ -n "${hash:-}" && -n "${name:-}" ]] && want["$hash"]="$name"
+        done < "/tmp/verify/${CHECKSUM_FILE}"
+
+        if [[ ${#want[@]} -eq 0 ]]; then
+          echo "::error::${CHECKSUM_FILE} listed no artifacts"
+          exit 1
+        fi
+
+        for f in /tmp/verify/all/*; do
+          h=$(sha256sum "$f" | cut -d' ' -f1)
+          if [[ -n "${want[$h]:-}" ]]; then
+            cp "$f" "/tmp/verify/artifacts/${want[$h]}"
+            unset 'want[$h]'
+          fi
+        done
+
+        # Anything left is listed in the checksum file but absent from the
+        # release — a genuinely incomplete publish, so fail rather than verify a
+        # subset and call it a pass.
+        if [[ ${#want[@]} -ne 0 ]]; then
+          echo "::error::checksum entries with no published asset: ${want[*]}"
+          exit 1
+        fi
+
     # -- Verify binary provenance ---------------------------------------------
+    # Two steps, because they answer different questions: sha256sum ties the
+    # checksum file to the bytes actually published (it carries no provenance of
+    # its own), and slsa-verifier ties those same bytes to the builder identity
+    # and the source tag.
+    - name: Verify checksums
+      shell: bash
+      env:
+        CHECKSUM_FILE: ${{ inputs.checksum_file }}
+      run: |
+        set -euo pipefail
+        cd /tmp/verify/artifacts
+        sha256sum --check --strict "/tmp/verify/${CHECKSUM_FILE}"
+
     - name: Verify binary provenance
       shell: bash
+      env:
+        TAG: ${{ inputs.tag }}
+        REPO: ${{ github.repository }}
       run: |
-        provenance=$(ls /tmp/verify/*.intoto.jsonl | head -1)
-        slsa-verifier verify-artifact \
-          "/tmp/verify/${{ inputs.checksum_file }}" \
-          --provenance-path "$provenance" \
-          --source-uri "github.com/${{ github.repository }}" \
-          --source-tag "${{ inputs.tag }}"
+        set -euo pipefail
+        shopt -s nullglob
+
+        provenance=(/tmp/verify/*.intoto.jsonl)
+        artifacts=(/tmp/verify/artifacts/*)
+
+        if [[ ${#provenance[@]} -ne 1 ]]; then
+          echo "::error::expected exactly 1 provenance file, found ${#provenance[@]}: ${provenance[*]-}"
+          exit 1
+        fi
+        if [[ ${#artifacts[@]} -eq 0 ]]; then
+          echo "::error::no artifacts downloaded to verify"
+          exit 1
+        fi
+
+        echo "Verifying ${#artifacts[@]} artifacts against ${provenance[0]}"
+        slsa-verifier verify-artifact "${artifacts[@]}" \
+          --provenance-path "${provenance[0]}" \
+          --source-uri "github.com/${REPO}" \
+          --source-tag "$TAG"
 
     # -- Verify image provenance ----------------------------------------------
     # The --builder-id must match the generator_container_slsa3.yml reference
