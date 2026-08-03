@@ -52,6 +52,11 @@ dist/
 # gRPC protobuf
 api.proto
 
+# Sample collection from scripts/grpcurl/collect-jwe-samples.sh
+# The glob covers every --format: .zip, .tgz and .tar.zst
+jwe-samples/
+jwe-samples.*
+
 # Documents
 *.pdf
 *.PDF
