@@ -191,12 +191,25 @@ IMAGE_REPOSITORY ?= eclipse-keysealer/$(PROJECT_NAME)
 IMAGE_TAG ?= $(VERSION)
 IMAGE ?= $(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY):$(IMAGE_TAG)
 
-# OCI annotations that cannot be derived inside the build
+# Single source of truth for the image description: passed both as the
+# Containerfile LABEL and as the manifest annotation below, so the two agree.
+IMAGE_DESCRIPTION ?= gRPC service that leverages a remote or local HSM/TPM to encrypt Kubernetes data at-rest with KMS v2.
+
+# --annotation writes manifest-level OCI annotations (what GitHub reads to fill
+# in the ghcr.io package page). It is a podman/buildah flag: docker build has no
+# equivalent -- buildx needs --output type=image,annotation.* -- so it is only
+# passed when the engine actually supports it, keeping CONTAINER_ENGINE=docker working.
+IMAGE_ANNOTATIONS = $(if $(filter podman buildah,$(notdir $(CONTAINER_ENGINE))),\
+	--annotation "org.opencontainers.image.description=$(IMAGE_DESCRIPTION)")
+
+# OCI labels that cannot be derived inside the build
 IMAGE_BUILD_ARGS = \
 	--build-arg LABEL_CREATED="$(BUILD_DATE)" \
 	--build-arg LABEL_VERSION="$(VERSION)" \
 	--build-arg LABEL_REVISION="$(COMMIT_LONG)" \
-	--build-arg LABEL_REF_NAME="$(IMAGE_TAG)"
+	--build-arg LABEL_REF_NAME="$(IMAGE_TAG)" \
+	--build-arg LABEL_DESCRIPTION="$(IMAGE_DESCRIPTION)" \
+	$(IMAGE_ANNOTATIONS)
 
 image: build
 		@echo "Makefile: Building container image $(IMAGE) from dist/$(BINARY_NAME)"

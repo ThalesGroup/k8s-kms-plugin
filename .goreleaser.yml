@@ -116,6 +116,12 @@ kos:
       - "{{ .Env.LDFLAGS }}"
     env:
       - CGO_ENABLED=1
+    # OCI annotations on the pushed manifest. GitHub reads
+    # org.opencontainers.image.description to populate the ghcr.io package page.
+    annotations:
+      org.opencontainers.image.description: >-
+        gRPC service that leverages a remote or local HSM/TPM to encrypt
+        Kubernetes data at-rest with KMS v2.
 
 # -- Linux packages ----------------------------------------------------------
 nfpms:
