@@ -7,7 +7,7 @@
 # the raw JSON messages plus a byte-level size breakdown of the envelope:
 # the JWE Compact Serialization for aes-gcm/aes-cbc/rsa-oaep, or the plain
 # binary envelope (nonce || AES-256-GCM-sealed seed) plus the separate
-# kem-ct annotation for ml-kem — detected per case from the algorithm-family
+# kem-ciphertext annotation for ml-kem — detected per case from the algorithm-family
 # annotation the plugin actually returned, not assumed from the case name.
 #
 # The plugin serves exactly one KEK + one algorithm family per socket, so this
@@ -466,9 +466,9 @@ for entry in "${CASES[@]}"; do
     HEADER_JSON="{}"
     SEG_HDR="" SEG_EKEY="" SEG_IV="" SEG_CT="" SEG_TAG=""
 
-    KEMCT_B64=$(jq -r '(.annotations // {})["kem-ct.k8s-kms-plugin.keysealer.eclipse.org"] // empty' <<<"$ENCRYPT_RESPONSE" 2>/dev/null || true)
+    KEMCT_B64=$(jq -r '(.annotations // {})["kem-ciphertext.k8s-kms-plugin.keysealer.eclipse.org"] // empty' <<<"$ENCRYPT_RESPONSE" 2>/dev/null || true)
     CRYPTOGRAM_RAW=$(b64url_len "$KEMCT_B64")
-    CRYPTOGRAM_SRC="annotations.kem-ct"
+    CRYPTOGRAM_SRC="annotations.kem-ciphertext"
     ENCODING_FACTOR="1.000"   # raw protobuf bytes on the actual wire — no JWE base64 layering
     CRYPTOGRAM_ON_WIRE=$CRYPTOGRAM_RAW
 
@@ -492,7 +492,7 @@ for entry in "${CASES[@]}"; do
 
     # Locate the asymmetric cryptogram: the JWE Encrypted Key segment — the
     # only shape any currently-supported classical family produces. ML-KEM
-    # never reaches this branch, so there is no `ek`/`kem-ct` header case here
+    # never reaches this branch, so there is no `ek`/`kem-ciphertext` header case here
     # any more.
     if [[ -n "${SEG_EKEY:-}" ]]; then
       CRYPTOGRAM_RAW=$(b64url_len "$SEG_EKEY")
@@ -670,7 +670,7 @@ jq -r '
   echo
   echo "A cryptogram carried in the JWE Encrypted Key segment (rsa-oaep) is"
   echo "base64url-encoded once (≈1.333×). ML-KEM's cryptogram — the raw"
-  echo "encapsulation ciphertext — travels in the \`kem-ct\` annotation as plain"
+  echo "encapsulation ciphertext — travels in the \`kem-ciphertext\` annotation as plain"
   echo "protobuf \`bytes\`, so it has no encoding expansion at all (1.000×); an"
   echo "earlier JWE-based ML-KEM design carried it base64url-encoded inside the"
   echo "protected header (double-encoded, (4/3)² ≈ 1.778×) and was dropped"
@@ -727,7 +727,7 @@ fi
   echo "> Note: \`EncryptResponse.ciphertext\` is protobuf \`bytes\`, so grpcurl renders"
   echo "> it base64-encoded. Decoding it once yields the JWE Compact Serialization for"
   echo "> aes-gcm/aes-cbc/rsa-oaep — ml-kem is a plain binary envelope instead, with the"
-  echo "> KEM ciphertext carried separately in the \`kem-ct\` annotation."
+  echo "> KEM ciphertext carried separately in the \`kem-ciphertext\` annotation."
   echo
 
   for entry in "${CASES[@]}"; do
@@ -760,7 +760,7 @@ fi
     if [[ "$FAMILY" == "ml-kem" ]]; then
       echo "### ML-KEM envelope (no JWE)"
       echo
-      echo "The KEM ciphertext travels in the \`kem-ct\` annotation, not inside"
+      echo "The KEM ciphertext travels in the \`kem-ciphertext\` annotation, not inside"
       echo "\`ciphertext\` — see the \`cryptogram\` / \`kms_annotations_bytes\` fields below."
       echo
       echo '```json'

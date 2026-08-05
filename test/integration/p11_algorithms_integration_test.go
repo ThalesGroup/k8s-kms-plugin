@@ -223,7 +223,7 @@ var mlkemCiphertextLen = map[crypto11.MLKEMParameterSet]int{
 
 // testMLKEM exercises the full NewP11 → Encrypt → Decrypt cycle for one ML-KEM parameter
 // set and verifies the KMS v2 binary envelope contract: the KEM ciphertext (key
-// establishment material) travels in the kem-ct Annotations entry sized to the parameter
+// establishment material) travels in the kem-ciphertext Annotations entry sized to the parameter
 // set's CT length, the algorithm-family Annotations entry echoes "ml-kem", and
 // EncryptResponse.Ciphertext (the AEAD-wrapped DEK seed) stays well under the KMS v2 1 kB
 // limit — this is the case a JWE-shaped envelope could not satisfy for ML-KEM-768/1024.
@@ -248,10 +248,10 @@ func testMLKEM(t *testing.T, paramSet crypto11.MLKEMParameterSet) {
 		"EncryptResponse.ciphertext must stay under the KMS v2 1 kB limit, got %d bytes", len(encResp.GetCiphertext()))
 
 	annotations := encResp.GetAnnotations()
-	require.Len(t, annotations, 2, "expected a kem-ct annotation and an algorithm-family annotation")
+	require.Len(t, annotations, 2, "expected a kem-ciphertext annotation and an algorithm-family annotation")
 
-	ct, ok := annotations[providers.KemCTAnnotationKey]
-	require.True(t, ok, "missing %s annotation", providers.KemCTAnnotationKey)
+	ct, ok := annotations[providers.KemCiphertextAnnotationKey]
+	require.True(t, ok, "missing %s annotation", providers.KemCiphertextAnnotationKey)
 	assert.Equal(t, mlkemCiphertextLen[paramSet], len(ct),
 		"KEM ciphertext annotation length should match parameter set %d", paramSet)
 
@@ -271,7 +271,7 @@ func TestMLKEM_1024_EncryptDecrypt(t *testing.T) {
 }
 
 // TestMLKEM_Uniqueness verifies the KMS v2 uniqueness requirement: encrypting the same
-// plaintext twice yields distinct ciphertext and distinct kem-ct annotation values, since
+// plaintext twice yields distinct ciphertext and distinct kem-ciphertext annotation values, since
 // ML-KEM encapsulation and the AES-GCM nonce are both freshly randomized per call.
 func TestMLKEM_Uniqueness(t *testing.T) {
 	skipIfNoLibrary(t)
@@ -294,8 +294,8 @@ func TestMLKEM_Uniqueness(t *testing.T) {
 
 	assert.NotEqual(t, resp1.GetCiphertext(), resp2.GetCiphertext())
 	assert.NotEqual(t,
-		resp1.GetAnnotations()[providers.KemCTAnnotationKey],
-		resp2.GetAnnotations()[providers.KemCTAnnotationKey])
+		resp1.GetAnnotations()[providers.KemCiphertextAnnotationKey],
+		resp2.GetAnnotations()[providers.KemCiphertextAnnotationKey])
 }
 
 // ---------------------------------------------------------------------------

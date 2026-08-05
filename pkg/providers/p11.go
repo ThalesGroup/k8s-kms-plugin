@@ -49,13 +49,15 @@ const (
 )
 
 const (
-	// KemCTAnnotationKey is the KMS v2 EncryptResponse.Annotations / DecryptRequest.Annotations
-	// key under which the raw ML-KEM encapsulation ciphertext (CT) travels. The apiserver
-	// round-trips annotations verbatim from Encrypt to the matching Decrypt, so this is the
-	// channel that carries the KEM ciphertext across the two RPCs. It must be a valid RFC 1123
-	// DNS subdomain per the KMS v2 API contract. Access it only via putEncapsulation /
-	// getEncapsulation so a future move to a dedicated EncryptResponse field is a one-line change.
-	KemCTAnnotationKey = "kem-ct.k8s-kms-plugin.keysealer.eclipse.org"
+	// KemCiphertextAnnotationKey is the KMS v2 EncryptResponse.Annotations / DecryptRequest.Annotations
+	// key under which the ML-KEM ciphertext travels — "(KEM) ciphertext" is the term FIPS 203
+	// defines in its Terms and Definitions for the value ML-KEM.Encaps produces alongside the
+	// shared secret key (Algorithm 20, output c). The apiserver round-trips annotations verbatim
+	// from Encrypt to the matching Decrypt, so this is the channel that carries c across the two
+	// RPCs. It must be a valid RFC 1123 DNS subdomain per the KMS v2 API contract. Access it only
+	// via putEncapsulation / getEncapsulation so a future move to a dedicated EncryptResponse
+	// field is a one-line change.
+	KemCiphertextAnnotationKey = "kem-ciphertext.k8s-kms-plugin.keysealer.eclipse.org"
 
 	// AlgorithmFamilyAnnotationKey is the KMS v2 EncryptResponse.Annotations key carrying the
 	// plugin's active --algorithm-family value (e.g. "aes-gcm", "ml-kem") as informational
@@ -72,14 +74,14 @@ func putEncapsulation(resp *k8skmsv2.EncryptResponse, ct []byte) {
 	if resp.Annotations == nil {
 		resp.Annotations = map[string][]byte{}
 	}
-	resp.Annotations[KemCTAnnotationKey] = ct
+	resp.Annotations[KemCiphertextAnnotationKey] = ct
 }
 
 // getEncapsulation retrieves the ML-KEM encapsulation ciphertext from req.Annotations.
-// ok is false if the request carries no kem-ct annotation, i.e. it was not produced by the
+// ok is false if the request carries no kem-ciphertext annotation, i.e. it was not produced by the
 // ML-KEM path.
 func getEncapsulation(req *k8skmsv2.DecryptRequest) (ct []byte, ok bool) {
-	ct, ok = req.GetAnnotations()[KemCTAnnotationKey]
+	ct, ok = req.GetAnnotations()[KemCiphertextAnnotationKey]
 	return ct, ok
 }
 
@@ -1176,8 +1178,8 @@ func (p *P11) encryptMLKEM(ctx context.Context, req *k8skmsv2.EncryptRequest) (*
 func (p *P11) decryptMLKEMWithContext(req *k8skmsv2.DecryptRequest, actualCtx *crypto11.Context) ([]byte, error) {
 	kemCt, ok := getEncapsulation(req)
 	if !ok {
-		slog.Error("decryptMLKEM: missing kem-ct annotation on DecryptRequest", "uid", req.GetUid(), "keyId", req.GetKeyId(), "annotationKey", KemCTAnnotationKey)
-		return nil, fmt.Errorf("decryptMLKEM: missing %q annotation on DecryptRequest", KemCTAnnotationKey)
+		slog.Error("decryptMLKEM: missing kem-ciphertext annotation on DecryptRequest", "uid", req.GetUid(), "keyId", req.GetKeyId(), "annotationKey", KemCiphertextAnnotationKey)
+		return nil, fmt.Errorf("decryptMLKEM: missing %q annotation on DecryptRequest", KemCiphertextAnnotationKey)
 	}
 
 	reqKeyID, err := hex.DecodeString(req.GetKeyId())

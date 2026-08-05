@@ -47,7 +47,7 @@ print_jwe_header() {
 }
 
 # print_mlkem_envelope shows the size of the AEAD-wrapped seed (ciphertext) and the raw
-# ML-KEM encapsulation ciphertext (the kem-ct annotation). ML-KEM has no JWE header to
+# ML-KEM encapsulation ciphertext (the kem-ciphertext annotation). ML-KEM has no JWE header to
 # print — the KEM ciphertext travels as a plain KMS v2 annotation instead (see
 # ml-kem-kmsv2-implementation-spec.md).
 print_mlkem_envelope() {
@@ -55,14 +55,14 @@ print_mlkem_envelope() {
   local ct_len kemct_b64 kemct_len
 
   ct_len=$(printf '%s' "$ciphertext_b64" | base64 -d 2>/dev/null | wc -c | tr -d '[:space:]')
-  kemct_b64=$(printf '%s' "$encrypt_response" | jq -r '(.annotations // {})["kem-ct.k8s-kms-plugin.keysealer.eclipse.org"] // empty')
+  kemct_b64=$(printf '%s' "$encrypt_response" | jq -r '(.annotations // {})["kem-ciphertext.k8s-kms-plugin.keysealer.eclipse.org"] // empty')
   kemct_len=0
   [[ -n "$kemct_b64" ]] && kemct_len=$(printf '%s' "$kemct_b64" | base64 -d 2>/dev/null | wc -c | tr -d '[:space:]')
 
   echo "🧬 ML-KEM envelope (no JWE):"
   echo '```'
-  echo "ciphertext:        ${ct_len} B  (nonce || AES-256-GCM-sealed DEK seed)"
-  echo "kem-ct annotation: ${kemct_len} B  (raw ML-KEM encapsulation ciphertext)"
+  echo "ciphertext:                   ${ct_len} B  (nonce || AES-256-GCM-sealed DEK seed)"
+  echo "kem-ciphertext annotation: ${kemct_len} B  (raw ML-KEM encapsulation ciphertext)"
   echo '```'
 }
 
@@ -189,7 +189,7 @@ echo ""
 
 # ---- Decrypt ----
 # Annotations are forwarded from EncryptResponse, mirroring the apiserver's round-trip
-# guarantee — required for ML-KEM, whose kem-ct annotation the plugin needs back to decrypt.
+# guarantee — required for ML-KEM, whose kem-ciphertext annotation the plugin needs back to decrypt.
 DECRYPT_REQUEST=$(echo "$ENCRYPT_RESPONSE" | jq -c --arg uid "test-dec-1" --arg kid "$KEY_ID" \
   '{ciphertext: .ciphertext, uid: $uid, key_id: $kid} + (if (.annotations // {}) == {} then {} else {annotations: .annotations} end)')
 [[ "$VERBOSE" == true ]] && { echo "📤 DecryptRequest:"; echo '```json'; echo "$DECRYPT_REQUEST" | jq; echo '```'; echo ""; }

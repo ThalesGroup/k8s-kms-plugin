@@ -410,7 +410,7 @@ func TestPutEncapsulation_NilAnnotations(t *testing.T) {
 	putEncapsulation(resp, ct)
 
 	require.NotNil(t, resp.Annotations)
-	assert.Equal(t, ct, resp.Annotations[KemCTAnnotationKey])
+	assert.Equal(t, ct, resp.Annotations[KemCiphertextAnnotationKey])
 	assert.Len(t, resp.Annotations, 1, "putEncapsulation must not touch any other annotation key")
 }
 
@@ -425,15 +425,15 @@ func TestPutEncapsulation_ExistingAnnotations(t *testing.T) {
 	putEncapsulation(resp, ct)
 
 	assert.Equal(t, []byte("keep-me"), resp.Annotations["other.example.org"])
-	assert.Equal(t, ct, resp.Annotations[KemCTAnnotationKey])
+	assert.Equal(t, ct, resp.Annotations[KemCiphertextAnnotationKey])
 }
 
-// TestGetEncapsulation_Present covers a DecryptRequest carrying the kem-ct annotation
+// TestGetEncapsulation_Present covers a DecryptRequest carrying the kem-ciphertext annotation
 // round-tripped from a prior Encrypt call.
 func TestGetEncapsulation_Present(t *testing.T) {
 	ct := []byte{0xDE, 0xAD, 0xBE, 0xEF}
 	req := &k8skmsv2.DecryptRequest{
-		Annotations: map[string][]byte{KemCTAnnotationKey: ct},
+		Annotations: map[string][]byte{KemCiphertextAnnotationKey: ct},
 	}
 
 	got, ok := getEncapsulation(req)
@@ -463,16 +463,16 @@ func TestPutAlgorithmFamily_NilAnnotations(t *testing.T) {
 }
 
 // TestPutAlgorithmFamily_ExistingAnnotations covers a pre-populated Annotations map (e.g.
-// one that already carries the ML-KEM kem-ct annotation): the algorithm-family entry must be
+// one that already carries the ML-KEM kem-ciphertext annotation): the algorithm-family entry must be
 // added alongside existing entries, not replace the map.
 func TestPutAlgorithmFamily_ExistingAnnotations(t *testing.T) {
 	resp := &k8skmsv2.EncryptResponse{
-		Annotations: map[string][]byte{KemCTAnnotationKey: {0x01, 0x02}},
+		Annotations: map[string][]byte{KemCiphertextAnnotationKey: {0x01, 0x02}},
 	}
 
 	putAlgorithmFamily(resp, AlgAESGCM)
 
-	assert.Equal(t, []byte{0x01, 0x02}, resp.Annotations[KemCTAnnotationKey])
+	assert.Equal(t, []byte{0x01, 0x02}, resp.Annotations[KemCiphertextAnnotationKey])
 	assert.Equal(t, []byte("aes-gcm"), resp.Annotations[AlgorithmFamilyAnnotationKey])
 }
 

@@ -85,8 +85,8 @@ from the `algorithm-family` annotation the plugin attaches to every
 
 🧬 ML-KEM envelope (no JWE):
 ```
-ciphertext:        60 B  (nonce || AES-256-GCM-sealed DEK seed)
-kem-ct annotation: 1088 B  (raw ML-KEM encapsulation ciphertext)
+ciphertext:                  60 B  (nonce || AES-256-GCM-sealed DEK seed)
+kem-ciphertext annotation: 1088 B  (raw ML-KEM encapsulation ciphertext)
 ```
 ```
 
@@ -96,7 +96,7 @@ where JWE has only one slot, and the KEM ciphertext alone exceeds the KMS v2
 1 kB `ciphertext` limit for ML-KEM-768/1024. So the plugin splits them across
 the two fields KMS v2 already provides: the AEAD-wrapped seed stays in
 `ciphertext`, and the KEM ciphertext travels in
-`annotations["kem-ct.k8s-kms-plugin.keysealer.eclipse.org"]`, which the
+`annotations["kem-ciphertext.k8s-kms-plugin.keysealer.eclipse.org"]`, which the
 apiserver round-trips verbatim to the matching `Decrypt` call.
 
 #### Verbose output
@@ -295,7 +295,7 @@ reports the size of `EncryptResponse.ciphertext`, which KMS v2 caps at < 1 kB.
 For `aes-gcm` / `aes-cbc` / `rsa-oaep` this is a JWE Compact Serialization; for
 `ml-kem` it is a plain binary envelope (`nonce || AES-256-GCM-sealed seed`,
 ~60 B) with the raw ML-KEM encapsulation ciphertext carried separately in a
-`kem-ct` annotation — the split that keeps ML-KEM under the 1 kB limit in the
+`kem-ciphertext` annotation — the split that keeps ML-KEM under the 1 kB limit in the
 first place. See [`3.4. ML-KEM`](../../docs/softhsm-v3.md#34-ml-kem) for how
 to provision an ML-KEM key to exercise that case.
 
