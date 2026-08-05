@@ -16,13 +16,20 @@
 //
 // `make build` places the binary in dist/k8s-kms-plugin.
 //
+// grpcurl must also be on PATH — it is the gRPC client these tests drive the
+// plugin with:
+//
+//	go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest
+//
 // aes-gcm, aes-cbc and rsa-oaep work with SoftHSMv2 or SoftHSMv3.
 // ml-kem requires SoftHSMv3: https://github.com/pqctoday-org/pqctoday-hsm
 package e2e
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -47,7 +54,7 @@ const (
 )
 
 // TestMain bootstraps an ephemeral SoftHSM token, verifies it, connects
-// crypto11, locates the plugin binary, then runs all tests.
+// crypto11, locates the plugin binary and grpcurl, then runs all tests.
 // Without PKCS11_MODULE the whole suite is skipped cleanly.
 func TestMain(m *testing.M) {
 	lib := os.Getenv("PKCS11_MODULE")
@@ -68,6 +75,9 @@ func TestMain(m *testing.M) {
 	}
 
 	pluginBin = findPluginBin(repoRoot)
+	// Before the token setup below, which is far more expensive than this check
+	// and pointless without a working gRPC client.
+	requireGrpcurl()
 
 	teardown := initSoftHSMToken(lib)
 	verifySoftHSMToken(lib)
@@ -99,6 +109,46 @@ func findPluginBin(root string) string {
 		}
 	}
 	panic("k8s-kms-plugin binary not found in dist/, repo root, or PATH — run 'make build' first")
+}
+
+// requireGrpcurl verifies that grpcurl is actually runnable, so a missing client
+// is reported once here rather than as an identical failure in every sub-test —
+// after the token, the keys and the plugin process have all been set up for
+// nothing.
+//
+// Probes by running grpcurl rather than with exec.LookPath, which is as
+// shim-blind as `command -v`: a goenv/asdf shim stays on PATH even when the tool
+// is not installed for the active Go version, so LookPath resolves it happily and
+// the shim only fails once called, with "goenv: 'grpcurl' command not found".
+// Exit 127 — missing binary, or a shim with nothing behind it — is the only
+// status treated as missing, so a grpcurl build that rejects --version still
+// passes. Mirrors the `define require` rule in the Makefile and the preflight in
+// scripts/grpcurl/.
+func requireGrpcurl() {
+	out, err := exec.Command("grpcurl", "--version").CombinedOutput()
+	if err == nil {
+		return
+	}
+
+	var exitErr *exec.ExitError
+	missing := errors.Is(err, exec.ErrNotFound) ||
+		(errors.As(err, &exitErr) && exitErr.ExitCode() == 127)
+	if !missing {
+		return // it ran and failed on its own terms; that is not our problem here
+	}
+
+	// Exits rather than panicking: a missing tool is a prerequisite the caller has
+	// to install, not a broken invariant, and the goroutine dump a panic prints
+	// here would only restate this call path while burying the install command.
+	// Same idiom as the PKCS11_MODULE check in TestMain. Nothing is deferred and
+	// no token exists yet at this point, so there is nothing for os.Exit to skip.
+	fmt.Fprintf(os.Stderr, "grpcurl is required by these tests but is not runnable: %v\n", err)
+	if trimmed := strings.TrimSpace(string(out)); trimmed != "" {
+		fmt.Fprintf(os.Stderr, "  grpcurl output: %s\n", trimmed)
+	}
+	fmt.Fprintln(os.Stderr,
+		"  install it with: go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest")
+	os.Exit(1)
 }
 
 // initSoftHSMToken creates a temporary directory, writes softhsm2.conf, and
