@@ -33,7 +33,7 @@ require (
 require (
 	github.com/creack/pty v1.1.24
 	github.com/eclipse-keypont/crypto11/v2 v2.0.0-rc3
-	github.com/eclipse-keypont/gose v1.0.0-rc1
+	github.com/eclipse-keypont/gose v1.0.0-rc2
 	github.com/hashicorp/go-version v1.9.0
 	github.com/lmittmann/tint v1.2.0
 	golang.org/x/term v0.45.0

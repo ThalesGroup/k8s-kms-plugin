@@ -802,7 +802,12 @@ func (p *P11) decryptWithContext(req *k8skmsv2.DecryptRequest, isRotation bool) 
 			// create decryptor
 			decryptor := gose.NewJweRsaKeyEncryptionDecryptorImpl(store)
 
-			// decrypt
+			// Decrypt with an explicit SHA-256 rather than crypto.Hash(0) (which would derive the
+			// digest from the "alg" header). This plugin has only ever wrapped the CEK with
+			// SHA-256, so SHA-256 is correct for every object it can encounter — including those
+			// written before gose v1.0.0-rc2, whose headers say "RSA-OAEP" (SHA-1 per RFC 7518)
+			// while the CEK is SHA-256-wrapped. Deriving from the header would fail on exactly
+			// those, and a KMS plugin must never lose the ability to read its own data at rest.
 			out, _, err = decryptor.Decrypt(string(req.GetCiphertext()), crypto.SHA256)
 			if err != nil {
 				slog.Error("decryption failed", "error", err)

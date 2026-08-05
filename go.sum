@@ -11,8 +11,8 @@ github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/eclipse-keypont/crypto11/v2 v2.0.0-rc3 h1:py3Yk4XrzNaDyDQHFcIW2uHeW2hR9SnksuTtF1mzI2Q=
 github.com/eclipse-keypont/crypto11/v2 v2.0.0-rc3/go.mod h1:s8Ry/7abk1h+AdtD8AztQ9G1iv54cvr8zRy8lErn+qI=
-github.com/eclipse-keypont/gose v1.0.0-rc1 h1:VEmhMLS6dBm9OENBbmyqZzut6h2hU58IQpv0wgcyO2E=
-github.com/eclipse-keypont/gose v1.0.0-rc1/go.mod h1:8Wfqz04kOpAQ0Hl0Au/uLXjFxRYvgI5GU0R7UZUEHIE=
+github.com/eclipse-keypont/gose v1.0.0-rc2 h1:egdPs0fMNe9drIsfooGZpfkW66DFvgEIlMiSVtgJD/g=
+github.com/eclipse-keypont/gose v1.0.0-rc2/go.mod h1:8Wfqz04kOpAQ0Hl0Au/uLXjFxRYvgI5GU0R7UZUEHIE=
 github.com/eclipse-keypont/pkcs11-go v1.0.0 h1:HdPGw/79+UhMSn1pxhuEtJhHN2S9wLWcIBW4oRsesw0=
 github.com/eclipse-keypont/pkcs11-go v1.0.0/go.mod h1:G7oHN2Ozg6EiiK1o3WPniTkZAO8QdH7J1r8oP897spc=
 github.com/frankban/quicktest v1.14.6 h1:7Xjx+VpznH+oBnejlPUj8oUpdxnVs4f8XU8WnHkI4W8=
