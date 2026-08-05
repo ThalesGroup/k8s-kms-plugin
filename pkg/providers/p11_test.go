@@ -5,6 +5,8 @@ package providers
 
 import (
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
@@ -474,6 +476,68 @@ func TestPutAlgorithmFamily_ExistingAnnotations(t *testing.T) {
 
 	assert.Equal(t, []byte{0x01, 0x02}, resp.Annotations[KemCiphertextAnnotationKey])
 	assert.Equal(t, []byte("aes-gcm"), resp.Annotations[AlgorithmFamilyAnnotationKey])
+}
+
+// TestMlkemAAD_Layout pins the additional authenticated data encoding: the version-bearing
+// context string followed by the KEM ciphertext, with nothing between them.
+func TestMlkemAAD_Layout(t *testing.T) {
+	kemCt := []byte{0xDE, 0xAD, 0xBE, 0xEF}
+
+	aad := mlkemAAD(kemCt)
+
+	assert.Equal(t, append([]byte(mlkemAADContext), kemCt...), aad)
+	assert.True(t, strings.HasPrefix(string(aad), mlkemAADContext),
+		"the context string must come first so it domain-separates the envelope format")
+}
+
+// TestMlkemAAD_DistinctPerKemCiphertext covers the property the binding relies on: two
+// different KEM ciphertexts must never produce the same AAD.
+func TestMlkemAAD_DistinctPerKemCiphertext(t *testing.T) {
+	assert.NotEqual(t, mlkemAAD([]byte{0x01, 0x02}), mlkemAAD([]byte{0x01, 0x03}))
+	// A KEM ciphertext that is a prefix of another must not collide either.
+	assert.NotEqual(t, mlkemAAD([]byte{0x01}), mlkemAAD([]byte{0x01, 0x00}))
+}
+
+// TestMlkemAAD_EmptyKemCiphertext covers the degenerate input: the context string alone still
+// yields a usable, non-empty AAD rather than panicking or returning nil.
+func TestMlkemAAD_EmptyKemCiphertext(t *testing.T) {
+	assert.Equal(t, []byte(mlkemAADContext), mlkemAAD(nil))
+	assert.Equal(t, []byte(mlkemAADContext), mlkemAAD([]byte{}))
+}
+
+// TestMlkemAAD_BindsEnvelopeToKemCiphertext exercises the whole point of the AAD against a
+// real AES-GCM instance, without needing an HSM: an envelope sealed under one KEM ciphertext
+// must not open under another, even though the key and nonce are unchanged.
+//
+// This is the failure the HSM path would otherwise reach only indirectly, via a mismatched
+// shared secret. Here the derived key is held constant so the AAD is the only thing that
+// differs, which is what isolates the binding itself.
+func TestMlkemAAD_BindsEnvelopeToKemCiphertext(t *testing.T) {
+	key := make([]byte, 32) // fixed all-zero key: this test is about the AAD, not the KDF
+	block, err := aes.NewCipher(key)
+	require.NoError(t, err)
+	aead, err := cipher.NewGCM(block)
+	require.NoError(t, err)
+
+	nonce := make([]byte, mlkemNonceSize)
+	seed := []byte("32-byte-DEK-seed-goes-right-here")
+	kemCt := []byte{0x01, 0x02, 0x03, 0x04}
+
+	sealed := aead.Seal(nil, nonce, seed, mlkemAAD(kemCt))
+
+	// The matching KEM ciphertext opens the envelope.
+	got, err := aead.Open(nil, nonce, sealed, mlkemAAD(kemCt))
+	require.NoError(t, err)
+	assert.Equal(t, seed, got)
+
+	// A tampered KEM ciphertext annotation does not.
+	tampered := []byte{0x01, 0x02, 0x03, 0x05}
+	_, err = aead.Open(nil, nonce, sealed, mlkemAAD(tampered))
+	assert.Error(t, err, "swapping the kem-ciphertext annotation must fail the tag check")
+
+	// So does dropping the AAD entirely, which is what a pre-v1 envelope reader would pass.
+	_, err = aead.Open(nil, nonce, sealed, nil)
+	assert.Error(t, err, "an envelope sealed with AAD must not open without it")
 }
 
 // mockJweEncryptor is a no-op gose.JweEncryptor used in concurrency tests.

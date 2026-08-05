@@ -67,7 +67,36 @@ const (
 	// mlkemNonceSize is the AES-GCM nonce length used in the ML-KEM ciphertext binary layout:
 	// nonce (mlkemNonceSize bytes) || AES-GCM-Seal-output (encrypted DEK seed || 16-byte tag).
 	mlkemNonceSize = 12
+
+	// mlkemAADContext domain-separates this envelope format inside the AES-GCM additional
+	// authenticated data. Bump the version suffix on any change to the ML-KEM binary layout,
+	// the KDF, or the set of fields mlkemAAD covers: an envelope sealed under one context
+	// string cannot be opened under another, which turns a silent format mismatch into a
+	// clean authentication failure.
+	mlkemAADContext = "k8s-kms-plugin/ml-kem/v1"
 )
+
+// mlkemAAD returns the additional authenticated data bound into the ML-KEM envelope's AES-GCM
+// tag. AAD is authenticated but not encrypted: AES-GCM covers it by the tag, so Open only
+// succeeds when it is reproduced byte for byte.
+//
+// Binding the KEM ciphertext here makes "this envelope goes with this KEM ciphertext" a
+// property of the format rather than a side effect. The two are already bound in practice —
+// a substituted kemCt makes Decapsulate return a different shared secret (FIPS 203 uses
+// implicit rejection rather than signalling failure), which derives a different key and fails
+// the tag check — but that holds only because the KEM ciphertext happens to be the sole
+// annotation feeding the KDF. Any future annotation that influences decryption would not be
+// covered unless it is added here.
+//
+// kemCt is round-tripped verbatim by the apiserver, so both sides reproduce these bytes
+// exactly. It is the last field, so no length prefix is needed to keep the encoding
+// unambiguous; if another field is ever appended, length-prefix each one and bump
+// mlkemAADContext.
+func mlkemAAD(kemCt []byte) []byte {
+	aad := make([]byte, 0, len(mlkemAADContext)+len(kemCt))
+	aad = append(aad, mlkemAADContext...)
+	return append(aad, kemCt...)
+}
 
 // putEncapsulation places the ML-KEM encapsulation ciphertext into resp.Annotations.
 func putEncapsulation(resp *k8skmsv2.EncryptResponse, ct []byte) {
@@ -1159,8 +1188,9 @@ func (p *P11) encryptMLKEM(ctx context.Context, req *k8skmsv2.EncryptRequest) (*
 		slog.Error("encryptMLKEM: failed to create GCM", "uid", req.GetUid(), "error", err)
 		return nil, fmt.Errorf("encryptMLKEM: failed to create GCM: %w", err)
 	}
-	// sealed = encrypted seed || 16-byte tag.
-	sealed := aead.Seal(nil, nonce, req.GetPlaintext(), nil)
+	// sealed = encrypted seed || 16-byte tag. The KEM ciphertext is bound in as AAD so the
+	// annotation carrying it cannot be swapped without failing the tag check on Decrypt.
+	sealed := aead.Seal(nil, nonce, req.GetPlaintext(), mlkemAAD(kemCt))
 
 	ciphertext := make([]byte, 0, len(nonce)+len(sealed))
 	ciphertext = append(ciphertext, nonce...)
@@ -1234,7 +1264,9 @@ func (p *P11) decryptMLKEMWithContext(req *k8skmsv2.DecryptRequest, actualCtx *c
 		slog.Error("decryptMLKEM: failed to create GCM", "uid", req.GetUid(), "keyId", req.GetKeyId(), "error", err)
 		return nil, fmt.Errorf("decryptMLKEM: failed to create GCM: %w", err)
 	}
-	plaintext, err := aead.Open(nil, nonce, sealed, nil)
+	// The AAD must match the one encryptMLKEM sealed under; a tampered or mismatched
+	// kem-ciphertext annotation surfaces here as an authentication failure.
+	plaintext, err := aead.Open(nil, nonce, sealed, mlkemAAD(kemCt))
 	if err != nil {
 		slog.Error("decryptMLKEM: authenticated decryption failed", "uid", req.GetUid(), "keyId", req.GetKeyId(), "error", err)
 		return nil, fmt.Errorf("decryptMLKEM: authenticated decryption failed: %w", err)

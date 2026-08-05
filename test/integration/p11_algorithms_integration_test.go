@@ -298,6 +298,58 @@ func TestMLKEM_Uniqueness(t *testing.T) {
 		resp2.GetAnnotations()[providers.KemCiphertextAnnotationKey])
 }
 
+// TestMLKEM_TamperedKemCiphertextAnnotation verifies end to end that an EncryptResponse cannot
+// be decrypted once its kem-ciphertext annotation has been altered — the annotation is stored
+// in plaintext in etcd, which the KMS v2 contract explicitly does not protect from tampering.
+//
+// Two independent mechanisms reject this, and the test asserts only the observable outcome:
+// Decapsulate on a modified KEM ciphertext returns a different shared secret (FIPS 203 uses
+// implicit rejection rather than signalling an error), and the annotation is bound into the
+// AES-GCM tag as AAD. Isolating the AAD alone requires holding the derived key constant, which
+// no real KEM allows; TestMlkemAAD_BindsEnvelopeToKemCiphertext covers that as a unit test.
+func TestMLKEM_TamperedKemCiphertextAnnotation(t *testing.T) {
+	skipIfNoLibrary(t)
+
+	id := newTestID(t)
+	label := newTestLabel(t)
+
+	kp, err := testCtx.GenerateMLKEMKeyPairWithLabel(id, []byte(label), crypto11.MLKEM768)
+	if err != nil {
+		t.Skipf("HSM does not support ML-KEM: %v — requires SoftHSMv3 from pqctoday-org/pqctoday-hsm", err)
+	}
+	t.Cleanup(func() { _ = kp.Delete() })
+
+	p := newP11WithLabel(t, label, providers.AlgMLKEM)
+
+	encResp, err := p.Encrypt(context.Background(), &k8skmsv2.EncryptRequest{Plaintext: []byte(testPlaintext)})
+	require.NoError(t, err)
+
+	// Flip one bit of the KEM ciphertext, leaving every other field of the response intact.
+	tampered := make(map[string][]byte, len(encResp.GetAnnotations()))
+	for k, v := range encResp.GetAnnotations() {
+		tampered[k] = append([]byte(nil), v...)
+	}
+	require.NotEmpty(t, tampered[providers.KemCiphertextAnnotationKey])
+	tampered[providers.KemCiphertextAnnotationKey][0] ^= 0x01
+
+	_, err = p.Decrypt(context.Background(), &k8skmsv2.DecryptRequest{
+		Ciphertext:  encResp.GetCiphertext(),
+		KeyId:       encResp.GetKeyId(),
+		Annotations: tampered,
+	})
+	require.Error(t, err, "a tampered kem-ciphertext annotation must not decrypt")
+
+	// The untouched response still decrypts, proving the failure came from the tampering
+	// rather than from the key pair or the envelope itself.
+	decResp, err := p.Decrypt(context.Background(), &k8skmsv2.DecryptRequest{
+		Ciphertext:  encResp.GetCiphertext(),
+		KeyId:       encResp.GetKeyId(),
+		Annotations: encResp.GetAnnotations(),
+	})
+	require.NoError(t, err)
+	assert.Equal(t, []byte(testPlaintext), decResp.GetPlaintext())
+}
+
 // ---------------------------------------------------------------------------
 // Key rotation — AES-GCM active key decrypts ciphertext from an old AES-GCM key
 // ---------------------------------------------------------------------------
