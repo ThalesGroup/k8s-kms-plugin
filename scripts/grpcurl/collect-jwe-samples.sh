@@ -461,7 +461,9 @@ for entry in "${CASES[@]}"; do
     mv -f "$ENVELOPE_FILE" "$CASE_DIR/envelope.bin"
     rm -f "$CASE_DIR/jwe.compact.txt" "$CASE_DIR/jwe.protected-header.json"
 
-    ALG="$KEY_LABEL"
+    # ml-kem produces no JWE, so there is no `alg` header to report. The em dash keeps the
+    # summary's alg column honest; the PKCS#11 key label is already reported separately.
+    ALG="—"
     ENC="AES-256-GCM (binary envelope, not JWE)"
     HEADER_JSON="{}"
     SEG_HDR="" SEG_EKEY="" SEG_IV="" SEG_CT="" SEG_TAG=""
@@ -513,9 +515,17 @@ for entry in "${CASES[@]}"; do
   OVER=$(( JWE_LEN - LIMIT ))
   (( OVER < 0 )) && OVER=0
 
+  # The KMS v2 32 kB annotation limit applies to protobuf bytes, but grpcurl renders the
+  # `bytes` values as base64, so their JSON length overstates the real size by ~4/3. Recover
+  # the decoded length arithmetically — 3 bytes per 4 base64 characters, less one byte per
+  # '=' of padding — rather than with @base64d, whose result jq measures in codepoints and
+  # would mangle for non-UTF-8 values like the raw ML-KEM ciphertext.
   ANNOT_BYTES=$(jq -r '
     (.annotations // {}) | to_entries
-    | map((.key|length) + ((.value // "")|length)) | add // 0' <<<"$ENCRYPT_RESPONSE" 2>/dev/null || echo 0)
+    | map((.key|length)
+          + (((.value // "")|length) / 4 * 3
+             - ((.value // "")|[match("=";"g")]|length)))
+    | add // 0' <<<"$ENCRYPT_RESPONSE" 2>/dev/null || echo 0)
   ANNOT_BYTES=${ANNOT_BYTES:-0}
 
   STATUS_KEY_ID_LEN=${#STATUS_KEY_ID}
@@ -646,7 +656,7 @@ jq -r '
   echo "|---|---|---:|---:|---:|---:|---|"
   jq -r '
     .[] | select(.ok == true) |
-    "| \(.case) | `\(.alg)` | \(if .cryptogram.raw_bytes > 0 then "\(.cryptogram.raw_bytes) B" else "—" end) " +
+    "| \(.case) | \(if .alg == "—" then "—" else "`\(.alg)`" end) | \(if .cryptogram.raw_bytes > 0 then "\(.cryptogram.raw_bytes) B" else "—" end) " +
     "| \(.jwe_compact_bytes) B | \(.pct_of_limit)% " +
     "| \(if .over_by_bytes > 0 then "+\(.over_by_bytes) B" else "—" end) " +
     "| \(if .cross_check == "match" then "✓ \(.plugin_reported_ciphertext_bytes) B"
@@ -743,9 +753,8 @@ fi
     echo "## $NAME"
     echo
     echo "- Algorithm family: \`$FAMILY\` (PKCS#11 key \`$KEY_LABEL\`)"
-    if [[ "$FAMILY" == "ml-kem" ]]; then
-      echo "- ML-KEM key: \`$CASE_ALG\`"
-    else
+    # ml-kem has no JWE header; the PKCS#11 key is already named on the line above.
+    if [[ "$FAMILY" != "ml-kem" ]]; then
       echo "- JWE \`alg\`: \`$CASE_ALG\`"
     fi
     echo "- \`EncryptResponse.ciphertext\`: **${CASE_LEN} B** (${CASE_PCT}% of the ${LIMIT} B limit)"
