@@ -8,7 +8,7 @@ history see [GitHub Releases](https://github.com/eclipse-keysealer/k8s-kms-plugi
 `k8s-kms-plugin` has been on `0.x` since its start, with no stability contract. v1.0.0 is its first
 stable release: it moves from the deprecated Kubernetes KMS v1 API to KMS v2 (with key rotation),
 replaces its PKCS#11 binding, and adds post-quantum ML-KEM support. It is now part of
-[Eclipse Keysealer](https://projects.eclipse.org/projects/technology.keysealer), consuming
+[Eclipse KeySealer](https://projects.eclipse.org/projects/technology.keysealer), consuming
 [crypto11](https://github.com/eclipse-keypont/crypto11), [gose](https://github.com/eclipse-keypont/gose)
 and [pkcs11-go](https://github.com/eclipse-keypont/pkcs11-go) from the
 [Eclipse Keypont](https://projects.eclipse.org/projects/technology.keypont) project.
@@ -60,6 +60,12 @@ and [pkcs11-go](https://github.com/eclipse-keypont/pkcs11-go) from the
 
 ### Fixed
 
+- **RSA-OAEP JWEs are now portable** (via gose `v1.0.0-rc2`). RFC 7518 §4.3 defines `RSA-OAEP` as
+  RSAES-OAEP with SHA-1 and `RSA-OAEP-256` as the SHA-256 variant; the plugin advertised
+  `RSA-OAEP` while wrapping the CEK with SHA-256, so a conformant recipient derived SHA-1 and
+  failed to unwrap. The protected header now reads `RSA-OAEP-256`. Objects encrypted by earlier
+  versions remain readable — the plugin passes an explicit SHA-256 to `Decrypt` rather than
+  deriving the digest from the header — so **no re-encryption of data at rest is required**.
 - **Concurrent map access / race condition** in the P11 provider under concurrent encrypt/decrypt
   requests.
 - **AES-CBC+HMAC key type bug**: `CKK_AES` does not allow `CKM_SHA256_HMAC` — the HMAC key must be

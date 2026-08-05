@@ -31,9 +31,9 @@ This plugin will also run in proxy mode which can connect to a remote plugin ser
 > 🚧 **Note**: This documentation is under construction and needs to be updated to remove/archive references to KMS v1 and
 > document KMS v2 operations.
 
-# Part of Eclipse Keysealer
+# Part of Eclipse KeySealer
 
-`k8s-kms-plugin` is part of [Eclipse Keysealer](https://projects.eclipse.org/projects/technology.keysealer),
+`k8s-kms-plugin` is part of [Eclipse KeySealer](https://projects.eclipse.org/projects/technology.keysealer),
 which brings HSM-backed key management to Kubernetes. It relies on [crypto11](https://github.com/eclipse-keypont/crypto11), [gose](https://github.com/eclipse-keypont/gose)
 and [pkcs11-go](https://github.com/eclipse-keypont/pkcs11-go) from the related
 [Eclipse Keypont](https://projects.eclipse.org/projects/technology.keypont) project for its PKCS#11 bindings. _"Pont"_ is french for "bridge"

@@ -41,7 +41,7 @@ end title
 
 skinparam HeaderFontSize 14
 header <font color=black>kubernetes KMS v2 & KMS- Figure %page% of %lastpage%</font>
-footer © 2025 Thales Group for Thales Open Source
+footer © 2026 Eclipse Foundation — Eclipse KeySealer Project
 
 ' Legend
 legend top left
