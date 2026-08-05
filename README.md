@@ -20,6 +20,9 @@ Supported `--algorithm-family` values (key size / parameter set is derived at ru
 - `rsa-oaep` — RSA-OAEP asymmetric encryption
 - `ml-kem` — post-quantum ML-KEM hybrid encryption (CRYSTALS-Kyber / FIPS 203; ML-KEM-512, ML-KEM-768, ML-KEM-1024)
 
+For what each family actually does to the data — keys used, primitives composed, wire format, and which
+operations run inside the HSM — see [Cryptographic Schemes](./docs/cryptographic-schemes.md).
+
 This plugin will also run in proxy mode which can connect to a remote plugin service running in a secure network device (Key Managers)
 
 > ⚠️ **Droping support of KMS v1**: Newer (after 2025) version of the `k8s-kms-plugin` droped support for [Kubernetes KMSv1](https://pkg.go.dev/k8s.io/kms@v0.34.1/apis/v1beta1),
