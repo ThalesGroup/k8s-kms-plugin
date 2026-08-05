@@ -3,7 +3,7 @@ module github.com/eclipse-keysealer/k8s-kms-plugin
 go 1.26.5
 
 require (
-	github.com/eclipse-keypont/pkcs11-go v1.0.0
+	github.com/eclipse-keypont/pkcs11-go v1.1.0-rc1
 	github.com/google/uuid v1.6.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/spf13/cobra v1.10.2
@@ -32,8 +32,8 @@ require (
 
 require (
 	github.com/creack/pty v1.1.24
-	github.com/eclipse-keypont/crypto11/v2 v2.0.0-rc3
-	github.com/eclipse-keypont/gose v1.0.0-rc2
+	github.com/eclipse-keypont/crypto11/v2 v2.0.0-rc4
+	github.com/eclipse-keypont/gose v1.0.0-rc3
 	github.com/hashicorp/go-version v1.9.0
 	github.com/lmittmann/tint v1.2.0
 	golang.org/x/term v0.45.0
