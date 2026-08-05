@@ -47,20 +47,30 @@ end title
 
 skinparam HeaderFontSize 14
 header <font color=black>Kubernetes KMS v2 & k8s-kms-plugin Figure %page% of %lastpage%</font>
-footer © 2025 Thales Group for Thales Open Source
+footer © 2026 Eclipse Foundation — Eclipse KeySealer Project
 
 ' Legend
 legend top left
     Legend
-    CKA_ID (Byte array) PKCS #11 Key identifier for public/private key pairs
-    DEK    Data Encryption Key
-    JWE    JSON Web Encryption
-    KEK    Key Encryption Key
-    KMS    Key Management System
-    HSM    Hardware Security Module
-    TPM    Trusted Platform Module
-    
-    PKCS #11 v3.0: https://docs.oasis-open.org/pkcs11/pkcs11-base/v3.0/pkcs11-base-v3.0.html
+    CKA_ID   (Byte array) PKCS #11 Key identifier for public/private key pairs
+    DEK      Data Encryption Key (derived by kube-apiserver from the 32-byte DEK seed)
+    JWE      JSON Web Encryption
+    KEK      Key Encryption Key
+    KEM      Key Encapsulation Mechanism
+    KMS      Key Management System
+    HSM      Hardware Security Module
+    ML-KEM   Module-Lattice-Based KEM (FIPS 203, post-quantum)
+    TPM      Trusted Platform Module
+
+    DecryptRequest.Ciphertext holds a JWE for the aes-gcm / aes-cbc / rsa-oaep families,
+    and a 60-byte binary envelope (nonce | AES-GCM(DEK seed) | tag) for ml-kem.
+    Annotations are returned verbatim from the matching EncryptResponse: they always carry
+    algorithm-family.k8s-kms-plugin.keysealer.eclipse.org, plus, for ml-kem only,
+    kem-ciphertext.k8s-kms-plugin.keysealer.eclipse.org holding the FIPS 203 ciphertext c.
+    KeyId is the hex-encoded CKA_ID of the KEK that produced the ciphertext.
+
+    PKCS #11 v3.2: https://docs.oasis-open.org/pkcs11/pkcs11-base/v3.2/pkcs11-base-v3.2.html
+    FIPS 203 (ML-KEM): https://doi.org/10.6028/NIST.FIPS.203
     KMS v2: - https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/
             - https://github.com/kubernetes/enhancements/tree/master/keps/sig-auth/3299-kms-v2-improvements
 end legend
@@ -94,7 +104,7 @@ end legend
                 k8sapisrv -> kmsplg : send StatusRequest
                 kmsplg -> p11 : validate remote KEK, e.g. \n get CKA_ID from TPM/HSM
                 p11 -> kmsplg : return KEK status, e.g. CKA_ID
-                kmsplg -> k8sapisrv : return StatusResponse \n {Version:"v2", Healthz: "ok", \n KeyId:<remote KEK ID string, the same than before k8s reboot>}
+                kmsplg -> k8sapisrv : return StatusResponse \n {Version:"v2", Healthz: "ok", \n KeyId:<hex CKA_ID of the KEK, the same than before k8s reboot>}
             end
 
             k8sapisrv -> etcd : get encrypted resource
@@ -102,11 +112,23 @@ end legend
 
         loop For active KEK and all the old KEK Keys (As many different Key Ids) that still exist in the ETCD DB, do a DecryptRequest.
             group DecryptRequest
-                k8sapisrv -> kmsplg : send DecryptRequest \n {Ciphertext: <base 64 encoded JWE []byte>, KeyId:<string>, \n Uid:<string>, Annotations: <map[string][]byte>}
-                kmsplg -> p11 : Decrypt(Ciphertext) \n decrypt DEK seed with remote KEK
-                kmsplg <- p11 : return decrypted DEK seed
-                kmsplg -> k8sapisrv : return DecryptResponse \n {Plaintext:<decrypted DEK seed []byte>}
+                k8sapisrv -> kmsplg : send DecryptRequest \n {Ciphertext:<JWE or ML-KEM envelope as []byte>, \n KeyId:<hex CKA_ID of the KEK that encrypted it>, \n Uid:<string>, Annotations:<map[string][]byte>, returned verbatim}
+
+                alt --algorithm-family = aes-gcm | aes-cbc | rsa-oaep (JWE input)
+                    kmsplg -> p11 : Decrypt(Ciphertext) \n unwrap the DEK seed with the remote KEK \n (rsa-oaep: CKM_RSA_PKCS_OAEP unwraps the CEK inside the HSM)
+                    kmsplg <- p11 : return the decrypted DEK seed
+
+                else --algorithm-family = ml-kem (post-quantum, binary envelope)
+                    kmsplg -> kmsplg : read the KEM ciphertext c from the \n kem-ciphertext annotation, resolve the ML-KEM \n key pair from DecryptRequest.KeyId
+                    kmsplg -> p11 : ML-KEM.Decaps(dk, c)
+                    kmsplg <- p11 : return the same shared secret K (32 B)
+                    kmsplg -> kmsplg : re-derive the AES key from K with KMAC, \n then AES-GCM-open the 60-byte envelope \n -> the DEK seed
+                end
+
+                kmsplg -> k8sapisrv : return DecryptResponse \n {Plaintext:<32-byte DEK seed as []byte>}
             end
+
+            note over kmsplg, p11 : Routing is driven by the plugin's own ~--algorithm-family, never by the algorithm-family \nannotation, so an altered annotation cannot change how a ciphertext is interpreted. \nThe KEK is resolved from DecryptRequest.KeyId; under //serve rotation// the plugin also \nfalls back to the old PKCS #11 context, so objects written under the previous KEK \nstill decrypt.
 
             k8sapisrv -> k8sapisrv : cache decrypted DEK seed
             k8sapisrv -> k8sapisrv : generate DEK using decrypted DEK seed from cache

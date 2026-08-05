@@ -77,10 +77,31 @@ by hand — regenerate with `make doc`. See
 | [`scripts/k8s-kind/`](../scripts/k8s-kind/) | Stages the `KinD` cluster config and `EncryptionConfiguration` |
 | [`scripts/grpcurl/`](../scripts/grpcurl/) | Exercises the KMS v2 API (`Status`, `Encrypt`, `Decrypt`) without a cluster |
 
-## 6. Diagrams & images
+## 7. Diagrams & images
 
 - [`puml-diagrams/`](./puml-diagrams/) — PlantUML sources (`.puml`) and their rendered `.svg` / `.png`
 - [`images/`](./images/) — deployment scenarios, key rotation sequences, dependency graphs
 
+Two diagram formats are used on purpose:
+
+| Format | Used for | Lives in |
+|---|---|---|
+| **Mermaid** | short overview diagrams, written inline in the Markdown and rendered by GitHub — nothing to regenerate | the `.md` files themselves |
+| **PlantUML** | the detailed KMS v2 sequences (legend, `alt` branches, per-family payloads) | `.puml` sources + committed `.svg` |
+
 The KMS v2 sequence diagrams are embedded in the main README under
-[Deployment Scenarios Examples](../README.md#22-deployment-scenarios-examples).
+[Deployment Scenarios Examples](../README.md#22-deployment-scenarios-examples); the envelope overview
+is the Mermaid diagram in [Architecture](../README.md#21-architecture) and in
+[Cryptographic Schemes](./cryptographic-schemes.md#1-what-the-plugin-actually-encrypts).
+
+**Regenerating the PlantUML `.svg`** after editing a `.puml` — the `.svg` files are committed, so they must be
+refreshed in the same commit:
+
+```bash
+podman run --rm -v "$PWD/docs/puml-diagrams:/data:z" -w /data \
+  docker.io/plantuml/plantuml:latest -tsvg 'kmsv2-*.puml'
+```
+
+⚠️ PlantUML names its output after the `@startuml "<name>"` title, **not** after the source file, so rename the
+results back to the tracked `kmsv2-*.sqce-diag.svg` names (or use the VS Code PlantUML extension, which keeps the
+source file name).

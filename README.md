@@ -128,6 +128,31 @@ Figure below sums up the main dependencies of `k8s-kms-plugin`:
 
 ![](./docs/images/libs-imports-gose-crypto11-k8s-kms-plugin.svg)
 
+At runtime the plugin occupies exactly one step of the KMS v2 *envelope* scheme: it **never sees your `Secret`
+data**, only the 32-byte DEK seed that `kube-apiserver` asks it to wrap with the KEK held on the TPM or HSM.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant API as kube-apiserver
+    participant ETCD as etcd
+    participant PLG as k8s-kms-plugin
+    participant HSM as PKCS #11 TPM / HSM (KEK)
+
+    API->>API: generate a 32-byte DEK seed
+    API->>API: derive the DEK, encrypt the Secret<br/>(both stay in the apiserver)
+    API->>PLG: EncryptRequest{plaintext: 32B DEK seed}
+    PLG->>HSM: wrap the 32-byte seed with the KEK
+    HSM-->>PLG: wrapped seed
+    PLG-->>API: EncryptResponse{ciphertext, key_id, annotations}
+    API->>ETCD: store EncryptedObject:<br/>Secret encrypted under the DEK +<br/>wrapped seed + keyId + annotations
+```
+
+How that wrapping is actually done — JWE for `aes-gcm` / `aes-cbc` / `rsa-oaep`, a binary envelope plus a
+`kem-ciphertext` annotation for `ml-kem` — is detailed in
+[Cryptographic Schemes](./docs/cryptographic-schemes.md). The `StatusRequest` heartbeat, the `DecryptRequest`
+path and key rotation are drawn in full in the sequence diagrams of [2.2](#22-deployment-scenarios-examples).
+
 ### 2.2. Deployment Scenarios Examples
 
 The following sequence diagram illustrates the communication between `kubernetes` ([KMS v2 API](https://pkg.go.dev/k8s.io/kms/apis/v2)), `k8s-kms-plugin`, and a [PKCS #11](https://docs.oasis-open.org/pkcs11/pkcs11-base/v3.0/pkcs11-base-v3.0.html) capable device like a TPM or HSM.
