@@ -62,14 +62,17 @@ the documentation index: [`docs/README.md`](./docs/README.md).
     - [3.2.3. `deb` debian packages](#323-deb-debian-packages)
     - [3.2.4. `rpm` RPM packages](#324-rpm-rpm-packages)
     - [3.2.5. Binary](#325-binary)
-  - [3.3. Build `k8s-kms-plugin` locally from Source with `make`](#33-build-k8s-kms-plugin-locally-from-source-with-make)
-    - [3.3.1. Build Requirements](#331-build-requirements)
-    - [3.3.2. Local Development Build (native architecture)](#332-local-development-build-native-architecture)
-    - [3.3.3. Release-style Cross-Architecture Builds](#333-release-style-cross-architecture-builds)
-    - [3.3.4. Debug Builds](#334-debug-builds)
-    - [3.3.5. Other Useful `make` Targets](#335-other-useful-make-targets)
-  - [3.4. Build `k8s-kms-plugin` **locally** from Source with `goreleaser`](#34-build-k8s-kms-plugin-locally-from-source-with-goreleaser)
-  - [3.5. Build the Container Image](#35-build-the-container-image)
+  - [3.3. Install `k8s-kms-plugin` with `go install`](#33-install-k8s-kms-plugin-with-go-install)
+    - [3.3.1. Always Pin an Explicit Version](#331-always-pin-an-explicit-version)
+    - [3.3.2. Limitation: `version` Reports an Empty Snapshot](#332-limitation-version-reports-an-empty-snapshot)
+  - [3.4. Build `k8s-kms-plugin` locally from Source with `make`](#34-build-k8s-kms-plugin-locally-from-source-with-make)
+    - [3.4.1. Build Requirements](#341-build-requirements)
+    - [3.4.2. Local Development Build (native architecture)](#342-local-development-build-native-architecture)
+    - [3.4.3. Release-style Cross-Architecture Builds](#343-release-style-cross-architecture-builds)
+    - [3.4.4. Debug Builds](#344-debug-builds)
+    - [3.4.5. Other Useful `make` Targets](#345-other-useful-make-targets)
+  - [3.5. Build `k8s-kms-plugin` **locally** from Source with `goreleaser`](#35-build-k8s-kms-plugin-locally-from-source-with-goreleaser)
+  - [3.6. Build the Container Image](#36-build-the-container-image)
 - [4. Documentation, Usage \& User Guides 📚](#4-documentation-usage--user-guides-)
   - [4.1. Where to Find What](#41-where-to-find-what)
   - [4.2. CLI Help Messages](#42-cli-help-messages)
@@ -292,9 +295,83 @@ dnf install ./k8s-kms-plugin-SNAPSHOT-3239cd9-1.x86_64.rpm
 
 Move the `k8s-kms-plugin` binary to a relevant location under your `$PATH`, for example `/usr/local/bin/k8s-kms-plugin`.
 
-### 3.3. Build `k8s-kms-plugin` locally from Source with `make`
+### 3.3. Install `k8s-kms-plugin` with `go install`
 
-#### 3.3.1. Build Requirements
+If you already have a Go toolchain, `go install` fetches, builds and installs the binary in one command — no clone, no
+`make`, no release artefact to download:
+
+```bash
+go install github.com/eclipse-keysealer/k8s-kms-plugin/cmd/k8s-kms-plugin@v1.0.0-rc3
+```
+
+The binary is installed into `$(go env GOBIN)`, or `$(go env GOPATH)/bin` when `GOBIN` is unset. Make sure that directory
+is on your `$PATH`:
+
+```bash
+export PATH="$(go env GOPATH)/bin:$PATH"
+k8s-kms-plugin serve --help
+```
+
+Requirements are the same as for a `make` build: a Go toolchain matching the `go` directive of the tagged
+[`go.mod`](./go.mod), and a working **`CGO`** setup (a C compiler and the glibc/musl headers of your target), because the
+PKCS#11 bindings are cgo-based. The resulting binary is dynamically linked against your system libc:
+
+```bash
+$ ldd $(go env GOPATH)/bin/k8s-kms-plugin
+        linux-vdso.so.1
+        libresolv.so.2 => /usr/lib/libresolv.so.2
+        libc.so.6 => /usr/lib/libc.so.6
+        /lib64/ld-linux-x86-64.so.2 => /usr/lib64/ld-linux-x86-64.so.2
+```
+
+As with every other build method, do not install on musl libc if you intend to run the plugin on glibc (and vice versa).
+
+#### 3.3.1. Always Pin an Explicit Version
+
+⚠️ **Do not use `@latest` for now.** Go's `@latest` deliberately skips pre-releases, and the newest non-pre-release tag
+of this repository is still `v0.6.0` (February 2024). So `@latest` silently installs a two-year-old build:
+
+```bash
+$ curl -s https://proxy.golang.org/github.com/eclipse-keysealer/k8s-kms-plugin/@latest
+{"Version":"v0.6.0","Time":"2024-02-14T09:32:16Z", ...}
+```
+
+Until `v1.0.0` is tagged, always pin the exact version you want. Available versions can be listed with:
+
+```bash
+go list -m -versions github.com/eclipse-keysealer/k8s-kms-plugin
+```
+
+#### 3.3.2. Limitation: `version` Reports an Empty Snapshot
+
+`go install` cannot pass the `LDFLAGS` that the [`Makefile`](./Makefile) uses to stamp build metadata into
+[`pkg/version`](./pkg/version/version.go). A `go install`-ed binary therefore reports an empty snapshot version:
+
+```bash
+$ k8s-kms-plugin version
+k8s-kms-plugin: (snapshot)
+```
+
+This is cosmetic — the plugin itself is fully functional. The real version is still recorded in the Go build info, so
+use `go version -m` to identify a binary:
+
+```bash
+$ go version -m $(go env GOPATH)/bin/k8s-kms-plugin | head -3
+/home/user/go/bin/k8s-kms-plugin: go1.26.5
+        path    github.com/eclipse-keysealer/k8s-kms-plugin/cmd/k8s-kms-plugin
+        mod     github.com/eclipse-keysealer/k8s-kms-plugin      v1.0.0-rc3
+```
+
+If you need `k8s-kms-plugin version` to report the real version, build with `make` instead (see
+[3.4](#34-build-k8s-kms-plugin-locally-from-source-with-make)) or download an official release artefact.
+
+> 💡 **`goenv` users**: if `go install` fails with `compile: version "goX.Y.Z" does not match go tool version "goX.Y.W"`,
+> your `GOROOT` environment variable is pinned to a different Go version than the `go` binary found on your `$PATH`.
+> Unset it (`env -u GOROOT go install ...`) and let the `go` command locate its own `GOROOT`.
+
+### 3.4. Build `k8s-kms-plugin` locally from Source with `make`
+
+#### 3.4.1. Build Requirements
 
 You should have `make`, `git` and `go` installed. Review the content of the [`Makefile`](./Makefile) file for more details.
 
@@ -328,7 +405,7 @@ expects these compiler names:
 
 This mirrors what the CI installs in [`.github/actions/setup-build-env/action.yml`](./.github/actions/setup-build-env/action.yml).
 
-#### 3.3.2. Local Development Build (native architecture)
+#### 3.4.2. Local Development Build (native architecture)
 
 Run
 
@@ -345,7 +422,7 @@ You should get a `k8s-kms-plugin` binary in the **`dist/`** directory:
 This target builds for the host architecture, does not strip the binary (no `-s -w`), and does not require any
 cross-compiler. It is the target to use for day-to-day development.
 
-#### 3.3.3. Release-style Cross-Architecture Builds
+#### 3.4.3. Release-style Cross-Architecture Builds
 
 The per-architecture targets produce stripped (`-s -w`) binaries whose names embed the version, matching the naming used
 by the release artefacts:
@@ -359,13 +436,13 @@ make build-linux-riscv64    # -> dist/k8s-kms-plugin_<version>_linux_riscv64
 `<version>` comes from `git describe --tags --always --dirty`.
 
 The default target builds all three architectures at once (it requires every cross-compiler listed in
-[3.3.1](#331-build-requirements)):
+[3.4.1](#341-build-requirements)):
 
 ```bash
 make            # equivalent to: make all
 ```
 
-#### 3.3.4. Debug Builds
+#### 3.4.4. Debug Builds
 
 Each architecture has a `-debug` variant, built with `-gcflags="all=-N -l"` (inlining and optimisations disabled) and
 without stripping, so the binary can be used with [`delve`](https://github.com/go-delve/delve):
@@ -379,7 +456,7 @@ make build-linux-riscv64-debug
 The binary is written to `dist/k8s-kms-plugin_<version>_linux_<arch>`. Do not use these binaries in a production
 environment. See [6.1. `delve` Remote Debug](#61-delve-remote-debug) for how to attach a debugger.
 
-#### 3.3.5. Other Useful `make` Targets
+#### 3.4.5. Other Useful `make` Targets
 
 | Target                 | Purpose                                                                                  |
 |------------------------|-------------------------------------------------------------------------------------------|
@@ -393,13 +470,13 @@ environment. See [6.1. `delve` Remote Debug](#61-delve-remote-debug) for how to 
 | `make coverage`        | Unit test coverage report in `build/coverage.html`                                          |
 | `make doc`             | Regenerates the CLI documentation under `docs/cli-user-interface/`                          |
 | `make notices`         | Regenerates [`NOTICES.md`](./NOTICES.md) (requires `go-licenses`)                           |
-| `make image`           | Builds the binary, then packages it into a container image from the [`Containerfile`](./Containerfile) (see [3.5](#35-build-the-container-image)) |
+| `make image`           | Builds the binary, then packages it into a container image from the [`Containerfile`](./Containerfile) (see [3.6](#36-build-the-container-image)) |
 | `make image-from-source` | Same image, but compiled inside the builder stage — no local Go toolchain needed          |
-| `make get-ldflags`     | Prints the `LDFLAGS` used by the build — consumed by `goreleaser` (see [3.4](#34-build-k8s-kms-plugin-locally-from-source-with-goreleaser)) |
-| `make release-local-test` / `make release` | Run `goreleaser` locally (see [3.4](#34-build-k8s-kms-plugin-locally-from-source-with-goreleaser))            |
+| `make get-ldflags`     | Prints the `LDFLAGS` used by the build — consumed by `goreleaser` (see [3.5](#35-build-k8s-kms-plugin-locally-from-source-with-goreleaser)) |
+| `make release-local-test` / `make release` | Run `goreleaser` locally (see [3.5](#35-build-k8s-kms-plugin-locally-from-source-with-goreleaser))            |
 | `make clean`           | Removes the `dist/` directory                                                              |
 
-### 3.4. Build `k8s-kms-plugin` **locally** from Source with `goreleaser`
+### 3.5. Build `k8s-kms-plugin` **locally** from Source with `goreleaser`
 
 This section allows you to locally test the [`goreleaser`](https://github.com/goreleaser/goreleaser) Github Action Build
 Recipe. It generates the same artefacts that the one generated by the Github Action CICD pipeline, but locally.
@@ -451,7 +528,7 @@ which supports standard `glibc`.
 
 Or you can create your own custom image, based on the examples from https://github.com/ThalesGroup/goreleaser-glibc-image.
 
-### 3.5. Build the Container Image
+### 3.6. Build the Container Image
 
 The image published to `ghcr.io` on release is built by [`ko`](https://ko.build/) through
 [`.goreleaser.yml`](./.goreleaser.yml). The [`Containerfile`](./Containerfile) is the local and CI equivalent —
@@ -632,8 +709,8 @@ Repository layout:
 | [`docs/`](./docs/README.md)                               | Documentation, including the generated CLI reference                             |
 
 The everyday loop uses the `make` targets documented in
-[3.3. Build from Source](#33-build-k8s-kms-plugin-locally-from-source-with-make) — mainly `make build`, `make test`
-and `make lint-fix`; the full list is in [3.3.5](#335-other-useful-make-targets).
+[3.4. Build from Source](#34-build-k8s-kms-plugin-locally-from-source-with-make) — mainly `make build`, `make test`
+and `make lint-fix`; the full list is in [3.4.5](#345-other-useful-make-targets).
 
 Two of them regenerate tracked files, so re-run them when the relevant source changes:
 
@@ -716,7 +793,7 @@ make build-linux-amd64-debug
 ```
 
 It generates a binary `dist/k8s-kms-plugin_<version>_linux_amd64` that can be used with Delve for debug purpose
-(see [3.3.4. Debug Builds](#334-debug-builds) for the other architectures).
+(see [3.4.4. Debug Builds](#344-debug-builds) for the other architectures).
 Do not use this binary in a production environment.
 
 ```sh
@@ -759,7 +836,7 @@ configurations you need — the three below cover the usual cases:
       }
     },
     {
-      // 2. Debug an already-built binary (see 3.3.4. Debug Builds)
+      // 2. Debug an already-built binary (see 3.4.4. Debug Builds)
       "name": "serve: exec debug binary",
       "type": "go",
       "request": "launch",
