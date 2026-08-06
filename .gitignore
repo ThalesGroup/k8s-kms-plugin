@@ -60,6 +60,8 @@ jwe-samples.*
 # Documents
 *.pdf
 *.PDF
+*.bkp
+*.drawio.bkp
 
 # Code assistants
 .claude
