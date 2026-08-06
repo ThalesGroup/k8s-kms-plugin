@@ -86,4 +86,8 @@ sudo k8s-kms-plugin \
       --algorithm-family rsa-oaep
 ```
 
+`--p11-key-id` is used here since the ID printed by `pkcs11-tool --list-objects` above (`1212abab`) is
+the key's `CKA_ID`; `--p11-key-label rsa00eToken` (its `CKA_LABEL`) would work identically. See
+[`CKA_ID` vs `CKA_LABEL`](./cli-user-interface/cka-id-vs-cka-label.md) for how the two are resolved.
+
 You can validate Encryption and Decryption are working by using [`grpcurl-roundtrip-test.sh`](../scripts/grpcurl/grpcurl-roundtrip-test.sh).

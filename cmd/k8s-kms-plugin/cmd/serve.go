@@ -130,6 +130,9 @@ Use "k8s-kms-plugin serve rotation" subcommand to support key rotation.
 Kubernetes KMS documentation: https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/#configuring-the-kms-provider-kms-v2
 
 KMS v2 API: https://pkg.go.dev/k8s.io/kms@v0.34.1/apis/v2
+
+How --p11-key-id / --p11-key-label (and --p11-hmac-id / --p11-hmac-label) are resolved:
+docs/cli-user-interface/cka-id-vs-cka-label.md
 `,
 	Example: `
 Using flags and serving on unix socket (gRPC plaintext):

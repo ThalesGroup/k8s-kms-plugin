@@ -147,6 +147,10 @@ GNUTLS_SO_PIN="0000" GNUTLS_PIN="1234" p11tool \
 > The token created by `create-dev-token` uses label `k8s-kms-plugin-dev` and PIN `1234`.
 > Adjust `--p11-lib`, `--p11-label`, `--p11-pin` to match your environment.
 
+Every example below identifies its key with `--p11-key-label`; `--p11-key-id` (PKCS #11 `CKA_ID`)
+works the same way. See [`CKA_ID` vs `CKA_LABEL`](./cli-user-interface/cka-id-vs-cka-label.md) for
+how the two are resolved.
+
 ### 3.1. AES-GCM
 
 ```sh

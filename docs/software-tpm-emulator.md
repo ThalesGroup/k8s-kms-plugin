@@ -84,6 +84,7 @@ k8s-kms-plugin \
 ```
 
 Alternatively, you can use `--p11-key-id` (PKCS #11 CKA_ID) instead of `--p11-key-label` (PKCS #11 CKA_LABEL).
+See [`CKA_ID` vs `CKA_LABEL`](./cli-user-interface/cka-id-vs-cka-label.md) for how the two are resolved.
 
 ```bash
 k8s-kms-plugin \

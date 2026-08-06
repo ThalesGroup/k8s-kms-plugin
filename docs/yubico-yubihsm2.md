@@ -264,6 +264,10 @@ k8s-kms-plugin \
     --socket /run/user/1000/k8s-kms-plugin.sock
 ```
 
+`--p11-key-label` (PKCS #11 `CKA_LABEL`) works the same way as `--p11-key-id` (PKCS #11 `CKA_ID`)
+above. See [`CKA_ID` vs `CKA_LABEL`](./cli-user-interface/cka-id-vs-cka-label.md) for how the two are
+resolved.
+
 Now fetch the protobuf API file `api.proto` from https://github.com/kubernetes/kms:
 
 ```bash
