@@ -137,7 +137,7 @@ sequenceDiagram
     participant API as kube-apiserver
     participant ETCD as etcd
     participant PLG as k8s-kms-plugin
-    participant HSM as PKCS #11 TPM / HSM (KEK)
+    participant HSM as PKCS11 TPM / HSM (KEK)
 
     API->>API: generate a 32-byte DEK seed
     API->>API: derive the DEK, encrypt the Secret<br/>(both stay in the apiserver)
