@@ -131,6 +131,15 @@ encryption: there is no wrapped key, the shared symmetric key is used directly.
 > `k8s-kms-plugin`, not by a third-party JOSE library.
 
 <details>
+<summary>📐 Class diagram — <code>P11.Encrypt</code>/<code>Decrypt</code> for <code>aes-gcm</code></summary>
+
+![](./puml-diagrams/gcm-class.svg)
+
+Source: [`puml-diagrams/gcm-class.puml`](./puml-diagrams/gcm-class.puml).
+
+</details>
+
+<details>
 <summary>📋 Sample <code>EncryptResponse</code> — <code>aes-gcm</code>, key <code>dev-aes-gcm-kek</code></summary>
 
 `ciphertext` is **162 B** — 16% of the 1 kB limit, the smallest of the JWE families.
@@ -180,6 +189,15 @@ AES-CBC has no built-in authentication, so this family pairs it with an HMAC —
   same interoperability caveat as [§4](#4-aes-gcm).
 - The plaintext length is carried in a custom header field so the HMAC input can be reconstructed
   identically at decryption time.
+
+<details>
+<summary>📐 Class diagram — <code>P11.Encrypt</code>/<code>Decrypt</code> for <code>aes-cbc</code></summary>
+
+![](./puml-diagrams/cbc-class.svg)
+
+Source: [`puml-diagrams/cbc-class.puml`](./puml-diagrams/cbc-class.puml).
+
+</details>
 
 <details>
 <summary>📋 Sample <code>EncryptResponse</code> — <code>aes-cbc</code>, key <code>dev-aes-cbc-kek</code></summary>
@@ -256,6 +274,15 @@ by ≈1.333× on the way into the JWE Encrypted Key segment.
 > ⚠️ **RSA-4096 is close to the ceiling.** At 93% there is ~76 B of headroom, and the figure is
 > driven by the modulus plus base64url expansion, not by anything configurable. This is the one
 > classical family where the KMS v2 1 kB cap is a real constraint.
+
+<details>
+<summary>📐 Class diagram — <code>P11.Encrypt</code>/<code>Decrypt</code> for <code>rsa-oaep</code></summary>
+
+![](./puml-diagrams/rsa-class.svg)
+
+Source: [`puml-diagrams/rsa-class.puml`](./puml-diagrams/rsa-class.puml).
+
+</details>
 
 <details>
 <summary>📋 Sample <code>EncryptResponse</code> — <code>rsa-oaep</code>, key <code>dev-rsa-2048-oaep</code></summary>
@@ -381,6 +408,15 @@ budget**. ML-KEM-768 uses 1198 B and ML-KEM-512 uses 878 B.
 > `grpcurl` capture renders the same annotations as base64 and so reads larger — 2204 B for
 > ML-KEM-1024 — so do not read the sample captures below as sizes against the limit.
 > `collect-jwe-samples.sh` reports the decoded figure.
+
+<details>
+<summary>📐 Class diagram — <code>P11.encryptMLKEM</code>/<code>decryptMLKEMWithContext</code></summary>
+
+![](./puml-diagrams/ml-kem-class.svg)
+
+Source: [`puml-diagrams/ml-kem-class.puml`](./puml-diagrams/ml-kem-class.puml).
+
+</details>
 
 <details>
 <summary>📋 Sample <code>EncryptResponse</code> — <code>ml-kem</code>, key <code>dev-ml-kem-1024</code></summary>
@@ -532,7 +568,10 @@ extractable.
 
 The apiserver-side sequences — first startup, `DecryptRequest`, and key rotation — are drawn in
 [`docs/puml-diagrams/`](./puml-diagrams/) (`kmsv2-first-k8s-startup`, `kmsv2-decryptrequest`,
-`kmsv2-key-rotation`), rendered in [`README.md`](../README.md#22-deployment-scenarios-examples).
+`kmsv2-key-rotation`), rendered in [`README.md`](../README.md#22-deployment-scenarios-examples). The
+`P11.Encrypt`/`Decrypt` class diagram for each family (`gcm-class`, `cbc-class`, `rsa-class`,
+`ml-kem-class`) lives in the same folder and is embedded inline in [§4](#4-aes-gcm)–[§7](#7-ml-kem)
+above.
 
 To see any of these schemes on real data without a cluster, use
 [`scripts/grpcurl/`](../scripts/grpcurl/) — `grpcurl-roundtrip-test.sh` prints the JWE header (or the

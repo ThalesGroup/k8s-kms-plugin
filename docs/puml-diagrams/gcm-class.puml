@@ -1,32 +1,46 @@
 @startuml
 
-package k8s-kms-plugin {
-interface Service
-Service : \*EncryptResponse Encrypt(Context, *EncryptRequest)
-Service : \*DecryptResponse Decrypt(Context, *DecryptRequest)
+package "pkg/providers" {
+interface Provider
+Provider : *StatusResponse Status(Context, *StatusRequest)
+Provider : *EncryptResponse Encrypt(Context, *EncryptRequest)
+Provider : *DecryptResponse Decrypt(Context, *DecryptRequest)
+Provider : (interface{}, error) UnaryInterceptor(Context, interface{}, *grpc.UnaryServerInfo, grpc.UnaryHandler)
 
 struct P11
-P11 : []byte kid
-P11 : []byte cid
-P11 : \*crypto11.Config config
-P11 : \*crypto11.Context ctx
+P11 : bool createKey
+P11 : *crypto11.Config config
+P11 : *crypto11.Context ctx
 P11 : map[string]gose.JweEncryptor encryptors
 P11 : map[string]gose.JweDecryptor decryptors
-P11 : bool createKey
-P11 : string k8sDefaultDekLabel
-P11 : string k8sHmacKeyLabel
-P11 : jose.Alg algorithm
-P11 : \*EncryptResponse Encrypt(Context, *EncryptRequest)
-P11 : \*DecryptResponse Decrypt(Context, *DecryptRequest)
+P11 : []byte kekCkaID
+P11 : string kekCkaLabel
+P11 : jose.Alg algorithmFamily
+P11 : *StatusResponse Status(Context, *StatusRequest)
+P11 : *EncryptResponse Encrypt(Context, *EncryptRequest)
+P11 : *DecryptResponse Decrypt(Context, *DecryptRequest)
+P11 : jose.Alg aesGcmAlgFromKey(*crypto11.Context, *crypto11.SecretKey)
 
-note right of P11::algorithm
-define which type of encryptor (cbc, gcm) will be called
+note right of P11::algorithmFamily
+define which algorithm family (aes-cbc, aes-gcm, rsa-oaep, ml-kem) will be called
 end note
 
-Service <|-- P11
+note right of P11::aesGcmAlgFromKey
+reads the HSM key's CKA_VALUE_LEN to pick
+AlgA128GCM / AlgA192GCM / AlgA256GCM
+end note
+
+note bottom of P11
+For KEK rotation, P11 carries a parallel set of old* fields
+(oldConfig, oldCtx, oldDecryptors, oldKekCkaID, oldKekCkaLabel,
+oldAlgorithmFamily), omitted here for brevity.
+See kmsv2-key-rotation.sqce-diag.puml.
+end note
+
+Provider <|-- P11
 }
 
-package crypto11 {
+package "github.com/eclipse-keypont/crypto11/v2" as crypto11 {
 
 package "built-in crypto.cipher" {
 
@@ -47,7 +61,7 @@ GenericAead : []byte Open(dst, nonce, ciphertext, additionalData []byte)
 AEAD <|-- GenericAead
 }
 
-package gose {
+package "github.com/eclipse-keypont/gose" as gose {
 
 interface AeadEncryptionKey
 AeadEncryptionKey : (ciphertext, tag []byte) Seal(operation jose.KeyOps, nonce, plaintext, aad []byte)
@@ -98,7 +112,7 @@ N3 .. AeadEncryptionKey
 
 }
 
-note "If the algorithm is GCM, P11 calls Encrypt() and Decrypt()\nfrom the JWE direct encryptors for AEAD ciphers" as N4
+note "If the algorithm family is aes-gcm, P11 calls Encrypt() and Decrypt()\nfrom the JWE direct encryptors for AEAD ciphers, after picking the\nGCM variant (128/192/256) via aesGcmAlgFromKey" as N4
 gose <.. N4
 N4 .. P11
 

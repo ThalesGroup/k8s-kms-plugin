@@ -1,0 +1,84 @@
+@startuml
+
+package "pkg/providers" {
+interface Provider
+Provider : *StatusResponse Status(Context, *StatusRequest)
+Provider : *EncryptResponse Encrypt(Context, *EncryptRequest)
+Provider : *DecryptResponse Decrypt(Context, *DecryptRequest)
+Provider : (interface{}, error) UnaryInterceptor(Context, interface{}, *grpc.UnaryServerInfo, grpc.UnaryHandler)
+
+struct P11
+P11 : bool createKey
+P11 : *crypto11.Config config
+P11 : *crypto11.Context ctx
+P11 : []byte kekCkaID
+P11 : string kekCkaLabel
+P11 : jose.Alg algorithmFamily
+P11 : *EncryptResponse Encrypt(Context, *EncryptRequest)
+P11 : *DecryptResponse Decrypt(Context, *DecryptRequest)
+P11 : (*EncryptResponse, error) encryptMLKEM(Context, *EncryptRequest)
+P11 : ([]byte, error) decryptMLKEMWithContext(*DecryptRequest, *crypto11.Context)
+
+note right of P11::algorithmFamily
+routes here only when algorithmFamily == AlgMLKEM ("ml-kem");
+Encrypt/Decrypt dispatch to encryptMLKEM/decryptMLKEMWithContext
+before the JWE path used by aes-gcm / aes-cbc / rsa-oaep
+end note
+
+Provider <|-- P11
+
+struct "envelope (binary, not JWE)" as Envelope
+Envelope : nonce (12 B) || AES-GCM(DEK seed) || tag (16 B)
+Envelope : ~60 bytes total, well under the KMS v2 1 kB Ciphertext limit
+
+note top of Envelope
+EncryptResponse.Ciphertext holds this envelope.
+The KEM ciphertext c (768/1088/1568 B, too big for
+Ciphertext) travels instead in
+EncryptResponse.Annotations["kem-ciphertext.k8s-kms-plugin.keysealer.eclipse.org"]
+via putEncapsulation/getEncapsulation, and is bound
+into the AES-GCM AAD by mlkemAAD(c) so a swapped
+annotation fails the tag check on Decrypt.
+end note
+
+P11 ..> Envelope : produces / consumes
+}
+
+package "github.com/eclipse-keypont/crypto11/v2" as crypto11 {
+
+interface MLKEMKeyPair
+MLKEMKeyPair : ParameterSet() string
+MLKEMKeyPair : (ct []byte, ss SharedSecret, err error) Encapsulate(tmpl AttributeSet)
+MLKEMKeyPair : (ss SharedSecret, err error) Decapsulate(ct []byte, tmpl AttributeSet)
+
+interface SharedSecret
+SharedSecret : ([]byte, error) Bytes()
+
+MLKEMKeyPair "found by CKA_ID/CKA_LABEL via" ..> "ctx.FindMLKEMKeyPair(id, label)"
+
+struct "MLKEMDeriveKey(parameterSet string, sharedSecret []byte) ([]byte, error)" as MLKEMDeriveKey
+
+note bottom of MLKEMDeriveKey
+KMAC-based KDF (NIST SP 800-185) that turns the ~32-byte
+ML-KEM shared secret into the AES-256 key used to seal the
+DEK seed. Both the shared secret and the derived key are
+zeroed (defer clear(...)) immediately after use in p11.go.
+end note
+
+MLKEMKeyPair ..> SharedSecret : Encapsulate/Decapsulate return
+SharedSecret ..> MLKEMDeriveKey : Bytes() feeds
+}
+
+package "built-in crypto/aes + crypto/cipher" {
+struct "aes.NewCipher(derivedKey) -> cipher.Block" as AesCipher
+struct "cipher.NewGCM(block) -> cipher.AEAD" as GcmAead
+AesCipher ..> GcmAead
+}
+
+MLKEMDeriveKey ..> AesCipher : derived AES-256 key
+
+note "encryptMLKEM: kp.Encapsulate -> (kemCt, sharedSecret) ; MLKEMDeriveKey(sharedSecret) -> derivedKey ;\naes.NewCipher(derivedKey) + cipher.NewGCM -> aead.Seal(nonce, DEK seed, mlkemAAD(kemCt))\n\ndecryptMLKEMWithContext: kemCt from Annotations ; ctx.FindMLKEMKeyPair(KeyId) ; kp.Decapsulate(kemCt) -> sharedSecret ;\nsame KDF/AES-GCM derivation ; aead.Open(nonce, sealed, mlkemAAD(kemCt)) -> DEK seed" as N1
+crypto11 <.. N1
+N1 .. P11
+
+@enduml

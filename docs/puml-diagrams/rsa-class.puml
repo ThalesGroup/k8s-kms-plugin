@@ -1,37 +1,45 @@
 @startuml
 !pragma layout smetana
 
-package k8s-kms-plugin {
+package "pkg/providers" {
 
-struct P11 implements Service {
+struct P11 implements Provider {
 }
 
-interface Service
-Service : \*EncryptResponse Encrypt(Context, *EncryptRequest)
-Service : \*DecryptResponse Decrypt(Context, *DecryptRequest)
+interface Provider
+Provider : *StatusResponse Status(Context, *StatusRequest)
+Provider : *EncryptResponse Encrypt(Context, *EncryptRequest)
+Provider : *DecryptResponse Decrypt(Context, *DecryptRequest)
+Provider : (interface{}, error) UnaryInterceptor(Context, interface{}, *grpc.UnaryServerInfo, grpc.UnaryHandler)
 
 struct P11
-P11 : []byte kid
-P11 : []byte cid
-P11 : \*crypto11.Config config
-P11 : \*crypto11.Context ctx
+P11 : bool createKey
+P11 : *crypto11.Config config
+P11 : *crypto11.Context ctx
 P11 : map[string]gose.JweEncryptor encryptors
 P11 : map[string]gose.JweDecryptor decryptors
-P11 : bool createKey
-P11 : string k8sDefaultDekLabel
-P11 : string k8sHmacKeyLabel
-P11 : jose.Alg algorithm
-P11 : \*EncryptResponse Encrypt(Context, *EncryptRequest)
-P11 : \*DecryptResponse Decrypt(Context, *DecryptRequest)
+P11 : []byte kekCkaID
+P11 : string kekCkaLabel
+P11 : jose.Alg algorithmFamily
+P11 : *StatusResponse Status(Context, *StatusRequest)
+P11 : *EncryptResponse Encrypt(Context, *EncryptRequest)
+P11 : *DecryptResponse Decrypt(Context, *DecryptRequest)
 
-note right of P11::algorithm
-define which type of encryptor (cbc, gcm, rsa) will be called
+note right of P11::algorithmFamily
+define which algorithm family (aes-cbc, aes-gcm, rsa-oaep, ml-kem) will be called
+end note
+
+note bottom of P11
+For KEK rotation, P11 carries a parallel set of old* fields
+(oldConfig, oldCtx, oldDecryptors, oldKekCkaID, oldKekCkaLabel,
+oldAlgorithmFamily), omitted here for brevity.
+See kmsv2-key-rotation.sqce-diag.puml.
 end note
 
 }
 
 
-package gose {
+package "github.com/eclipse-keypont/gose" as gose {
 
 package "crypto" {
 
@@ -45,14 +53,11 @@ struct JweRsaKeyEncryptionEncryptorImpl implements JweEncryptor {
 struct JweRsaKeyEncryptionDecryptorImpl implements JweDecryptor {
 }
 
-struct AsymmetricDecryptionKeyImpl implements AsymmetricDecryptionKey {
-}
-
 interface JweEncryptor
 JweEncryptor : string Encrypt(plaintext, aad []byte)
 
 interface JweDecryptor
-JweDecryptor : (plaintext, aad []byte) Decrypt(jwe string)
+JweDecryptor : (plaintext, aad []byte, err error) Decrypt(jwe string, hash crypto.Hash)
 
 interface AsymmetricDecryptionKey
 AsymmetricDecryptionKey : Key
@@ -64,26 +69,22 @@ struct JweRsaKeyEncryptionEncryptorImpl
 JweRsaKeyEncryptionEncryptorImpl : recipientJwk jose.Jwk
 JweRsaKeyEncryptionEncryptorImpl : recipientKey *rsa.PublicKey
 JweRsaKeyEncryptionEncryptorImpl : cekAlg jose.Alg
-JweRsaKeyEncryptionEncryptorImpl : NewJweRsaKeyEncryptionEncryptorImpl(recipient jose.Jwk, contentEncryptionAlg jose.Alg) (*JweRsaKeyEncryptionEncryptorImpl, error)
-JweRsaKeyEncryptionEncryptorImpl : (e *JweRsaKeyEncryptionEncryptorImpl) Encrypt(plaintext, aad []byte) (string, error)
+JweRsaKeyEncryptionEncryptorImpl : NewJweRsaKeyEncryptionEncryptorImpl(recipient jose.Jwk, rng io.Reader) (*JweRsaKeyEncryptionEncryptorImpl, error)
+JweRsaKeyEncryptionEncryptorImpl : (e *JweRsaKeyEncryptionEncryptorImpl) Encrypt(plaintext, aad []byte, hash crypto.Hash) (string, error)
 
 struct JweRsaKeyEncryptionDecryptorImpl
 JweRsaKeyEncryptionDecryptorImpl : keystore AsymmetricDecryptionKeyStore
 JweRsaKeyEncryptionDecryptorImpl : NewJweRsaKeyEncryptionDecryptorImpl(keystore AsymmetricDecryptionKeyStore) *JweRsaKeyEncryptionDecryptorImpl
-JweRsaKeyEncryptionDecryptorImpl : (d *JweRsaKeyEncryptionDecryptorImpl) Decrypt(jwe string) (plaintext, aad []byte, err error)
+JweRsaKeyEncryptionDecryptorImpl : (d *JweRsaKeyEncryptionDecryptorImpl) Decrypt(jwe string, hash crypto.Hash) (plaintext, aad []byte, err error)
 
-struct AsymmetricDecryptionKeyImpl
-AsymmetricDecryptionKeyImpl : kid string
-AsymmetricDecryptionKeyImpl : ctx *crypto11.Context
-AsymmetricDecryptionKeyImpl : key crypto11.SignerDecrypter
-AsymmetricDecryptionKeyImpl : (a *AsymmetricDecryptionKey) Decrypt(_ jose.KeyOps, bytes []byte) ([]byte, error)
-AsymmetricDecryptionKeyImpl : (a *AsymmetricDecryptionKey) Encryptor() (gose.AsymmetricEncryptionKey, error)
-
-note right of AsymmetricDecryptionKeyImpl::key
-Type is pkcs11PrivateKeyRSA
+note right of JweRsaKeyEncryptionDecryptorImpl::Decrypt
+p11.go always passes crypto.SHA256 explicitly, rather than
+crypto.Hash(0) (which would derive the digest from the JWE
+"alg" header), so objects written before gose v1.0.0-rc2
+(header says RSA-OAEP/SHA-1, CEK is SHA-256-wrapped) still decrypt.
 end note
 
-note "JweRsaKeyEncryptionDecryptorImpl wraps a keystore\nwhich contains an AsymmetricDecryptionKey ID.\nThe method `Decrypt` is called for this key." as N1
+note "JweRsaKeyEncryptionDecryptorImpl wraps a keystore\nbuilt by gose.NewAsymmetricDecryptionKeyStoreImpl from an\nAsymmetricDecryptionKey. The method `Decrypt` is called for this key." as N1
 JweRsaKeyEncryptionDecryptorImpl <.. N1
 N1 .. AsymmetricDecryptionKey
 
@@ -91,7 +92,27 @@ note "`Encrypt` calls the standard Go crypto module for rsa encryption\nusing a 
 JweRsaKeyEncryptionEncryptorImpl <.. N2
 N2 .. rsa
 
-package crypto11 {
+package "github.com/eclipse-keypont/gose/hsm" as hsm {
+
+struct AsymmetricDecryptionKey implements gose.AsymmetricDecryptionKey {
+}
+
+struct AsymmetricDecryptionKey
+AsymmetricDecryptionKey : ctx *crypto11.Context
+AsymmetricDecryptionKey : keyPair crypto11.SignerDecrypter
+AsymmetricDecryptionKey : kid []byte
+AsymmetricDecryptionKey : NewAsymmetricDecryptionKey(ctx *crypto11.Context, keyPair crypto11.SignerDecrypter, kid []byte, opts crypto.DecrypterOpts) (*AsymmetricDecryptionKey, error)
+AsymmetricDecryptionKey : Decrypt(jose.KeyOps, []byte) ([]byte, error)
+AsymmetricDecryptionKey : Encryptor() (gose.AsymmetricEncryptionKey, error)
+
+note right of AsymmetricDecryptionKey::keyPair
+Resolved by P11.Decrypt via ctx.FindRSAKeyPair(kekCkaID, ...),
+type is crypto11's pkcs11PrivateKeyRSA
+end note
+
+}
+
+package "github.com/eclipse-keypont/crypto11/v2" as crypto11 {
 
 
 struct pkcs11PrivateKey implements Decrypter
@@ -115,16 +136,16 @@ pkcs11PrivateKeyRSA : (priv *pkcs11PrivateKeyRSA) Sign(rand io.Reader, digest []
 
 }
 
-note "AsymmetricDecryptionKeyImpl calls the Decrypt method\nfrom SignerDecrypter of type pkcs11PrivateKeyRSA" as N4
+note "hsm.AsymmetricDecryptionKey.Decrypt calls the Decrypt method\nfrom SignerDecrypter of type pkcs11PrivateKeyRSA" as N4
 pkcs11PrivateKeyRSA <.. N4
-N4 .. AsymmetricDecryptionKeyImpl
+N4 .. hsm.AsymmetricDecryptionKey
 
 
 
 }
 
 
-note "If the algorithm is RSA, P11 calls Encrypt() and Decrypt()\nfrom the JWE asymmetric key-based encryptors for RSA ciphers" as N3
+note "If the algorithm family is rsa-oaep, P11 calls Encrypt() and Decrypt()\nfrom the JWE asymmetric key-based encryptors for RSA ciphers. Since\ngose v1.0.0-rc2, key wrapping/unwrapping via crypto11 lives in the\nupstream gose/hsm package rather than in a local P11 wrapper." as N3
 gose <.. N3
 N3 .. P11
 

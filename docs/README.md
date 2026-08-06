@@ -79,7 +79,8 @@ by hand — regenerate with `make doc`. See
 
 ## 7. Diagrams & images
 
-- [`puml-diagrams/`](./puml-diagrams/) — PlantUML sources (`.puml`) and their rendered `.svg` / `.png`
+- [`puml-diagrams/`](./puml-diagrams/) — PlantUML sources (`.puml`) and their rendered `.svg`
+  (`overview.png`/`.svg` are exported from `overview.drawio` instead, not from PlantUML)
 - [`images/`](./images/) — deployment scenarios, key rotation sequences, dependency graphs
 
 Two diagram formats are used on purpose:
@@ -104,4 +105,6 @@ podman run --rm -v "$PWD/docs/puml-diagrams:/data:z" -w /data \
 
 ⚠️ PlantUML names its output after the `@startuml "<name>"` title, **not** after the source file, so rename the
 results back to the tracked `kmsv2-*.sqce-diag.svg` names (or use the VS Code PlantUML extension, which keeps the
-source file name).
+source file name). The class diagrams (`cbc-class.puml`, `gcm-class.puml`, `rsa-class.puml`,
+`ml-kem-class.puml`) use an unnamed `@startuml`, so PlantUML already names their output after the source
+file and no renaming is needed.
