@@ -38,26 +38,16 @@ func atMaxLabel() string   { return strings.Repeat("L", maxCkaLabelSize) }
 // NewP11 resolves the active KEK first, so without a real key it fails there and the parameter
 // being tested is never reached. That is a trap worth naming: an earlier version of this test
 // passed for the wrong reason, reporting "key ... was not found" instead of a length error.
+//
+// There is deliberately no HMAC counterpart to this helper. The AES-CBC cases look like they
+// need one, but every HMAC length validator in NewP11 runs before the corresponding HMAC
+// lookup, so an over-long HMAC identifier is rejected without the key ever being resolved.
+// Only the KEK is resolved early enough to need provisioning.
 func newRealKEK(t *testing.T) string {
 	t.Helper()
 	label := newTestLabel(t)
 	key, err := testCtx.GenerateSecretKeyWithLabel(newTestID(t), []byte(label), 256, crypto11.CipherAES)
 	require.NoError(t, err, "provision AES-256 KEK")
-	t.Cleanup(func() { _ = key.Delete() })
-	return label
-}
-
-// newRealHMACKey provisions a generic-secret HMAC key (CKA_SIGN/CKA_VERIFY) and returns its
-// CKA_LABEL. Needed by the AES-CBC cases, whose HMAC lookup precedes the rotation parameters.
-func newRealHMACKey(t *testing.T) string {
-	t.Helper()
-	label := newTestLabel(t)
-	attrs, err := crypto11.NewAttributeSetWithIDAndLabel(newTestID(t), []byte(label))
-	require.NoError(t, err)
-	require.NoError(t, attrs.Set(crypto11.CkaSign, true))
-	require.NoError(t, attrs.Set(crypto11.CkaVerify, true))
-	key, err := testCtx.GenerateSecretKeyWithAttributes(attrs, 256, crypto11.CipherGeneric)
-	require.NoError(t, err, "provision HMAC key")
 	t.Cleanup(func() { _ = key.Delete() })
 	return label
 }
@@ -94,7 +84,7 @@ func TestNewP11_RejectsOverMaxKeyIdentifiers(t *testing.T) {
 	}{
 		{
 			name: "over-max CKA_ID", flag: "--p11-key-id", wantErr: wantHexErr,
-			build: func(t *testing.T) (*providers.P11, error) {
+			build: func(_ *testing.T) (*providers.P11, error) {
 				return providers.NewP11(testConfig, false,
 					overMaxHexID(), "", "", "", providers.AlgAESGCM,
 					false, nil, "", "", "", "", "")
@@ -102,7 +92,7 @@ func TestNewP11_RejectsOverMaxKeyIdentifiers(t *testing.T) {
 		},
 		{
 			name: "over-max CKA_LABEL", flag: "--p11-key-label", wantErr: wantLabelErr,
-			build: func(t *testing.T) (*providers.P11, error) {
+			build: func(_ *testing.T) (*providers.P11, error) {
 				return providers.NewP11(testConfig, false,
 					"", overMaxLabel(), "", "", providers.AlgAESGCM,
 					false, nil, "", "", "", "", "")

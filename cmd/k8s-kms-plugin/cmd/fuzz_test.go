@@ -69,7 +69,8 @@ func FuzzUnmarshalSubMergedE(f *testing.F) {
 	f.Add("serve: {}\n")
 	f.Add("")
 
-	f.Fuzz(func(t *testing.T, config string) {
+	// The target asserts crash-freedom only, so it never reports through t.
+	f.Fuzz(func(_ *testing.T, config string) {
 		v := viper.New()
 		v.SetConfigType("yaml")
 		if err := v.ReadConfig(strings.NewReader(config)); err != nil {
