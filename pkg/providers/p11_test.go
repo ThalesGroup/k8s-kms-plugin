@@ -4,6 +4,7 @@
 package providers
 
 import (
+	"bytes"
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
@@ -54,6 +55,89 @@ func TestValidateHexKeyID(t *testing.T) {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tc.wantErr)
 			}
+		})
+	}
+}
+
+// TestUserKeyIDTooLongForKMSv2IsRejected covers the question the two limits raise: can an
+// operator supply a --p11-key-id that this plugin accepts but the Kubernetes API server later
+// rejects as an over-long KMS v2 KeyId?
+//
+// The answer must be no, and specifically because the PKCS#11 bound is the stricter of the
+// two — maxCkaIDHexLen (510) sits well under maxKMSv2KeyIDSize (1024), so a CKA_ID big enough
+// to trouble KMS v2 is refused roughly twice as early. The assertion on the error text is the
+// point of the test: it pins down *which* layer rejects, so this stays a deliberate property
+// rather than an accident that survives a future change to either constant.
+func TestUserKeyIDTooLongForKMSv2IsRejected(t *testing.T) {
+	cases := []struct {
+		name    string
+		hexLen  int
+		wantErr string
+	}{
+		{"at PKCS#11 limit, well under KMS v2 limit", maxCkaIDHexLen, ""},
+		{"over PKCS#11 limit, still under KMS v2 limit", maxCkaIDHexLen + 2, "exceeds PKCS#11 maximum"},
+		{"exactly at KMS v2 limit", maxKMSv2KeyIDSize, "exceeds PKCS#11 maximum"},
+		{"over KMS v2 limit", maxKMSv2KeyIDSize + 2, "exceeds PKCS#11 maximum"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			p := &P11{}
+			err := p.SetKekKeyIDString(strings.Repeat("a", tc.hexLen))
+			if tc.wantErr == "" {
+				require.NoError(t, err)
+				assert.NoError(t, validateKMSv2KeyID(p.GetKekKeyIDString()),
+					"a CKA_ID this plugin accepts must always be a usable KMS v2 KeyId")
+				return
+			}
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tc.wantErr,
+				"the PKCS#11 bound is stricter, so it must be the layer that rejects")
+		})
+	}
+}
+
+// TestPKCS11BoundSubsumesKMSv2Bound states the layering above as a single invariant, at the
+// boundary values where it would break first.
+func TestPKCS11BoundSubsumesKMSv2Bound(t *testing.T) {
+	require.Less(t, maxCkaIDHexLen, maxKMSv2KeyIDSize,
+		"the PKCS#11 hex bound must stay under the KMS v2 KeyId bound; see the compile-time assertion in p11.go")
+
+	for _, hexLen := range []int{2, maxCkaIDHexLen - 2, maxCkaIDHexLen} {
+		hexKeyID := strings.Repeat("a", hexLen)
+		require.NoError(t, validateHexKeyID(hexKeyID))
+		assert.NoError(t, validateKMSv2KeyID(hexKeyID),
+			"validateHexKeyID accepted %d chars that validateKMSv2KeyID rejects", hexLen)
+	}
+}
+
+// TestSetKekKeyIDFromBytes_KMSv2Bound covers the one path where the KMS v2 check does the
+// rejecting rather than merely agreeing with PKCS#11: raw CKA_ID bytes that never pass through
+// validateHexKeyID. This is the shape of the value GetKeyIDAndLabel receives from the token
+// when the operator starts the plugin with --p11-key-label instead of --p11-key-id.
+func TestSetKekKeyIDFromBytes_KMSv2Bound(t *testing.T) {
+	cases := []struct {
+		name    string
+		ckaID   []byte
+		wantErr string
+	}{
+		{"nil", nil, "keyID cannot be nil"},
+		{"empty", []byte{}, "KeyId is empty"},
+		{"typical 8-byte CKA_ID", bytes.Repeat([]byte{0xAB}, 8), ""},
+		{"hex length exactly at KMS v2 limit", bytes.Repeat([]byte{0xAB}, maxKMSv2KeyIDSize/2), ""},
+		{"hex length one byte over KMS v2 limit", bytes.Repeat([]byte{0xAB}, maxKMSv2KeyIDSize/2+1), "exceeds the Kubernetes API server maximum"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			p := &P11{}
+			err := p.SetKekKeyIDFromBytes(tc.ckaID)
+			if tc.wantErr == "" {
+				require.NoError(t, err)
+				assert.LessOrEqual(t, len(p.GetKekKeyIDString()), maxKMSv2KeyIDSize)
+				return
+			}
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tc.wantErr)
+			assert.Nil(t, p.kekCkaID, "a rejected CKA_ID must not be stored")
 		})
 	}
 }

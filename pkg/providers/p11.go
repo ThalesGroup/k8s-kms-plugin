@@ -154,7 +154,53 @@ const (
 	// maxCiphertextSize is the upper bound for Decrypt request ciphertext. JWE overhead on an 8 KB
 	// plaintext is ~100 bytes; 64 KB is a generous margin that prevents runaway memory allocation.
 	maxCiphertextSize = 64 * 1024
+	// maxKMSv2KeyIDSize bounds EncryptResponse.KeyId and StatusResponse.KeyId in BYTES, mirroring
+	// KeyIDMaxSize in k8s.io/apiserver (pkg/storage/value/encrypt/envelope/kmsv2), whose
+	// ValidateKeyID measures len(keyID) on the string and rejects anything empty or longer.
+	// Exceeding it takes encryption at rest down rather than degrading it.
+	//
+	// Deliberately restated rather than imported. KeyIDMaxSize is exported, but it lives in
+	// k8s.io/apiserver — the API server's internal storage-encryption machinery, not the
+	// plugin-facing contract. k8s.io/kms, the module this plugin does depend on, does not define
+	// it. Importing it would invert the dependency (the KMS server pulling in its own client's
+	// internals), add ~60 modules and ~350 packages to a vendored tree for one integer, and pin
+	// the plugin to one API server version when it must serve whatever version the cluster runs.
+	//
+	// Mind the encoding: this plugin's KeyId is a hex-encoded CKA_ID, so 1024 BYTES of KeyId is
+	// 1024 hex characters, which encodes only a 512-byte raw CKA_ID. maxCkaIDHexLen (510 hex
+	// characters, 255 raw bytes) is the stricter bound and rejects first on every operator-facing
+	// path; only a CKA_ID read from the token can reach this one, since PKCS#11 sets no length
+	// limit of its own.
+	maxKMSv2KeyIDSize = 1024
 )
+
+// Compile-time assertion that a CKA_ID accepted by validateHexKeyID can never yield a KeyId over
+// the KMS v2 limit. Raising maxCkaIDHexLen beyond maxKMSv2KeyIDSize fails the build here instead
+// of producing Status responses the API server rejects at runtime.
+//
+// Comparing a hex-character count against a byte limit is sound only because the KeyId string is
+// ASCII hex: a CKA_ID of maxCkaIDHexLen hex characters occupies exactly that many bytes on the
+// wire. Do not restate either constant in raw-CKA_ID bytes here — that would halve one side and
+// silently double the bound this assertion is meant to enforce.
+const _ = uint(maxKMSv2KeyIDSize - maxCkaIDHexLen)
+
+// validateKMSv2KeyID checks that a hex-encoded CKA_ID is usable as a KMS v2 KeyId, applying the
+// API server's own rule so a mismatch surfaces at plugin startup rather than as a rejected
+// Status response once the API server connects.
+//
+// hexKeyID is the KeyId exactly as it goes on the wire, so len() is simultaneously its size in
+// BYTES (what maxKMSv2KeyIDSize bounds) and its length in HEX CHARACTERS; the raw CKA_ID it
+// encodes is half that. The error spells all three out so nobody has to re-derive which is meant.
+func validateKMSv2KeyID(hexKeyID string) error {
+	if len(hexKeyID) == 0 {
+		return fmt.Errorf("KMS v2 KeyId is empty")
+	}
+	if len(hexKeyID) > maxKMSv2KeyIDSize {
+		return fmt.Errorf("KMS v2 KeyId is %d bytes (%d hex characters encoding a %d-byte CKA_ID), which exceeds the Kubernetes API server maximum of %d bytes",
+			len(hexKeyID), len(hexKeyID), len(hexKeyID)/2, maxKMSv2KeyIDSize)
+	}
+	return nil
+}
 
 // validateHexKeyID checks that a hex-encoded CKA_ID string is non-empty, even-length,
 // and within the PKCS#11 maximum attribute length before hex decoding.
@@ -439,6 +485,11 @@ func NewP11(
 func (p *P11) SetKekKeyIDFromBytes(keyID []byte) error {
 	if keyID == nil {
 		return fmt.Errorf("keyID cannot be nil")
+	}
+	// Raw bytes bypass validateHexKeyID, so check the KMS v2 bound the KeyId must satisfy.
+	if err := validateKMSv2KeyID(hex.EncodeToString(keyID)); err != nil {
+		slog.Error("SetKekKeyIDFromBytes: CKA_ID unusable as a KMS v2 KeyId", "ckaIDBytes", len(keyID), "error", err)
+		return err
 	}
 	p.kekCkaID = keyID
 	return nil
@@ -1397,6 +1448,15 @@ func GetKeyIDAndLabel(p *P11, keyID string, keyLabel string) (resultKeyID []byte
 				"label", keyLabel,
 				"reason", "CKA_ID is used as the KEK ID stored in Kubernetes etcd; it must be stable and unambiguous to guarantee secret recoverability",
 				"action", "set a CKA_ID on this key using your HSM management tool (e.g. pkcs11-tool --id <hex-id>) before starting the plugin")
+		}
+
+		// The CKA_ID came from the token, not from validateHexKeyID, so it is not yet known to
+		// fit the KMS v2 KeyId bound.
+		if err = validateKMSv2KeyID(hex.EncodeToString(resultKeyID)); err != nil {
+			slog.Error("CKA_ID found by CKA_LABEL is unusable as a KMS v2 KeyId",
+				"label", keyLabel, "ckaIDBytes", len(resultKeyID), "error", err,
+				"action", "provision this key with a shorter CKA_ID (at most 512 bytes) using your HSM management tool")
+			return nil, "", fmt.Errorf("GetKeyIDAndLabel: CKA_ID found by CKA_LABEL %q: %w", keyLabel, err)
 		}
 	} else if keyID != "" && keyLabel == "" {
 		// Case: KEK ID already provided by user at startup with flag --p11-key-id
