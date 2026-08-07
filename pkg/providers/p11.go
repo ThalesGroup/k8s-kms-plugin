@@ -162,6 +162,15 @@ const (
 	// ValidateEncryptedObject; Decrypt receives that same value back, so nothing larger can exist.
 	// Ciphertext is raw bytes on the wire — no hex encoding is involved.
 	maxKMSv2CiphertextSize = 1024
+	// maxKMSv2AnnotationsSize bounds EncryptResponse.Annotations in BYTES, mirroring
+	// annotationsMaxSize in k8s.io/apiserver (pkg/storage/value/encrypt/envelope/kmsv2).
+	//
+	// The budget is shared: the API server sums len(key)+len(value) across every annotation and
+	// rejects the object when that total exceeds this. It is not a per-annotation limit, so
+	// adding a second annotation eats into the first one's headroom. Annotation values are raw
+	// bytes — no hex encoding — but the keys count toward the total too, and this plugin's keys
+	// are ~50-byte FQDNs (the API server requires a fully qualified domain name).
+	maxKMSv2AnnotationsSize = 32 * 1024
 	// maxKMSv2KeyIDSize bounds EncryptResponse.KeyId and StatusResponse.KeyId in BYTES, mirroring
 	// KeyIDMaxSize in k8s.io/apiserver (pkg/storage/value/encrypt/envelope/kmsv2), whose
 	// ValidateKeyID measures len(keyID) on the string and rejects anything empty or longer.
@@ -205,6 +214,40 @@ func validateEncryptResponseCiphertext(ciphertext []byte) error {
 	}
 	if len(ciphertext) > maxKMSv2CiphertextSize {
 		return fmt.Errorf("EncryptResponse ciphertext is %d bytes, which exceeds the KMS v2 maximum of %d bytes", len(ciphertext), maxKMSv2CiphertextSize)
+	}
+	return nil
+}
+
+// annotationsTotalSize returns the figure the API server measures against
+// maxKMSv2AnnotationsSize: the sum of every annotation's key and value length, in BYTES.
+//
+// Keys count toward the budget as well as values, which is easy to overlook — this plugin's keys
+// are ~50-byte FQDNs, so a response carrying several small annotations spends more than the
+// values alone suggest.
+func annotationsTotalSize(annotations map[string][]byte) int {
+	total := 0
+	for k, v := range annotations {
+		total += len(k) + len(v)
+	}
+	return total
+}
+
+// validateEncryptResponseAnnotations enforces the EncryptResponse.annotations size contract from
+// api.proto, mirroring the API server's validateAnnotations: the combined key and value bytes of
+// all annotations must not exceed maxKMSv2AnnotationsSize.
+//
+// The ML-KEM path is the one with real content here — its KEM ciphertext is 768, 1088 or 1568
+// bytes for ML-KEM-512/768/1024 — so the budget is nowhere near tight today. The check exists so
+// that stays true: annotations are the natural place to add per-object metadata, and the limit
+// is shared across all of them.
+//
+// Key format is left to the API server. It requires a fully qualified domain name, which the
+// package-level annotation key constants already satisfy; they are compile-time values, not
+// anything an operator or request can influence.
+func validateEncryptResponseAnnotations(annotations map[string][]byte) error {
+	if total := annotationsTotalSize(annotations); total > maxKMSv2AnnotationsSize {
+		return fmt.Errorf("EncryptResponse annotations total %d bytes across %d annotation(s) (keys plus values), which exceeds the KMS v2 maximum of %d bytes",
+			total, len(annotations), maxKMSv2AnnotationsSize)
 	}
 	return nil
 }
@@ -1133,6 +1176,11 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 		KeyId:      p.GetKekKeyIDString(),
 	}
 	putAlgorithmFamily(resp, p.algorithmFamily)
+	if err = validateEncryptResponseAnnotations(resp.Annotations); err != nil {
+		slog.Error("Encrypt: refusing to return annotations the API server would reject",
+			"algorithm", p.algorithmFamily, "annotationSizes", annotationSizes(resp.Annotations), "error", err)
+		return nil, fmt.Errorf("Encrypt: %w", err)
+	}
 	slog.Log(ctx, logging.LevelTrace, "Encrypt: returning response", "algorithm", p.algorithmFamily, "ciphertextLen", len(resp.Ciphertext), "annotationSizes", annotationSizes(resp.Annotations))
 	return resp, nil
 }
@@ -1319,6 +1367,13 @@ func (p *P11) encryptMLKEM(ctx context.Context, req *k8skmsv2.EncryptRequest) (*
 	}
 	putEncapsulation(resp, kemCt)
 	putAlgorithmFamily(resp, p.algorithmFamily)
+	// The KEM ciphertext is the largest thing this plugin ever puts in annotations, so this is
+	// the path where the shared budget could realistically be spent.
+	if err := validateEncryptResponseAnnotations(resp.Annotations); err != nil {
+		slog.Error("encryptMLKEM: refusing to return annotations the API server would reject",
+			"uid", req.GetUid(), "annotationSizes", annotationSizes(resp.Annotations), "error", err)
+		return nil, fmt.Errorf("encryptMLKEM: %w", err)
+	}
 	slog.Log(ctx, logging.LevelTrace, "encryptMLKEM: returning response", "ciphertextLen", len(resp.Ciphertext), "annotationSizes", annotationSizes(resp.Annotations))
 	return resp, nil
 }

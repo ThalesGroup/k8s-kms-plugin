@@ -14,6 +14,8 @@ import (
 	"github.com/eclipse-keypont/gose/jose"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	k8skmsv2 "k8s.io/kms/apis/v2"
 )
 
 // TestEncryptResponseFitsKMSv2CiphertextLimit checks that the JWE this plugin returns as
@@ -136,5 +138,88 @@ func TestWorstCasePlaintextFitsCiphertextBudget(t *testing.T) {
 		t.Logf("plaintext=%d (max) kid=%d (max) -> ciphertext=%d, budget %d", maxPlaintextSize, kidLen, len(jwe), maxKMSv2CiphertextSize)
 		assert.NoError(t, validateEncryptResponseCiphertext([]byte(jwe)),
 			"maxPlaintextSize must be small enough that even the longest kid stays in budget")
+	}
+}
+
+// TestValidateEncryptResponseAnnotations covers the shared annotation budget, including the
+// property that trips people up: keys count toward the total alongside values, and the limit is
+// across all annotations rather than per annotation.
+func TestValidateEncryptResponseAnnotations(t *testing.T) {
+	// A key of exactly this length lets the cases below hit the boundary precisely.
+	const key = KemCiphertextAnnotationKey
+
+	cases := []struct {
+		name        string
+		annotations map[string][]byte
+		wantErr     bool
+	}{
+		{"nil", nil, false},
+		{"empty", map[string][]byte{}, false},
+		{
+			name:        "ML-KEM-1024 KEM ciphertext, the largest this plugin emits",
+			annotations: map[string][]byte{key: make([]byte, 1568)},
+		},
+		{
+			name:        "total exactly at the limit",
+			annotations: map[string][]byte{key: make([]byte, maxKMSv2AnnotationsSize-len(key))},
+		},
+		{
+			name:        "total one byte over the limit",
+			annotations: map[string][]byte{key: make([]byte, maxKMSv2AnnotationsSize-len(key)+1)},
+			wantErr:     true,
+		},
+		{
+			// Each value alone is legal; together they are not. This is what "shared budget" means.
+			name: "two annotations each under the limit but over it combined",
+			annotations: map[string][]byte{
+				KemCiphertextAnnotationKey:   make([]byte, maxKMSv2AnnotationsSize*2/3),
+				AlgorithmFamilyAnnotationKey: make([]byte, maxKMSv2AnnotationsSize*2/3),
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateEncryptResponseAnnotations(tc.annotations)
+			if !tc.wantErr {
+				assert.NoError(t, err)
+				return
+			}
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "exceeds the KMS v2 maximum")
+		})
+	}
+}
+
+// TestAnnotationsTotalSizeCountsKeysAndValues pins the measurement itself against the API
+// server's rule (totalSize += len(k) + len(v)). Counting values only would understate the total
+// by ~50 bytes per annotation here, since this plugin's keys are FQDNs.
+func TestAnnotationsTotalSizeCountsKeysAndValues(t *testing.T) {
+	annotations := map[string][]byte{
+		KemCiphertextAnnotationKey:   make([]byte, 1088),
+		AlgorithmFamilyAnnotationKey: []byte("ml-kem"),
+	}
+
+	valuesOnly := 1088 + len("ml-kem")
+	want := valuesOnly + len(KemCiphertextAnnotationKey) + len(AlgorithmFamilyAnnotationKey)
+
+	assert.Equal(t, want, annotationsTotalSize(annotations))
+	assert.Greater(t, annotationsTotalSize(annotations), valuesOnly,
+		"annotation keys must count toward the budget, not just values")
+}
+
+// TestRealMLKEMAnnotationsFitBudget checks the actual annotations the ML-KEM path emits, at the
+// largest parameter set, leave the budget with room to spare.
+func TestRealMLKEMAnnotationsFitBudget(t *testing.T) {
+	// ML-KEM-512 / 768 / 1024 KEM ciphertext sizes per FIPS 203.
+	for _, kemCtSize := range []int{768, 1088, 1568} {
+		resp := &k8skmsv2.EncryptResponse{}
+		putEncapsulation(resp, make([]byte, kemCtSize))
+		putAlgorithmFamily(resp, AlgMLKEM)
+
+		total := annotationsTotalSize(resp.Annotations)
+		t.Logf("kemCt=%d bytes -> annotations total %d bytes, budget %d", kemCtSize, total, maxKMSv2AnnotationsSize)
+		assert.NoError(t, validateEncryptResponseAnnotations(resp.Annotations))
 	}
 }
