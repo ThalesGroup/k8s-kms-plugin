@@ -110,7 +110,7 @@ func formatMLKEMEnvelope(nonce, sealed []byte) []byte {
 //
 // This is the first thing the ML-KEM path does with attacker-reachable bytes, before any key
 // material has authenticated them, so it is kept free of HSM calls: it is pure, and therefore
-// directly testable and fuzzable without a token.
+// directly fuzzable (see FuzzParseMLKEMEnvelope).
 //
 // The returned slices alias envelope; callers must not modify them.
 func parseMLKEMEnvelope(envelope []byte) (nonce, sealed []byte, err error) {
@@ -144,20 +144,39 @@ func putAlgorithmFamily(resp *k8skmsv2.EncryptResponse, alg jose.Alg) {
 	resp.Annotations[AlgorithmFamilyAnnotationKey] = []byte(alg)
 }
 
+// Size and length limits, named by a single rule so the unit is never in doubt:
+//
+//	maxKMSv2<Field>Size  a limit KMS v2 imposes; always BYTES on the wire, per api.proto
+//	                     and the API server's envelope validation.
+//	max<Attr>Size        a PKCS#11 attribute limit measured in BYTES.
+//	max<Attr>HexLen      a PKCS#11 attribute limit measured in HEX CHARACTERS, which is
+//	                     twice the raw byte count.
+//	maxPlaintextSize     this plugin's own guard, in BYTES; KMS v2 sets none, so it
+//	                     deliberately carries no maxKMSv2 prefix.
+//
+// The hex/raw distinction is the one that bites: a CKA_ID is raw bytes on the token but travels
+// as a hex string through the CLI and through every KMS v2 KeyId field, where it takes twice the
+// space. Anything named *HexLen counts characters of that string; everything named *Size counts
+// bytes. Because the string is ASCII hex, one hex character is exactly one byte on the wire,
+// which is what lets a *HexLen and a maxKMSv2*Size be compared directly.
 const (
-	// maxCkaIDHexLen is the maximum length of a hex-encoded PKCS#11 CKA_ID (255 bytes → 510 hex chars).
+	// maxCkaIDHexLen bounds a PKCS#11 CKA_ID in HEX CHARACTERS, the form used by --p11-key-id and
+	// by KeyId fields: 510 hex characters, encoding 255 raw CKA_ID bytes, occupying 510 bytes as
+	// a KeyId string.
+	// PKCS#11 has no maximum size limit for CKA_ID but most implementation have a limit.
 	maxCkaIDHexLen = 510
-	// maxCkaLabelLen is the maximum byte length of a PKCS#11 CKA_LABEL attribute.
-	maxCkaLabelLen = 255
+	// maxCkaLabelSize bounds a PKCS#11 CKA_LABEL in BYTES. A label is UTF-8 text, never hex, so
+	// there is no doubling here — 255 means 255 bytes.
+	maxCkaLabelSize = 255
 	// kmsv2DEKSeedSize is the size in BYTES of what the API server actually sends as
 	// EncryptRequest.Plaintext: it encrypts the object itself with a local DEK and passes this
 	// plugin only that key (aestransformer.MinSeedSizeExtendedNonceGCM).
 	kmsv2DEKSeedSize = 32
-	// maxPlaintextSize bounds EncryptRequest.Plaintext in BYTES. api.proto sets no limit, so this
-	// is 4x the real payload — slack for a future, longer DEK seed without accepting anything
+	// maxPlaintextSize bounds EncryptRequest.Plaintext in BYTES. KMSv2 api.proto sets no limit, so
+	// this is 4x the real payload — slack for a future, longer DEK seed without accepting anything
 	// whose ciphertext could breach maxKMSv2CiphertextSize.
 	maxPlaintextSize = 4 * kmsv2DEKSeedSize
-	// maxKMSv2CiphertextSize bounds DecryptRequest.Ciphertext in BYTES. api.proto requires
+	// maxKMSv2CiphertextSize bounds DecryptRequest.Ciphertext in BYTES. KMSv2 api.proto requires
 	// EncryptResponse.ciphertext to be non-empty and under 1 kB, enforced by the API server's
 	// ValidateEncryptedObject; Decrypt receives that same value back, so nothing larger can exist.
 	// Ciphertext is raw bytes on the wire — no hex encoding is involved.
@@ -173,21 +192,13 @@ const (
 	maxKMSv2AnnotationsSize = 32 * 1024
 	// maxKMSv2KeyIDSize bounds EncryptResponse.KeyId and StatusResponse.KeyId in BYTES, mirroring
 	// KeyIDMaxSize in k8s.io/apiserver (pkg/storage/value/encrypt/envelope/kmsv2), whose
-	// ValidateKeyID measures len(keyID) on the string and rejects anything empty or longer.
-	// Exceeding it takes encryption at rest down rather than degrading it.
-	//
-	// Deliberately restated rather than imported. KeyIDMaxSize is exported, but it lives in
-	// k8s.io/apiserver — the API server's internal storage-encryption machinery, not the
-	// plugin-facing contract. k8s.io/kms, the module this plugin does depend on, does not define
-	// it. Importing it would invert the dependency (the KMS server pulling in its own client's
-	// internals), add ~60 modules and ~350 packages to a vendored tree for one integer, and pin
-	// the plugin to one API server version when it must serve whatever version the cluster runs.
+	// ValidateKeyID measures len(keyID) on the string.
 	//
 	// Mind the encoding: this plugin's KeyId is a hex-encoded CKA_ID, so 1024 BYTES of KeyId is
 	// 1024 hex characters, which encodes only a 512-byte raw CKA_ID. maxCkaIDHexLen (510 hex
 	// characters, 255 raw bytes) is the stricter bound and rejects first on every operator-facing
 	// path; only a CKA_ID read from the token can reach this one, since PKCS#11 sets no length
-	// limit of its own.
+	// limit of its own. validateKMSv2KeyID covers that path.
 	maxKMSv2KeyIDSize = 1024
 )
 
@@ -202,7 +213,7 @@ const (
 const _ = uint(maxKMSv2KeyIDSize - maxCkaIDHexLen)
 
 // validateEncryptResponseCiphertext enforces the EncryptResponse.ciphertext contract from
-// api.proto: non-empty and within maxKMSv2CiphertextSize.
+// KMSv2 api.proto: non-empty and within maxKMSv2CiphertextSize.
 //
 // Bounding the plaintext is not sufficient on its own — the JWE header carries a kid (CKA_LABEL
 // for AES-GCM, hex CKA_ID for AES-CBC), so ciphertext size also grows with the operator's key
@@ -218,7 +229,7 @@ func validateEncryptResponseCiphertext(ciphertext []byte) error {
 	return nil
 }
 
-// annotationsTotalSize returns the figure the API server measures against
+// annotationsTotalSize returns the figure the k8s KMSv2 API server measures against
 // maxKMSv2AnnotationsSize: the sum of every annotation's key and value length, in BYTES.
 //
 // Keys count toward the budget as well as values, which is easy to overlook — this plugin's keys
@@ -233,8 +244,8 @@ func annotationsTotalSize(annotations map[string][]byte) int {
 }
 
 // validateEncryptResponseAnnotations enforces the EncryptResponse.annotations size contract from
-// api.proto, mirroring the API server's validateAnnotations: the combined key and value bytes of
-// all annotations must not exceed maxKMSv2AnnotationsSize.
+// KMSv2 api.proto, mirroring the API server's validateAnnotations: the combined key and value bytes
+// of all annotations must not exceed maxKMSv2AnnotationsSize.
 //
 // The ML-KEM path is the one with real content here — its KEM ciphertext is 768, 1088 or 1568
 // bytes for ML-KEM-512/768/1024 — so the budget is nowhere near tight today. The check exists so
@@ -270,8 +281,8 @@ func validateKMSv2KeyID(hexKeyID string) error {
 	return nil
 }
 
-// validateHexKeyID checks that a hex-encoded CKA_ID string is non-empty, even-length,
-// and within the PKCS#11 maximum attribute length before hex decoding.
+// validateHexKeyID checks that a hex-encoded CKA_ID string is non-empty, even-length, and
+// within maxCkaIDHexLen HEX CHARACTERS (not raw bytes) before hex decoding.
 func validateHexKeyID(hexKeyID string) error {
 	if len(hexKeyID) == 0 {
 		return fmt.Errorf("hex key ID is empty")
@@ -280,19 +291,19 @@ func validateHexKeyID(hexKeyID string) error {
 		return fmt.Errorf("hex key ID must have an even number of characters, got %d", len(hexKeyID))
 	}
 	if len(hexKeyID) > maxCkaIDHexLen {
-		return fmt.Errorf("hex key ID length %d exceeds PKCS#11 maximum of %d characters", len(hexKeyID), maxCkaIDHexLen)
+		return fmt.Errorf("hex key ID is %d hex characters (%d raw CKA_ID bytes), which exceeds PKCS#11 maximum of %d hex characters", len(hexKeyID), len(hexKeyID)/2, maxCkaIDHexLen)
 	}
 	return nil
 }
 
-// validateCkaLabel checks that a CKA_LABEL string is non-empty and within the PKCS#11
-// maximum attribute length before it is passed to the HSM.
+// validateCkaLabel checks that a CKA_LABEL string is non-empty and within maxCkaLabelSize BYTES
+// (it is UTF-8 text, not hex) before it is passed to the HSM.
 func validateCkaLabel(label string) error {
 	if len(label) == 0 {
 		return fmt.Errorf("CKA_LABEL is empty")
 	}
-	if len(label) > maxCkaLabelLen {
-		return fmt.Errorf("CKA_LABEL length %d exceeds PKCS#11 maximum of %d bytes", len(label), maxCkaLabelLen)
+	if len(label) > maxCkaLabelSize {
+		return fmt.Errorf("CKA_LABEL length %d exceeds PKCS#11 maximum of %d bytes", len(label), maxCkaLabelSize)
 	}
 	return nil
 }

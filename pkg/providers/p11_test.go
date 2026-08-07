@@ -737,10 +737,10 @@ func TestP11_NewP11_ConfigEmptyArgs(t *testing.T) {
 
 // TestValidateCkaLabel covers all branches of the CKA_LABEL validator.
 func TestValidateCkaLabel(t *testing.T) {
-	atLimit := strings.Repeat("a", maxCkaLabelLen)
-	overLimit := strings.Repeat("a", maxCkaLabelLen+1)
+	atLimit := strings.Repeat("a", maxCkaLabelSize)
+	overLimit := strings.Repeat("a", maxCkaLabelSize+1)
 	// "é" is 2 bytes in UTF-8; len() counts bytes, not runes.
-	multibyteOver := strings.Repeat("é", maxCkaLabelLen/2+1) // 128×2 = 256 bytes
+	multibyteOver := strings.Repeat("é", maxCkaLabelSize/2+1) // 128×2 = 256 bytes
 
 	cases := []struct {
 		name    string
@@ -770,7 +770,7 @@ func TestValidateCkaLabel(t *testing.T) {
 // GetKeyIDAndLabel before any HSM call is attempted.
 func TestGetKeyIdAndLabel_LabelTooLong(t *testing.T) {
 	p := &P11{algorithmFamily: AlgAESGCM}
-	tooLong := strings.Repeat("a", maxCkaLabelLen+1)
+	tooLong := strings.Repeat("a", maxCkaLabelSize+1)
 
 	_, _, err := GetKeyIDAndLabel(p, "", tooLong)
 

@@ -4,6 +4,7 @@
 package providers
 
 import (
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -23,7 +24,7 @@ import (
 // range of key identifiers a valid configuration can produce.
 //
 // The size driver is the kid embedded in the JWE protected header, and it differs per algorithm
-// family: the AES-GCM path passes the CKA_LABEL (up to maxCkaLabelLen), the AES-CBC path passes
+// family: the AES-GCM path passes the CKA_LABEL (up to maxCkaLabelSize), the AES-CBC path passes
 // the hex CKA_ID (up to maxCkaIDHexLen). The largest legal identifier is therefore the worst
 // case, and it is the case nobody tests by hand.
 //
@@ -48,7 +49,7 @@ func TestEncryptResponseFitsKMSv2CiphertextLimit(t *testing.T) {
 	}{
 		{"typical 8-char CKA_LABEL", 8},
 		{"64-char CKA_LABEL", 64},
-		{"CKA_LABEL at PKCS#11 maximum (AES-GCM path)", maxCkaLabelLen},
+		{"CKA_LABEL at PKCS#11 maximum (AES-GCM path)", maxCkaLabelSize},
 		{"hex CKA_ID at PKCS#11 maximum (AES-CBC path)", maxCkaIDHexLen},
 	}
 	for _, tc := range cases {
@@ -127,8 +128,8 @@ func TestWorstCasePlaintextFitsCiphertextBudget(t *testing.T) {
 	aead, err := cipher.NewGCM(block)
 	require.NoError(t, err)
 
-	// maxCkaIDHexLen is the longer of the two kid sources (AES-CBC); maxCkaLabelLen is AES-GCM's.
-	for _, kidLen := range []int{maxCkaLabelLen, maxCkaIDHexLen} {
+	// maxCkaIDHexLen is the longer of the two kid sources (AES-CBC); maxCkaLabelSize is AES-GCM's.
+	for _, kidLen := range []int{maxCkaLabelSize, maxCkaIDHexLen} {
 		aek, err := gose.NewAesGcmCryptor(aead, rand.Reader, strings.Repeat("L", kidLen), jose.AlgA256GCM, kekKeyOps)
 		require.NoError(t, err)
 
@@ -139,6 +140,43 @@ func TestWorstCasePlaintextFitsCiphertextBudget(t *testing.T) {
 		assert.NoError(t, validateEncryptResponseCiphertext([]byte(jwe)),
 			"maxPlaintextSize must be small enough that even the longest kid stays in budget")
 	}
+}
+
+// TestKeyIDHexEncodingDoublesSize pins the conversion the naming rule exists to protect.
+//
+// A CKA_ID is raw bytes on the token but travels as a hex string in every KMS v2 KeyId field,
+// where it occupies twice the space. Getting this backwards in either direction is the easy
+// mistake: treating maxKMSv2KeyIDSize as raw bytes would let through a KeyId twice the legal
+// size, and treating maxCkaIDHexLen as raw bytes would reject valid CKA_IDs at half the bound.
+func TestKeyIDHexEncodingDoublesSize(t *testing.T) {
+	for _, rawBytes := range []int{1, 8, maxCkaIDHexLen / 2, maxKMSv2KeyIDSize / 2} {
+		p := &P11{}
+		require.NoError(t, p.SetKekKeyIDFromBytes(bytes.Repeat([]byte{0xAB}, rawBytes)))
+
+		keyID := p.GetKekKeyIDString()
+		assert.Len(t, keyID, rawBytes*2,
+			"a %d-byte CKA_ID must render as %d hex characters, occupying %d bytes as a KeyId",
+			rawBytes, rawBytes*2, rawBytes*2)
+	}
+}
+
+// TestLimitUnitsAreSelfConsistent checks the arithmetic relating the four bounds, so a future
+// edit to any one of them cannot quietly violate the others.
+func TestLimitUnitsAreSelfConsistent(t *testing.T) {
+	assert.Zero(t, maxCkaIDHexLen%2,
+		"a hex-character bound must be even, or it admits a half-byte")
+	assert.Zero(t, maxKMSv2KeyIDSize%2,
+		"a KeyId byte bound must be even, since the string is hex")
+
+	// The stricter PKCS#11 bound must reject before the KMS v2 one, compared in the same unit:
+	// both count characters/bytes of the KeyId string, never raw CKA_ID bytes.
+	assert.Less(t, maxCkaIDHexLen, maxKMSv2KeyIDSize,
+		"compared as KeyId string sizes, PKCS#11 must be the stricter bound")
+
+	// Restated in raw CKA_ID bytes, the same relation must still hold — this is the comparison
+	// that silently inverts if one side is converted and the other is not.
+	assert.Less(t, maxCkaIDHexLen/2, maxKMSv2KeyIDSize/2,
+		"the relation must survive conversion to raw CKA_ID bytes")
 }
 
 // TestValidateEncryptResponseAnnotations covers the shared annotation budget, including the
