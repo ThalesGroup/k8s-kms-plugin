@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Thales Group and the k8s-kms-plugin Contributors
 # SPDX-License-Identifier: MIT
 
-.PHONY: all lint lint-fix vet govulncheck build build-linux-amd64 build-linux-amd64-debug build-linux-arm64 build-linux-arm64-debug build-linux-riscv64 build-linux-riscv64-debug coverage test test-integration test-e2e doc notices image image-from-source release release-local-test get-ldflags clean
+.PHONY: all lint lint-fix vet govulncheck build build-linux-amd64 build-linux-amd64-debug build-linux-arm64 build-linux-arm64-debug build-linux-riscv64 build-linux-riscv64-debug coverage test test-integration test-e2e fuzz doc notices image image-from-source release release-local-test get-ldflags clean
 
 all: build-linux-amd64 build-linux-arm64 build-linux-riscv64
 
@@ -178,6 +178,21 @@ test-integration:
 
 test-e2e: build
 		@CGO_ENABLED=$(CGO_ENABLED) go test -race -v ./test/e2e/...
+
+# Go native fuzzing. `make test` already replays every target's seed corpus as an
+# ordinary unit test; this target additionally runs the mutation engine, which only
+# `go test -fuzz` does. `go test` fuzzes one target in one package per invocation, so
+# loop over both. A failing input is written to <pkg>/testdata/fuzz/<target>/ — commit
+# it, it then becomes a permanent regression seed replayed by `make test`.
+FUZZ_PKGS ?= ./pkg/providers/ ./cmd/k8s-kms-plugin/cmd/
+FUZZTIME ?= 60s
+fuzz:
+		@for pkg in $(FUZZ_PKGS); do \
+			for target in $$(go test -list 'Fuzz.*' $$pkg | grep '^Fuzz'); do \
+				echo "==> $$pkg $$target ($(FUZZTIME))"; \
+				CGO_ENABLED=$(CGO_ENABLED) go test -run '^$$' -fuzz "^$$target$$" -fuzztime=$(FUZZTIME) $$pkg || exit 1; \
+			done; \
+		done
 
 ## Container image
 # The Containerfile does not compile anything by default: `image` builds the
