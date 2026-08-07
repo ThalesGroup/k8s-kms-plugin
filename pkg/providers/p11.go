@@ -98,6 +98,28 @@ func mlkemAAD(kemCt []byte) []byte {
 	return append(aad, kemCt...)
 }
 
+// formatMLKEMEnvelope lays out an ML-KEM ciphertext as nonce || sealed, where sealed is the
+// AES-GCM output (encrypted DEK seed || 16-byte tag). It is the inverse of parseMLKEMEnvelope.
+func formatMLKEMEnvelope(nonce, sealed []byte) []byte {
+	envelope := make([]byte, 0, len(nonce)+len(sealed))
+	envelope = append(envelope, nonce...)
+	return append(envelope, sealed...)
+}
+
+// parseMLKEMEnvelope splits a DecryptRequest ciphertext into its nonce and AES-GCM portions.
+//
+// This is the first thing the ML-KEM path does with attacker-reachable bytes, before any key
+// material has authenticated them, so it is kept free of HSM calls: it is pure, and therefore
+// directly testable and fuzzable without a token.
+//
+// The returned slices alias envelope; callers must not modify them.
+func parseMLKEMEnvelope(envelope []byte) (nonce, sealed []byte, err error) {
+	if len(envelope) < mlkemNonceSize {
+		return nil, nil, fmt.Errorf("ciphertext too short: got %d bytes, need at least %d", len(envelope), mlkemNonceSize)
+	}
+	return envelope[:mlkemNonceSize], envelope[mlkemNonceSize:], nil
+}
+
 // putEncapsulation places the ML-KEM encapsulation ciphertext into resp.Annotations.
 func putEncapsulation(resp *k8skmsv2.EncryptResponse, ct []byte) {
 	if resp.Annotations == nil {
@@ -1192,12 +1214,8 @@ func (p *P11) encryptMLKEM(ctx context.Context, req *k8skmsv2.EncryptRequest) (*
 	// annotation carrying it cannot be swapped without failing the tag check on Decrypt.
 	sealed := aead.Seal(nil, nonce, req.GetPlaintext(), mlkemAAD(kemCt))
 
-	ciphertext := make([]byte, 0, len(nonce)+len(sealed))
-	ciphertext = append(ciphertext, nonce...)
-	ciphertext = append(ciphertext, sealed...)
-
 	resp := &k8skmsv2.EncryptResponse{
-		Ciphertext: ciphertext,
+		Ciphertext: formatMLKEMEnvelope(nonce, sealed),
 		KeyId:      p.GetKekKeyIDString(),
 	}
 	putEncapsulation(resp, kemCt)
@@ -1247,12 +1265,11 @@ func (p *P11) decryptMLKEMWithContext(req *k8skmsv2.DecryptRequest, actualCtx *c
 	}
 	defer clear(derivedKey)
 
-	ciphertext := req.GetCiphertext()
-	if len(ciphertext) < mlkemNonceSize {
-		slog.Error("decryptMLKEM: ciphertext too short", "uid", req.GetUid(), "keyId", req.GetKeyId(), "gotBytes", len(ciphertext), "minBytes", mlkemNonceSize)
-		return nil, fmt.Errorf("decryptMLKEM: ciphertext too short: got %d bytes, need at least %d", len(ciphertext), mlkemNonceSize)
+	nonce, sealed, err := parseMLKEMEnvelope(req.GetCiphertext())
+	if err != nil {
+		slog.Error("decryptMLKEM: malformed envelope", "uid", req.GetUid(), "keyId", req.GetKeyId(), "gotBytes", len(req.GetCiphertext()), "minBytes", mlkemNonceSize, "error", err)
+		return nil, fmt.Errorf("decryptMLKEM: %w", err)
 	}
-	nonce, sealed := ciphertext[:mlkemNonceSize], ciphertext[mlkemNonceSize:]
 
 	block, err := aes.NewCipher(derivedKey)
 	if err != nil {
