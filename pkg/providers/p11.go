@@ -149,11 +149,19 @@ const (
 	maxCkaIDHexLen = 510
 	// maxCkaLabelLen is the maximum byte length of a PKCS#11 CKA_LABEL attribute.
 	maxCkaLabelLen = 255
-	// maxPlaintextSize is the KMS v2 maximum for Encrypt requests — matches the Kubernetes API server limit.
-	maxPlaintextSize = 8 * 1024
-	// maxCiphertextSize is the upper bound for Decrypt request ciphertext. JWE overhead on an 8 KB
-	// plaintext is ~100 bytes; 64 KB is a generous margin that prevents runaway memory allocation.
-	maxCiphertextSize = 64 * 1024
+	// kmsv2DEKSeedSize is the size in BYTES of what the API server actually sends as
+	// EncryptRequest.Plaintext: it encrypts the object itself with a local DEK and passes this
+	// plugin only that key (aestransformer.MinSeedSizeExtendedNonceGCM).
+	kmsv2DEKSeedSize = 32
+	// maxPlaintextSize bounds EncryptRequest.Plaintext in BYTES. api.proto sets no limit, so this
+	// is 4x the real payload — slack for a future, longer DEK seed without accepting anything
+	// whose ciphertext could breach maxKMSv2CiphertextSize.
+	maxPlaintextSize = 4 * kmsv2DEKSeedSize
+	// maxKMSv2CiphertextSize bounds DecryptRequest.Ciphertext in BYTES. api.proto requires
+	// EncryptResponse.ciphertext to be non-empty and under 1 kB, enforced by the API server's
+	// ValidateEncryptedObject; Decrypt receives that same value back, so nothing larger can exist.
+	// Ciphertext is raw bytes on the wire — no hex encoding is involved.
+	maxKMSv2CiphertextSize = 1024
 	// maxKMSv2KeyIDSize bounds EncryptResponse.KeyId and StatusResponse.KeyId in BYTES, mirroring
 	// KeyIDMaxSize in k8s.io/apiserver (pkg/storage/value/encrypt/envelope/kmsv2), whose
 	// ValidateKeyID measures len(keyID) on the string and rejects anything empty or longer.
@@ -183,6 +191,23 @@ const (
 // wire. Do not restate either constant in raw-CKA_ID bytes here — that would halve one side and
 // silently double the bound this assertion is meant to enforce.
 const _ = uint(maxKMSv2KeyIDSize - maxCkaIDHexLen)
+
+// validateEncryptResponseCiphertext enforces the EncryptResponse.ciphertext contract from
+// api.proto: non-empty and within maxKMSv2CiphertextSize.
+//
+// Bounding the plaintext is not sufficient on its own — the JWE header carries a kid (CKA_LABEL
+// for AES-GCM, hex CKA_ID for AES-CBC), so ciphertext size also grows with the operator's key
+// naming. Checking the finished bytes covers every configuration, and turns what would surface
+// as an API server rejection into an error that names the cause here.
+func validateEncryptResponseCiphertext(ciphertext []byte) error {
+	if len(ciphertext) == 0 {
+		return fmt.Errorf("EncryptResponse ciphertext is empty")
+	}
+	if len(ciphertext) > maxKMSv2CiphertextSize {
+		return fmt.Errorf("EncryptResponse ciphertext is %d bytes, which exceeds the KMS v2 maximum of %d bytes", len(ciphertext), maxKMSv2CiphertextSize)
+	}
+	return nil
+}
 
 // validateKMSv2KeyID checks that a hex-encoded CKA_ID is usable as a KMS v2 KeyId, applying the
 // API server's own rule so a mismatch surfaces at plugin startup rather than as a rejected
@@ -1094,6 +1119,14 @@ func (p *P11) Encrypt(ctx context.Context, req *k8skmsv2.EncryptRequest) (resp *
 		}
 	}
 
+	if err = validateEncryptResponseCiphertext([]byte(out)); err != nil {
+		slog.Error("Encrypt: refusing to return a ciphertext the API server would reject",
+			"algorithm", p.algorithmFamily, "ciphertextLen", len(out), "kekCkaLabelLen", len(p.kekCkaLabel),
+			"kekCkaIDHexLen", len(p.GetKekKeyIDString()), "error", err,
+			"action", "shorten the KEK CKA_LABEL or CKA_ID: both are carried in the JWE header and inflate every ciphertext")
+		return nil, fmt.Errorf("Encrypt: %w", err)
+	}
+
 	resp = &k8skmsv2.EncryptResponse{
 		// the bytes array contains the bytes of the marshalled jwe
 		Ciphertext: []byte(out),
@@ -1145,9 +1178,9 @@ func (p *P11) UnaryInterceptor(ctx context.Context, req interface{}, _ *grpc.Una
 				slog.Error("UnaryInterceptor: ciphertext is empty in DecryptRequest")
 				return nil, status.Errorf(codes.InvalidArgument, "UnaryInterceptor: ciphertext is empty")
 			}
-			if len(decReq.GetCiphertext()) > maxCiphertextSize {
-				slog.Error("UnaryInterceptor: ciphertext exceeds maximum size", "size", len(decReq.GetCiphertext()), "max", maxCiphertextSize)
-				return nil, status.Errorf(codes.InvalidArgument, "UnaryInterceptor: ciphertext size %d exceeds maximum of %d bytes", len(decReq.GetCiphertext()), maxCiphertextSize)
+			if len(decReq.GetCiphertext()) > maxKMSv2CiphertextSize {
+				slog.Error("UnaryInterceptor: ciphertext exceeds maximum size", "size", len(decReq.GetCiphertext()), "max", maxKMSv2CiphertextSize)
+				return nil, status.Errorf(codes.InvalidArgument, "UnaryInterceptor: ciphertext size %d exceeds maximum of %d bytes", len(decReq.GetCiphertext()), maxKMSv2CiphertextSize)
 			}
 		}
 	default:
@@ -1273,8 +1306,15 @@ func (p *P11) encryptMLKEM(ctx context.Context, req *k8skmsv2.EncryptRequest) (*
 	// annotation carrying it cannot be swapped without failing the tag check on Decrypt.
 	sealed := aead.Seal(nil, nonce, req.GetPlaintext(), mlkemAAD(kemCt))
 
+	envelope := formatMLKEMEnvelope(nonce, sealed)
+	if err := validateEncryptResponseCiphertext(envelope); err != nil {
+		slog.Error("encryptMLKEM: refusing to return a ciphertext the API server would reject",
+			"uid", req.GetUid(), "ciphertextLen", len(envelope), "error", err)
+		return nil, fmt.Errorf("encryptMLKEM: %w", err)
+	}
+
 	resp := &k8skmsv2.EncryptResponse{
-		Ciphertext: formatMLKEMEnvelope(nonce, sealed),
+		Ciphertext: envelope,
 		KeyId:      p.GetKekKeyIDString(),
 	}
 	putEncapsulation(resp, kemCt)

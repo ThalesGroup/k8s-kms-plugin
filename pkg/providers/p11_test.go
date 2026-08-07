@@ -836,7 +836,7 @@ func TestUnaryInterceptor_DecryptRequest_Validation(t *testing.T) {
 	}{
 		{"empty key ID", &k8skmsv2.DecryptRequest{KeyId: "", Ciphertext: []byte("data")}, codes.InvalidArgument},
 		{"empty ciphertext", &k8skmsv2.DecryptRequest{KeyId: validKeyID, Ciphertext: []byte{}}, codes.InvalidArgument},
-		{"ciphertext too large", &k8skmsv2.DecryptRequest{KeyId: validKeyID, Ciphertext: make([]byte, maxCiphertextSize+1)}, codes.InvalidArgument},
+		{"ciphertext too large", &k8skmsv2.DecryptRequest{KeyId: validKeyID, Ciphertext: make([]byte, maxKMSv2CiphertextSize+1)}, codes.InvalidArgument},
 		{"valid request", &k8skmsv2.DecryptRequest{KeyId: validKeyID, Ciphertext: []byte("mock")}, codes.OK},
 	}
 	for _, tc := range cases {
