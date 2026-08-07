@@ -341,6 +341,10 @@ func NewP11(
 		if p.oldAlgorithmFamily == AlgAESCBC {
 			if oldHmacCkaID == "" && oldHmacKeyLabel != "" { // get id by label
 				// old HMAC
+				if err = validateCkaLabel(oldHmacKeyLabel); err != nil {
+					slog.Error("NewP11: invalid old HMAC CKA_LABEL", "error", err)
+					return nil, fmt.Errorf("NewP11: invalid old HMAC CKA_LABEL: %w", err)
+				}
 				p.oldHmacCkaLabel = oldHmacKeyLabel
 
 				if p.oldHmacCkaID, err = FindCkaAttrByIDOrLabel(p.oldCtx, p.oldAlgorithmFamily, crypto11.CkaId, nil, []byte(p.oldHmacCkaLabel)); err != nil {
@@ -374,6 +378,10 @@ func NewP11(
 		// find old KEK ID with LABEL
 		if oldKekkeyid == "" && oldKekCkaLabel != "" {
 			slog.Log(context.Background(), logging.LevelTrace, "NewP11: kek key id (CKA_ID) is empty. Find CKA_ID by CKA_LABEL", "label", k8sKekLabel)
+			if err = validateCkaLabel(oldKekCkaLabel); err != nil {
+				slog.Error("NewP11: invalid old KEK CKA_LABEL", "error", err)
+				return nil, fmt.Errorf("NewP11: invalid old KEK CKA_LABEL: %w", err)
+			}
 			p.oldKekCkaLabel = oldKekCkaLabel
 
 			if p.oldKekCkaID, err = FindCkaAttrByIDOrLabel(p.oldCtx, p.oldAlgorithmFamily, crypto11.CkaId, nil, []byte(p.oldKekCkaLabel)); err != nil {
