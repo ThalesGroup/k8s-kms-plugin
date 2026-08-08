@@ -568,7 +568,7 @@ extractable.
 
 The apiserver-side sequences — first startup, `DecryptRequest`, and key rotation — are drawn in
 [`docs/puml-diagrams/`](./puml-diagrams/) (`kmsv2-first-k8s-startup`, `kmsv2-decryptrequest`,
-`kmsv2-key-rotation`), rendered in [`README.md`](../README.md#deployment-scenarios-examples). The
+`kmsv2-key-rotation`), rendered in [`README.md`](./overview.md#deployment-scenarios-examples). The
 `P11.Encrypt`/`Decrypt` class diagram for each family (`gcm-class`, `cbc-class`, `rsa-class`,
 `ml-kem-class`) lives in the same folder and is embedded inline in [§4](#aes-gcm)–[§7](#ml-kem)
 above.

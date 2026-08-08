@@ -87,14 +87,14 @@ since both are stateful and long-lived:
 
 | Step                                        | Done by                                       | Section                                          |
 |---------------------------------------------|-----------------------------------------------|--------------------------------------------------|
-| Staging directories `run/` + `config/`      | 🤖 script                                     | [3](#stage-the-environment-with-rebuild-kms-devsh) / [4.1](#staging-directories) |
-| `encryption-conf-kmsv2-unix-socket.yaml`    | 🤖 script                                     | [3](#stage-the-environment-with-rebuild-kms-devsh) / [4.2](#the-encryptionconfiguration) |
-| `kind.config.yaml`                          | 🤖 script                                     | [3](#stage-the-environment-with-rebuild-kms-devsh) / [4.3](#the-kind-cluster-config) |
-| Removing a stale socket from a dead plugin  | 🤖 script                                     | [3](#stage-the-environment-with-rebuild-kms-devsh) |
-| `k8s-kms-plugin serve`                      | 🙋 you — the script only prints the command   | [5](#start-k8s-kms-plugin-serve)               |
-| `kind create cluster --config …`            | 🙋 you — **using the generated `kind.config.yaml`** | [6](#create-the-cluster)                  |
-| Verifying the wiring and the etcd ciphertext | 🙋 you                                       | [7](#verify-the-wiring), [8](#confirm-that-encryption-really-happens) |
-| Deleting the cluster and the staging area   | 🙋 you                                        | [9](#cleanup)                                  |
+| Staging directories `run/` + `config/`      | 🤖 script                                     | [Stage the environment with `rebuild-kms-dev.sh`](#stage-the-environment-with-rebuild-kms-devsh) / [Staging directories](#staging-directories) |
+| `encryption-conf-kmsv2-unix-socket.yaml`    | 🤖 script                                     | [Stage the environment with `rebuild-kms-dev.sh`](#stage-the-environment-with-rebuild-kms-devsh) / [The `EncryptionConfiguration`](#the-encryptionconfiguration) |
+| `kind.config.yaml`                          | 🤖 script                                     | [Stage the environment with `rebuild-kms-dev.sh`](#stage-the-environment-with-rebuild-kms-devsh) / [The `KinD` cluster config](#the-kind-cluster-config) |
+| Removing a stale socket from a dead plugin  | 🤖 script                                     | [Stage the environment with `rebuild-kms-dev.sh`](#stage-the-environment-with-rebuild-kms-devsh) |
+| `k8s-kms-plugin serve`                      | 🙋 you — the script only prints the command   | [Start `k8s-kms-plugin serve`](#start-k8s-kms-plugin-serve)               |
+| `kind create cluster --config …`            | 🙋 you — **using the generated `kind.config.yaml`** | [Create the cluster](#create-the-cluster)                  |
+| Verifying the wiring and the etcd ciphertext | 🙋 you                                       | [Verify the wiring](#verify-the-wiring), [Confirm that encryption really happens](#confirm-that-encryption-really-happens) |
+| Deleting the cluster and the staging area   | 🙋 you                                        | [Cleanup](#cleanup)                                  |
 
 [`scripts/k8s-kind/rebuild-kms-dev.sh`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/scripts/k8s-kind/rebuild-kms-dev.sh) creates the staging directories and
 generates both configuration files. Run it from the repository root:
