@@ -16,7 +16,13 @@
 #   make site-serve    # http://localhost:1313/k8s-kms-plugin/
 #   make site          # -> website/public/
 
-baseURL = 'https://eclipse-keysealer.github.io/k8s-kms-plugin/'
+# baseURL is only the local-dev default — the fork this branch is developed on. Do NOT rely on it
+# being right for whoever publishes: the Docs workflow overrides it with the value
+# actions/configure-pages reports for the repository actually running the build, so the same config
+# publishes correctly from this fork and from eclipse-keysealer upstream with nothing to remember.
+#
+# Override it locally the same way:  hugo --baseURL https://example.github.io/k8s-kms-plugin/
+baseURL = 'https://nicolas-peiffer.github.io/k8s-kms-plugin/'
 title = 'k8s-kms-plugin'
 locale = 'en-us'
 
@@ -147,10 +153,19 @@ disableKinds = ['taxonomy', 'term']
     displayCopyright = true
     displayPoweredBy = false
 
-  # "Edit this page" points into docs/, since that is where the content actually lives.
+  # "Edit this page" is off because it is incompatible with mounting content from outside the
+  # project. Hextra builds the path as TrimPrefix(Meta.BaseDir, Meta.SourceRoot), which cancels out
+  # only when content sits at <project>/content/. Here SourceRoot is /<repo>/docs while BaseDir is
+  # /<repo>/website, so nothing is trimmed and the absolute source path is spliced into the URL:
+  #
+  #   .../edit/master/docs/home/user/k8s-kms-plugin/docs/docs/overview.md
+  #
+  # .File.Path on its own is already the repo-relative path ("docs/overview.md"), so a corrected
+  # link is one expression away — but only by overriding Hextra's toc.html wholesale, which would
+  # vendor ~60 lines of theme markup that then diverges silently on every theme upgrade. Not worth
+  # it for a convenience link; revisit if Hextra makes the path prefix configurable.
   [params.editURL]
-    enable = true
-    base = 'https://github.com/eclipse-keysealer/k8s-kms-plugin/edit/master/docs'
+    enable = false
 
   [params.blog]
     enable = false

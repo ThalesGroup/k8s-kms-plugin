@@ -1,9 +1,21 @@
 # Documentation site
 
 The `k8s-kms-plugin` documentation site: [Hugo](https://gohugo.io/) with the
-[Hextra](https://github.com/imfing/hextra) theme, published to GitHub Pages at
-<https://eclipse-keysealer.github.io/k8s-kms-plugin/> by
+[Hextra](https://github.com/imfing/hextra) theme, published to GitHub Pages by
 [`.github/workflows/docs.yml`](../.github/workflows/docs.yml).
+
+`baseURL` in [`hugo.toml`](./hugo.toml) is only the **local-dev default**. The workflow overrides it
+with the URL `actions/configure-pages` reports for whichever repository is running the build, so the
+same config publishes correctly from a fork and from `eclipse-keysealer` upstream with nothing to
+remember. Override it locally the same way:
+
+```sh
+cd website && hugo --baseURL https://example.github.io/k8s-kms-plugin/
+```
+
+Hextra's "Edit this page" link is **disabled**: it derives the file path from a Hugo internal that
+assumes content lives at `<project>/content/`, and with content mounted from `../docs` it splices an
+absolute filesystem path into the URL. `hugo.toml` explains it in full.
 
 **The content is not here.** Pages live in [`../docs/`](../docs/README.md) and are *mounted* into
 this site by [`hugo.toml`](./hugo.toml), so `docs/` stays the single source of truth and keeps

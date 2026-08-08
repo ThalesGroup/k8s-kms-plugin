@@ -94,13 +94,30 @@ jobs:
       - name: Stamp build provenance into the generated reference
         run: make doc
 
-      - name: Build site
-        run: cd website && hugo --gc --minify
-
       # actions/configure-pages v6.0.0
+      #
+      # Runs before the build so its base_url output can be handed to Hugo. That is what keeps the
+      # site publishable from a fork and from the upstream repository with no config change: the URL
+      # comes from whichever repository is running, instead of the value committed in hugo.toml.
       - name: Configure Pages
+        id: pages
         if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d
+
+      # base_url is empty on pull requests, where Configure Pages is skipped — those builds are only
+      # a check and are never published, so hugo.toml's default is fine for them.
+      - name: Build site
+        env:
+          PAGES_BASE_URL: ${{ steps.pages.outputs.base_url }}
+        run: |
+          cd website
+          if [ -n "$PAGES_BASE_URL" ]; then
+            echo "Building with baseURL from Configure Pages: $PAGES_BASE_URL"
+            hugo --gc --minify --baseURL "$PAGES_BASE_URL"
+          else
+            echo "Building with the baseURL from hugo.toml (pull request check, not published)"
+            hugo --gc --minify
+          fi
 
       # actions/upload-pages-artifact v5.0.0
       - name: Upload artifact

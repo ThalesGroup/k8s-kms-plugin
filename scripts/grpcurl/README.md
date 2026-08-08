@@ -246,9 +246,9 @@ k8s-kms-plugin serve \
   --p11-lib /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1 \
   --p11-label mylabel \
   --p11-pin mypin \
-  --kek-id 64636138353931326363356537313264 \
-  --hmac-id 30663536623936326235663530363234 \
-  --algorithm aes-cbc
+  --p11-key-id 64636138353931326363356537313264 \
+  --p11-hmac-id 30663536623936326235663530363234 \
+  --algorithm-family aes-cbc
 ```
 
 ```bash
@@ -269,14 +269,14 @@ k8s-kms-plugin serve \
   --p11-label mylabel \
   --p11-pin mypin \
   --p11-key-label rsa0 \
-  --algorithm rsa-oaep \
+  --algorithm-family rsa-oaep \
   rotation \
     --old-p11-lib /usr/lib/x86_64-linux-gnu/libtpm2_pkcs11.so.1 \
     --old-p11-label mylabel \
     --old-p11-pin mypin \
-    --old-kek-id 64636138353931326363356537313264 \
-    --old-hmac-id 30663536623936326235663530363234 \
-    --old-algorithm aes-cbc
+    --old-p11-key-id 64636138353931326363356537313264 \
+    --old-p11-hmac-id 30663536623936326235663530363234 \
+    --old-algorithm-family aes-cbc
 ```
 
 **Step 3** — Paste and run the command copied from step 1:
