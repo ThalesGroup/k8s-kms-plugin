@@ -45,6 +45,9 @@ make govulncheck        # reachability-aware vuln scan (same as CI)
 make check-doc-links    # relative links and #anchors across the docs
 make site-serve         # documentation site at localhost:1313/k8s-kms-plugin/
 make site               # documentation site -> website/public/
+make check-site         # verify the BUILT site: missing assets, doubled baseURL, dead anchors
+make glossary           # regenerate docs/glossary.md from docs/termbase.yaml
+make glossary-check     # fail if that regeneration would change anything (CI runs this)
 ```
 
 CI (`.github/workflows/ci.yml`) runs exactly `go vet ./...`, `go build ./...`, `go test -count=1 ./...`.
@@ -69,7 +72,7 @@ Both suites bootstrap their own ephemeral SoftHSM token through the PKCS#11 API 
 > **Trap:** without `PKCS11_MODULE` both suites exit **immediately and successfully**. A green
 > `go test ./...` does *not* mean the PKCS#11 paths ran. Always confirm the variable is set.
 
-ML-KEM needs SoftHSMv3 ([`pqctoday-hsm`](https://github.com/pqctoday-org/pqctoday-hsm), see `docs/softhsm-v3.md`);
+ML-KEM needs SoftHSMv3 ([`pqctoday-hsm`](https://github.com/pqctoday-org/pqctoday-hsm), see `docs/hsm-guides/softhsm-v3.md`);
 AES and RSA paths also work on SoftHSMv2. The e2e suite additionally requires `grpcurl` on `$PATH` — a missing
 `grpcurl` **fails** rather than skips.
 
@@ -118,10 +121,23 @@ Go source, and `README.md` itself) are absolute `github.com/eclipse-keysealer/..
 published site serves only `docs/`, so a relative `../` link would 404 there. Links *between*
 documentation pages stay relative. `docs/README.md` states both rules.
 
-`README.md` is a **front door only** (~90 lines): identity, badges, what the plugin is, the algorithm
-families, Quick Start, a documentation map, contributing, licence. The manual lives in `docs/` —
-`overview.md`, `installation.md`, `usage.md`, `development.md`, `supply-chain-security.md`. Don't grow
-the README back; add or extend a docs page and link it from the map.
+`README.md` is a **front door only** (~100 lines): identity, badges, what the plugin is, the algorithm
+families, Quick Start, a documentation map, contributing, licence. Don't grow it back; add or extend a
+docs page and link it from the map.
+
+The manual lives in `docs/`, as five top-level pages — `overview.md`, `installation.md`,
+`cryptographic-schemes.md`, `development.md`, `supply-chain-security.md` — plus `glossary.md` and four
+sections, each with a `README.md` index that is mounted as the section landing page:
+
+| Section | Weight | Holds |
+|---------|--------|-------|
+| `hsm-guides/` | 50 | One page per PKCS #11 provider, plus the support matrix. New devices go here |
+| `kubernetes-guides/` | 60 | `KinD` and `k3s`. Neither is presented as the default choice |
+| `tools-and-scripts/` | 65 | Documentation for `tools/create-dev-token/`, `scripts/grpcurl/` and `scripts/k8s-kind/`; those directories keep a short README pointing here |
+| `cli-user-interface/` | 90 | Hand-written CLI notes plus the generated `markdown/` and `txt/` trees |
+
+There is no `usage.md`: it was dissolved into `cli-user-interface/` and the guides. A new subdirectory
+needs its own `_index.md` mount in `website/hugo.toml`.
 
 ### Documentation site (Hugo + Hextra)
 
@@ -244,6 +260,45 @@ paths call the same `validateAlgorithmFamily`.
 `--p11-key-id` (CKA_ID) and `--p11-key-label` (CKA_LABEL) are mutually exclusive and one is required; same for
 the HMAC pair. `NewP11` resolves whichever was omitted by looking up the other on the token. See
 `docs/cli-user-interface/cka-id-vs-cka-label.md`.
+
+Config file discovery does **not** include `/etc`: it is `--config`, then `K8S_KMS_PLUGIN_CONFIG`, then
+`k8s-kms-plugin.conf.yaml` in `$HOME` or `$HOME/.config/k8s-kms-plugin/`. The packaged example therefore has to
+be passed explicitly.
+
+### Shipped configuration files
+
+`.goreleaser.yml` installs four files from every apk/deb/rpm/archlinux package, so two files in `configs/` are
+user-facing deliverables rather than samples:
+
+| Source | Installed at |
+|--------|--------------|
+| `configs/config.example.yaml` | `/etc/k8s-kms-plugin/k8s-kms-plugin.config.example.yaml` |
+| `configs/systemd/k8s-kms-plugin.service` | `/lib/systemd/system/k8s-kms-plugin.service` |
+| `deployments/k8s/encryption-conf-kmsv2-unix-socket.yaml` | `/etc/k8s-kms-plugin/kubernetes/manifest/…example.yaml` |
+
+The two `configs/` files had rotted badly and were repaired; keep them honest, because nothing
+else does:
+
+- **Viper ignores an unknown config key silently.** A stale key does not error — it leaves the setting at its
+  default. `algorithm:` (renamed to `algorithm-family:`) was quietly forcing every reader's KEK to `aes-gcm`.
+  Every key in the example must be one the CLI actually accepts; verify by running
+  `dist/k8s-kms-plugin --config configs/config.example.yaml serve` and confirming it reaches the PKCS#11
+  library load rather than a validation error.
+- **`systemd-analyze verify configs/systemd/k8s-kms-plugin.service`** is the check for the unit, and it earns its
+  keep: it caught `StartLimitIntervalSec`/`StartLimitBurst` being silently ignored under `[Service]` (they
+  belong in `[Unit]`). The unit deliberately does **not** set `PrivateDevices` or `PrivateTmp` — the first hides
+  `/dev/tpmrm0`, the second a SoftHSM store staged under `/tmp` — and takes the PIN from an `EnvironmentFile`,
+  never `ExecStart`, which `ps` exposes.
+
+### README badges
+
+All eleven badges come from **shields.io** with `style=flat-square` and a logo, in two rows: what the project is,
+then whether it is healthy. GitHub's own `actions/workflows/*/badge.svg`, `pkg.go.dev`'s badge and
+`api.scorecard.dev`'s badge each render at their own height and font and accept no `style`, so adding one back
+breaks the row — use the shields.io equivalents (`github/actions/workflow/status`, a static `pkg.go.dev` badge,
+the `ossf-scorecard` endpoint). Workflow badges pin `branch=master` except the tag-triggered `release.yml`.
+A badge reading a *value* must read it from this repository: the licence badge used to point at an unrelated
+`Ileriayo/markdown-badges`, and so reported someone else's licence.
 
 ### Logging
 
