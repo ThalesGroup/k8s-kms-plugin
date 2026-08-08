@@ -158,9 +158,10 @@ Then point a cluster at it, following either
 command, while [`k3s`](../kubernetes-guides/k3s-kubernetes.md) runs on the host and is where key
 rotation and HA are documented.
 
-`k3s` takes the configuration directly on its install command:
+`k3s` takes the configuration directly on its install command — the highlighted line is the one that
+wires `kube-apiserver` to the plugin:
 
-```bash
+```bash {hl_lines=[3]}
 curl -sfL https://get.k3s.io | K3S_DEBUG=true INSTALL_K3S_VERSION=v1.33.1+k3s1 sh -s - \
   --write-kubeconfig-mode 660 \
   --kube-apiserver-arg=encryption-provider-config=$HOME/k8s-kms-plugin/deployments/k8s/encryption-conf-kmsv2-unix-socket.yaml

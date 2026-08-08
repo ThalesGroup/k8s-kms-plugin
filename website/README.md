@@ -80,6 +80,34 @@ weight: 45
 
 Run `make check-doc-links` after moving or renaming anything.
 
+## Code block attributes
+
+Hugo parses a brace block in the fence info string and hands it to Hextra's codeblock render hook.
+No `markup.goldmark.parser.attribute` setting is involved — that one is for other block types, and
+code fences work without it.
+
+````markdown
+```yaml {filename="/tmp/kms-dev/config/kind.config.yaml",linenos=table,hl_lines=[6,18]}
+````
+
+| Attribute | Effect |
+|-----------|--------|
+| `filename` | Renders a filename bar above the block. Use it when the block **is** that file's content, not for commands that merely mention a path |
+| `base_url` | Turns the filename bar into a link to `base_url` + `filename`. Only correct when the named file is tracked in the repository — e.g. `base_url="https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/"` with a repo-relative `filename` |
+| `linenos=table` | Line numbers in a separate table column. Use `table`, not `inline`: the copy button takes the *last* `<code>` element, so `table` keeps copied text free of line numbers while `inline` would paste them in |
+| `hl_lines` | Highlights lines, 1-indexed within the block. Accepts a list (`[6,18]`) or ranges as strings (`["9-15"]`) |
+
+Two rules that keep these useful rather than decorative:
+
+- **The prose must explain the highlight.** These attributes are invisible on GitHub, which renders
+  only the first word of the info string and drops the rest — highlighting is therefore a
+  site-only affordance. A sentence such as "the highlighted lines are the `rotation` subcommand and
+  its `--old-*` flags" reads correctly in both places; an unexplained highlight is noise on the site
+  and nothing at all on GitHub.
+- **Do not duplicate a path.** A leading `# path/to/file` comment inside the block plus a `filename`
+  attribute shows the same path twice on the site. Move the path into the attribute and let the
+  surrounding prose carry it for GitHub readers.
+
 ## Mermaid and search
 
 Both Mermaid and FlexSearch are fetched **at build time** and re-served from this site with a

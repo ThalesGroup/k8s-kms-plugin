@@ -118,7 +118,7 @@ Install the [Go extension](https://marketplace.visualstudio.com/items?itemName=g
 `.vscode/` is git-ignored, so each developer keeps their own configurations. Create `.vscode/launch.json` with the
 configurations you need — the three below cover the usual cases:
 
-```jsonc
+```jsonc {filename=".vscode/launch.json",linenos=table,hl_lines=[5,6,28,29,44,45]}
 {
   "version": "0.2.0",
   "configurations": [
@@ -193,8 +193,7 @@ A few traps specific to this project:
   [integration](https://github.com/eclipse-keysealer/k8s-kms-plugin/tree/master/test/integration/) and [e2e](https://github.com/eclipse-keysealer/k8s-kms-plugin/tree/master/test/e2e/) suites need `PKCS11_MODULE` — supply it via
   `"go.testEnvVars"` in `.vscode/settings.json`, or point `"go.testEnvFile"` at a `.env` file:
 
-```jsonc
-// .vscode/settings.json
+```jsonc {filename=".vscode/settings.json"}
 {
   "go.testEnvFile": "${workspaceFolder}/.env"
 }

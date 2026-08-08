@@ -119,6 +119,11 @@ disableKinds = ['taxonomy', 'term']
     target = 'static'
 
 [markup]
+  # Code fences carry Hextra attributes — ```yaml {filename="…",linenos=table,hl_lines=[6,18]} —
+  # which Hugo parses itself from the fence info string and passes to the theme's codeblock render
+  # hook. That needs NO [markup.goldmark.parser.attribute] setting: `block = true` governs attributes
+  # on *other* block elements and is irrelevant here, so do not add it expecting fences to depend on
+  # it. See website/README.md for when to use each attribute.
   [markup.goldmark]
     [markup.goldmark.renderer]
       # Required. The documentation uses <details>/<summary> for collapsible sections and a few

@@ -122,11 +122,13 @@ pkcs11-tool \
 
 ## Run k8s-kms-plugin against the token
 
-Start the plugin, then test it with `grpcurl-roundtrip-test.sh` from another terminal.
+Start the plugin, then test it with `grpcurl-roundtrip-test.sh` from another terminal. The four
+commands differ only in the key they select and the family they announce — those are the highlighted
+lines.
 
 ### AES-GCM
 
-```bash
+```bash {hl_lines=[6,7]}
 k8s-kms-plugin serve \
   --socket /run/user/$(id -u)/k8s-kms-plugin-dev.sock \
   --p11-lib   /path/to/libsofthsmv3.so \
@@ -138,7 +140,7 @@ k8s-kms-plugin serve \
 
 ### AES-CBC + HMAC
 
-```bash
+```bash {hl_lines=[6,7,8]}
 k8s-kms-plugin serve \
   --socket /run/user/$(id -u)/k8s-kms-plugin-dev.sock \
   --p11-lib        /path/to/libsofthsmv3.so \
@@ -151,7 +153,7 @@ k8s-kms-plugin serve \
 
 ### RSA-OAEP
 
-```bash
+```bash {hl_lines=[6,7]}
 k8s-kms-plugin serve \
   --socket /run/user/$(id -u)/k8s-kms-plugin-dev.sock \
   --p11-lib   /path/to/libsofthsmv3.so \
@@ -165,7 +167,7 @@ Swap `--p11-key-label` to `dev-rsa-3072-oaep` or `dev-rsa-4096-oaep` to use the 
 
 ### ML-KEM
 
-```bash
+```bash {hl_lines=[6,7]}
 k8s-kms-plugin serve \
   --socket /run/user/$(id -u)/k8s-kms-plugin-dev.sock \
   --p11-lib   /path/to/libsofthsmv3.so \
@@ -218,9 +220,11 @@ VERBOSE=true ./grpcurl-roundtrip-test.sh "hello rotation" \
 Copy the command block printed under `⬇️ Run key rotation test with the old KEK data from this run`.
 
 **Step 2** — stop the plugin from Step 1, then start `serve rotation` with the
-**new (ACTIVE)** RSA-OAEP KEK and the old AES-CBC KEK as decryption fallback:
+**new (ACTIVE)** RSA-OAEP KEK and the old AES-CBC KEK as decryption fallback. The highlighted lines
+are the `rotation` subcommand and its `--old-*` flags — everything above them is the ordinary
+`serve` command from the previous section:
 
-```bash
+```bash {linenos=table,hl_lines=["8-14"]}
 k8s-kms-plugin serve \
   --socket /run/user/$(id -u)/k8s-kms-plugin-dev.sock \
   --p11-lib        /path/to/libsofthsmv3.so \

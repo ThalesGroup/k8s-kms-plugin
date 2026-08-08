@@ -154,9 +154,12 @@ Every example below identifies its key with `--p11-key-label`; `--p11-key-id` (P
 works the same way. See [`CKA_ID` vs `CKA_LABEL`](../cli-user-interface/cka-id-vs-cka-label.md) for
 how the two are resolved.
 
+The four commands differ only in the key they select and the family they announce — those are the
+highlighted lines.
+
 ### AES-GCM
 
-```sh
+```sh {hl_lines=[9,10]}
 SOCKET="/run/user/$(id -u)/k8s-kms-plugin.sock"
 k8s-kms-plugin \
   serve \
@@ -171,7 +174,7 @@ k8s-kms-plugin \
 
 ### AES-CBC + HMAC
 
-```sh
+```sh {hl_lines=[9,10,11]}
 SOCKET="/run/user/$(id -u)/k8s-kms-plugin.sock"
 k8s-kms-plugin \
   serve \
@@ -187,7 +190,7 @@ k8s-kms-plugin \
 
 ### RSA-OAEP
 
-```sh
+```sh {hl_lines=[9,10]}
 SOCKET="/run/user/$(id -u)/k8s-kms-plugin.sock"
 k8s-kms-plugin \
   serve \
@@ -204,7 +207,7 @@ Swap `--p11-key-label` to `dev-rsa-3072-oaep` or `dev-rsa-4096-oaep` to use the 
 
 ### ML-KEM
 
-```sh
+```sh {hl_lines=[9,10]}
 SOCKET="/run/user/$(id -u)/k8s-kms-plugin.sock"
 k8s-kms-plugin \
   serve \
@@ -255,9 +258,9 @@ what you are doing:
 
 Each guide has the full walkthrough — the socket path the apiserver needs, and how to confirm your
 Secrets really are encrypted in `etcd`. As a one-liner, `k3s` takes the config directly on the
-install command:
+install command — the highlighted line is the one that wires `kube-apiserver` to the plugin:
 
-```sh
+```sh {hl_lines=[3]}
 curl -sfL https://get.k3s.io | K3S_DEBUG=true INSTALL_K3S_VERSION=v1.33.1+k3s1 sh -s - \
   --write-kubeconfig-mode 660 \
   --kube-apiserver-arg=encryption-provider-config=$HOME/k8s-kms-plugin/deployments/k8s/encryption-conf-kmsv2-unix-socket.yaml

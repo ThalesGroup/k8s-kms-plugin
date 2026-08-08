@@ -245,10 +245,10 @@ Public Key Object; RSA 4096 bits
 > Note: default password is the word `password`. In the `yubihsm-shell`, you can use `password`. But the password policy of the YubiHSM need 10 or 12 character minimum.
 > Adding 0001 seems to work. But of course in production environment, you need to change it. Refer to Yubico's documentation for details.
 
-Make sure you have a configuration file `yubihsm_pkcs11.conf` or its env variable `YUBIHSM_PKCS11_CONF` pointing to it.
+Make sure you have a configuration file `yubihsm_pkcs11.conf` — or its env variable
+`YUBIHSM_PKCS11_CONF` pointing to it — naming the connector to use:
 
-```bash
-cat yubihsm_pkcs11.conf 
+```ini {filename="yubihsm_pkcs11.conf"}
 # URL of the YubiHSM connector to use. This can be a comma-separated list
 connector = http://127.0.0.1:12345
 ```

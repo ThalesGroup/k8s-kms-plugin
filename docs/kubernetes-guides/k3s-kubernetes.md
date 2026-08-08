@@ -66,9 +66,10 @@ k8s-kms-plugin \
 Then review the content of file [`encryption-conf-kmsv2-unix-socket.yaml`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/deployments/k8s/encryption-conf-kmsv2-unix-socket.yaml).
 Make sure `resources.providers.kms.endpoint` points to the same unix socket file of the running `k8s-kms-plugin`.
 
-Then install `k3s` inversion `v1.33.1+k3s1` with the following command:
+Then install `k3s` inversion `v1.33.1+k3s1` with the following command — the highlighted line is the
+one that wires `kube-apiserver` to the plugin:
 
-```bash
+```bash {hl_lines=[3]}
 curl -sfL https://get.k3s.io | K3S_DEBUG=true INSTALL_K3S_VERSION=v1.33.1+k3s1 sh -s - \
   --write-kubeconfig-mode 660 \
   --kube-apiserver-arg=encryption-provider-config=$HOME/k8s-kms-plugin/deployments/k8s/encryption-conf-kmsv2-unix-socket.yaml
@@ -154,7 +155,7 @@ For the kms provider to work with an HA cluster, the following requirements must
 
 The first `k3s` server node initializes the HA cluster thanks to `--cluster-init`:
 
-```bash
+```bash {hl_lines=[2]}
 curl -sfL https://get.k3s.io | K3S_TOKEN="servertoken" K3S_DEBUG=true INSTALL_K3S_VERSION=v1.33.1+k3s1 sh -s - \
   --cluster-init \
   --disable traefik \
@@ -164,7 +165,7 @@ curl -sfL https://get.k3s.io | K3S_TOKEN="servertoken" K3S_DEBUG=true INSTALL_K3
 
 Second and Third server node joins the existing cluster with the following command:
 
-```bash
+```bash {hl_lines=[2]}
 curl -sfL https://get.k3s.io | K3S_TOKEN="servertoken" K3S_DEBUG=true INSTALL_K3S_VERSION=v1.33.1+k3s1 sh -s - \
   --server https://192.168.122.11:6443 \
   --write-kubeconfig-mode 660 \

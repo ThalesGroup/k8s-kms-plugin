@@ -163,8 +163,7 @@ change `endpoint:` to the in-container path:
 cp deployments/k8s/encryption-conf-kmsv2-unix-socket.yaml /tmp/kms-dev/config/
 ```
 
-```yaml
-# /tmp/kms-dev/config/encryption-conf-kmsv2-unix-socket.yaml
+```yaml {filename="/tmp/kms-dev/config/encryption-conf-kmsv2-unix-socket.yaml",hl_lines=[10]}
 apiVersion: apiserver.config.k8s.io/v1
 kind: EncryptionConfiguration
 resources:
@@ -185,7 +184,7 @@ Save the following as `/tmp/kms-dev/config/kind.config.yaml`. It lands in the sa
 node at `/etc/kubernetes/kms` — harmless, since `kube-apiserver` only reads the file named by
 `encryption-provider-config` and ignores the rest.
 
-```yaml
+```yaml {filename="/tmp/kms-dev/config/kind.config.yaml",linenos=table,hl_lines=[6,18]}
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 name: kms-dev
@@ -227,7 +226,7 @@ nodes:
 
 Point `--socket` at the staging `run` directory:
 
-```sh
+```sh {hl_lines=[4]}
 k8s-kms-plugin \
   serve \
     --log-level=trace \

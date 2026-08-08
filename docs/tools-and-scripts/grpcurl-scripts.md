@@ -262,9 +262,10 @@ Copy the ready-to-run command from the `> ⬇️ Run key rotation test` block
 in the output.
 
 **Step 2** — Stop the plugin, then restart with `serve rotation` using the
-**new (ACTIVE)** KEK and the **old** KEK for decryption fallback:
+**new (ACTIVE)** KEK and the **old** KEK for decryption fallback. The highlighted lines are the
+`rotation` subcommand and its `--old-*` flags added on top of the Step 1 command:
 
-```bash
+```bash {linenos=table,hl_lines=["9-15"]}
 k8s-kms-plugin serve \
   --log-level=trace \
   --socket /run/user/1000/k8s-kms-plugin.sock \

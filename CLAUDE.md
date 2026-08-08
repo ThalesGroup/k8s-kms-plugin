@@ -130,6 +130,12 @@ the README back; add or extend a docs page and link it from the map.
   in `hugo.toml` — Hextra's default is `mermaid@latest`. `website/README.md` documents the offline
   build.
 - Hugo does **not** need the extended build (Hextra ships precompiled CSS).
+- Code fences carry Hextra attributes — `{filename="…",base_url="…",linenos=table,hl_lines=[…]}` —
+  parsed by Hugo with no `markup.goldmark.parser.attribute` setting needed. GitHub keeps only the
+  first word of the info string and silently drops the rest, so an attribute is a site-only
+  affordance: whatever a highlight is meant to say must also be said in the prose.
+  `website/README.md` has the conventions (`filename` only when the block *is* that file,
+  `linenos=table` never `inline`, and no path duplicated between a comment and the attribute).
 
 `make doc` follows `GITHUB_ACTIONS` for provenance, so CI's "is the CLI reference up to date" check
 must pass `DOC_FLAGS=--provenance=false`; otherwise the commit hash it just stamped in guarantees a
