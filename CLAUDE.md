@@ -1,0 +1,166 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project
+
+`k8s-kms-plugin` is a gRPC service implementing the [Kubernetes KMS v2 API](https://pkg.go.dev/k8s.io/kms/apis/v2),
+backed by a PKCS #11 TPM or HSM. It is part of [Eclipse KeySealer](https://projects.eclipse.org/projects/technology.keysealer)
+and consumes `crypto11`, `gose` and `pkcs11-go` from [Eclipse Keypont](https://projects.eclipse.org/projects/technology.keypont).
+
+Read `CHANGELOG.md` first when touching anything cryptographic — the v1.0.0 entry is the authoritative
+record of the KMS v1 → v2 migration, the PKCS#11 binding swap, and every deliberate behavioural choice
+(including bug fixes with data-at-rest compatibility implications).
+
+This repo is a **fork used as a playground** to try things out before the work lands upstream at
+`eclipse-keysealer/k8s-kms-plugin`. Expect to sync from upstream rather than the fork being the source of truth.
+
+## Commands
+
+`CGO_ENABLED=1` is required everywhere — the PKCS#11 bindings are cgo. The Makefile sets it for you; set
+it yourself if you invoke `go` directly.
+
+```sh
+make build              # dev build (native arch) -> dist/k8s-kms-plugin
+make test               # unit tests: ./pkg/... ./cmd/... with -race
+make lint               # golangci-lint run
+make lint-fix           # auto-fix the mechanically-fixable findings
+make vet                # same check as CI
+make coverage           # -> build/coverage.html
+make govulncheck        # reachability-aware vuln scan (same as CI)
+```
+
+CI (`.github/workflows/ci.yml`) runs exactly `go vet ./...`, `go build ./...`, `go test -count=1 ./...`.
+
+### Running a single test
+
+```sh
+CGO_ENABLED=1 go test -race -run 'TestValidateHexKeyID' ./pkg/providers/
+CGO_ENABLED=1 go test -race -run 'TestValidateHexKeyID/subtest_name' ./pkg/providers/
+```
+
+### Integration and e2e tests (need a PKCS#11 module)
+
+```sh
+PKCS11_MODULE=/usr/local/lib/softhsm/libsofthsm3.so make test-integration
+PKCS11_MODULE=/usr/local/lib/softhsm/libsofthsm3.so make test-e2e   # also runs `make build`
+```
+
+Both suites bootstrap their own ephemeral SoftHSM token through the PKCS#11 API itself
+(`C_InitToken`/`C_InitPIN` in each suite's `TestMain`) — no `softhsm2-util` needed. `PKCS11_PIN` defaults to `1234`.
+
+> **Trap:** without `PKCS11_MODULE` both suites exit **immediately and successfully**. A green
+> `go test ./...` does *not* mean the PKCS#11 paths ran. Always confirm the variable is set.
+
+ML-KEM needs SoftHSMv3 ([`pqctoday-hsm`](https://github.com/pqctoday-org/pqctoday-hsm), see `docs/softhsm-v3.md`);
+AES and RSA paths also work on SoftHSMv2. The e2e suite additionally requires `grpcurl` on `$PATH` — a missing
+`grpcurl` **fails** rather than skips.
+
+`tools/create-dev-token/` provisions a *persistent* dev token with one key per algorithm family — handy for
+driving `serve` by hand. Development only; it uses well-known PINs and fixed CKA_IDs.
+
+### Fuzzing
+
+`make test` already replays every fuzz target's seed corpus as an ordinary unit test. `make fuzz` additionally
+runs the mutation engine (`FUZZTIME=60s` per target by default). A crashing input lands in
+`<pkg>/testdata/fuzz/<target>/` — **commit it**, it then becomes a permanent regression seed.
+
+### Regenerating tracked files
+
+These write files that are committed, so re-run them when the underlying source changes:
+
+- `make doc` — after adding or changing any CLI flag or command (regenerates `docs/cli-user-interface/`)
+- `make notices` — after changing dependencies (regenerates `NOTICES.md`)
+
+## Architecture
+
+### Where the plugin sits
+
+The plugin occupies exactly one step of the KMS v2 envelope scheme and **never sees `Secret` data** — only the
+32-byte DEK seed that `kube-apiserver` asks it to wrap with the KEK held on the TPM/HSM. `kube-apiserver`
+derives the DEK and encrypts the object itself. `docs/cryptographic-schemes.md` is the detailed reference for
+every algorithm family; read it before changing wire formats.
+
+Transport is **unix socket only** — the TCP/TLS gRPC option was removed because KMS v2 only supports a local socket.
+
+### Provider layer
+
+`pkg/providers/provider.go` defines the one-method-plus-embedding `Provider` interface
+(`k8skmsv2.KeyManagementServiceServer` + a `UnaryInterceptor`). `P11` in `p11.go` is the only implementation;
+it must embed `k8skmsv2.UnimplementedKeyManagementServiceServer` (required since KMS v0.34.0 moved to upstream
+protobuf-go).
+
+Four algorithm families, selected by `--algorithm-family`: `aes-gcm`, `aes-cbc`, `rsa-oaep`, `ml-kem`. The
+sentinel `jose.Alg` constants in `p11.go` deliberately use the same string values as the CLI flag slugs, so
+`serve.go` casts directly with no mapping table. Key size / parameter set is **not** a flag — it is derived at
+runtime from the HSM key (e.g. AES-GCM reads `CKA_VALUE_LEN`).
+
+**ML-KEM is the structural exception.** The other three families produce a JWE. ML-KEM is a KEM, so it emits two
+artifacts and puts them in the two fields KMS v2 already provides: the KEM ciphertext goes into
+`EncryptResponse.Annotations` (key `kem-ciphertext.k8s-kms-plugin.keysealer.eclipse.org`) and the AEAD-wrapped
+seed goes into `Ciphertext`. This keeps `Ciphertext` at ~60 bytes; a JWE compact serialization would not fit
+under the 1 kB limit for ML-KEM-768/1024. `Encrypt` and `decryptWithContext` both branch to `p11_mlkem.go`
+before the JWE path. Access the annotation only via `putEncapsulation`/`getEncapsulation`.
+
+### Key rotation
+
+`P11` carries two parallel sets of fields: the active ones (`ctx`, `encryptors`, `decryptors`, `kekCkaID`, …)
+and `old*` counterparts used for **decryption only**. `Decrypt` routes on `req.KeyId`: matching the active
+KEK ID means normal operation, matching `oldKekCkaID` means rotation, anything else is an error.
+`decryptWithContext(req, isRotation)` then selects the whole bundle of context/decryptors/algorithm/labels.
+Both KEKs can live on *different* HSMs (the `serve rotation` command takes a full second set of `--old-p11-*` flags).
+
+`mu sync.RWMutex` guards `encryptors`, `decryptors` and `oldDecryptors` — these maps are lazily populated on
+first use, so concurrent apiserver requests race without it (this was a real fixed bug; see CHANGELOG).
+
+### Size and length limits
+
+`pkg/providers/kmsv2_limits.go` centralizes every bound, with a naming convention that is load-bearing:
+`maxKMSv2<Field>Size` = a limit KMS v2 imposes (bytes on the wire), `max<Attr>Size` = a PKCS#11 limit in bytes,
+`max<Attr>HexLen` = a PKCS#11 limit in **hex characters** (twice the raw byte count). The hex/raw distinction is
+the one that causes bugs: a `CKA_ID` is raw bytes on the token but travels as a hex string through the CLI and
+every KMS v2 `KeyId` field. There is a compile-time assertion tying `maxCkaIDHexLen` to `maxKMSv2KeyIDSize`;
+keep it intact. Note the annotations budget is *shared* across all annotations (keys included), not per-annotation.
+
+### CLI: Cobra + Viper
+
+`cmd/k8s-kms-plugin/cmd/` holds the root command plus `serve`, `serve rotation`, `docs`, `version`, and PIN entry.
+
+Configuration priority is **CLI flags > env vars > config file > defaults**. Because Viper resolves the values,
+flags are generally registered *without* `Flags().StringVar(&x, …)` — values are read from a per-command
+`ViperFlags*` struct with `mapstructure` tags, not from package variables.
+
+`viper-patch-sub.go` is essential reading before touching flag plumbing. It works around two upstream quirks:
+
+1. `viper.Sub("section")` loses the flag/env/default priority chain entirely, so `UnmarshalSubMergedE` merges
+   the config subsection back into the main Viper config layer before unmarshalling.
+2. Cobra's `MarkFlagsMutuallyExclusive` / `MarkFlagsOneRequired` don't see values that arrived via Viper, so
+   `InitViperSubCmdE` copies resolved Viper values back into the Cobra flags.
+
+Env var names derive from the **command path**: `serve --p11-pin` → `K8S_KMS_PLUGIN_SERVE_P11_PIN`. Config file
+sections mirror the same path (`k8s-kms-plugin.serve`).
+
+Each command validates all user input in `PersistentPreRunE` via `sanitizeViperFlagsServe` /
+`sanitizeViperFlagsRotation` — that is the single choke point covering flags, env vars *and* config file values.
+`--algorithm-family` is additionally validated at parse time through a `pflag.Value` implementation, so both
+paths call the same `validateAlgorithmFamily`.
+
+`--p11-key-id` (CKA_ID) and `--p11-key-label` (CKA_LABEL) are mutually exclusive and one is required; same for
+the HMAC pair. `NewP11` resolves whichever was omitted by looking up the other on the token. See
+`docs/cli-user-interface/cka-id-vs-cka-label.md`.
+
+### Logging
+
+Standard-library `log/slog` (not logrus), with a custom `trace` level below debug in `pkg/logging`. Text output
+goes through `tint`; `--log-format=json` swaps in `slog.NewJSONHandler`. `--log-level=quiet` installs
+`slog.DiscardHandler`. Use `slog.Log(ctx, logging.LevelTrace, …)` for trace-level lines.
+
+A PKCS#11 authentication error during `serve` startup makes the process **sleep indefinitely** rather than exit,
+so a crash-looping container cannot burn through the token's PIN retry counter and erase it.
+
+## Dependencies
+
+`crypto11`, `gose` and `pkcs11-go` are consumed as **published modules** — `go.mod` has no `replace` directives.
+To build against unreleased changes, point `go.mod` at a branch with `GOPROXY=direct go get -u <module>@<branch>`
+(README §5.2 has the full cross-repo recipe). Restore published versions before opening a PR — branch
+pseudo-versions must not reach `master`.
