@@ -23,7 +23,7 @@ and `make lint-fix`; the full list is in [Other Useful `make` Targets](./install
 
 Two of them regenerate tracked files, so re-run them when the relevant source changes:
 
-- `make doc` — after adding or changing a CLI flag or command ([CLI Auto Generated Documentation](./usage.md#cli-auto-generated-documentation))
+- `make doc` — after adding or changing a CLI flag or command ([CLI Auto Generated Documentation](./cli-user-interface/README.md#cli-auto-generated-documentation))
 - `make notices` — after changing dependencies, to refresh [`NOTICES.md`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/NOTICES.md)
 
 ### Running the Tests
@@ -185,7 +185,7 @@ A few traps specific to this project:
 - **`"console": "integratedTerminal"`** is required if you omit `--p11-pin`: the PIN is then requested interactively
   with hidden input, and the Debug Console cannot provide it.
 - **Flags, env vars or config file** — all three work, with the priority described in
-  [User Input Priority: CLI > Env Vars > Config File > Default](./usage.md#user-input-priority-cli--env-vars--config-file--default). The env var for a subcommand flag includes the
+  [User Input Priority: CLI > Env Vars > Config File > Default](./cli-user-interface/README.md#user-input-priority-cli--env-vars--config-file--default). The env var for a subcommand flag includes the
   subcommand: `--p11-pin` under `serve` is `K8S_KMS_PLUGIN_SERVE_P11_PIN`.
 - **Breakpoints stop in Go code only.** The PKCS #11 library is C called through `CGO`; `delve` cannot step into it.
   To see what is sent to the token, use `--log-level trace` and the [`grpcurl` scripts](https://github.com/eclipse-keysealer/k8s-kms-plugin/tree/master/scripts/grpcurl/).

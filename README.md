@@ -57,14 +57,12 @@ The full documentation lives in [`docs/`](./docs/README.md). Start here:
 |-------|----------------|
 | [Concepts & Architecture](./docs/overview.md) | Terminology, where the plugin sits in the KMS v2 envelope scheme, deployment topologies (single node and HA), key rotation |
 | [Cryptographic Schemes](./docs/cryptographic-schemes.md) | What each `--algorithm-family` does to the data: keys, primitives, wire format, and which operations stay inside the HSM |
-| [Installation](./docs/installation.md) | Kubernetes requirements, official packages, `go install`, building from source with `make` or `goreleaser`, container images |
-| [Usage & User Guides](./docs/usage.md) | CLI help, shell completion, the generated CLI reference, configuration precedence, and the HSM/TPM support matrix |
+| [Installation](./docs/installation.md) | Getting a release binary or package, verifying its signature and provenance, `go install`, building from source, container images |
+| [HSM & TPM guides](./docs/hsm-guides/README.md) | One page per PKCS #11 provider — software and hardware — plus the matrix of which algorithm families and key sizes were tested on each |
+| [Kubernetes integration guides](./docs/kubernetes-guides/README.md) | Making a cluster's `kube-apiserver` encrypt Secrets through the plugin: `KinD` and `k3s` |
+| [CLI reference](./docs/cli-user-interface/README.md) | Help output, shell completion, configuration precedence, and the generated [per-command reference](./docs/cli-user-interface/markdown/README.md) and [flag / environment variable / config key table](./docs/cli-user-interface/markdown/cli-env-var-table.md) |
 | [Development & Debugging](./docs/development.md) | Repository layout, running the three test suites, building against `crypto11`/`gose` branches, `delve` and `vscode` debugging |
 | [Supply Chain Security](./docs/supply-chain-security.md) | Vulnerability scanning, release signing, and verifying artifacts, container images and SLSA provenance |
-| [CLI Reference](./docs/cli-user-interface/markdown/README.md) | Auto-generated per-command reference, plus the [flag / environment variable / config key table](./docs/cli-user-interface/markdown/cli-env-var-table.md) |
-
-HSM and TPM setup guides (SoftHSMv3, SoftHSMv2, TPM emulator, Thales eToken Fusion, YubiHSM 2) and the
-Kubernetes integration guides (`KinD`, `k3s`) are indexed in [`docs/README.md`](./docs/README.md).
 
 Release notes and the KMS v1 → v2 migration record are in [`CHANGELOG.md`](./CHANGELOG.md).
 
