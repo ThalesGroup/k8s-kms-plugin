@@ -4,22 +4,22 @@ This guide will help you to set up a YubiHSM 2 and make it work with `k8s-kms-pl
 
 ![](https://www.yubico.com/wp-content/uploads/2021/02/img-prods-home-5-hsm@2x.png)
 
-- [1. Before You Start: Read yubico YubiHSM 2 official documentation](#1-before-you-start-read-yubico-yubihsm-2-official-documentation)
-- [2. Testbed Environment](#2-testbed-environment)
-- [3. YubiHSM 2 Deployment Scenarios](#3-yubihsm-2-deployment-scenarios)
-- [4. Seting Up the YubiHSM 2](#4-seting-up-the-yubihsm-2)
-  - [4.1. Using YubiHSM 2 with Network/HTTP-based Connector](#41-using-yubihsm-2-with-networkhttp-based-connector)
-  - [4.2. Using YubiHSM 2 with USB only Connector](#42-using-yubihsm-2-with-usb-only-connector)
+- [Before You Start: Read yubico YubiHSM 2 official documentation](#before-you-start-read-yubico-yubihsm-2-official-documentation)
+- [Testbed Environment](#testbed-environment)
+- [YubiHSM 2 Deployment Scenarios](#yubihsm-2-deployment-scenarios)
+- [Seting Up the YubiHSM 2](#seting-up-the-yubihsm-2)
+  - [Using YubiHSM 2 with Network/HTTP-based Connector](#using-yubihsm-2-with-networkhttp-based-connector)
+  - [Using YubiHSM 2 with USB only Connector](#using-yubihsm-2-with-usb-only-connector)
 
 
-## 1. Before You Start: Read yubico YubiHSM 2 official documentation
+## Before You Start: Read yubico YubiHSM 2 official documentation
 
 You should read yubico YubiHSM 2 official documentation before reading this guide.
 https://docs.yubico.com/hardware/yubihsm-2/hsm-2-user-guide/index.html
 
 The purpose of this guide is to help you to set up a YubiHSM 2 and make it work with `k8s-kms-plugin`.
 
-## 2. Testbed Environment
+## Testbed Environment
 
 Unless otherwise specified, the commands from this guide were tested on AlmaLinux 9.6 on an x86_64 platform.
 
@@ -75,7 +75,7 @@ You might want to [reset to Factory Settings](https://docs.yubico.com/hardware/y
 
 Assuming your YubiHSM 2 has been reset and **assuming your are not in production but in a testing environment**, you can proceed with the following steps. Indeed for this guide, we will use the YubiHSM default session and domain with default passord `password` or `0001password`. On a production environment, configure and manage your YubiHSM 2 in a secure way.
 
-## 3. YubiHSM 2 Deployment Scenarios
+## YubiHSM 2 Deployment Scenarios
 
 The YubiHSM 2 is a USB device. The YubiHSM 2 supports two different connection methods:
 
@@ -88,9 +88,9 @@ The YubiHSM 2 is a USB device. The YubiHSM 2 supports two different connection m
 > 
 > ![](./images/k8s-kms-plugin-deployment-scenario-examples.svg)
 
-## 4. Seting Up the YubiHSM 2
+## Seting Up the YubiHSM 2
 
-### 4.1. Using YubiHSM 2 with Network/HTTP-based Connector
+### Using YubiHSM 2 with Network/HTTP-based Connector
 
 > **This is not a production environment:** we will use HTTP without TLS for the connector enpoint. Please read the Yubico document for how to configure and manage your YubiHSM 2 in a secure way.
 
@@ -333,9 +333,9 @@ grpcurl \
 }
 ```
 
-You can also test a full Status, Encryption and Decryption roundtrip using the script [`grpcurl-roundtrip-test.sh`](../scripts/grpcurl/grpcurl-roundtrip-test.sh).
+You can also test a full Status, Encryption and Decryption roundtrip using the script [`grpcurl-roundtrip-test.sh`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/scripts/grpcurl/grpcurl-roundtrip-test.sh).
 
-### 4.2. Using YubiHSM 2 with USB only Connector
+### Using YubiHSM 2 with USB only Connector
 
 
 1. Insert the YubiHSM 2 in one USB slot of your machine.

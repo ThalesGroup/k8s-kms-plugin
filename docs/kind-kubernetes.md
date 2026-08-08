@@ -6,23 +6,23 @@ local `k8s-kms-plugin serve` instance listening on a unix socket, with **Podman*
 
 ⚠️ **This guide is for testing purposes only. Do not use it in a production environment.**
 
-- [1. Why `KinD` needs more wiring than `k3s`](#1-why-kind-needs-more-wiring-than-k3s)
-- [2. Prerequisites](#2-prerequisites)
-- [3. Stage the environment with `rebuild-kms-dev.sh`](#3-stage-the-environment-with-rebuild-kms-devsh)
-- [4. The same, by hand](#4-the-same-by-hand)
-  - [4.1. Staging directories](#41-staging-directories)
-  - [4.2. The `EncryptionConfiguration`](#42-the-encryptionconfiguration)
-  - [4.3. The `KinD` cluster config](#43-the-kind-cluster-config)
-- [5. Start `k8s-kms-plugin serve`](#5-start-k8s-kms-plugin-serve)
-- [6. Create the cluster](#6-create-the-cluster)
-  - [6.1. Podman](#61-podman)
-  - [6.2. Docker](#62-docker)
-- [7. Verify the wiring](#7-verify-the-wiring)
-- [8. Confirm that encryption really happens](#8-confirm-that-encryption-really-happens)
-- [9. Cleanup](#9-cleanup)
-- [10. Troubleshooting summary](#10-troubleshooting-summary)
+- [Why `KinD` needs more wiring than `k3s`](#why-kind-needs-more-wiring-than-k3s)
+- [Prerequisites](#prerequisites)
+- [Stage the environment with `rebuild-kms-dev.sh`](#stage-the-environment-with-rebuild-kms-devsh)
+- [The same, by hand](#the-same-by-hand)
+  - [Staging directories](#staging-directories)
+  - [The `EncryptionConfiguration`](#the-encryptionconfiguration)
+  - [The `KinD` cluster config](#the-kind-cluster-config)
+- [Start `k8s-kms-plugin serve`](#start-k8s-kms-plugin-serve)
+- [Create the cluster](#create-the-cluster)
+  - [Podman](#podman)
+  - [Docker](#docker)
+- [Verify the wiring](#verify-the-wiring)
+- [Confirm that encryption really happens](#confirm-that-encryption-really-happens)
+- [Cleanup](#cleanup)
+- [Troubleshooting summary](#troubleshooting-summary)
 
-## 1. Why `KinD` needs more wiring than `k3s`
+## Why `KinD` needs more wiring than `k3s`
 
 With [`k3s`](./k3s-kubernetes.md), `kube-apiserver` runs as a normal process directly on the host, so any host path —
 including the plugin's unix socket — is already visible to it.
@@ -62,7 +62,7 @@ node container, **(2)** `apiServer.extraVolumes` carries it from the node into t
 Both mounts have to be wired through explicitly, and the `endpoint:` of the `EncryptionConfiguration` must reference
 the socket path **as seen from inside the apiserver container**, not the host path.
 
-## 2. Prerequisites
+## Prerequisites
 
 - `kubectl`
 - `kind` — this guide was written with `kind v0.32.0`, which defaults to Kubernetes `v1.36.1`
@@ -80,23 +80,23 @@ podman info | grep cgroupVersion
 `k8s-kms-plugin` implements the [KMS v2 API](https://pkg.go.dev/k8s.io/kms/apis/v2) only, so the cluster must be
 Kubernetes v1.29 or higher. Any recent `KinD` node image satisfies this.
 
-## 3. Stage the environment with `rebuild-kms-dev.sh`
+## Stage the environment with `rebuild-kms-dev.sh`
 
 The script only **prepares files**. Starting the plugin and creating the cluster stay in your hands — deliberately,
 since both are stateful and long-lived:
 
 | Step                                        | Done by                                       | Section                                          |
 |---------------------------------------------|-----------------------------------------------|--------------------------------------------------|
-| Staging directories `run/` + `config/`      | 🤖 script                                     | [3](#3-stage-the-environment-with-rebuild-kms-devsh) / [4.1](#41-staging-directories) |
-| `encryption-conf-kmsv2-unix-socket.yaml`    | 🤖 script                                     | [3](#3-stage-the-environment-with-rebuild-kms-devsh) / [4.2](#42-the-encryptionconfiguration) |
-| `kind.config.yaml`                          | 🤖 script                                     | [3](#3-stage-the-environment-with-rebuild-kms-devsh) / [4.3](#43-the-kind-cluster-config) |
-| Removing a stale socket from a dead plugin  | 🤖 script                                     | [3](#3-stage-the-environment-with-rebuild-kms-devsh) |
-| `k8s-kms-plugin serve`                      | 🙋 you — the script only prints the command   | [5](#5-start-k8s-kms-plugin-serve)               |
-| `kind create cluster --config …`            | 🙋 you — **using the generated `kind.config.yaml`** | [6](#6-create-the-cluster)                  |
-| Verifying the wiring and the etcd ciphertext | 🙋 you                                       | [7](#7-verify-the-wiring), [8](#8-confirm-that-encryption-really-happens) |
-| Deleting the cluster and the staging area   | 🙋 you                                        | [9](#9-cleanup)                                  |
+| Staging directories `run/` + `config/`      | 🤖 script                                     | [3](#stage-the-environment-with-rebuild-kms-devsh) / [4.1](#staging-directories) |
+| `encryption-conf-kmsv2-unix-socket.yaml`    | 🤖 script                                     | [3](#stage-the-environment-with-rebuild-kms-devsh) / [4.2](#the-encryptionconfiguration) |
+| `kind.config.yaml`                          | 🤖 script                                     | [3](#stage-the-environment-with-rebuild-kms-devsh) / [4.3](#the-kind-cluster-config) |
+| Removing a stale socket from a dead plugin  | 🤖 script                                     | [3](#stage-the-environment-with-rebuild-kms-devsh) |
+| `k8s-kms-plugin serve`                      | 🙋 you — the script only prints the command   | [5](#start-k8s-kms-plugin-serve)               |
+| `kind create cluster --config …`            | 🙋 you — **using the generated `kind.config.yaml`** | [6](#create-the-cluster)                  |
+| Verifying the wiring and the etcd ciphertext | 🙋 you                                       | [7](#verify-the-wiring), [8](#confirm-that-encryption-really-happens) |
+| Deleting the cluster and the staging area   | 🙋 you                                        | [9](#cleanup)                                  |
 
-[`scripts/k8s-kind/rebuild-kms-dev.sh`](../scripts/k8s-kind/rebuild-kms-dev.sh) creates the staging directories and
+[`scripts/k8s-kind/rebuild-kms-dev.sh`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/scripts/k8s-kind/rebuild-kms-dev.sh) creates the staging directories and
 generates both configuration files. Run it from the repository root:
 
 ```sh
@@ -126,20 +126,20 @@ stale socket left behind by a dead plugin.
 
 Every default — cluster name, socket name, PKCS #11 library, KEK label, algorithm family — is overridable through
 environment variables; run `./scripts/k8s-kind/rebuild-kms-dev.sh --help` or see
-[`scripts/k8s-kind/README.md`](../scripts/k8s-kind/README.md) for the full list.
+[`scripts/k8s-kind/README.md`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/scripts/k8s-kind/README.md) for the full list.
 
 > An existing cluster keeps the mounts it was created with. After changing `KMS_DEV_ROOT`, delete and recreate it:
 > `kind delete cluster --name kms-dev`.
 
-**Continue at [section 5](#5-start-k8s-kms-plugin-serve)** to start the plugin. The next section explains what those
+**Continue at [section 5](#start-k8s-kms-plugin-serve)** to start the plugin. The next section explains what those
 generated files contain and why — read it if you prefer doing it by hand, or when something needs adapting.
 
-## 4. The same, by hand
+## The same, by hand
 
 Skip this section if you ran the script. It covers exactly what `rebuild-kms-dev.sh` writes, using the default
 `/tmp/kms-dev` staging root.
 
-### 4.1. Staging directories
+### Staging directories
 
 Use a dedicated location rather than the plugin's usual socket path (e.g. `/run/user/1000`). Two separate
 directories are mounted into the node: one holding the socket, one holding the configuration.
@@ -151,9 +151,9 @@ mkdir -p /tmp/kms-dev/run /tmp/kms-dev/config
 > The socket directory must be mounted as a **directory**, never as a single file: when the plugin restarts, the
 > socket inode is recreated, and a single-file bind mount would keep pointing at the stale, deleted inode.
 
-### 4.2. The `EncryptionConfiguration`
+### The `EncryptionConfiguration`
 
-Start from [`encryption-conf-kmsv2-unix-socket.yaml`](../deployments/k8s/encryption-conf-kmsv2-unix-socket.yaml) and
+Start from [`encryption-conf-kmsv2-unix-socket.yaml`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/deployments/k8s/encryption-conf-kmsv2-unix-socket.yaml) and
 change `endpoint:` to the in-container path:
 
 ```sh
@@ -176,7 +176,7 @@ resources:
       - identity: {}
 ```
 
-### 4.3. The `KinD` cluster config
+### The `KinD` cluster config
 
 Save the following as `/tmp/kms-dev/config/kind.config.yaml`. It lands in the same directory that is mounted into the
 node at `/etc/kubernetes/kms` — harmless, since `kube-apiserver` only reads the file named by
@@ -218,7 +218,7 @@ nodes:
 > makes the patch **silently dropped** — no error, the flag simply never reaches `kube-apiserver`. Leaving
 > `apiVersion` out of this map-style block lets `kind` auto-detect and convert it.
 
-## 5. Start `k8s-kms-plugin serve`
+## Start `k8s-kms-plugin serve`
 
 > 🙋 **Manual step.** The script prints this command pre-filled with your paths, but never runs it.
 
@@ -243,15 +243,15 @@ loop, but a missing plugin produces noisy startup errors and a temporarily unhea
 > family the plugin serves, and all four families work against a **stock** `kube-apiserver`. `rsa-oaep` is used
 > here simply as a bootstrap, so that an early failure can be attributed to the `KinD` wiring rather than to the
 > KEK. Once the cluster is up and encrypting, restart the plugin with `--algorithm-family aes-gcm`, `aes-cbc` or
-> `ml-kem` (see [`SoftHSMv3`](./softhsm-v3.md#3-start-k8s-kms-plugin-serve)) to exercise the other families.
+> `ml-kem` (see [`SoftHSMv3`](./softhsm-v3.md#start-k8s-kms-plugin-serve)) to exercise the other families.
 
-## 6. Create the cluster
+## Create the cluster
 
 > 🙋 **Manual step.** `kind create cluster` is never run by the script — it only generates the
 > `kind.config.yaml` passed to `--config` below. Creating the cluster is what actually applies the two mounts, so
 > a cluster created *before* the config existed will not have them.
 
-### 6.1. Podman
+### Podman
 
 `KinD`'s Podman support is still experimental and requires an opt-in environment variable:
 
@@ -287,13 +287,13 @@ log_driver = "k8s-file"
 EOF
 ```
 
-### 6.2. Docker
+### Docker
 
 ```sh
 kind create cluster --config /tmp/kms-dev/config/kind.config.yaml
 ```
 
-## 7. Verify the wiring
+## Verify the wiring
 
 ```sh
 kind get clusters
@@ -337,7 +337,7 @@ podman exec -it kms-dev-control-plane ls -la /etc/kubernetes/kms/ /kms-socket/
 The first directory must contain `encryption-conf-kmsv2-unix-socket.yaml`, the second the live socket file (mode
 `srwx...`).
 
-## 8. Confirm that encryption really happens
+## Confirm that encryption really happens
 
 Watch the `k8s-kms-plugin` logs while running the commands below. The apiserver health loop sends periodic
 [`StatusRequest`](https://pkg.go.dev/k8s.io/kms/apis/v2#StatusRequest)s, and writing a secret triggers an
@@ -375,7 +375,7 @@ the secret is stored encrypted and not as plaintext `bar`:
 k8s:enc:kms:v2:kms-server:
 ```
 
-## 9. Cleanup
+## Cleanup
 
 ```sh
 kind delete cluster --name kms-dev
@@ -384,7 +384,7 @@ rm -rf /tmp/kms-dev
 
 Then stop the `k8s-kms-plugin serve` process.
 
-## 10. Troubleshooting summary
+## Troubleshooting summary
 
 | Symptom | Cause | Fix |
 |---|---|---|

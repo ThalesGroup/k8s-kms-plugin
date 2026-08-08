@@ -72,6 +72,33 @@ These write files that are committed, so re-run them when the underlying source 
 - `make doc` — after adding or changing any CLI flag or command (regenerates `docs/cli-user-interface/`)
 - `make notices` — after changing dependencies (regenerates `NOTICES.md`)
 
+`make doc` is **reproducible**: two runs on the same tree produce byte-identical output, so any
+diff is a real CLI change. Keep it that way — a value that varies per run or per machine must not
+reach the generated pages. `--output-dir`'s default is a timestamped temp directory, so its
+`DefValue` is deliberately overridden with a `$TMPDIR/...<timestamp>` placeholder in `docs.go`;
+without that the timestamp lands in two generated files on every run.
+
+Build and CI provenance (`build_commit`, `ci_run_url`, …) goes into the generated front matter only
+under `--provenance`, which `k8s-kms-plugin docs` enables automatically when `GITHUB_ACTIONS=true`.
+The published documentation therefore records the exact workflow run that built it while the
+committed tree stays free of volatile data.
+
+### Documentation links
+
+`make check-doc-links` (`scripts/check-doc-links.py`) verifies every relative Markdown link and
+`#anchor` in `README.md`, `CHANGELOG.md` and `docs/`. Anchors rot silently, so run it after moving
+or renaming anything under `docs/`.
+
+Headings carry **no manual section numbers** — they were removed because a static site generator
+derives ordering from the document tree, and the hand-written numbers had already drifted out of
+sync with the anchors pointing at them. Do not reintroduce `## 1.`-style numbering; ordering for the
+generated CLI pages comes from front-matter `weight`.
+
+Links from `docs/` to files *outside* the docs tree (`scripts/`, `deployments/`, `tools/`, Go
+source) are absolute `github.com/eclipse-keysealer/...` URLs on purpose: a published site serves
+only `docs/`, so a relative `../` link would 404 there. Links to `../README.md` are the known
+exception, still pending the README split.
+
 ## Architecture
 
 ### Where the plugin sits

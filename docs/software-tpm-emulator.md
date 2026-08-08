@@ -6,28 +6,28 @@ This guide described how to set up [`Software TPM Emulator`](https://github.com/
 
 You should read [`Software TPM Emulator`](https://github.com/stefanberger/swtpm) official documentation before reading this guide.
 
-- [1. Install `Software TPM Emulator`](#1-install-software-tpm-emulator)
-- [2. Create Keys in the `Software TPM Emulator`](#2-create-keys-in-the-software-tpm-emulator)
-  - [2.1. AES CBC HMAC](#21-aes-cbc-hmac)
-    - [2.1.1. Create an AES \& an HMAC Key](#211-create-an-aes--an-hmac-key)
-    - [2.1.2. Run `k8s-kms-plugin serve` with `aes-cbc`](#212-run-k8s-kms-plugin-serve-with-aes-cbc)
-  - [2.2. RSA-OAEP](#22-rsa-oaep)
-    - [2.2.1. Create an RSA Keypair](#221-create-an-rsa-keypair)
-    - [2.2.2. Run `k8s-kms-plugin serve` with `rsa-oaep`](#222-run-k8s-kms-plugin-serve-with-rsa-oaep)
+- [Install `Software TPM Emulator`](#install-software-tpm-emulator)
+- [Create Keys in the `Software TPM Emulator`](#create-keys-in-the-software-tpm-emulator)
+  - [AES CBC HMAC](#aes-cbc-hmac)
+    - [Create an AES \& an HMAC Key](#create-an-aes--an-hmac-key)
+    - [Run `k8s-kms-plugin serve` with `aes-cbc`](#run-k8s-kms-plugin-serve-with-aes-cbc)
+  - [RSA-OAEP](#rsa-oaep)
+    - [Create an RSA Keypair](#create-an-rsa-keypair)
+    - [Run `k8s-kms-plugin serve` with `rsa-oaep`](#run-k8s-kms-plugin-serve-with-rsa-oaep)
 
 
-## 1. Install `Software TPM Emulator`
+## Install `Software TPM Emulator`
 
 Outside of the scope of this documentation.
 
-## 2. Create Keys in the `Software TPM Emulator`
+## Create Keys in the `Software TPM Emulator`
 
 You must know that AES GCM is not supported by the TPM v2 specifications.
 With `Software TPM Emulator`, we recommend to run the `k8s-kms-plugin` with the CBC-then-HMAC algorithm or an RSA-OAEP key.
 
-### 2.1. AES CBC HMAC
+### AES CBC HMAC
 
-#### 2.1.1. Create an AES & an HMAC Key
+#### Create an AES & an HMAC Key
 
 List your AES & an HMAC keys:
 
@@ -61,7 +61,7 @@ WARNING: Needed CKA_VALUE but didn't find encrypted blob
 > /usr/lib/x86_64-linux-gnu/pkcs11/libtpm2_pkcs11.so
 > ```
 
-#### 2.1.2. Run `k8s-kms-plugin serve` with `aes-cbc`
+#### Run `k8s-kms-plugin serve` with `aes-cbc`
 
 You must provide an HMAC key alongside the AES key for encryption:
 
@@ -100,15 +100,15 @@ k8s-kms-plugin \
 ```
 
 
-You can validate Encryption and Decryption are working by using [`grpcurl-roundtrip-test.sh`](../scripts/grpcurl/grpcurl-roundtrip-test.sh).
+You can validate Encryption and Decryption are working by using [`grpcurl-roundtrip-test.sh`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/scripts/grpcurl/grpcurl-roundtrip-test.sh).
 
 ```bash
 ./grpcurl-roundtrip-test.sh 'hello world' /run/user/1000/k8s-kms-plugin.sock
 ```
 
-### 2.2. RSA-OAEP
+### RSA-OAEP
 
-#### 2.2.1. Create an RSA Keypair
+#### Create an RSA Keypair
 
 List
 
@@ -133,7 +133,7 @@ Private Key Object; RSA
   Allowed mechanisms: RSA-X-509,RSA-PKCS-OAEP,RSA-PKCS,SHA1-RSA-PKCS,SHA256-RSA-PKCS,SHA384-RSA-PKCS,SHA512-RSA-PKCS,RSA-PKCS-PSS,SHA1-RSA-PKCS-PSS,SHA256-RSA-PKCS-PSS,SHA384-RSA-PKCS-PSS,SHA512-RSA-PKCS-PSS
 ```
 
-#### 2.2.2. Run `k8s-kms-plugin serve` with `rsa-oaep`
+#### Run `k8s-kms-plugin serve` with `rsa-oaep`
 
 ```bash
 k8s-kms-plugin \
@@ -147,4 +147,4 @@ k8s-kms-plugin \
     --algorithm-family rsa-oaep
 ```
 
-You can validate Encryption and Decryption are working by using [`grpcurl-roundtrip-test.sh`](../scripts/grpcurl/grpcurl-roundtrip-test.sh).
+You can validate Encryption and Decryption are working by using [`grpcurl-roundtrip-test.sh`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/scripts/grpcurl/grpcurl-roundtrip-test.sh).

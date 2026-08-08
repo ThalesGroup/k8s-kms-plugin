@@ -14,21 +14,21 @@ development and integration testing of `k8s-kms-plugin` as it supports all four 
 | RSA-OAEP            | `rsa-oaep`           | ✅ Supported   |
 | ML-KEM (FIPS 203)   | `ml-kem`             | ✅ Supported   |
 
-- [1. Install `SoftHSMv3`](#1-install-softhsmv3)
-- [2. Bootstrap a development token with `create-dev-token`](#2-bootstrap-a-development-token-with-create-dev-token)
-  - [2.1. Get `create-dev-token`](#21-get-create-dev-token)
-  - [2.2. Run `create-dev-token`](#22-run-create-dev-token)
-  - [2.3. Inspect the token](#23-inspect-the-token)
-- [3. Start `k8s-kms-plugin serve`](#3-start-k8s-kms-plugin-serve)
-  - [3.1. AES-GCM](#31-aes-gcm)
-  - [3.2. AES-CBC + HMAC](#32-aes-cbc--hmac)
-  - [3.3. RSA-OAEP](#33-rsa-oaep)
-  - [3.4. ML-KEM](#34-ml-kem)
-- [4. Validate with grpcurl](#4-validate-with-grpcurl)
-- [5. Configure a Kubernetes cluster](#5-configure-a-kubernetes-cluster)
+- [Install `SoftHSMv3`](#install-softhsmv3)
+- [Bootstrap a development token with `create-dev-token`](#bootstrap-a-development-token-with-create-dev-token)
+  - [Get `create-dev-token`](#get-create-dev-token)
+  - [Run `create-dev-token`](#run-create-dev-token)
+  - [Inspect the token](#inspect-the-token)
+- [Start `k8s-kms-plugin serve`](#start-k8s-kms-plugin-serve)
+  - [AES-GCM](#aes-gcm)
+  - [AES-CBC + HMAC](#aes-cbc--hmac)
+  - [RSA-OAEP](#rsa-oaep)
+  - [ML-KEM](#ml-kem)
+- [Validate with grpcurl](#validate-with-grpcurl)
+- [Configure a Kubernetes cluster](#configure-a-kubernetes-cluster)
 
 
-## 1. Install `SoftHSMv3`
+## Install `SoftHSMv3`
 
 Build and install from source following the instructions at https://github.com/pqctoday-org/pqctoday-hsm.
 
@@ -49,9 +49,9 @@ pkcs11-tool --module "$PKCS11_MODULE" --show-info
 ```
 
 
-## 2. Bootstrap a development token with `create-dev-token`
+## Bootstrap a development token with `create-dev-token`
 
-[`create-dev-token`](../tools/create-dev-token/) is a helper tool that bootstraps a **persistent** SoftHSMv3 token
+[`create-dev-token`](https://github.com/eclipse-keysealer/k8s-kms-plugin/tree/master/tools/create-dev-token/) is a helper tool that bootstraps a **persistent** SoftHSMv3 token
 with one ready-to-use key per algorithm family. It eliminates the need for manual `pkcs11-tool` commands.
 
 Keys provisioned:
@@ -68,7 +68,7 @@ Keys provisioned:
 | `dev-ml-kem-768`      | `ml-kem`         | ML-KEM-768 key pair (skipped on SoftHSMv2) |
 | `dev-ml-kem-1024`     | `ml-kem`         | ML-KEM-1024 key pair (skipped on SoftHSMv2)|
 
-### 2.1. Get `create-dev-token`
+### Get `create-dev-token`
 
 **From GitHub releases** (recommended — no Go toolchain required):
 
@@ -94,7 +94,7 @@ make build
 go run ./tools/create-dev-token --help
 ```
 
-### 2.2. Run `create-dev-token`
+### Run `create-dev-token`
 
 Use `eval` (or `source <(...)`) to create the token **and** export `SOFTHSM2_CONF` into the current shell in one step:
 
@@ -120,7 +120,7 @@ To start fresh, delete the directory and re-run:
 rm -rf /tmp/k8s-kms-plugin-devtoken
 ```
 
-### 2.3. Inspect the token
+### Inspect the token
 
 With `pkcs11-tool` (from the `opensc` package):
 
@@ -142,7 +142,7 @@ GNUTLS_SO_PIN="0000" GNUTLS_PIN="1234" p11tool \
 ```
 
 
-## 3. Start `k8s-kms-plugin serve`
+## Start `k8s-kms-plugin serve`
 
 > The token created by `create-dev-token` uses label `k8s-kms-plugin-dev` and PIN `1234`.
 > Adjust `--p11-lib`, `--p11-label`, `--p11-pin` to match your environment.
@@ -151,7 +151,7 @@ Every example below identifies its key with `--p11-key-label`; `--p11-key-id` (P
 works the same way. See [`CKA_ID` vs `CKA_LABEL`](./cli-user-interface/cka-id-vs-cka-label.md) for
 how the two are resolved.
 
-### 3.1. AES-GCM
+### AES-GCM
 
 ```sh
 SOCKET="/run/user/$(id -u)/k8s-kms-plugin.sock"
@@ -166,7 +166,7 @@ k8s-kms-plugin \
     --algorithm-family aes-gcm
 ```
 
-### 3.2. AES-CBC + HMAC
+### AES-CBC + HMAC
 
 ```sh
 SOCKET="/run/user/$(id -u)/k8s-kms-plugin.sock"
@@ -182,7 +182,7 @@ k8s-kms-plugin \
     --algorithm-family aes-cbc
 ```
 
-### 3.3. RSA-OAEP
+### RSA-OAEP
 
 ```sh
 SOCKET="/run/user/$(id -u)/k8s-kms-plugin.sock"
@@ -199,7 +199,7 @@ k8s-kms-plugin \
 
 Swap `--p11-key-label` to `dev-rsa-3072-oaep` or `dev-rsa-4096-oaep` to use the RSA-3072 / RSA-4096 key pairs instead.
 
-### 3.4. ML-KEM
+### ML-KEM
 
 ```sh
 SOCKET="/run/user/$(id -u)/k8s-kms-plugin.sock"
@@ -218,7 +218,7 @@ The specific ML-KEM parameter set (ML-KEM-512, ML-KEM-768, ML-KEM-1024) is deriv
 `ParameterSet` attribute — you only specify the family via `--algorithm-family ml-kem`.
 
 
-## 4. Validate with grpcurl
+## Validate with grpcurl
 
 With the plugin running, test encrypt → decrypt from a second terminal:
 
@@ -236,9 +236,9 @@ Expected output:
 ```
 
 
-## 5. Configure a Kubernetes cluster
+## Configure a Kubernetes cluster
 
-Review [`encryption-conf-kmsv2-unix-socket.yaml`](../deployments/k8s/encryption-conf-kmsv2-unix-socket.yaml) and make sure
+Review [`encryption-conf-kmsv2-unix-socket.yaml`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/deployments/k8s/encryption-conf-kmsv2-unix-socket.yaml) and make sure
 `resources.providers.kms.endpoint` matches the socket path used by the running `k8s-kms-plugin`.
 
 Then install a Kubernetes cluster like `k3s`:

@@ -45,7 +45,7 @@ this prevents a user-provided `CKA_ID` and `CKA_LABEL` from silently referring t
 
 See [`k8s-kms-plugin serve`](./markdown/k8s-kms-plugin_serve.md) and
 [`k8s-kms-plugin serve rotation`](./markdown/k8s-kms-plugin_serve_rotation.md) for the full flag
-reference, and [`FindCkaAttrByIDOrLabel`](../../pkg/providers/p11.go) / `GetKeyIDAndLabel` in
+reference, and [`FindCkaAttrByIDOrLabel`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/pkg/providers/p11.go) / `GetKeyIDAndLabel` in
 `pkg/providers/p11.go` for the implementation.
 
 PKCS #11 v3.2: <https://docs.oasis-open.org/pkcs11/pkcs11-base/v3.2/pkcs11-base-v3.2.html>

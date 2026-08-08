@@ -10,15 +10,15 @@ by [KMS v2](https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/).
 
 > 🚧 Doc under construction
 
-- [1. Kubernetes Requirements](#1-kubernetes-requirements)
-- [2. Kubernetes KMS v2 Sequence Diagram](#2-kubernetes-kms-v2-sequence-diagram)
-- [3. Single Node `k3s` Cluster](#3-single-node-k3s-cluster)
-  - [3.1. Run `k8s-kms-plugin serve` (no key rotation)](#31-run-k8s-kms-plugin-serve-no-key-rotation)
-  - [3.2. Restart `k3s`: Clear the DEK Cache](#32-restart-k3s-clear-the-dek-cache)
-  - [3.3. Perform a Key Rotation Operation](#33-perform-a-key-rotation-operation)
-- [4. k3s High Availability Embedded etcd](#4-k3s-high-availability-embedded-etcd)
+- [Kubernetes Requirements](#kubernetes-requirements)
+- [Kubernetes KMS v2 Sequence Diagram](#kubernetes-kms-v2-sequence-diagram)
+- [Single Node `k3s` Cluster](#single-node-k3s-cluster)
+  - [Run `k8s-kms-plugin serve` (no key rotation)](#run-k8s-kms-plugin-serve-no-key-rotation)
+  - [Restart `k3s`: Clear the DEK Cache](#restart-k3s-clear-the-dek-cache)
+  - [Perform a Key Rotation Operation](#perform-a-key-rotation-operation)
+- [k3s High Availability Embedded etcd](#k3s-high-availability-embedded-etcd)
 
-## 1. Kubernetes Requirements
+## Kubernetes Requirements
 
 `k8s-kms-plugin` is designed for kubernetes clusters that are using version v1.29 or higher and implements the[KMS v2 API](https://pkg.go.dev/k8s.io/kms/apis/v2).
 
@@ -27,17 +27,17 @@ by [KMS v2](https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/).
 This guide uses [`k3s`](https://k3s.io/) as a Kubernetes distribution, as `k3s` is easy to setup.
 In general, we make sure to explicitely set `INSTALL_K3S_VERSION`.
 
-## 2. Kubernetes KMS v2 Sequence Diagram
+## Kubernetes KMS v2 Sequence Diagram
 
-![](./docs/puml-diagrams/kmsv2-first-k8s-startup.sqce-diag.svg)
+![](./puml-diagrams/kmsv2-first-k8s-startup.sqce-diag.svg)
 
-![](./docs/puml-diagrams/kmsv2-decryptrequest.sqce-diag.svg)
+![](./puml-diagrams/kmsv2-decryptrequest.sqce-diag.svg)
 
-![](./docs/puml-diagrams/kmsv2-key-rotation.sqce-diag.svg)
+![](./puml-diagrams/kmsv2-key-rotation.sqce-diag.svg)
 
-## 3. Single Node `k3s` Cluster
+## Single Node `k3s` Cluster
 
-### 3.1. Run `k8s-kms-plugin serve` (no key rotation)
+### Run `k8s-kms-plugin serve` (no key rotation)
 
 > This section does not detail how to deploy & run the `k8s-kms-plugin`. See the other
 > documentation pages like [`SoftHSMv2`](./softhsm-v2.md) or
@@ -60,7 +60,7 @@ k8s-kms-plugin \
 
 > This example uses [`Software TPM Emulator`](https://github.com/stefanberger/swtpm).
 
-Then review the content of file [`encryption-conf-kmsv2-unix-socket.yaml`](../deployments/k8s/encryption-conf-kmsv2-unix-socket.yaml).
+Then review the content of file [`encryption-conf-kmsv2-unix-socket.yaml`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/deployments/k8s/encryption-conf-kmsv2-unix-socket.yaml).
 Make sure `resources.providers.kms.endpoint` points to the same unix socket file of the running `k8s-kms-plugin`.
 
 Then install `k3s` inversion `v1.33.1+k3s1` with the following command:
@@ -94,7 +94,7 @@ sudo sqlite3 /var/lib/rancher/k3s/server/db/state.db "SELECT hex(value) FROM kin
 00000010  6d 73 2d 73 65 72 76 65  72 3a 0a b4 18 e7 4a 3e  |ms-server:....J>|
 ```
 
-### 3.2. Restart `k3s`: Clear the DEK Cache
+### Restart `k3s`: Clear the DEK Cache
 
 Keep the `k8s-kms-plugin serve` running, then stop and restart `k3s`.
 
@@ -111,7 +111,7 @@ You will also see `EncryptRequest` (with a fresh new DEK seed) and `StatusReques
 This is an assumption: the `EncryptRequest` is sent because kubernetes expects a key rotation after a reboot, or maybe
 the DEK seed is renewed at each new restart.
 
-### 3.3. Perform a Key Rotation Operation
+### Perform a Key Rotation Operation
 
 From the point of view of the `k8s-kms-plugin`, the key rotation operation is handled by [`k8s-kms-plugin serve rotation`](./cli-user-interface/markdown/k8s-kms-plugin_serve_rotation.md).
 
@@ -124,15 +124,15 @@ for both the active and old KEK keys. But `k8s-kms-plugin` will only support
 for the active KEK key. This prevent new kubernetes content from being encrypted with the old KEK key while allwoing
 to decrypt the older kubernetes content which will be re-encrypted with the new active KEK key.
 
-## 4. k3s High Availability Embedded etcd
+## k3s High Availability Embedded etcd
 
 > HA means High Availability
 
 The `k8s-kms-plugin` also supports kubernetes cluster in HA mode (at least 3 server nodes), as long as the KEK is the same for each kubernetes node in the HA cluster. Otherwise it will fail to work with the Raft consensus algorithm for the synchronization of the content of the etcd cluster.
 
-![](../docs/images/k8s-kms-plugin-TPM_3_master_nodes.svg)
-![](../docs/images/k8s-kms-plugin-USB_HSM_3_master_nodes.svg)
-![](../docs/images/k8s-kms-plugin-Net_HSM_3_master_nodes.svg)
+![](./images/k8s-kms-plugin-TPM_3_master_nodes.svg)
+![](./images/k8s-kms-plugin-USB_HSM_3_master_nodes.svg)
+![](./images/k8s-kms-plugin-Net_HSM_3_master_nodes.svg)
 
 
 

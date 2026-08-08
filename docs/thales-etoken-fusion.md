@@ -6,7 +6,7 @@ This guide describes how to set up a Thales eToken Fusion with `k8s-kms-plugin` 
 
 > 🚧 Work in progress
 
-## 2. Testbed Environment
+## Testbed Environment
 
 Unless otherwise specified, the commands from this guide were tested on AlmaLinux 9.6 on an x86_64 platform.
 
@@ -90,4 +90,4 @@ sudo k8s-kms-plugin \
 the key's `CKA_ID`; `--p11-key-label rsa00eToken` (its `CKA_LABEL`) would work identically. See
 [`CKA_ID` vs `CKA_LABEL`](./cli-user-interface/cka-id-vs-cka-label.md) for how the two are resolved.
 
-You can validate Encryption and Decryption are working by using [`grpcurl-roundtrip-test.sh`](../scripts/grpcurl/grpcurl-roundtrip-test.sh).
+You can validate Encryption and Decryption are working by using [`grpcurl-roundtrip-test.sh`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/scripts/grpcurl/grpcurl-roundtrip-test.sh).

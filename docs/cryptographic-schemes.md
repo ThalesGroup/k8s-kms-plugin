@@ -5,26 +5,26 @@ data `kube-apiserver` sends it: which keys it uses, which primitives it composes
 ciphertext looks like on the wire, and which operations happen inside the HSM.
 
 It is a reference page. For *how to provision* a key of a given family see the
-[HSM & TPM guides](./README.md#3-hsm--tpm-guides); for *how to run* the plugin see
+[HSM & TPM guides](./README.md#hsm--tpm-guides); for *how to run* the plugin see
 [`k8s-kms-plugin serve`](./cli-user-interface/markdown/k8s-kms-plugin_serve.md).
 
-- [1. What the plugin actually encrypts](#1-what-the-plugin-actually-encrypts)
-- [2. The KMS v2 wire contract](#2-the-kms-v2-wire-contract)
-- [3. Algorithm families at a glance](#3-algorithm-families-at-a-glance)
-- [4. `aes-gcm`](#4-aes-gcm)
-- [5. `aes-cbc`](#5-aes-cbc)
-- [6. `rsa-oaep`](#6-rsa-oaep)
-- [7. `ml-kem`](#7-ml-kem)
-  - [7.1. Vocabulary](#71-vocabulary)
-  - [7.2. A KEM is not a public-key encryption scheme](#72-a-kem-is-not-a-public-key-encryption-scheme)
-  - [7.3. Construction](#73-construction)
-  - [7.4. Why the KEM ciphertext does not live in `ciphertext`](#74-why-the-kem-ciphertext-does-not-live-in-ciphertext)
-  - [7.5. Is it safe to put the KEM ciphertext in a plaintext annotation?](#75-is-it-safe-to-put-the-kem-ciphertext-in-a-plaintext-annotation)
-  - [7.6. What binds the annotation to the envelope](#76-what-binds-the-annotation-to-the-envelope)
-- [8. What stays inside the HSM](#8-what-stays-inside-the-hsm)
-- [9. References](#9-references)
+- [What the plugin actually encrypts](#what-the-plugin-actually-encrypts)
+- [The KMS v2 wire contract](#the-kms-v2-wire-contract)
+- [Algorithm families at a glance](#algorithm-families-at-a-glance)
+- [`aes-gcm`](#aes-gcm)
+- [`aes-cbc`](#aes-cbc)
+- [`rsa-oaep`](#rsa-oaep)
+- [`ml-kem`](#ml-kem)
+  - [Vocabulary](#vocabulary)
+  - [A KEM is not a public-key encryption scheme](#a-kem-is-not-a-public-key-encryption-scheme)
+  - [Construction](#construction)
+  - [Why the KEM ciphertext does not live in `ciphertext`](#why-the-kem-ciphertext-does-not-live-in-ciphertext)
+  - [Is it safe to put the KEM ciphertext in a plaintext annotation?](#is-it-safe-to-put-the-kem-ciphertext-in-a-plaintext-annotation)
+  - [What binds the annotation to the envelope](#what-binds-the-annotation-to-the-envelope)
+- [What stays inside the HSM](#what-stays-inside-the-hsm)
+- [References](#references)
 
-## 1. What the plugin actually encrypts
+## What the plugin actually encrypts
 
 `k8s-kms-plugin` never sees your `Secret` data. Kubernetes KMS v2 is an *envelope* scheme:
 
@@ -53,7 +53,7 @@ Two consequences worth keeping in mind while reading:
 - Ciphertext sizes are essentially constant per family — they do not grow with your `Secret` sizes.
 - The apiserver caches DEKs, so an `Encrypt` RPC does not happen on every write.
 
-## 2. The KMS v2 wire contract
+## The KMS v2 wire contract
 
 Four constraints from [`k8s.io/kms/apis/v2/api.proto`](https://pkg.go.dev/k8s.io/kms/apis/v2) shape
 every scheme on this page — their rationale is in
@@ -63,7 +63,7 @@ and the apiserver side of the contract in the
 
 | Constraint                        | Value                                                            | Consequence for this plugin                                                                              |
 |-----------------------------------|------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
-| `EncryptResponse.ciphertext` size | **< 1 kB**, non-empty                                            | The binding constraint for `ml-kem` — see [§7.4](#74-why-the-kem-ciphertext-does-not-live-in-ciphertext) |
+| `EncryptResponse.ciphertext` size | **< 1 kB**, non-empty                                            | The binding constraint for `ml-kem` — see [§7.4](#why-the-kem-ciphertext-does-not-live-in-ciphertext) |
 | `annotations` key format          | Fully qualified domain name (RFC 1123)                           | Keys are namespaced under `k8s-kms-plugin.keysealer.eclipse.org`                                         |
 | `annotations` total size          | **< 32 kB** (keys + values)                                      | Leaves ample room for a 1568-byte ML-KEM ciphertext                                                      |
 | `annotations` confidentiality     | *"stored in plaintext in etcd… no guarantees against tampering"* | Only non-secret material may go there                                                                    |
@@ -82,20 +82,20 @@ The plugin sets one annotation on **every** `EncryptResponse`, regardless of fam
 > configured `--algorithm-family`, not on the annotation, so a missing or altered value cannot
 > change how a ciphertext is interpreted.
 
-## 3. Algorithm families at a glance
+## Algorithm families at a glance
 
 | Family                    | HSM key(s) required                         | Output in `ciphertext` | Key wrapping                | Content encryption         |
 |---------------------------|---------------------------------------------|------------------------|-----------------------------|----------------------------|
-| [`aes-gcm`](#4-aes-gcm)   | 1 × AES (128/192/256-bit)                   | JWE Compact            | none — *direct*             | AES-GCM                    |
-| [`aes-cbc`](#5-aes-cbc)   | 1 × AES-256 **+** 1 × generic secret (HMAC) | JWE Compact            | none — *direct*             | AES-256-CBC + HMAC-SHA-256 |
-| [`rsa-oaep`](#6-rsa-oaep) | 1 × RSA key pair                            | JWE Compact            | RSAES-OAEP (SHA-256)        | AES-256-GCM                |
-| [`ml-kem`](#7-ml-kem)     | 1 × ML-KEM key pair                         | Binary envelope (60 B) | ML-KEM encapsulation + KMAC | AES-GCM (128/256-bit)      |
+| [`aes-gcm`](#aes-gcm)   | 1 × AES (128/192/256-bit)                   | JWE Compact            | none — *direct*             | AES-GCM                    |
+| [`aes-cbc`](#aes-cbc)   | 1 × AES-256 **+** 1 × generic secret (HMAC) | JWE Compact            | none — *direct*             | AES-256-CBC + HMAC-SHA-256 |
+| [`rsa-oaep`](#rsa-oaep) | 1 × RSA key pair                            | JWE Compact            | RSAES-OAEP (SHA-256)        | AES-256-GCM                |
+| [`ml-kem`](#ml-kem)     | 1 × ML-KEM key pair                         | Binary envelope (60 B) | ML-KEM encapsulation + KMAC | AES-GCM (128/256-bit)      |
 
 Key size and ML-KEM parameter set are **derived at runtime from the key found on the HSM** — there is
 no flag to set them. Provision the key you want and the plugin adapts.
 
 Each family section below ends with a collapsible **real `EncryptResponse`**, captured against a
-SoftHSMv3 dev token with [`scripts/grpcurl/collect-jwe-samples.sh`](../scripts/grpcurl/). Two things
+SoftHSMv3 dev token with [`scripts/grpcurl/collect-jwe-samples.sh`](https://github.com/eclipse-keysealer/k8s-kms-plugin/tree/master/scripts/grpcurl/). Two things
 to keep in mind when reading them:
 
 - `ciphertext` and the annotation values are protobuf `bytes`, so `grpcurl` renders them
@@ -103,7 +103,7 @@ to keep in mind when reading them:
 - The long values are elided; the plugin's own `key_id` values (`"01"`, `"04"`, …) are just the
   `CKA_ID`s of that dev token.
 
-## 4. `aes-gcm`
+## `aes-gcm`
 
 The simplest family: the AES key on the HSM *is* the content encryption key.
 
@@ -159,7 +159,7 @@ Serialization whose protected header is the one shown above.
 
 </details>
 
-## 5. `aes-cbc`
+## `aes-cbc`
 
 AES-CBC has no built-in authentication, so this family pairs it with an HMAC — and therefore needs
 **two** HSM objects.
@@ -186,7 +186,7 @@ AES-CBC has no built-in authentication, so this family pairs it with an HMAC —
 - **AES-256 only.** `A256CBC` is the only AES-CBC key size gose exposes for JWE, so a 128- or
   192-bit CBC key on the HSM will not work. AES-GCM has no such restriction.
 - The `alg` header carries the key algorithm rather than `dir`, which is not what RFC 7516 expects;
-  same interoperability caveat as [§4](#4-aes-gcm).
+  same interoperability caveat as [§4](#aes-gcm).
 - The plaintext length is carried in a custom header field so the HMAC input can be reconstructed
   identically at decryption time.
 
@@ -221,7 +221,7 @@ input be rebuilt identically at decryption time.
 
 </details>
 
-## 6. `rsa-oaep`
+## `rsa-oaep`
 
 The only classical family where the plugin holds a *key pair* rather than a shared secret, and the
 only one that wraps a freshly generated content encryption key.
@@ -306,13 +306,13 @@ Note the `kid` in the decoded JWE header of this capture is a 64-hex-character k
 
 </details>
 
-## 7. `ml-kem`
+## `ml-kem`
 
 The post-quantum family, standardised in [FIPS 203](https://doi.org/10.6028/NIST.FIPS.203)
 (*Module-Lattice-Based Key-Encapsulation Mechanism Standard*, derived from CRYSTALS-Kyber).
 This is the one family that does **not** produce a JWE.
 
-### 7.1. Vocabulary
+### Vocabulary
 
 ML-KEM has its own vocabulary, and this plugin uses FIPS 203's terms rather than the RSA-style ones:
 
@@ -336,7 +336,7 @@ Sizes for all three parameter sets, from FIPS 203 Table 3:
 > plugin, **KEM ciphertext** always means FIPS 203's `c`, and it is carried in the
 > `kem-ciphertext` annotation — never in `EncryptResponse.ciphertext`.
 
-### 7.2. A KEM is not a public-key encryption scheme
+### A KEM is not a public-key encryption scheme
 
 `ML-KEM.Encaps(ek)` takes **no plaintext**. Per FIPS 203 Algorithm 20, it consumes randomness and
 outputs a *pair*:
@@ -350,7 +350,7 @@ You cannot hand it the DEK seed. So the plugin must build a hybrid construction:
 key from `K`, and use an AEAD to actually seal the seed. That produces **two artifacts** — and both
 must reach `Decrypt`.
 
-### 7.3. Construction
+### Construction
 
 **Encrypt**
 
@@ -370,7 +370,7 @@ must reach `Decrypt`.
    derived under one parameter set can never collide with another.
 4. Generate a 96-bit nonce from the HSM RNG.
 5. AES-GCM-seal the DEK seed under the derived key, with `"k8s-kms-plugin/ml-kem/v1" || c` as the
-   additional authenticated data — see [§7.6](#76-what-binds-the-annotation-to-the-envelope).
+   additional authenticated data — see [§7.6](#what-binds-the-annotation-to-the-envelope).
 6. Emit the envelope.
 
 **Decrypt** is the mirror image: read `c` from the annotation, resolve the decapsulation key from
@@ -436,7 +436,7 @@ This is the whole scheme in one message. `ciphertext` is shown in full — 80 ba
 exactly the **60 bytes** of the envelope, and identical in length for all three parameter sets.
 `bWwta2Vt` decodes to `ml-kem`. The `kem-ciphertext` value is 2092 base64 characters, which is the
 **1568 raw bytes** of the FIPS 203 ciphertext `c` for ML-KEM-1024 — on its own more than the entire
-1 kB `ciphertext` budget, which is precisely why it lives in an annotation ([§7.4](#74-why-the-kem-ciphertext-does-not-live-in-ciphertext)).
+1 kB `ciphertext` budget, which is precisely why it lives in an annotation ([§7.4](#why-the-kem-ciphertext-does-not-live-in-ciphertext)).
 
 The 60-byte `ciphertext` and the parameter-set-sized annotation, per parameter set:
 
@@ -451,7 +451,7 @@ The 60-byte `ciphertext` and the parameter-set-sized annotation, per parameter s
 > 📌 The parameter set is deliberately **not** recorded on the wire. It is recovered from the HSM key
 > pair at decryption time, so an attacker cannot influence it by editing an annotation.
 
-### 7.4. Why the KEM ciphertext does not live in `ciphertext`
+### Why the KEM ciphertext does not live in `ciphertext`
 
 Because it does not fit. `EncryptResponse.ciphertext` is capped at 1 kB:
 
@@ -494,16 +494,16 @@ The remaining alternatives were rejected:
 - **Caching one encapsulation and reusing `K`** — reintroduces server-side state into a
   deliberately stateless per-object contract, and the apiserver already caches DEKs.
 
-### 7.5. Is it safe to put the KEM ciphertext in a plaintext annotation?
+### Is it safe to put the KEM ciphertext in a plaintext annotation?
 
 Yes. `c` is key-establishment material, not payload — it carries no plaintext, and ML-KEM is
 IND-CCA2 secure, so publishing `c` reveals nothing without the decapsulation key. Annotations being
 world-readable in etcd is therefore not a confidentiality problem here.
 
 Tampering is handled too, by two independent mechanisms — see
-[§7.6](#76-what-binds-the-annotation-to-the-envelope).
+[§7.6](#what-binds-the-annotation-to-the-envelope).
 
-### 7.6. What binds the annotation to the envelope
+### What binds the annotation to the envelope
 
 The KEM ciphertext lives in an annotation, and the KMS v2 contract is explicit that annotations are
 *"stored in plaintext in etcd"* with *"no guarantees against tampering"*. Two independent mechanisms
@@ -536,7 +536,7 @@ cannot attribute the failure to the AAD specifically — no real KEM lets you ho
 constant while changing `c` — so `TestMlkemAAD_BindsEnvelopeToKemCiphertext` isolates that as a unit
 test against a fixed AES-GCM key.
 
-## 8. What stays inside the HSM
+## What stays inside the HSM
 
 | Family     | Never leaves the HSM   | Performed inside the HSM | Present in plugin memory                               |
 |------------|------------------------|--------------------------|--------------------------------------------------------|
@@ -554,7 +554,7 @@ extractable.
 > the KMS v2 contract, which requires the plugin to return it to the apiserver in
 > `DecryptResponse.plaintext`.
 
-## 9. References
+## References
 
 | Document                                                                                                                       | Relevance                                                                                                                                                                  |
 |--------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -564,15 +564,15 @@ extractable.
 | [RFC 7518](https://datatracker.ietf.org/doc/html/rfc7518)                                                                      | JWA: `dir`, `RSA-OAEP`, `A128/192/256GCM`                                                                                                                                  |
 | [`k8s.io/kms/apis/v2`](https://pkg.go.dev/k8s.io/kms/apis/v2)                                                                  | The KMS v2 gRPC contract and its size limits                                                                                                                               |
 | [Kubernetes KMS provider guide](https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/)                             | How the apiserver configures and uses a KMS plugin: `EncryptionConfiguration`, socket setup, migration from KMS v1                                                         |
-| [KEP-3299: KMS v2 improvements](https://github.com/kubernetes/enhancements/tree/master/keps/sig-auth/3299-kms-v2-improvements) | Why KMS v2 looks the way it does: the DEK-seed/KDF model, `key_id` and staleness detection, `annotations`, and the size limits quoted in [§2](#2-the-kms-v2-wire-contract) |
+| [KEP-3299: KMS v2 improvements](https://github.com/kubernetes/enhancements/tree/master/keps/sig-auth/3299-kms-v2-improvements) | Why KMS v2 looks the way it does: the DEK-seed/KDF model, `key_id` and staleness detection, `annotations`, and the size limits quoted in [§2](#the-kms-v2-wire-contract) |
 
 The apiserver-side sequences — first startup, `DecryptRequest`, and key rotation — are drawn in
 [`docs/puml-diagrams/`](./puml-diagrams/) (`kmsv2-first-k8s-startup`, `kmsv2-decryptrequest`,
-`kmsv2-key-rotation`), rendered in [`README.md`](../README.md#22-deployment-scenarios-examples). The
+`kmsv2-key-rotation`), rendered in [`README.md`](../README.md#deployment-scenarios-examples). The
 `P11.Encrypt`/`Decrypt` class diagram for each family (`gcm-class`, `cbc-class`, `rsa-class`,
-`ml-kem-class`) lives in the same folder and is embedded inline in [§4](#4-aes-gcm)–[§7](#7-ml-kem)
+`ml-kem-class`) lives in the same folder and is embedded inline in [§4](#aes-gcm)–[§7](#ml-kem)
 above.
 
 To see any of these schemes on real data without a cluster, use
-[`scripts/grpcurl/`](../scripts/grpcurl/) — `grpcurl-roundtrip-test.sh` prints the JWE header (or the
+[`scripts/grpcurl/`](https://github.com/eclipse-keysealer/k8s-kms-plugin/tree/master/scripts/grpcurl/) — `grpcurl-roundtrip-test.sh` prints the JWE header (or the
 ML-KEM envelope breakdown), and `collect-jwe-samples.sh` walks every family in one run.
