@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Thales Group and the k8s-kms-plugin Contributors
 # SPDX-License-Identifier: MIT
 
-.PHONY: all lint lint-fix vet govulncheck build build-linux-amd64 build-linux-amd64-debug build-linux-arm64 build-linux-arm64-debug build-linux-riscv64 build-linux-riscv64-debug coverage test test-integration test-e2e fuzz doc notices image image-from-source release release-local-test get-ldflags clean
+.PHONY: all lint lint-fix vet govulncheck check-doc-links build build-linux-amd64 build-linux-amd64-debug build-linux-arm64 build-linux-arm64-debug build-linux-riscv64 build-linux-riscv64-debug coverage test test-integration test-e2e fuzz doc notices image image-from-source release release-local-test get-ldflags clean
 
 all: build-linux-amd64 build-linux-arm64 build-linux-riscv64
 
@@ -165,9 +165,20 @@ build-linux-riscv64-debug:
 		$(info will listen to port 2345)
 
 ## Docs
+# The generated markdown is committed, so this target is deliberately reproducible: running it
+# twice on the same tree produces byte-identical files, and a diff therefore means a real CLI
+# change. Build and CI-run provenance is added to the front matter only when --provenance is set,
+# which `k8s-kms-plugin docs` enables automatically when GITHUB_ACTIONS=true — the published
+# documentation records the exact run that built it without dirtying the committed tree.
 doc:
 		@go run -ldflags="$(GIT_INFO_LDFLAGS)" cmd/k8s-kms-plugin/main.go docs --output-dir docs/cli-user-interface/markdown/
 		@go run -ldflags="$(GIT_INFO_LDFLAGS)" cmd/k8s-kms-plugin/main.go docs --output-dir docs/cli-user-interface/txt/ --format cli-table-pretty
+
+# Verify every relative Markdown link and #anchor across README.md, CHANGELOG.md and docs/.
+# Anchors rot silently, so this is the check that catches a documentation restructure breaking
+# cross-references. External http(s) links are not fetched.
+check-doc-links:
+		@python3 scripts/check-doc-links.py
 
 ## Testing
 test:

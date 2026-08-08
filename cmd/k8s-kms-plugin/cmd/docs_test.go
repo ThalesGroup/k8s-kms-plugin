@@ -1,0 +1,184 @@
+// SPDX-FileCopyrightText: 2026 Thales Group and the k8s-kms-plugin Contributors
+// SPDX-License-Identifier: MIT
+
+package cmd
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+// nonCommandMarkdownPages are the markdown files generateCobraDocs writes itself, rather than
+// through cobra's command-tree walk. They get their front matter from writeMarkdownReadme and
+// flagTableFrontMatter, so buildDocPageMeta deliberately does not cover them.
+var nonCommandMarkdownPages = map[string]bool{
+	"README.md":            true,
+	"cli-env-var-table.md": true,
+}
+
+// TestBuildDocPageMetaCoversEveryGeneratedPage is the guard behind the error
+// genMarkdownTreeWithFrontMatter returns when a page has no computed front matter.
+//
+// buildDocPageMeta re-derives cobra's file names by hand, because filePrepender is handed a file
+// name and never the command it came from. That duplication can drift — a new subcommand, or a
+// change in how cobra names files — and the symptom would be a silently unstyled page that sorts
+// to the top of the sidebar. Generating the real tree and comparing the file names on disk against
+// the map keys is what makes the drift fail a test instead.
+func TestBuildDocPageMetaCoversEveryGeneratedPage(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, generateCobraDocs("markdown", dir, false))
+
+	entries, err := os.ReadDir(dir)
+	require.NoError(t, err)
+
+	meta := buildDocPageMeta(rootCmd)
+
+	var commandPages int
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") || nonCommandMarkdownPages[e.Name()] {
+			continue
+		}
+		commandPages++
+		assert.Contains(t, meta, e.Name(),
+			"cobra generated %q but buildDocPageMeta computed no front matter for it", e.Name())
+	}
+
+	assert.NotZero(t, commandPages, "no command pages were generated — the walk found nothing")
+	assert.Len(t, meta, commandPages, "buildDocPageMeta computed front matter for pages cobra never wrote")
+}
+
+// TestGeneratedMarkdownFrontMatterIsDeterministic pins the property that makes it safe to commit
+// the generated tree: without --provenance, two runs must be byte-identical. A timestamp or a
+// commit hash leaking into the output turns every `make doc` into a diff across the whole
+// directory and hides the CLI change the run was meant to show.
+func TestGeneratedMarkdownFrontMatterIsDeterministic(t *testing.T) {
+	first, second := t.TempDir(), t.TempDir()
+	require.NoError(t, generateCobraDocs("markdown", first, false))
+	require.NoError(t, generateCobraDocs("markdown", second, false))
+
+	entries, err := os.ReadDir(first)
+	require.NoError(t, err)
+	require.NotEmpty(t, entries)
+
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		a, err := os.ReadFile(filepath.Join(first, e.Name())) //nolint:gosec // test-controlled temp dir
+		require.NoError(t, err)
+		b, err := os.ReadFile(filepath.Join(second, e.Name())) //nolint:gosec // test-controlled temp dir
+		require.NoError(t, err)
+		assert.Equal(t, string(a), string(b), "%s differs between two runs", e.Name())
+	}
+}
+
+// TestGeneratedMarkdownCarriesNoVolatileDataByDefault checks the specific values known to have
+// leaked into the committed pages: the build timestamp, the commit hash, and the timestamped
+// --output-dir default that DefValue now masks.
+func TestGeneratedMarkdownCarriesNoVolatileDataByDefault(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, generateCobraDocs("markdown", dir, false))
+
+	entries, err := os.ReadDir(dir)
+	require.NoError(t, err)
+
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") {
+			continue
+		}
+		body, err := os.ReadFile(filepath.Join(dir, e.Name())) //nolint:gosec // test-controlled temp dir
+		require.NoError(t, err)
+		content := string(body)
+
+		assert.NotContains(t, content, "build_commit:", "%s carries provenance without --provenance", e.Name())
+		assert.NotContains(t, content, "ci_run_url:", "%s carries CI provenance without --provenance", e.Name())
+		// The real default is $TMPDIR/k8s-kms-plugin-docs-<RFC3339>; the placeholder must be
+		// what reaches the page.
+		assert.NotContains(t, content, "k8s-kms-plugin-docs-2",
+			"%s embeds a timestamped output-dir default", e.Name())
+	}
+}
+
+// TestCIProvenanceBuildsRunURL verifies the link back to the exact workflow run, including the
+// GitHub Enterprise case where the server is not github.com.
+func TestCIProvenanceBuildsRunURL(t *testing.T) {
+	t.Setenv("GITHUB_REPOSITORY", "eclipse-keysealer/k8s-kms-plugin")
+	t.Setenv("GITHUB_RUN_ID", "42")
+	t.Setenv("GITHUB_RUN_ATTEMPT", "3")
+	t.Setenv("GITHUB_WORKFLOW", "Docs")
+	t.Setenv("GITHUB_SERVER_URL", "https://ghe.example.com")
+
+	got := strings.Join(ciProvenance(), "\n")
+
+	assert.Contains(t, got, `ci_run_url: "https://ghe.example.com/eclipse-keysealer/k8s-kms-plugin/actions/runs/42"`)
+	assert.Contains(t, got, `ci_run_attempt: "3"`)
+	assert.Contains(t, got, `ci_workflow: "Docs"`)
+	assert.Contains(t, got, "build_version:")
+}
+
+// TestCIProvenanceOutsideCIOmitsRunKeys covers --provenance on a developer machine: the build
+// metadata is still useful, but there is no run to link to and no key may be invented.
+func TestCIProvenanceOutsideCIOmitsRunKeys(t *testing.T) {
+	t.Setenv("GITHUB_REPOSITORY", "")
+	t.Setenv("GITHUB_RUN_ID", "")
+
+	got := strings.Join(ciProvenance(), "\n")
+
+	assert.Contains(t, got, "build_commit:")
+	assert.NotContains(t, got, "ci_run_id:")
+	assert.NotContains(t, got, "ci_run_url:")
+}
+
+// TestYamlQuoteEscapesYAMLSignificantCharacters guards the front matter against a Short help
+// string that would otherwise produce an unparseable block. A colon is the realistic case; the
+// quote and backslash cases matter because the value is emitted double-quoted.
+func TestYamlQuoteEscapesYAMLSignificantCharacters(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"plain", "serve", `"serve"`},
+		{"colon", "note: this breaks plain YAML", `"note: this breaks plain YAML"`},
+		{"double quote", `say "hi"`, `"say \"hi\""`},
+		{"backslash", `C:\path`, `"C:\\path"`},
+		{"newline", "two\nlines", `"two\nlines"`},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, yamlQuote(tc.in))
+		})
+	}
+}
+
+// TestRenderFrontMatterOmitsEmptyDescription keeps a command with no Short help from emitting an
+// empty description key, which Hugo would surface as a blank page subtitle.
+func TestRenderFrontMatterOmitsEmptyDescription(t *testing.T) {
+	got := renderFrontMatter(docPageMeta{Title: "k8s-kms-plugin", Weight: 10}, false)
+
+	assert.Contains(t, got, `title: "k8s-kms-plugin"`)
+	assert.Contains(t, got, "weight: 10")
+	assert.NotContains(t, got, "description:")
+	assert.True(t, strings.HasPrefix(got, "---\n"), "front matter must open with ---")
+	assert.True(t, strings.HasSuffix(got, "---\n\n"), "front matter must close with --- and a blank line")
+}
+
+// TestBuildDocPageMetaWeightsAreStableAndOrdered checks that the index and flag table sort ahead
+// of the command pages, and that repeated walks assign identical weights.
+func TestBuildDocPageMetaWeightsAreStableAndOrdered(t *testing.T) {
+	first := buildDocPageMeta(rootCmd)
+	second := buildDocPageMeta(rootCmd)
+	assert.Equal(t, first, second, "weights must not depend on walk order between runs")
+
+	root, ok := first["k8s-kms-plugin.md"]
+	require.True(t, ok, "the root command page must be present")
+	assert.Greater(t, root.Weight, frontMatterWeightFlagTable,
+		"command pages must sort after the generated flag table")
+	assert.Greater(t, frontMatterWeightFlagTable, frontMatterWeightIndex,
+		"the flag table must sort after the index")
+}

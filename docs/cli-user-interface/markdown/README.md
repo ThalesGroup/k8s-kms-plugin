@@ -1,10 +1,14 @@
+---
+title: "CLI reference"
+description: "Auto-generated command reference for k8s-kms-plugin."
+weight: 1
+generator: "k8s-kms-plugin docs -f markdown"
+---
+
 # k8s-kms-plugin CLI Documentation
 
-This documentation is auto-generated from `k8s-kms-plugin`:
-
-- version `v1.0.0-rc4-6-g34aa5aa-dirty`
-- commit `34aa5aa6591910031dc6fae813638505aa8f2324`
-- build date 2026-08-06T09:28:20+00:00.
+This documentation is auto-generated from `k8s-kms-plugin`.
+Do not edit these files by hand: change the cobra command and run `make doc`.
 
 ## Available Command Documentation
 
@@ -20,4 +24,5 @@ This documentation is auto-generated from `k8s-kms-plugin`:
 - [k8s-kms-plugin_serve](k8s-kms-plugin_serve.md)
 - [k8s-kms-plugin_serve_rotation](k8s-kms-plugin_serve_rotation.md)
 - [k8s-kms-plugin_version](k8s-kms-plugin_version.md)
+
 ##### Auto Generated README.md file using `k8s-kms-plugin docs -f markdown`
