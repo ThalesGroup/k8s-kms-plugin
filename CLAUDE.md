@@ -73,6 +73,8 @@ runs the mutation engine (`FUZZTIME=60s` per target by default). A crashing inpu
 These write files that are committed, so re-run them when the underlying source changes:
 
 - `make doc` — after adding or changing any CLI flag or command (regenerates `docs/cli-user-interface/`)
+- `make glossary` — after editing `docs/termbase.yaml` (regenerates `docs/glossary.md`; `make
+  glossary-check` is the CI guard)
 - `make notices` — after changing dependencies (regenerates `NOTICES.md`)
 
 `make doc` is **reproducible**: two runs on the same tree produce byte-identical output, so any
@@ -130,6 +132,12 @@ the README back; add or extend a docs page and link it from the map.
   in `hugo.toml` — Hextra's default is `mermaid@latest`. `website/README.md` documents the offline
   build.
 - Hugo does **not** need the extended build (Hextra ships precompiled CSS).
+- The glossary is a Hugo **data** file, not Markdown: Hextra's `glossary` layout reads
+  `site.Data.<lang>.termbase` and ignores the page body. `docs/termbase.yaml` is the source (mounted
+  at `data/en/termbase.yaml`, excluded from the content mount) and `docs/glossary.md` is generated
+  from it so GitHub shows the terms too. Quote every YAML value — an unquoted `PKCS #11` silently
+  truncates at the `#`. Definitions must be Markdown-free: they go straight into `<dd>`. The
+  `{{</* term */>}}` shortcode must never appear in `docs/` — GitHub renders it verbatim.
 - Code fences carry Hextra attributes — `{filename="…",base_url="…",linenos=table,hl_lines=[…]}` —
   parsed by Hugo with no `markup.goldmark.parser.attribute` setting needed. GitHub keeps only the
   first word of the info string and silently drops the rest, so an attribute is a site-only

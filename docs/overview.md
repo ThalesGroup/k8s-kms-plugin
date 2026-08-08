@@ -3,21 +3,10 @@ title: "Concepts & Architecture"
 weight: 10
 ---
 
-## Definions & Accronyms 🔎
+## Definitions & Acronyms 🔎
 
-| Term         | Definition                               |
-|--------------|------------------------------------------|
-| **DEK**      | Data Encryption Key                      |
-| **HA**       | High Availability                        |
-| **HSM**      | Hardware Security Module                 |
-| **JOSE**     | JOSE JSON Objects Signing and Encryption |
-| **k3s**      | A Lightweight Kubernetes Distribution    |
-| **k8s**      | Kubernetes (short for)                   |
-| **KinD**     | Kubernetes in Docker (or Podman)         |
-| **KEK**      | Key Encryption Key                       |
-| **KMS**      | Key Management System                    |
-| **PKCS #11** | Public Key Cryptography Standard #11     |
-| **TPM**      | Trusted Platform Module                  |
+Every acronym and term used across this documentation is defined in the
+[Glossary](./glossary.md) — DEK, KEK, HSM, TPM, PKCS #11, JWE, KEM, ML-KEM and the rest.
 
 ## Overview 🔭
 

@@ -51,6 +51,7 @@ the main [`README.md`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/
 | Test the gRPC API without a cluster, or stage a `KinD` env  | [Helper tools & scripts](#helper-tools--scripts) below |
 | Debug the plugin                                            | [Debug Environment](./development.md#debug-environment-) |
 | Verify a release's signature or SLSA provenance             | [Supply Chain Security](./supply-chain-security.md) |
+| Look up an acronym or a term                                | [Glossary](./glossary.md) |
 
 ## Getting started
 
@@ -66,6 +67,7 @@ Then, as you need them:
 | Page | What it covers |
 |------|----------------|
 | [Installation](./installation.md) | Getting a release binary or package, verifying it, `go install`, building from source, container images |
+| [Glossary](./glossary.md) | Every acronym and term used here, from DEK and KEK to ML-KEM's encapsulation key |
 | [`CHANGELOG.md`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/CHANGELOG.md) | Release history |
 
 ## Concepts & architecture

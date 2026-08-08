@@ -1,0 +1,203 @@
+# Glossary source of truth.
+#
+# Hextra renders a glossary from a Hugo data file, so website/hugo.toml mounts this file at
+# data/en/termbase.yaml. Keeping it here rather than under website/ means the terms stay in docs/
+# with the rest of the documentation.
+#
+# docs/glossary.md is GENERATED from this file — run `make glossary` after editing, and commit both.
+# CI fails if they disagree.
+#
+# Fields:
+#   term        the expanded form, and the sort key. Required.
+#   abbr        the acronym, rendered as "term (abbr)". Optional.
+#   definition  plain prose, ONE line. No Markdown: the theme prints it verbatim into <dd>, so
+#               backticks and links would show up as literal characters on the site. No "|" either,
+#               it would break the generated Markdown table.
+#
+# Always double-quote every value. Two things go wrong otherwise, and only one of them is loud:
+# a colon followed by a space ("the scheme: ML-KEM-512") fails the parse, while a "#" preceded by a
+# space ("PKCS #11") silently starts a YAML comment and truncates the value.
+#
+# Both the site's <dl> and the generated table are sorted by term, so entries here may stay grouped
+# by topic — which is how they are kept, to make review easier.
+
+# ---------------------------------------------------------------- Kubernetes and KMS v2 ----------
+- term: "Kubernetes"
+  abbr: "k8s"
+  definition: "The container orchestrator whose API server calls this plugin to protect Secrets at rest."
+
+- term: "kube-apiserver"
+  definition: "The Kubernetes control-plane component that talks to the plugin. It derives and caches DEKs, encrypts the objects itself, and asks the plugin only to wrap the DEK seed."
+
+- term: "Key Management Service"
+  abbr: "KMS"
+  definition: "In Kubernetes, the provider interface kube-apiserver uses to delegate wrapping of data encryption keys to an external process. This plugin implements its version 2."
+
+- term: "KMS v2"
+  definition: "The second version of the Kubernetes KMS provider API, the only one this plugin implements. It is a gRPC service over a local unix socket with three RPCs, Status, Encrypt and Decrypt."
+
+- term: "Envelope encryption"
+  definition: "Encrypting data with a data key, then encrypting that data key with a second key held somewhere safer. Kubernetes KMS v2 is an envelope scheme, and this plugin performs only the second step."
+
+- term: "Data Encryption Key"
+  abbr: "DEK"
+  definition: "The symmetric key that actually encrypts a Kubernetes object. It is derived and cached inside kube-apiserver and never reaches the plugin."
+
+- term: "DEK seed"
+  definition: "The 32 bytes of key material kube-apiserver sends in an EncryptRequest and from which it derives the DEK. It is the only plaintext this plugin ever handles."
+
+- term: "Key Encryption Key"
+  abbr: "KEK"
+  definition: "The long-lived key that wraps the DEK seed. It lives on the TPM or HSM, is selected with --p11-key-label or --p11-key-id, and never leaves the token."
+
+- term: "EncryptionConfiguration"
+  definition: "The Kubernetes API server configuration file that names which resources to encrypt and which provider to use. It carries the plugin socket path and is passed with --encryption-provider-config."
+
+- term: "etcd"
+  definition: "The key-value store holding Kubernetes cluster state. It is what an attacker reads from a stolen disk or backup, and therefore what encryption at rest protects."
+
+- term: "Secret"
+  definition: "The Kubernetes object type most often encrypted at rest. The plugin never sees its contents."
+
+- term: "Annotations"
+  definition: "An opaque map of small values that KMS v2 stores next to a ciphertext and hands back on decryption. The ml-kem family uses it to carry the KEM ciphertext; the budget is shared across all annotations, keys included."
+
+- term: "Key rotation"
+  definition: "Moving from one KEK to another without losing access to data already written. The serve rotation subcommand serves a new KEK while still decrypting under the previous one, routing each request by its key_id."
+
+- term: "High Availability"
+  abbr: "HA"
+  definition: "A cluster with several control-plane nodes. Each node runs its own plugin instance, and all of them must use the same KEK."
+
+- term: "Kubernetes in Docker"
+  abbr: "KinD"
+  definition: "A local Kubernetes distribution that runs each node as a container. The socket needs two bind-mount hops to reach kube-apiserver, which is why it takes more wiring than k3s."
+
+- term: "k3s"
+  definition: "A single-binary Kubernetes distribution that runs kube-apiserver as an ordinary host process, so it reaches the plugin socket directly."
+
+# ------------------------------------------------------------------------ PKCS #11 layer ---------
+- term: "Public-Key Cryptography Standards #11"
+  abbr: "PKCS #11"
+  definition: "The OASIS C API for talking to cryptographic tokens. Every key operation in this plugin goes through it, which is also why the build needs cgo."
+
+- term: "Hardware Security Module"
+  abbr: "HSM"
+  definition: "A dedicated device that stores keys and performs cryptographic operations without ever exporting the private key material."
+
+- term: "Trusted Platform Module"
+  abbr: "TPM"
+  definition: "A cryptographic chip built into most machines. Exposed through a PKCS #11 module, it can hold the KEK without any extra hardware."
+
+- term: "SoftHSM"
+  definition: "A software PKCS #11 token used for development and testing. Version 3 is required for ml-kem because it implements PKCS #11 v3.2; version 2 covers the AES and RSA families."
+
+- term: "Token"
+  definition: "In PKCS #11, the object that holds keys, identified by its label. One HSM or TPM may present several."
+
+- term: "Slot"
+  definition: "In PKCS #11, the numbered position a token sits in. Only needed when a label does not identify a single token."
+
+- term: "PIN"
+  definition: "The secret that unlocks a PKCS #11 token. Enough failed attempts erase it, which is why the plugin sleeps indefinitely instead of exiting on an authentication error."
+
+- term: "CKA_ID"
+  definition: "The PKCS #11 attribute holding a key identifier, raw bytes on the token but a hex string everywhere in this plugin. It is what KMS v2 reports as key_id and what etcd stores alongside every ciphertext."
+
+- term: "CKA_LABEL"
+  definition: "The PKCS #11 attribute holding a human-readable key name. Selecting a key by label still requires the key to carry a CKA_ID, because that is what gets recorded in etcd."
+
+- term: "Mechanism"
+  definition: "In PKCS #11, the algorithm a key may be used with. It has to match the algorithm family the plugin is started with."
+
+- term: "cgo"
+  definition: "The Go facility for calling C code. The PKCS #11 bindings need it, so CGO_ENABLED=1 is required for every build and test of this project."
+
+# ------------------------------------------------------------------------------- Crypto ----------
+- term: "Algorithm family"
+  definition: "The wrapping scheme the plugin uses, chosen with --algorithm-family. One of aes-gcm, aes-cbc, rsa-oaep or ml-kem. Key size and parameter set are not configured, they are read from the key on the token."
+
+- term: "Advanced Encryption Standard"
+  abbr: "AES"
+  definition: "The block cipher behind the aes-gcm and aes-cbc families, and the one used to seal the seed in the ml-kem hybrid."
+
+- term: "Authenticated Encryption with Associated Data"
+  abbr: "AEAD"
+  definition: "Encryption that also detects tampering, and can bind unencrypted context into that guarantee. AES-GCM is the AEAD used here."
+
+- term: "Additional Authenticated Data"
+  abbr: "AAD"
+  definition: "Data covered by an AEAD authentication tag but not encrypted by it. The ml-kem family puts a version string and the KEM ciphertext there, which is what stops an attacker swapping the annotation."
+
+- term: "Initialisation vector"
+  abbr: "IV"
+  definition: "The per-message random block a CBC-mode cipher starts from. Sixteen bytes for AES-CBC, and it is stored in the JWE."
+
+- term: "Nonce"
+  definition: "A number used once. AES-GCM takes a 96-bit nonce, drawn from the HSM random generator on every wrap."
+
+- term: "Hash-based Message Authentication Code"
+  abbr: "HMAC"
+  definition: "A keyed integrity tag. The aes-cbc family needs a separate HMAC key because CBC alone is not authenticated."
+
+- term: "JSON Object Signing and Encryption"
+  abbr: "JOSE"
+  definition: "The family of IETF standards for representing keys, signatures and encrypted data as JSON. The gose library implements it for this plugin."
+
+- term: "JSON Web Encryption"
+  abbr: "JWE"
+  definition: "The JOSE format for encrypted content, defined in RFC 7516. The aes-gcm, aes-cbc and rsa-oaep families each emit one as their ciphertext; ml-kem does not."
+
+- term: "Optimal Asymmetric Encryption Padding"
+  abbr: "OAEP"
+  definition: "The padding scheme that makes RSA encryption safe. This plugin uses it with SHA-256."
+
+- term: "Key Encapsulation Mechanism"
+  abbr: "KEM"
+  definition: "A public-key primitive that generates a fresh shared secret and a ciphertext carrying it, rather than encrypting a chosen message. It takes no plaintext, which is why ml-kem has to be combined with an AEAD."
+
+- term: "Module-Lattice-Based Key-Encapsulation Mechanism"
+  abbr: "ML-KEM"
+  definition: "The post-quantum KEM standardised in FIPS 203, derived from CRYSTALS-Kyber. Available in three parameter sets, and the only family here that is not a JWE."
+
+- term: "FIPS 203"
+  definition: "The NIST standard defining ML-KEM. This project follows its vocabulary, so encapsulation key rather than public key."
+
+- term: "Encapsulation key"
+  abbr: "ek"
+  definition: "In ML-KEM, the key used to encapsulate. The classical analogue is a public key."
+
+- term: "Decapsulation key"
+  abbr: "dk"
+  definition: "In ML-KEM, the key used to recover the shared secret. The classical analogue is a private key, and it never leaves the HSM."
+
+- term: "KEM ciphertext"
+  definition: "FIPS 203's c, the output of encapsulation, from 768 to 1568 bytes depending on parameter set. It travels in the kem-ciphertext annotation, never in EncryptResponse.ciphertext."
+
+- term: "Shared secret key"
+  abbr: "K"
+  definition: "The 32 bytes both encapsulation and decapsulation produce. The plugin derives an AES key from it with KMAC rather than using it directly."
+
+- term: "KMAC"
+  definition: "The keyed hash function from NIST SP 800-185 used to derive the AES key from the ML-KEM shared secret. The parameter set name goes into its context string, so keys from different parameter sets cannot collide."
+
+- term: "Parameter set"
+  definition: "For ML-KEM, the size variant of the scheme: ML-KEM-512, ML-KEM-768 or ML-KEM-1024. It is read from the key on the token, never configured on the command line."
+
+# ------------------------------------------------------------------ Interfaces and tooling -------
+- term: "gRPC"
+  definition: "The RPC framework KMS v2 is defined in. This plugin serves it over a unix socket only, since that is all KMS v2 supports."
+
+- term: "grpcurl"
+  definition: "A command-line gRPC client. The scripts under scripts/grpcurl use it to exercise Status, Encrypt and Decrypt without a cluster."
+
+- term: "Supply-chain Levels for Software Artifacts"
+  abbr: "SLSA"
+  definition: "A framework for describing how trustworthy a build is. Releases here ship SLSA provenance that can be checked with slsa-verifier."
+
+- term: "Provenance"
+  definition: "A signed statement about how an artifact was built: which source, which builder, which workflow run. It is what lets you verify a binary came from this repository."
+
+- term: "Software Bill of Materials"
+  abbr: "SBOM"
+  definition: "An inventory of everything that went into a build. A full nested SBOM is planned but not published yet."

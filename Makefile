@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Thales Group and the k8s-kms-plugin Contributors
 # SPDX-License-Identifier: MIT
 
-.PHONY: all lint lint-fix vet govulncheck check-doc-links check-site site site-serve site-clean build build-linux-amd64 build-linux-amd64-debug build-linux-arm64 build-linux-arm64-debug build-linux-riscv64 build-linux-riscv64-debug coverage test test-integration test-e2e fuzz doc notices image image-from-source release release-local-test get-ldflags clean
+.PHONY: all lint lint-fix vet govulncheck glossary glossary-check check-doc-links check-site site site-serve site-clean build build-linux-amd64 build-linux-amd64-debug build-linux-arm64 build-linux-arm64-debug build-linux-riscv64 build-linux-riscv64-debug coverage test test-integration test-e2e fuzz doc notices image image-from-source release release-local-test get-ldflags clean
 
 all: build-linux-amd64 build-linux-arm64 build-linux-riscv64
 
@@ -180,6 +180,18 @@ DOC_FLAGS ?=
 doc:
 		@go run -ldflags="$(GIT_INFO_LDFLAGS)" cmd/k8s-kms-plugin/main.go docs --output-dir docs/cli-user-interface/markdown/ $(DOC_FLAGS)
 		@go run -ldflags="$(GIT_INFO_LDFLAGS)" cmd/k8s-kms-plugin/main.go docs --output-dir docs/cli-user-interface/txt/ --format cli-table-pretty $(DOC_FLAGS)
+
+# Regenerate docs/glossary.md from docs/termbase.yaml.
+#
+# The published site renders the glossary from the same YAML through Hextra's `glossary` layout,
+# which ignores the page body — the generated Markdown table exists so the terms also show up on
+# GitHub. Run this after editing termbase.yaml and commit both files; `glossary-check` is what CI
+# runs to make sure that happened.
+glossary:
+		@python3 scripts/gen-glossary.py
+
+glossary-check:
+		@python3 scripts/gen-glossary.py --check
 
 # Verify every relative Markdown link and #anchor across README.md, CHANGELOG.md and docs/.
 # Anchors rot silently, so this is the check that catches a documentation restructure breaking

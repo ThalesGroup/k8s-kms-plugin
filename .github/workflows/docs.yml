@@ -21,12 +21,14 @@ on:
       - 'docs/**'
       - 'website/**'
       - 'scripts/check-doc-links.py'
+      - 'scripts/gen-glossary.py'
       - '.github/workflows/docs.yml'
   pull_request:
     paths:
       - 'docs/**'
       - 'website/**'
       - 'scripts/check-doc-links.py'
+      - 'scripts/gen-glossary.py'
       - '.github/workflows/docs.yml'
   # Allows publishing on demand. Note that GitHub only offers this for workflows that exist on the
   # repository's default branch — a copy on a feature branch cannot be dispatched.
@@ -71,6 +73,12 @@ jobs:
 
       - name: Verify documentation links
         run: python3 scripts/check-doc-links.py
+
+      # docs/glossary.md is generated from docs/termbase.yaml, and the site renders the glossary from
+      # that same YAML through Hextra's layout. A stale Markdown mirror would therefore show GitHub
+      # readers a different glossary from the published one, with nothing else to catch it.
+      - name: Check the generated glossary is up to date
+        run: make glossary-check
 
       # The generated CLI reference is committed. If it is stale the published site would document
       # flags that no longer exist, so regenerate and fail on any difference. `make doc` is
