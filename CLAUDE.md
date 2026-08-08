@@ -94,10 +94,15 @@ derives ordering from the document tree, and the hand-written numbers had alread
 sync with the anchors pointing at them. Do not reintroduce `## 1.`-style numbering; ordering for the
 generated CLI pages comes from front-matter `weight`.
 
-Links from `docs/` to files *outside* the docs tree (`scripts/`, `deployments/`, `tools/`, Go
-source) are absolute `github.com/eclipse-keysealer/...` URLs on purpose: a published site serves
-only `docs/`, so a relative `../` link would 404 there. Links to `../README.md` are the known
-exception, still pending the README split.
+Links from `docs/` to files *outside* the docs tree (`scripts/`, `deployments/`, `tools/`, `Makefile`,
+Go source, and `README.md` itself) are absolute `github.com/eclipse-keysealer/...` URLs on purpose: a
+published site serves only `docs/`, so a relative `../` link would 404 there. Links *between*
+documentation pages stay relative. `docs/README.md` states both rules.
+
+`README.md` is a **front door only** (~90 lines): identity, badges, what the plugin is, the algorithm
+families, Quick Start, a documentation map, contributing, licence. The manual lives in `docs/` —
+`overview.md`, `installation.md`, `usage.md`, `development.md`, `supply-chain-security.md`. Don't grow
+the README back; add or extend a docs page and link it from the map.
 
 ## Architecture
 
