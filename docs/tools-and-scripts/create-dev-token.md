@@ -3,8 +3,8 @@ title: "create-dev-token"
 weight: 10
 ---
 
-> [!WARNING]
-> ⚠️ **Development / testing helper — not part of the `k8s-kms-plugin` deployable.** ⚠️
+> [!CAUTION]
+> **Development / testing helper — not part of the `k8s-kms-plugin` deployable.**
 > It provisions a throwaway token with **well-known PINs** and **fixed key IDs**.
 > Do **not** run it against a production HSM, and do **not** use the keys it
 > creates to protect real data. It ships as a pre-built convenience binary on the

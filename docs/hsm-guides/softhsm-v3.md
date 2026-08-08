@@ -147,6 +147,7 @@ GNUTLS_SO_PIN="0000" GNUTLS_PIN="1234" p11tool \
 
 ## Start `k8s-kms-plugin serve`
 
+> [!NOTE]
 > The token created by `create-dev-token` uses label `k8s-kms-plugin-dev` and PIN `1234`.
 > Adjust `--p11-lib`, `--p11-label`, `--p11-pin` to match your environment.
 

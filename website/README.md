@@ -80,6 +80,39 @@ weight: 45
 
 Run `make check-doc-links` after moving or renaming anything.
 
+## Alerts
+
+GitHub-style alerts work in **both** renderers, unlike the code-block attributes below: GitHub
+renders them natively and Hextra has a blockquote render hook for them. Prefer one over a blockquote
+opening with an emoji.
+
+```markdown
+> [!WARNING]
+> Without `PKCS11_MODULE` both suites exit immediately and successfully.
+```
+
+| Type | Hextra colour | Use it for |
+|------|---------------|------------|
+| `[!NOTE]` | blue | Context, rationale, status ("under construction", why a design choice was made) |
+| `[!TIP]` | green | An optional shortcut or an alternative tool |
+| `[!IMPORTANT]` | purple | A constraint the reader must satisfy to succeed |
+| `[!WARNING]` | amber | A trap that fails silently or misleads |
+| `[!CAUTION]` | red | Security or data-loss consequences |
+
+Four rules:
+
+- **Nothing else on the marker line.** A custom title (`> [!NOTE] My title`) is a Hugo feature that
+  GitHub does not implement: GitHub stops treating the block as an alert entirely and prints
+  `[!NOTE] My title` as ordinary blockquote text.
+- **Drop the emoji and the label.** The marker supplies both an icon and a "Warning"/"Note" heading,
+  so a leading ⚠️ or a `**Note**:` prefix just says it twice. A bold lead-in that carries real
+  content — `**RSA-4096 is close to the ceiling.**` — stays.
+- **Only the five types above.** Hextra emits a build warning for anything else and falls back to a
+  green box, which is easy to miss in a passing build.
+- **Not everything is an alert.** Quoted script output, an attribution, a table caption and this
+  documentation's 🙋 "manual step" markers are blockquotes on purpose — colouring them in costs the
+  real alerts their signal.
+
 ## Code block attributes
 
 Hugo parses a brace block in the fence info string and hands it to Hextra's codeblock render hook.

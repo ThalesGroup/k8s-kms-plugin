@@ -87,7 +87,8 @@ The YubiHSM 2 is a USB device. The YubiHSM 2 supports two different connection m
 
 
 
-> Note: The YubiHSM 2 corresponds to `k8s-kms-plugin`'s _USB HSM_ and _Network HSM_ scenarios, depending on which connection method is used.
+> [!NOTE]
+> The YubiHSM 2 corresponds to `k8s-kms-plugin`'s _USB HSM_ and _Network HSM_ scenarios, depending on which connection method is used.
 > 
 > ![](../images/k8s-kms-plugin-deployment-scenario-examples.svg)
 
@@ -95,8 +96,10 @@ The YubiHSM 2 is a USB device. The YubiHSM 2 supports two different connection m
 
 ### Using YubiHSM 2 with Network/HTTP-based Connector
 
+> [!CAUTION]
 > **This is not a production environment:** we will use HTTP without TLS for the connector enpoint. Please read the Yubico document for how to configure and manage your YubiHSM 2 in a secure way.
 
+> [!NOTE]
 > We assume the YubiHSM 2 was reseted to factory settings.
 
 Insert the YubiHSM 2 in one USB slot of your machine. In our case, we insert the YubiHSM 2 USB in our AlmaLinux 9.6 x86 machine, and we will start the `yubihsm-connector -d` and listen on localhost. For simplicity, the YubiHSM 2 is plugged on the same machine which will run the `k8s-kms-plugin`.
@@ -121,7 +124,8 @@ address=localhost
 port=12345
 ```
 
-> Note: But of course, you can plug the YubiHSM 2 and start the `yubihsm-connector` on another machine, as long as the client machine (the one on which the `k8s-kms-plugin` runs) can reach the `yubihsm-connector` HTTP endpoint.
+> [!NOTE]
+> You can also plug the YubiHSM 2 and start the `yubihsm-connector` on another machine, as long as the client machine (the one on which the `k8s-kms-plugin` runs) can reach the `yubihsm-connector` HTTP endpoint.
 >
 > You need to adjust the `yubihsm-connector` command to expose the port:
 > 
@@ -196,11 +200,13 @@ id: 0x0001, type: authentication-key, algo: aes128-yubico-authentication, sequen
 id: 0xabcd, type: asymmetric-key, algo: rsa4096, sequence: 0, label: rsa4096n001
 ```
 
-> Note: we can use `pkcs11-tool` to create the RSA key instead of using the `yubihsm-shell`:
+> [!TIP]
+> We can use `pkcs11-tool` to create the RSA key instead of using the `yubihsm-shell`:
 > https://docs.yubico.com/hardware/yubihsm-2/hsm-2-user-guide/hsm2-initial-provision-deploy-guide.html
 
 
->TODO Investigate: `key_id` max length seems to be 2 bytes / 16 bits. You get an error if using `0xabcd1234` > `Invalid argument 3: 0xabcd1234 (w:key_id)`.
+> [!NOTE]
+> TODO Investigate: `key_id` max length seems to be 2 bytes / 16 bits. You get an error if using `0xabcd1234` > `Invalid argument 3: 0xabcd1234 (w:key_id)`.
 
 Locate `yubihsm_pkcs11.so` on AlmaLinux:
 
@@ -211,6 +217,7 @@ rpm -ql yubihsm-shell | grep '\.so$'
 /usr/lib64/pkcs11/yubihsm_pkcs11.so
 ```
 
+> [!TIP]
 > Locate `yubihsm_pkcs11.so` on Debian
 > 
 > ```bash
@@ -242,7 +249,8 @@ Public Key Object; RSA 4096 bits
   uri:        pkcs11:model=YubiHSM;manufacturer=Yubico%20%28www.yubico.com%29;serial=13200103;token=YubiHSM;id=%abcd;object=rsa4096n001;type=public
 ```
 
-> Note: default password is the word `password`. In the `yubihsm-shell`, you can use `password`. But the password policy of the YubiHSM need 10 or 12 character minimum.
+> [!CAUTION]
+> The default password is the word `password`. In the `yubihsm-shell`, you can use `password`. But the password policy of the YubiHSM need 10 or 12 character minimum.
 > Adding 0001 seems to work. But of course in production environment, you need to change it. Refer to Yubico's documentation for details.
 
 Make sure you have a configuration file `yubihsm_pkcs11.conf` — or its env variable

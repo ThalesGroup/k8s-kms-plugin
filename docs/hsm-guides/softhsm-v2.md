@@ -3,7 +3,8 @@ title: "SoftHSMv2"
 weight: 20
 ---
 
-> ⚠️ **Legacy reference**: This guide is kept for backward compatibility. [`SoftHSMv3` (`pqctoday-hsm`)](./softhsm-v3.md) is now the recommended software HSM for development and integration testing — it supports all algorithm families including **ML-KEM**. SoftHSMv2 does **not** support ML-KEM.
+> [!NOTE]
+> **Legacy reference**: This guide is kept for backward compatibility. [`SoftHSMv3` (`pqctoday-hsm`)](./softhsm-v3.md) is now the recommended software HSM for development and integration testing — it supports all algorithm families including **ML-KEM**. SoftHSMv2 does **not** support ML-KEM.
 
 This guide describes how to set up [`SoftHSMv2`](https://github.com/softhsm/SoftHSMv2) and make it
 work with the `k8s-kms-plugin` in a **non production environment**.
@@ -171,6 +172,7 @@ curl -sfL https://get.k3s.io | K3S_DEBUG=true INSTALL_K3S_VERSION=v1.33.1+k3s1 s
 
 ## Using Env Vars Thanks to Viper
 
+> [!NOTE]
 > TODO: improve this section and harmonise the previous section to use viper's env vars
 
 Have a look at this [table](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/docs/cli-user-interface/txt/cli-env-var-table.txt) which explains how to use environment variables with the `k8s-kms-plugin`.

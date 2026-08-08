@@ -18,8 +18,9 @@ is what the project published. Running it, and wiring a cluster to it, are cover
 [KMS v2 API](https://pkg.go.dev/k8s.io/kms/apis/v2). See the upstream
 [KMS provider documentation](https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/).
 
-⚠️ `k8s-kms-plugin` **does not support KMS v1**, which is deprecated as of Kubernetes v1.28 and
-disabled by default since v1.29.
+> [!IMPORTANT]
+> `k8s-kms-plugin` **does not support KMS v1**, which is deprecated as of Kubernetes v1.28 and
+> disabled by default since v1.29.
 
 You also need a supported PKCS #11 provider holding at least one AES, RSA or ML-KEM key — see the
 [HSM & TPM guides](./hsm-guides/README.md), starting with
@@ -31,7 +32,8 @@ As of now, `k8s-kms-plugin`'s Github Action Build Recipe supports building `apk`
 Linux x86 platform. Check the different package artefacts from the [releases](https://github.com/eclipse-keysealer/k8s-kms-plugin/releases)
 tab.
 
-> 🚧 **Note**: The packages are not available on official repos yet.
+> [!NOTE]
+> The packages are not available on official repos yet.
 > And signature remains to be added in the CICD build recipe.
 > Therefore, this doc only shows local installation of the package.
 
@@ -162,7 +164,8 @@ slsa-verifier verify-artifact "${FILE}" \
   --source-tag "${TAG}"
 ```
 
-> ⚠️ Always pin the signing identity with `--certificate-identity` (or `--certificate-identity-regexp`)
+> [!CAUTION]
+> Always pin the signing identity with `--certificate-identity` (or `--certificate-identity-regexp`)
 > and the source with `--source-uri`. A signature verified without them only proves *somebody*
 > signed the file — which is not the question you are asking.
 
@@ -204,8 +207,9 @@ As with every other build method, do not install on musl libc if you intend to r
 
 ### Always Pin an Explicit Version
 
-⚠️ **Do not use `@latest` for now.** Go's `@latest` deliberately skips pre-releases, and the newest non-pre-release tag
-of this repository is still `v0.6.0` (February 2024). So `@latest` silently installs a two-year-old build:
+> [!WARNING]
+> **Do not use `@latest` for now.** Go's `@latest` deliberately skips pre-releases, and the newest non-pre-release tag
+> of this repository is still `v0.6.0` (February 2024). So `@latest` silently installs a two-year-old build:
 
 ```bash
 $ curl -s https://proxy.golang.org/github.com/eclipse-keysealer/k8s-kms-plugin/@latest
@@ -241,7 +245,8 @@ $ go version -m $(go env GOPATH)/bin/k8s-kms-plugin | head -3
 If you need `k8s-kms-plugin version` to report the real version, build with `make` instead (see
 [Build `k8s-kms-plugin` locally from Source with `make`](#build-k8s-kms-plugin-locally-from-source-with-make)) or download an official release artefact.
 
-> 💡 **`goenv` users**: if `go install` fails with `compile: version "goX.Y.Z" does not match go tool version "goX.Y.W"`,
+> [!TIP]
+> **`goenv` users**: if `go install` fails with `compile: version "goX.Y.Z" does not match go tool version "goX.Y.W"`,
 > your `GOROOT` environment variable is pinned to a different Go version than the `go` binary found on your `$PATH`.
 > Unset it (`env -u GOROOT go install ...`) and let the `go` command locate its own `GOROOT`.
 

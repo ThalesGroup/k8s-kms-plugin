@@ -81,7 +81,8 @@ The plugin sets one annotation on **every** `EncryptResponse`, regardless of fam
 |---------------------------------------------------------|--------------------------|------------------------------------|
 | `algorithm-family.k8s-kms-plugin.keysealer.eclipse.org` | e.g. `aes-gcm`, `ml-kem` | Informational / observability only |
 
-> 📌 `algorithm-family` is **not** used for dispatch. On `Decrypt` the plugin routes on its own
+> [!NOTE]
+> `algorithm-family` is **not** used for dispatch. On `Decrypt` the plugin routes on its own
 > configured `--algorithm-family`, not on the annotation, so a missing or altered value cannot
 > change how a ciphertext is interpreted.
 
@@ -129,7 +130,8 @@ The simplest family: the AES key on the HSM *is* the content encryption key.
 `alg: dir` is [RFC 7518 §4.5](https://datatracker.ietf.org/doc/html/rfc7518#section-4.5) direct
 encryption: there is no wrapped key, the shared symmetric key is used directly.
 
-> ⚠️ **Interoperability**: the serialisation produced here is the *legacy* gose JWE layout, not a
+> [!WARNING]
+> **Interoperability**: the serialisation produced here is the *legacy* gose JWE layout, not a
 > strictly RFC 7516-compliant Compact Serialization. These ciphertexts are meant to be read back by
 > `k8s-kms-plugin`, not by a third-party JOSE library.
 
@@ -253,7 +255,8 @@ RSAES-OAEP with **SHA-1** and `RSA-OAEP-256` as the SHA-256 variant. Since gose
 the header names the digest actually used, so — unlike the two AES families — **these JWEs are
 portable**: a conformant RFC 7518 recipient can unwrap the CEK.
 
-> 📌 **Reading data written before the upgrade.** Objects encrypted by earlier versions carry
+> [!NOTE]
+> **Reading data written before the upgrade.** Objects encrypted by earlier versions carry
 > `RSA-OAEP` in the header while the CEK is SHA-256-wrapped. The plugin therefore passes an
 > explicit `crypto.SHA256` to `Decrypt` rather than `crypto.Hash(0)` (which would derive the digest
 > from the header and fail on exactly those objects). Both old and new ciphertexts decrypt, and
@@ -274,7 +277,8 @@ Every row carries the same 265 B of JWE framing (protected header, IV, ciphertex
 segments); the wrapped CEK is the only part that grows with the key size, and base64url inflates it
 by ≈1.333× on the way into the JWE Encrypted Key segment.
 
-> ⚠️ **RSA-4096 is close to the ceiling.** At 93% there is ~76 B of headroom, and the figure is
+> [!WARNING]
+> **RSA-4096 is close to the ceiling.** At 93% there is ~76 B of headroom, and the figure is
 > driven by the modulus plus base64url expansion, not by anything configurable. This is the one
 > classical family where the KMS v2 1 kB cap is a real constraint.
 
@@ -334,7 +338,8 @@ Sizes for all three parameter sets, from FIPS 203 Table 3:
 | ML-KEM-768    | 1184 B            | 2400 B            | 1088 B     | 32 B              |
 | ML-KEM-1024   | 1568 B            | 3168 B            | 1568 B     | 32 B              |
 
-> 📌 **Why "ciphertext" twice?** FIPS 203 calls the output of `ML-KEM.Encaps` a *ciphertext*, and
+> [!NOTE]
+> **Why "ciphertext" twice?** FIPS 203 calls the output of `ML-KEM.Encaps` a *ciphertext*, and
 > KMS v2 calls the plugin's output a *ciphertext*. They are different things. Throughout this
 > plugin, **KEM ciphertext** always means FIPS 203's `c`, and it is carried in the
 > `kem-ciphertext` annotation — never in `EncryptResponse.ciphertext`.
@@ -407,7 +412,8 @@ string and the annotation, so it costs no bytes on the wire.
 Total annotation footprint is **1678 B** — keys (104 B) plus values (1574 B) — or **5% of the 32 kB
 budget**. ML-KEM-768 uses 1198 B and ML-KEM-512 uses 878 B.
 
-> 📐 The `annotations` limit applies to protobuf `bytes`, which is what those figures count. A
+> [!NOTE]
+> The `annotations` limit applies to protobuf `bytes`, which is what those figures count. A
 > `grpcurl` capture renders the same annotations as base64 and so reads larger — 2204 B for
 > ML-KEM-1024 — so do not read the sample captures below as sizes against the limit.
 > `collect-jwe-samples.sh` reports the decoded figure.
@@ -451,7 +457,8 @@ The 60-byte `ciphertext` and the parameter-set-sized annotation, per parameter s
 
 </details>
 
-> 📌 The parameter set is deliberately **not** recorded on the wire. It is recovered from the HSM key
+> [!NOTE]
+> The parameter set is deliberately **not** recorded on the wire. It is recovered from the HSM key
 > pair at decryption time, so an attacker cannot influence it by editing an annotation.
 
 ### Why the KEM ciphertext does not live in `ciphertext`
@@ -529,7 +536,8 @@ The version suffix in the context string domain-separates the envelope format: b
 to the binary layout, the KDF, or the AAD's field set, and a mismatched reader gets a clean
 authentication failure rather than silent misinterpretation.
 
-> ⚠️ **This is a data-at-rest format change.** Envelopes sealed before the AAD was introduced were
+> [!CAUTION]
+> **This is a data-at-rest format change.** Envelopes sealed before the AAD was introduced were
 > sealed with no AAD and will not open once it is required. It landed while `ml-kem` was pre-GA, so
 > nothing outside release candidates is affected.
 
@@ -553,7 +561,8 @@ plugin, so `K` is extracted from the HSM as a transient, extractable session obj
 derived key are zeroed as soon as the operation completes. The decapsulation key itself is never
 extractable.
 
-> 📌 In every family the decrypted DEK seed necessarily exists in plugin memory — that is inherent to
+> [!NOTE]
+> In every family the decrypted DEK seed necessarily exists in plugin memory — that is inherent to
 > the KMS v2 contract, which requires the plugin to return it to the apiserver in
 > `DecryptResponse.plaintext`.
 

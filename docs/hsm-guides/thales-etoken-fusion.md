@@ -7,7 +7,8 @@ This guide describes how to set up a Thales eToken Fusion with `k8s-kms-plugin` 
 
 ![](https://cpl.thalesgroup.com/sites/default/files/content/access-management/images/product-images/USB-CFusion-tokens.webp)
 
-> 🚧 Work in progress
+> [!NOTE]
+> Work in progress
 
 ## Testbed Environment
 

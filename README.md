@@ -25,10 +25,12 @@ operations run inside the HSM — see [Cryptographic Schemes](./docs/cryptograph
 
 This plugin will also run in proxy mode which can connect to a remote plugin service running in a secure network device (Key Managers)
 
-> ⚠️ **Droping support of KMS v1**: Newer (after 2025) version of the `k8s-kms-plugin` droped support for [Kubernetes KMSv1](https://pkg.go.dev/k8s.io/kms@v0.34.1/apis/v1beta1),
+> [!IMPORTANT]
+> **Droping support of KMS v1**: Newer (after 2025) version of the `k8s-kms-plugin` droped support for [Kubernetes KMSv1](https://pkg.go.dev/k8s.io/kms@v0.34.1/apis/v1beta1),
 > as KMSv1 is deprecated in Kubernetes v1.28 and disabled by default since Kubernetes v1.29.
 
-> 🚧 **Note**: This documentation is under construction and needs to be updated to remove/archive references to KMS v1 and
+> [!NOTE]
+> This documentation is under construction and needs to be updated to remove/archive references to KMS v1 and
 > document KMS v2 operations.
 
 # Part of Eclipse KeySealer

@@ -36,6 +36,7 @@ files and removes a stale socket left behind by a dead plugin. It does **not**
 start the plugin, create the cluster, or modify an existing one — it prints the
 commands to do so as next steps, adapted to the container runtime it detects.
 
+> [!WARNING]
 > An existing cluster keeps the mounts it was created with. After changing
 > `KMS_DEV_ROOT`, delete and recreate it: `kind delete cluster --name kms-dev`.
 

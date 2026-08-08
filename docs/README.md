@@ -5,7 +5,8 @@ title: "Documentation"
 This folder is the documentation index for [`k8s-kms-plugin`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/README.md). Start here when looking for a guide;
 the main [`README.md`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/README.md) is a short front door that links back here.
 
-> 📄 **Rendering**: these pages are rendered both by GitHub and by the documentation site
+> [!NOTE]
+> **Rendering**: these pages are rendered both by GitHub and by the documentation site
 > ([Hugo + Hextra](https://github.com/eclipse-keysealer/k8s-kms-plugin/tree/master/website)), which publishes `docs/` and nothing else. Three link
 > conventions keep them working in both places:
 >
@@ -210,8 +211,9 @@ podman run --rm -v "$PWD/docs/puml-diagrams:/data:z" -w /data \
   docker.io/plantuml/plantuml:latest -tsvg 'kmsv2-*.puml'
 ```
 
-⚠️ PlantUML names its output after the `@startuml "<name>"` title, **not** after the source file, so rename the
-results back to the tracked `kmsv2-*.sqce-diag.svg` names (or use the VS Code PlantUML extension, which keeps the
-source file name). The class diagrams (`cbc-class.puml`, `gcm-class.puml`, `rsa-class.puml`,
-`ml-kem-class.puml`) use an unnamed `@startuml`, so PlantUML already names their output after the source
-file and no renaming is needed.
+> [!WARNING]
+> PlantUML names its output after the `@startuml "<name>"` title, **not** after the source file, so rename the
+> results back to the tracked `kmsv2-*.sqce-diag.svg` names (or use the VS Code PlantUML extension, which keeps the
+> source file name). The class diagrams (`cbc-class.puml`, `gcm-class.puml`, `rsa-class.puml`,
+> `ml-kem-class.puml`) use an unnamed `@startuml`, so PlantUML already names their output after the source
+> file and no renaming is needed.

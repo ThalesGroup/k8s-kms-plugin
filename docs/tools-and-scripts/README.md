@@ -12,7 +12,8 @@ deployable: they exist to get a token, a cluster or a gRPC call in front of you 
 | [`grpcurl` round-trip scripts](./grpcurl-scripts.md) | Drive the KMS v2 API (`Status`, `Encrypt`, `Decrypt`) against a running plugin with no cluster involved, including a key-rotation round trip and a JWE sample collector | [`scripts/grpcurl/`](https://github.com/eclipse-keysealer/k8s-kms-plugin/tree/master/scripts/grpcurl/) |
 | [`KinD` staging script](./k8s-kind-scripts.md) | Stages the directories, `EncryptionConfiguration` and `kind.config.yaml` a `KinD` cluster needs, and prints the `serve` command to run | [`scripts/k8s-kind/`](https://github.com/eclipse-keysealer/k8s-kms-plugin/tree/master/scripts/k8s-kind/) |
 
-> ⚠️ **Development only.** `create-dev-token` uses well-known PINs and fixed `CKA_ID`s, and the
+> [!CAUTION]
+> **Development only.** `create-dev-token` uses well-known PINs and fixed `CKA_ID`s, and the
 > staging script writes throwaway configuration. Never point either at a production HSM or cluster.
 
 ## A typical loop

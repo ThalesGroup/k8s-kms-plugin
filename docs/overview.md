@@ -31,7 +31,8 @@ layered on the next:
   ([source](https://github.com/kubernetes/kms)) — the KMS v2 API and its gRPC protobuf definitions,
   on the other side of the plugin.
 
-> 🚧 Note: We will work on providing a full nested SBOM later.
+> [!NOTE]
+> We will work on providing a full nested SBOM later.
 
 The figure below sums up those dependencies, with the licence and maintainer of each:
 

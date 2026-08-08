@@ -3,7 +3,8 @@ title: "Software TPM Emulator"
 weight: 30
 ---
 
-> ⚠️ **Legacy reference**: This guide is kept for backward compatibility. [`SoftHSMv3` (`pqctoday-hsm`)](./softhsm-v3.md) is now the recommended software HSM for development and integration testing — it supports all algorithm families including **ML-KEM**. The Software TPM Emulator does **not** support ML-KEM.
+> [!NOTE]
+> **Legacy reference**: This guide is kept for backward compatibility. [`SoftHSMv3` (`pqctoday-hsm`)](./softhsm-v3.md) is now the recommended software HSM for development and integration testing — it supports all algorithm families including **ML-KEM**. The Software TPM Emulator does **not** support ML-KEM.
 
 This guide described how to set up [`Software TPM Emulator`](https://github.com/stefanberger/swtpm) and make it work with the `k8s-kms-plugin` in a **non production environment**.
 
@@ -57,6 +58,7 @@ WARNING: Needed CKA_VALUE but didn't find encrypted blob
   Access:     sensitive, always sensitive, never extractable, local
 ```
 
+> [!TIP]
 > On debian, you can find
 > 
 > ```bash

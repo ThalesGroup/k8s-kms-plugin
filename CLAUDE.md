@@ -132,6 +132,11 @@ the README back; add or extend a docs page and link it from the map.
   in `hugo.toml` — Hextra's default is `mermaid@latest`. `website/README.md` documents the offline
   build.
 - Hugo does **not** need the extended build (Hextra ships precompiled CSS).
+- GitHub-style alerts (`> [!NOTE]`, `TIP`, `IMPORTANT`, `WARNING`, `CAUTION`) render in **both**
+  places — natively on GitHub, through Hextra's blockquote hook on the site — so they are preferred
+  over a blockquote opening with an emoji, and the emoji/`**Note**:` label comes off when converting.
+  Nothing may follow the marker on its line: a custom title is Hugo-only and makes GitHub drop the
+  alert entirely. Only those five types exist; anything else is a build warning plus a green box.
 - The glossary is a Hugo **data** file, not Markdown: Hextra's `glossary` layout reads
   `site.Data.<lang>.termbase` and ignores the page body. `docs/termbase.yaml` is the source (mounted
   at `data/en/termbase.yaml`, excluded from the content mount) and `docs/glossary.md` is generated

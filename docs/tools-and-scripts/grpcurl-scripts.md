@@ -13,6 +13,7 @@ without needing a Kubernetes cluster.
 go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest
 ```
 
+> [!NOTE]
 > [`grpcurl`](https://github.com/fullstorydev/grpcurl) is also required by the **end-to-end test suite**
 > ([`test/e2e/`](https://github.com/eclipse-keysealer/k8s-kms-plugin/tree/master/test/e2e/)), which drives the same RPCs from Go — see
 > [Running the Tests](../development.md#running-the-tests).

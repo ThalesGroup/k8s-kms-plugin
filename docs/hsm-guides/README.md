@@ -29,7 +29,8 @@ Use these to try the plugin, and in CI — no hardware required.
 
 ## HSM & TPM Supported Platforms
 
-> 🚧 **Note**: This section will improve with reference to specific `k8s-kms-plugin` version once
+> [!NOTE]
+> This section will improve with reference to specific `k8s-kms-plugin` version once
 > the release & CICD are set up.
 
 The following table sums up the HSMs or TPMs that has been _officially_ tested & confirmed to work

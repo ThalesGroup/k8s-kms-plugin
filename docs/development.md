@@ -38,7 +38,8 @@ Two of them regenerate tracked files, so re-run them when the relevant source ch
 `PKCS11_PIN` is optional (default `1234`). ML-KEM tests need SoftHSMv3 — see [`docs/softhsm-v3.md`](./hsm-guides/softhsm-v3.md);
 the AES and RSA paths also work with SoftHSMv2.
 
-> ⚠️ Without `PKCS11_MODULE` both suites exit **immediately and successfully**, printing only a skip notice. A green
+> [!WARNING]
+> Without `PKCS11_MODULE` both suites exit **immediately and successfully**, printing only a skip notice. A green
 > run therefore does **not** mean the PKCS #11 paths were exercised — always check that the variable is set.
 
 **`grpcurl`** is required by the end-to-end suite only: it drives the KMS v2 gRPC API over the plugin's unix socket,
@@ -88,7 +89,8 @@ go mod tidy
 make build
 ```
 
-> ⚠️ Restore the published module versions in `go.mod` / `go.sum` before opening a pull request — branch
+> [!IMPORTANT]
+> Restore the published module versions in `go.mod` / `go.sum` before opening a pull request — branch
 > pseudo-versions must not reach `master`.
 
 ## Debug Environment 🐛

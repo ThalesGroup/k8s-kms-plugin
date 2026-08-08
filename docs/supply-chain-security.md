@@ -61,7 +61,8 @@ Findings land in the repository's **Security** tab (SARIF), without blocking the
 Because Dependabot also bumps GitHub Actions, the SHA pins used throughout the workflows stay current — one of the
 criteria Scorecard grades.
 
-> 🚧 **Note**: `govulncheck` covers the Go dependency tree only. The PKCS #11 library loaded at runtime
+> [!NOTE]
+> `govulncheck` covers the Go dependency tree only. The PKCS #11 library loaded at runtime
 > (SoftHSM, vendor middleware, …) is outside its reach and must be kept up to date by whoever operates the HSM.
 
 ## Release Signing & Attestations 📝
@@ -89,6 +90,7 @@ The pipeline then **verifies its own output** before finishing: the `verify-prov
 published assets and runs `slsa-verifier` against both the binaries and the image
 ([`verify-slsa`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/.github/actions/verify-slsa/action.yml)). A release that cannot be verified fails the workflow.
 
+> [!IMPORTANT]
 > The signing identity is the release workflow itself:
 > `https://github.com/eclipse-keysealer/k8s-kms-plugin/.github/workflows/release.yml@refs/tags/<tag>`.
 > Every verification command below pins that identity — this is what makes the signature meaningful, so never

@@ -9,9 +9,11 @@ encryption operations.
 The guide also explains the key rotation mechanism with `k8s-kms-plugin serve rotation` supported
 by [KMS v2](https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/).
 
-⚠️ **This guide is for testing purposes only. Do not use it in a production environment.**
+> [!CAUTION]
+> **This guide is for testing purposes only. Do not use it in a production environment.**
 
-> 🚧 Doc under construction
+> [!NOTE]
+> Doc under construction
 
 - [Kubernetes Requirements](#kubernetes-requirements)
 - [Kubernetes KMS v2 Sequence Diagram](#kubernetes-kms-v2-sequence-diagram)
@@ -25,7 +27,8 @@ by [KMS v2](https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/).
 
 `k8s-kms-plugin` is designed for kubernetes clusters that are using version v1.29 or higher and implements the[KMS v2 API](https://pkg.go.dev/k8s.io/kms/apis/v2).
 
-⚠️ `k8s-kms-plugin` **does not support KMS v1** which is deprecated in Kubernetes v1.28 and disabled by default since Kubernetes v1.29.
+> [!IMPORTANT]
+> `k8s-kms-plugin` **does not support KMS v1** which is deprecated in Kubernetes v1.28 and disabled by default since Kubernetes v1.29.
 
 This guide uses [`k3s`](https://k3s.io/) as a Kubernetes distribution, as `k3s` is easy to setup.
 In general, we make sure to explicitely set `INSTALL_K3S_VERSION`.
@@ -42,6 +45,7 @@ In general, we make sure to explicitely set `INSTALL_K3S_VERSION`.
 
 ### Run `k8s-kms-plugin serve` (no key rotation)
 
+> [!NOTE]
 > This section does not detail how to deploy & run the `k8s-kms-plugin`. See the other
 > documentation pages like [`SoftHSMv2`](../hsm-guides/softhsm-v2.md) or
 > [`Yubico YubiHSM 2`](../hsm-guides/yubico-yubihsm2.md) to run the `k8s-kms-plugin`. 
@@ -61,6 +65,7 @@ k8s-kms-plugin \
     --algorithm-family rsa-oaep
 ```
 
+> [!NOTE]
 > This example uses [`Software TPM Emulator`](https://github.com/stefanberger/swtpm).
 
 Then review the content of file [`encryption-conf-kmsv2-unix-socket.yaml`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/deployments/k8s/encryption-conf-kmsv2-unix-socket.yaml).
