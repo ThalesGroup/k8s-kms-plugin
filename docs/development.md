@@ -39,8 +39,8 @@ the AES and RSA paths also work with SoftHSMv2.
 > run therefore does **not** mean the PKCS #11 paths were exercised — always check that the variable is set.
 
 **`grpcurl`** is required by the end-to-end suite only: it drives the KMS v2 gRPC API over the plugin's unix socket,
-using the [KMS v2 `api.proto`](https://github.com/kubernetes/kms/blob/v0.34.1/apis/v2/api.proto) as the service
-definition — fetched into `scripts/grpcurl/` on first run, and git-ignored (the same approach as the
+using the [KMS v2 `api.proto`](https://pkg.go.dev/k8s.io/kms/apis/v2) as the service definition, resolved
+automatically at the `k8s.io/kms` version `go.mod` selects (the same approach as the
 [`scripts/grpcurl/`](https://github.com/eclipse-keysealer/k8s-kms-plugin/tree/master/scripts/grpcurl/) helper scripts, which additionally need `jq`). Unlike a missing
 `PKCS11_MODULE`, a missing `grpcurl` makes the tests **fail** rather than skip.
 

@@ -11,8 +11,15 @@ go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest
 ```
 
 > [`grpcurl`](https://github.com/fullstorydev/grpcurl) is also required by the **end-to-end test suite**
-> ([`test/e2e/`](../../test/e2e/)), which drives the same RPCs from Go using
-> [`api.proto`](./api.proto) — see [README 5.1. Running the Tests](../../README.md#51-running-the-tests).
+> ([`test/e2e/`](../../test/e2e/)), which drives the same RPCs from Go — see
+> [Running the Tests](../../docs/development.md#running-the-tests).
+
+**`api.proto`**: these scripts resolve the KMS v2 service definition themselves, at the `k8s.io/kms`
+version `go.mod` selects — from the Go module cache when it is populated, otherwise downloaded to a
+temp file. Nothing is written into this directory. See [`lib-api-proto.sh`](./lib-api-proto.sh).
+
+Set `KMS_PROTO_VERSION` to pin a different release (for example `KMS_PROTO_VERSION=v0.34.1`) when
+testing against a version the repository does not build against yet.
 
 ---
 
@@ -296,7 +303,7 @@ For `aes-gcm` / `aes-cbc` / `rsa-oaep` this is a JWE Compact Serialization; for
 `ml-kem` it is a plain binary envelope (`nonce || AES-256-GCM-sealed seed`,
 ~60 B) with the raw ML-KEM encapsulation ciphertext carried separately in a
 `kem-ciphertext` annotation — the split that keeps ML-KEM under the 1 kB limit in the
-first place. See [`3.4. ML-KEM`](../../docs/softhsm-v3.md#34-ml-kem) for how
+first place. See [ML-KEM](../../docs/softhsm-v3.md#ml-kem) for how
 to provision an ML-KEM key to exercise that case.
 
 Unlike the round-trip scripts above, this one starts and stops the plugin

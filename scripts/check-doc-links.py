@@ -34,7 +34,15 @@ REPO = Path(__file__).resolve().parent.parent
 
 # Directories whose Markdown is generated and therefore not hand-maintained. They are still
 # *checked*, but they are not walked for extra input paths beyond the defaults below.
-DEFAULT_PATHS = [Path("README.md"), Path("CHANGELOG.md"), Path("docs")]
+DEFAULT_PATHS = [
+    Path("README.md"),
+    Path("CHANGELOG.md"),
+    Path("docs"),
+    # scripts/ and tools/ carry their own READMEs that link back into docs/. Leaving them out is
+    # how a stale ../../README.md#51-running-the-tests anchor survived the de-numbering pass.
+    Path("scripts"),
+    Path("tools"),
+]
 
 MD_LINK = re.compile(r"\[(?:[^\]]*)\]\(\s*(?P<url>[^)\s]+?)\s*\)")
 HEADING = re.compile(r"^#{1,6}\s+(?P<text>.*?)\s*$")
@@ -96,7 +104,7 @@ def markdown_files(paths: list[Path]) -> list[Path]:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("paths", nargs="*", type=Path, default=DEFAULT_PATHS,
-                    help="files or directories to check (default: README.md CHANGELOG.md docs/)")
+                    help="files or directories to check (default: README.md CHANGELOG.md docs/ scripts/ tools/)")
     ap.add_argument("--quiet", action="store_true", help="only print on failure")
     args = ap.parse_args()
 

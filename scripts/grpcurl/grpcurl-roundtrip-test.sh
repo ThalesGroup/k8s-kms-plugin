@@ -85,13 +85,11 @@ print_ciphertext_info() {
   fi
 }
 
-API_PROTO_URL="https://raw.githubusercontent.com/kubernetes/kms/refs/tags/v0.34.1/apis/v2/api.proto"
-if [[ ! -f api.proto ]]; then
-  echo "api.proto file not found. Downloading protobufer API file from ${API_PROTO_URL}..."
-  curl -sSL -o api.proto "${API_PROTO_URL}"
-else
-  echo "Using existing api.proto. If you want to update it, please remove this file."
-fi
+# Resolve the KMS v2 api.proto matching the k8s.io/kms version this repo builds against, rather
+# than a tag pinned here by hand — see lib-api-proto.sh for why that mattered. Sets API_PROTO.
+# shellcheck source=scripts/grpcurl/lib-api-proto.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/lib-api-proto.sh"
+resolve_api_proto
 
 # ---- Parse user input ----
 PLAINTEXT="${1:-}"
@@ -133,7 +131,7 @@ STATUS_REQUEST='{}'
 
 STATUS_RESPONSE=$(grpcurl \
   -plaintext \
-  -proto api.proto \
+  -proto "$API_PROTO" \
   -d "$STATUS_REQUEST" \
   -unix \
   unix://"$SOCKET" \
@@ -156,7 +154,7 @@ ENCRYPT_REQUEST="{\"plaintext\": \"$PLAINTEXT_BASE64\", \"uid\": \"test-enc-1\"}
 
 ENCRYPT_RESPONSE=$(grpcurl \
   -plaintext \
-  -proto api.proto \
+  -proto "$API_PROTO" \
   -d "$ENCRYPT_REQUEST" \
   -unix \
   unix://"$SOCKET" \
@@ -196,7 +194,7 @@ DECRYPT_REQUEST=$(echo "$ENCRYPT_RESPONSE" | jq -c --arg uid "test-dec-1" --arg 
 
 DECRYPT_RESPONSE=$(grpcurl \
   -plaintext \
-  -proto api.proto \
+  -proto "$API_PROTO" \
   -d "$DECRYPT_REQUEST" \
   -unix \
   unix://"$SOCKET" \

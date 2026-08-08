@@ -268,18 +268,31 @@ k8s-kms-plugin \
 above. See [`CKA_ID` vs `CKA_LABEL`](./cli-user-interface/cka-id-vs-cka-label.md) for how the two are
 resolved.
 
-Now fetch the protobuf API file `api.proto` from https://github.com/kubernetes/kms:
+`grpcurl` needs the KMS v2 service definition, `api.proto`. Take it from the Go module cache, so it
+matches the `k8s.io/kms` version the plugin was built against — a proto from another release would
+have you exercising a contract the binary does not serve:
 
 ```bash
-wget https://raw.githubusercontent.com/kubernetes/kms/refs/tags/v0.34.1/apis/v2/api.proto
+API_PROTO="$(go list -m -f '{{.Dir}}' k8s.io/kms)/apis/v2/api.proto"
 ```
+
+If the module cache is empty, run `go mod download k8s.io/kms` first, or download the matching tag:
+
+```bash
+KMS_VERSION="$(go list -m -f '{{.Version}}' k8s.io/kms)"
+wget "https://raw.githubusercontent.com/kubernetes/kms/refs/tags/${KMS_VERSION}/apis/v2/api.proto"
+API_PROTO=api.proto
+```
+
+The [`scripts/grpcurl/`](https://github.com/eclipse-keysealer/k8s-kms-plugin/tree/master/scripts/grpcurl/)
+helpers do this for you.
 
 Now you can test a **StatusRequest** with `grpcurl`:
 
 ```bash
 grpcurl \
     -plaintext \
-    -proto api.proto \
+    -proto "$API_PROTO" \
     -d '{}' \
     -unix \
     unix:///run/user/1000/k8s-kms-plugin.sock \
@@ -301,7 +314,7 @@ Test an **EncryptRequest**:
 ```bash
 grpcurl \
     -plaintext \
-    -proto api.proto \
+    -proto "$API_PROTO" \
     -d '{"plaintext": "aGVsbG8gd29ybGQ=", "uid": "mock-123"}' \
     -unix \
     unix:///run/user/1000/k8s-kms-plugin.sock \
@@ -320,7 +333,7 @@ Test a **DecryptRequest**:
 ```bash
 grpcurl \
     -plaintext \
-    -proto api.proto \
+    -proto "$API_PROTO" \
     -d '{"ciphertext": "ZXlKaGJHY2lPaUpTVTBFdFQwRkZVQ0lzSW10cFpDSTZJamd3TkRFME1qQTFaR05qT1dKbU9XUTRaV1prWkdRMk5XUmpPVE15TWpnM1lURm1aamRsTUdZd1pUTmlNRGxqTldWaE1UWmpPVEU1TW1FMU1HVXdOellpTENKMGVYQWlPaUpLVjFRaUxDSmpkSGtpT2lKS1YxUWlMQ0psYm1NaU9pSkJNalUyUjBOTkluMC5yR3pHMmhJekVUN3IybHBTZk9hZUdZem93U3JsbjlfblBkZGdGTjFYZFFUc3VLUmE3U1JtRW9hQTBsSjE3UDYwQ2NZYWRCbWNvM1M3a2gxMG1nMmVSXzhTeDlkNElKcWRTX1RzVC00OFhQcklUYkNVcTRnTHh5dXhRcTVoREYxOFVwdFFxWmxUdFlMM3FKRjNHd2toUVNBS2stQVBFWXdGcUpfT0Z3NllxcU00YllyYlMtRVhMRllSUnVYWVM3VlJ0Y2VPdEFJUVJkLXFFdFVVc2ZPU19FZFdfdDBxS244aVdEb2FDSDNLUFZlZzB1MHg4ZUI0WjJ0bW1KRDRYeGZ2dlZNQm1XZXdYTTg3QldBTkh6TjNIU1FOc0FTQm9RcWxBLU04b0lIbWdXb1l6TUNqTTVkNkVJR3pkWmRSRmpQdnA2bGRucGJMUGNmeHZwUWxMM254dHlPaFRRd3JpclNhZ2Y1Wk1UcDVrRU94bXNoamQ5Vnc5SFFJM2NBc0JPSDBZblBacXlrM1U1UGU1a3h1RTU5M1dhM2JxMmRDQTNLaGxIYzRpQkRLWms3RUMtMERVYU5MU0ZIdzdtZFFDVy04d1YxV2tlWS14SjNtYUZUVC1XU1RxYkhyQXFyV29vakhITmo3QmRZNmxEcHVWT2FkU283R19naW1UWXlXc3dvcEhJem9jLVJaaFJCR1RPTU1HWXRmTUR4NkhtVmJpV1AxWVZnd0JVZzNnZWtMQ2NJYmxRQmdNczY5aXhRNWN2eDQxY25fR055aUNmVXQzTFlkUjF6Tl9FZnNicWFiVDZiS3JFaTlmbG9EeFh6YWIweC1qR3NjSm1ycEF4ZkJ1R3hpQk9VMzctMXViNDJmOUtsSzV3LW4tbm84UDZHcWdXMkx6UGxqM05NTmlXYy5fOExFeElZYXc3bV9fbWh6LkF4ZVFZRGx2ZlZwUFBFdy5mVlgzVDdER3I0TzVGRDRaX1lORUhR", "uid": "test-dec-1", "key_id":"abcd"}' \
     -unix \
     unix:///run/user/1000/k8s-kms-plugin.sock \

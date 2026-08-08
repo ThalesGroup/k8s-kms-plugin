@@ -36,7 +36,10 @@ P11_PIN="${P11_PIN:-1234}"
 OUT_DIR="${OUT_DIR:-jwe-samples}"   # git-ignored; see .gitignore
 PLAINTEXT="${PLAINTEXT:-kms-v2-dek-seed-0123456789abcdef}"
 LIMIT="${LIMIT:-1024}"          # apiserver ciphertext ceiling; try 1000 to compare
-PROTO_TAG="${PROTO_TAG:-v0.34.1}"
+# PROTO_TAG is the historical name for this override; KMS_PROTO_VERSION is what lib-api-proto.sh
+# reads. Left as an alias so existing invocations keep working. Unset by default: the version is
+# resolved from go.mod rather than pinned here.
+KMS_PROTO_VERSION="${KMS_PROTO_VERSION:-${PROTO_TAG:-}}"
 ONLY=""
 KEEP_GOING=false
 FULL_CIPHERTEXT=false
@@ -49,7 +52,8 @@ LOG_LEVEL="${LOG_LEVEL:-info}"
 LOG_FLAG_POSITION=""      # discovered on first successful start, then reused
 STARTUP_TIMEOUT="${STARTUP_TIMEOUT:-20}"
 
-API_PROTO_URL="https://raw.githubusercontent.com/kubernetes/kms/refs/tags/${PROTO_TAG}/apis/v2/api.proto"
+# shellcheck source=scripts/grpcurl/lib-api-proto.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/lib-api-proto.sh"
 
 usage() {
   cat <<EOF
@@ -170,11 +174,9 @@ fi
 [[ -f "$SOFTHSM2_CONF" ]] || { echo "❌ SOFTHSM2_CONF points at a missing file: $SOFTHSM2_CONF" >&2; exit 1; }
 
 mkdir -p "$OUT_DIR"
-PROTO_FILE="api.proto"
-if [[ ! -f "$PROTO_FILE" ]]; then
-  echo "⬇️  Fetching KMS v2 api.proto (${PROTO_TAG})"
-  curl -sSL -o "$PROTO_FILE" "$API_PROTO_URL"
-fi
+# Sets API_PROTO and API_PROTO_VERSION.
+resolve_api_proto
+PROTO_FILE="$API_PROTO"
 
 SOCKET_DIR="$(mktemp -d /tmp/kms-jwe-samples.XXXXXX)"
 SOCKET="$SOCKET_DIR/plugin.sock"
@@ -724,7 +726,7 @@ fi
   echo
   echo "\`EncryptResponse\` and \`DecryptRequest\` messages captured from"
   echo "\`k8s-kms-plugin\` for each supported KEK algorithm, as rendered by"
-  echo "\`grpcurl\` against the KMS v2 gRPC API (\`api.proto\` ${PROTO_TAG})."
+  echo "\`grpcurl\` against the KMS v2 gRPC API (\`api.proto\` ${API_PROTO_VERSION})."
   echo
   echo "Payload: ${#PLAINTEXT} B. Assumed \`EncryptResponse.ciphertext\` limit: ${LIMIT} B."
   if $FULL_CIPHERTEXT; then
