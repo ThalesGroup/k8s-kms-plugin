@@ -5,8 +5,6 @@ weight: 1
 generator: "k8s-kms-plugin docs -f markdown"
 ---
 
-# k8s-kms-plugin CLI Documentation
-
 This documentation is auto-generated from `k8s-kms-plugin`.
 Do not edit these files by hand: change the cobra command and run `make doc`.
 

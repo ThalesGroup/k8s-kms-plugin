@@ -1,4 +1,7 @@
-# [`SoftHSMv3` (`pqctoday-hsm`)](https://github.com/pqctoday-org/pqctoday-hsm)
+---
+title: "SoftHSMv3 (pqctoday-hsm)"
+weight: 51
+---
 
 This guide describes how to set up [`SoftHSMv3`](https://github.com/pqctoday-org/pqctoday-hsm) (`pqctoday-hsm`) and make it
 work with the `k8s-kms-plugin` in a **non production environment**.

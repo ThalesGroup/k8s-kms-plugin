@@ -1,4 +1,7 @@
-# Thales eToken Fusion
+---
+title: "Thales eToken Fusion"
+weight: 54
+---
 
 This guide describes how to set up a Thales eToken Fusion with `k8s-kms-plugin` in a **non production environment**.
 

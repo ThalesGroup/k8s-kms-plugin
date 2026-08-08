@@ -1,4 +1,6 @@
-# `k8s-kms-plugin` Documentation 📚
+---
+title: "Documentation"
+---
 
 This folder is the documentation index for [`k8s-kms-plugin`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/README.md). Start here when looking for a guide;
 the main [`README.md`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/README.md) is a short front door that links back here.

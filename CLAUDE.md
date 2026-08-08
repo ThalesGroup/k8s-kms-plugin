@@ -28,6 +28,9 @@ make lint-fix           # auto-fix the mechanically-fixable findings
 make vet                # same check as CI
 make coverage           # -> build/coverage.html
 make govulncheck        # reachability-aware vuln scan (same as CI)
+make check-doc-links    # relative links and #anchors across the docs
+make site-serve         # documentation site at localhost:1313/k8s-kms-plugin/
+make site               # documentation site -> website/public/
 ```
 
 CI (`.github/workflows/ci.yml`) runs exactly `go vet ./...`, `go build ./...`, `go test -count=1 ./...`.
@@ -103,6 +106,34 @@ documentation pages stay relative. `docs/README.md` states both rules.
 families, Quick Start, a documentation map, contributing, licence. The manual lives in `docs/` —
 `overview.md`, `installation.md`, `usage.md`, `development.md`, `supply-chain-security.md`. Don't grow
 the README back; add or extend a docs page and link it from the map.
+
+### Documentation site (Hugo + Hextra)
+
+`website/` holds the site config; **the content stays in `docs/`** and is *mounted* by
+`website/hugo.toml`, so `docs/` remains the single source of truth and keeps rendering on GitHub.
+`.github/workflows/docs.yml` builds it on PRs and publishes to GitHub Pages from `master`.
+`website/README.md` is the reference; the load-bearing details:
+
+- Every docs page needs front matter (`title`, `weight`) and **no `# H1` in the body** — Hextra
+  renders the title as the page heading, so a body H1 shows it twice. Adding one is caught by
+  building the site, not by any test.
+- `markup.goldmark.renderer.unsafe = true` is **required**: Goldmark silently discards raw HTML, and
+  the docs use `<details>` for collapsible sections. Losing it drops those blocks with no error.
+- Mount `files` patterns need `'! foo'` **with the space**, and exclusions must come **before** the
+  catch-all `'**'` — Hugo returns on the first match, so a leading `'**'` disables every exclusion
+  after it. Neither mistake warns.
+- A `README.md` is not a section index to Hugo; each one is excluded from the bulk mount and
+  re-mounted as `_index.md`. A new docs subdirectory with a README needs its own mount.
+- The theme is a Hugo Module pinned in `website/go.mod`, deliberately separate from the plugin's
+  `go.mod` so it never reaches `go mod tidy`, `NOTICES.md` or `govulncheck`.
+- Mermaid and FlexSearch are fetched at build time and re-served with SRI hashes, at versions pinned
+  in `hugo.toml` — Hextra's default is `mermaid@latest`. `website/README.md` documents the offline
+  build.
+- Hugo does **not** need the extended build (Hextra ships precompiled CSS).
+
+`make doc` follows `GITHUB_ACTIONS` for provenance, so CI's "is the CLI reference up to date" check
+must pass `DOC_FLAGS=--provenance=false`; otherwise the commit hash it just stamped in guarantees a
+diff.
 
 ## Architecture
 

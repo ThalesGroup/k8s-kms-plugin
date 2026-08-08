@@ -1,4 +1,7 @@
-# Development & Debugging
+---
+title: "Development & Debugging"
+weight: 70
+---
 
 ## Development Environment 🔬
 

@@ -1,4 +1,7 @@
-# Documentation, Usage & User Guides 📚
+---
+title: "Usage & User Guides"
+weight: 30
+---
 
 📚 **All user guides live in [`docs/`](./README.md)** — that page is the documentation index: HSM & TPM setup,
 Kubernetes integration, CLI reference, helper tools and diagrams. This section only covers what is specific to
@@ -22,7 +25,7 @@ running the CLI, plus the table of tested platforms.
 | Make a Kubernetes cluster use the plugin                | [`docs/` → Kubernetes integration guides](./README.md#kubernetes-integration-guides) |
 | Know which algorithm families were tested on my device  | [HSM & TPM Supported Platforms](#hsm--tpm-supported-platforms)                     |
 | Look up a command, a flag or its environment variable   | [`docs/` → CLI reference](./README.md#cli-reference), and [User Input Priority: CLI > Env Vars > Config File > Default](#user-input-priority-cli--env-vars--config-file--default) below |
-| Install a package or build from source                  | [Installation 🔧](./installation.md#installation-)                                                     |
+| Install a package or build from source                  | [Installation](./installation.md)                                                     |
 | Test the gRPC API without a cluster, or stage a `KinD` env | [`docs/` → Helper tools & scripts](./README.md#helper-tools--scripts)             |
 | Debug the plugin                                        | [Debug Environment 🐛](./development.md#debug-environment-)                                            |
 

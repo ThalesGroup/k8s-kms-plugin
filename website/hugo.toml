@@ -1,0 +1,175 @@
+# SPDX-FileCopyrightText: 2026 Thales Group and the k8s-kms-plugin Contributors
+# SPDX-License-Identifier: MIT
+#
+# Hugo configuration for the k8s-kms-plugin documentation site (Hugo + Hextra).
+#
+# The site lives in this subdirectory rather than at the repository root for one reason: Hugo
+# Modules are Go modules, so a root-level Hugo project would add the theme to the plugin's own
+# go.mod — where it would reach `go mod tidy`, NOTICES.md and govulncheck, none of which should
+# know about a documentation theme. Keeping it here gives the site its own go.mod and leaves the
+# plugin's module graph untouched.
+#
+# Content is *mounted* from ../docs rather than copied, so docs/ stays the single source of truth
+# and keeps rendering on GitHub. See [[module.mounts]] below.
+#
+# Build:
+#   make site-serve    # http://localhost:1313/k8s-kms-plugin/
+#   make site          # -> website/public/
+
+baseURL = 'https://eclipse-keysealer.github.io/k8s-kms-plugin/'
+title = 'k8s-kms-plugin'
+locale = 'en-us'
+
+# GitHub Pages serves a project site from a subpath (/k8s-kms-plugin/), so every asset and link has
+# to carry it. Hugo derives that from baseURL; relativeURLs additionally keeps the output working
+# when the site is opened from somewhere else, such as a PR preview.
+relativeURLs = true
+
+# This is a documentation site: tag and category term pages would be empty and only add noise to
+# the sitemap. Must stay at the top level — nested under [module] it is silently ignored.
+disableKinds = ['taxonomy', 'term']
+
+[module]
+  # Hextra requires Hugo 0.146.0 or newer. Not the extended build: Hextra v0.12.x ships its
+  # Tailwind CSS precompiled under assets/css/compiled/, so there is no SCSS to transpile.
+  [module.hugoVersion]
+    extended = false
+    min = '0.146.0'
+
+  [[module.imports]]
+    path = 'github.com/imfing/hextra'
+
+  # Mount ../docs as the documentation section.
+  #
+  # Hugo recognises only _index.md as a section index, so every README.md is excluded from the bulk
+  # mount and re-mounted under that name. Keeping README.md on disk is deliberate: it is what GitHub
+  # renders when browsing to the directory.
+  #
+  # PlantUML and drawio sources are excluded: the pages embed the committed .svg renderings, so
+  # shipping the sources would only add weight to the published site.
+  #
+  # Two things about `files` that fail silently if you get them wrong:
+  #
+  #  1. An exclusion needs the space after the bang ('! foo', not '!foo'). Hugo matches the literal
+  #     prefix "! ", so '!foo' is read as an ordinary include pattern that matches nothing.
+  #  2. Order matters. Hugo evaluates the patterns in sequence and returns on the FIRST match, so a
+  #     leading catch-all '**' matches everything and no exclusion after it is ever consulted. The
+  #     exclusions therefore come first and '**' last.
+  #
+  # Neither mistake produces a warning — the mount just quietly includes everything.
+  #
+  # Both 'README.md' and '**/README.md' are listed because '**/' does not match a file sitting at
+  # the mount root.
+  [[module.mounts]]
+    source = '../docs'
+    target = 'content/docs'
+    files = ['! README.md', '! **/README.md', '! **/*.puml', '! **/*.drawio', '! **/*.bkp', '**']
+
+  [[module.mounts]]
+    source = '../docs/README.md'
+    target = 'content/docs/_index.md'
+
+  [[module.mounts]]
+    source = '../docs/cli-user-interface/README.md'
+    target = 'content/docs/cli-user-interface/_index.md'
+
+  [[module.mounts]]
+    source = '../docs/cli-user-interface/markdown/README.md'
+    target = 'content/docs/cli-user-interface/markdown/_index.md'
+
+  # The site's own content — the home page.
+  [[module.mounts]]
+    source = 'content'
+    target = 'content'
+
+  [[module.mounts]]
+    source = 'assets'
+    target = 'assets'
+
+  [[module.mounts]]
+    source = 'static'
+    target = 'static'
+
+[markup]
+  [markup.goldmark]
+    [markup.goldmark.renderer]
+      # Required. The documentation uses <details>/<summary> for collapsible sections and a few
+      # inline HTML tags. Goldmark silently DISCARDS raw HTML unless this is set — eleven
+      # collapsible blocks would vanish from the published pages with no build error at all.
+      unsafe = true
+
+  [markup.highlight]
+    # Hextra ships Chroma stylesheets for both light and dark; inlining classes here would override
+    # them and break syntax highlighting in dark mode.
+    noClasses = false
+
+  [markup.tableOfContents]
+    startLevel = 2
+    endLevel = 4
+
+[params]
+  # Mermaid diagrams work through Hextra's ```mermaid codeblock render hook.
+  #
+  # Both Mermaid and FlexSearch are fetched at BUILD time by Hextra and re-served from this site
+  # with a Subresource Integrity hash, so the published pages never call out to a CDN. The versions
+  # are pinned deliberately: Hextra's default Mermaid base is `mermaid@latest`, which would let an
+  # upstream release change what this site ships without a single commit here — the same reasoning
+  # that pins every GitHub Action to a SHA.
+  #
+  # To build with no network at all, drop the two files into website/assets/js/ and replace `base`
+  # with `js = 'js/mermaid.min.js'` here and `js = 'js/flexsearch.bundle.min.js'` below.
+  [params.mermaid]
+    base = 'https://cdn.jsdelivr.net/npm/mermaid@11.16.1/dist'
+
+  [params.search]
+    enable = true
+    type = 'flexsearch'
+    [params.search.flexsearch]
+      version = '0.8.143'
+      # Index whole sections rather than single headings: these pages are long references where a
+      # hit is more useful with its surrounding context.
+      index = 'content'
+
+  [params.navbar]
+    displayTitle = true
+    displayLogo = false
+
+  [params.page]
+    width = 'wide'
+
+  [params.theme]
+    # Follow the reader's OS preference, with a toggle in the navbar.
+    default = 'system'
+    displayToggle = true
+
+  [params.footer]
+    enable = true
+    displayCopyright = true
+    displayPoweredBy = false
+
+  # "Edit this page" points into docs/, since that is where the content actually lives.
+  [params.editURL]
+    enable = true
+    base = 'https://github.com/eclipse-keysealer/k8s-kms-plugin/edit/master/docs'
+
+  [params.blog]
+    enable = false
+
+[menu]
+  [[menu.main]]
+    name = 'Documentation'
+    pageRef = '/docs'
+    weight = 1
+
+  [[menu.main]]
+    name = 'Search'
+    weight = 2
+    [menu.main.params]
+      type = 'search'
+
+  [[menu.main]]
+    name = 'GitHub'
+    url = 'https://github.com/eclipse-keysealer/k8s-kms-plugin'
+    weight = 3
+    [menu.main.params]
+      icon = 'github'

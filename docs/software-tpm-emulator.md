@@ -1,4 +1,7 @@
-# [`Software TPM Emulator`](https://github.com/stefanberger/swtpm)
+---
+title: "Software TPM Emulator"
+weight: 53
+---
 
 > ⚠️ **Legacy reference**: This guide is kept for backward compatibility. [`SoftHSMv3` (`pqctoday-hsm`)](./softhsm-v3.md) is now the recommended software HSM for development and integration testing — it supports all algorithm families including **ML-KEM**. The Software TPM Emulator does **not** support ML-KEM.
 

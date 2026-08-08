@@ -1,4 +1,7 @@
-# `CKA_ID` vs `CKA_LABEL`
+---
+title: "CKA_ID vs CKA_LABEL"
+weight: 91
+---
 
 Every key `k8s-kms-plugin` uses on the HSM — the KEK, and the HMAC key for `aes-cbc` — is identified
 by two independent PKCS #11 attributes, and the CLI lets you name a key by either one:

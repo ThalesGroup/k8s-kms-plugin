@@ -1,4 +1,7 @@
-# Installation 🔧
+---
+title: "Installation"
+weight: 20
+---
 
 ## kubernetes Requirements
 

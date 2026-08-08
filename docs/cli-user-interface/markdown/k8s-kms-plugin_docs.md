@@ -23,7 +23,7 @@ k8s-kms-plugin docs [flags]
   -f, --format string       Docs Output format. Preferred is markdown. Supported formats: markdown, man, rst, yaml, cli-table-csv, cli-table-pretty, cli-table-html, all. (default "markdown")
   -h, --help                help for docs
   -o, --output-dir string   Output directory (default "$TMPDIR/k8s-kms-plugin-docs-<timestamp>")
-      --provenance          Stamp build and CI run provenance into the front matter of generated markdown. Defaults to true when GITHUB_ACTIONS=true.
+      --provenance          Stamp build and CI run provenance into the front matter of generated markdown. Defaults to true when GITHUB_ACTIONS=true. (default true)
 ```
 
 ### Options inherited from parent commands

@@ -14,7 +14,7 @@ generator: "k8s-kms-plugin docs -f markdown"
 | k8s-kms-plugin docs | --format | -f | K8S_KMS_PLUGIN_DOCS_FORMAT | k8s-kms-plugin.docs.format | markdown | string | false | Docs Output format. Preferred is markdown. Supported formats: markdown, man, rst, yaml, cli-table-csv, cli-table-pretty, cli-table-html, all. |
 | k8s-kms-plugin docs | --help | -h | K8S_KMS_PLUGIN_DOCS_HELP | k8s-kms-plugin.docs.help | false | bool | false | help for docs |
 | k8s-kms-plugin docs | --output-dir | -o | K8S_KMS_PLUGIN_DOCS_OUTPUT_DIR | k8s-kms-plugin.docs.output-dir | $TMPDIR/k8s-kms-plugin-docs-<timestamp> | string | false | Output directory |
-| k8s-kms-plugin docs | --provenance |  | K8S_KMS_PLUGIN_DOCS_PROVENANCE | k8s-kms-plugin.docs.provenance | false | bool | false | Stamp build and CI run provenance into the front matter of generated markdown. Defaults to true when GITHUB_ACTIONS=true. |
+| k8s-kms-plugin docs | --provenance |  | K8S_KMS_PLUGIN_DOCS_PROVENANCE | k8s-kms-plugin.docs.provenance | true | bool | false | Stamp build and CI run provenance into the front matter of generated markdown. Defaults to true when GITHUB_ACTIONS=true. |
 | k8s-kms-plugin serve | --algorithm-family |  | K8S_KMS_PLUGIN_SERVE_ALGORITHM_FAMILY | k8s-kms-plugin.serve.algorithm-family | aes-gcm | algorithmFamily | true | Encryption mechanism. Possible values: aes-gcm, aes-cbc, rsa-oaep, ml-kem. |
 | k8s-kms-plugin serve | --auto-create |  | K8S_KMS_PLUGIN_SERVE_AUTO_CREATE | k8s-kms-plugin.serve.auto-create | false | bool | true | Auto create the keys if needed. |
 | k8s-kms-plugin serve | --native-path | -p | K8S_KMS_PLUGIN_SERVE_NATIVE_PATH | k8s-kms-plugin.serve.native-path | .keys | string | true | Path to key store for native provider(Files only). |

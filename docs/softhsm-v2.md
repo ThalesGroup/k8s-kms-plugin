@@ -1,4 +1,7 @@
-# [`SoftHSMv2`](https://github.com/softhsm/SoftHSMv2)
+---
+title: "SoftHSMv2"
+weight: 52
+---
 
 > ⚠️ **Legacy reference**: This guide is kept for backward compatibility. [`SoftHSMv3` (`pqctoday-hsm`)](./softhsm-v3.md) is now the recommended software HSM for development and integration testing — it supports all algorithm families including **ML-KEM**. SoftHSMv2 does **not** support ML-KEM.
 

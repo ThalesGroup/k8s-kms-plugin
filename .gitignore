@@ -65,3 +65,9 @@ jwe-samples.*
 
 # Code assistants
 .claude
+# Hugo documentation site (website/)
+website/public/
+website/resources/
+website/.hugo_build.lock
+# Vendored JS for an offline site build; see website/hugo.toml [params.mermaid]
+website/assets/js/

@@ -34,12 +34,18 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the version information.",
 	Long: `Print the version information with various level of details
-including information of the build and git repository metadata.
+including information of the build and git repository metadata.`,
+	// Examples belong in Example, not Long: cobra's markdown generator wraps this field in a
+	// fenced code block, whereas the two-space indentation they had inside Long is below the four
+	// Markdown needs for a code block — so the "# ..." comment lines were parsed as level-1
+	// headings and rendered as page titles on GitHub and on the documentation site.
+	Example: `
+Print the version with git repository details as a one-line JSON string:
+	k8s-kms-plugin version -o json --pretty=false
 
-Examples:
-  # print the version information with git repository details as a one liner
-  # JSON string.
-  k8s-kms-plugin version -o json --pretty=false`,
+Print the version as indented YAML:
+	k8s-kms-plugin version -o yaml
+`,
 	// Initialize and populate cobra CLI flags values with viper during the Persistent pre-run
 	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 		if err := InitViperSubCmdE(viper.GetViper(), cmd, &vprFlgsVersion); err != nil {

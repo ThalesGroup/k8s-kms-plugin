@@ -1,4 +1,7 @@
-# Supply Chain Security
+---
+title: "Supply Chain Security"
+weight: 80
+---
 
 ## Vulnerability check 💣
 

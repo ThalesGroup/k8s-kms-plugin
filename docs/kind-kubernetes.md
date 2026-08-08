@@ -1,4 +1,7 @@
-# Kubernetes `KinD` and `k8s-kms-plugin` Integration Guide
+---
+title: "KinD"
+weight: 61
+---
 
 This guide explains how to run a [`KinD`](https://kind.sigs.k8s.io/) (Kubernetes **in D**ocker or Podman) cluster against a
 local `k8s-kms-plugin serve` instance listening on a unix socket, with **Podman** as the container provider

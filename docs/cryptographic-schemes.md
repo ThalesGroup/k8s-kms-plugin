@@ -1,4 +1,7 @@
-# Cryptographic Schemes 🔐
+---
+title: "Cryptographic Schemes"
+weight: 40
+---
 
 This page documents, for each `--algorithm-family` value, exactly what `k8s-kms-plugin` does to the
 data `kube-apiserver` sends it: which keys it uses, which primitives it composes, what the resulting

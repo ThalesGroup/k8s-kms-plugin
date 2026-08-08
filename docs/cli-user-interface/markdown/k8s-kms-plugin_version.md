@@ -14,13 +14,20 @@ Print the version information.
 Print the version information with various level of details
 including information of the build and git repository metadata.
 
-Examples:
-  # print the version information with git repository details as a one liner
-  # JSON string.
-  k8s-kms-plugin version -o json --pretty=false
-
 ```
 k8s-kms-plugin version [flags]
+```
+
+### Examples
+
+```
+
+Print the version with git repository details as a one-line JSON string:
+	k8s-kms-plugin version -o json --pretty=false
+
+Print the version as indented YAML:
+	k8s-kms-plugin version -o yaml
+
 ```
 
 ### Options

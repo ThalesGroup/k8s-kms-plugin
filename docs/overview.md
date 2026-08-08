@@ -1,4 +1,7 @@
-# Concepts & Architecture
+---
+title: "Concepts & Architecture"
+weight: 10
+---
 
 ## Definions & Accronyms 🔎
 

@@ -467,7 +467,8 @@ func writeMarkdownReadme(dir string, provenance bool) error {
 		Weight:      frontMatterWeightIndex,
 	}, provenance))
 
-	readme.WriteString("# k8s-kms-plugin CLI Documentation\n\n")
+	// No H1 here: the front matter title supplies it, and a static site generator renders that as
+	// the page heading — an H1 in the body as well would show the title twice.
 	readme.WriteString("This documentation is auto-generated from `k8s-kms-plugin`.\n")
 	readme.WriteString("Do not edit these files by hand: change the cobra command and run `make doc`.\n\n")
 	if provenance {

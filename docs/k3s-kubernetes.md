@@ -1,4 +1,7 @@
-# Kubernetes `k3s` and `k8s-kms-plugin` Integration Guide
+---
+title: "k3s"
+weight: 62
+---
 
 This guide explains how to setup a `k3s` kubernetes cluster to use `k8s-kms-plugin serve` for
 encryption operations.

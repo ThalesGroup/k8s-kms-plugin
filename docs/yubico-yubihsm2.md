@@ -1,4 +1,7 @@
-# yubico YubiHSM 2
+---
+title: "YubiHSM 2"
+weight: 55
+---
 
 This guide will help you to set up a YubiHSM 2 and make it work with `k8s-kms-plugin` in a **non production environment**.
 
