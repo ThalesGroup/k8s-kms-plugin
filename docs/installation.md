@@ -9,7 +9,7 @@ is what the project published. Running it, and wiring a cluster to it, are cover
 | Next step | Where |
 |-----------|-------|
 | Set up a PKCS #11 provider and start `serve` against it | [HSM & TPM guides](./hsm-guides/README.md) |
-| Point a Kubernetes cluster at a running plugin | [`KinD`](./kind-kubernetes.md) or [`k3s`](./k3s-kubernetes.md) |
+| Point a Kubernetes cluster at a running plugin | [`KinD`](./kubernetes-guides/kind-kubernetes.md) or [`k3s`](./kubernetes-guides/k3s-kubernetes.md) |
 | Flags, environment variables and config file keys | [Usage & User Guides](./usage.md) |
 
 ## Requirements

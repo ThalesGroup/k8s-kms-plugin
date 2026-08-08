@@ -1,6 +1,6 @@
 ---
 title: "k3s"
-weight: 62
+weight: 20
 ---
 
 This guide explains how to setup a `k3s` kubernetes cluster to use `k8s-kms-plugin serve` for
@@ -32,19 +32,19 @@ In general, we make sure to explicitely set `INSTALL_K3S_VERSION`.
 
 ## Kubernetes KMS v2 Sequence Diagram
 
-![](./puml-diagrams/kmsv2-first-k8s-startup.sqce-diag.svg)
+![](../puml-diagrams/kmsv2-first-k8s-startup.sqce-diag.svg)
 
-![](./puml-diagrams/kmsv2-decryptrequest.sqce-diag.svg)
+![](../puml-diagrams/kmsv2-decryptrequest.sqce-diag.svg)
 
-![](./puml-diagrams/kmsv2-key-rotation.sqce-diag.svg)
+![](../puml-diagrams/kmsv2-key-rotation.sqce-diag.svg)
 
 ## Single Node `k3s` Cluster
 
 ### Run `k8s-kms-plugin serve` (no key rotation)
 
 > This section does not detail how to deploy & run the `k8s-kms-plugin`. See the other
-> documentation pages like [`SoftHSMv2`](./hsm-guides/softhsm-v2.md) or
-> [`Yubico YubiHSM 2`](./hsm-guides/yubico-yubihsm2.md) to run the `k8s-kms-plugin`. 
+> documentation pages like [`SoftHSMv2`](../hsm-guides/softhsm-v2.md) or
+> [`Yubico YubiHSM 2`](../hsm-guides/yubico-yubihsm2.md) to run the `k8s-kms-plugin`. 
 
 Assuming you have configured a PKCS #11 TPM or HSM, you can start the
 `k8s-kms-plugin serve` without the key rotation support for now:
@@ -116,7 +116,7 @@ the DEK seed is renewed at each new restart.
 
 ### Perform a Key Rotation Operation
 
-From the point of view of the `k8s-kms-plugin`, the key rotation operation is handled by [`k8s-kms-plugin serve rotation`](./cli-user-interface/markdown/k8s-kms-plugin_serve_rotation.md).
+From the point of view of the `k8s-kms-plugin`, the key rotation operation is handled by [`k8s-kms-plugin serve rotation`](../cli-user-interface/markdown/k8s-kms-plugin_serve_rotation.md).
 
 `k8s-kms-plugin serve rotation` allows the `k8s-kms-plugin` to access both an **active KEK key** (the new current key)
 and an **old KEK key** (the key being rotated and replaced).
@@ -133,9 +133,9 @@ to decrypt the older kubernetes content which will be re-encrypted with the new 
 
 The `k8s-kms-plugin` also supports kubernetes cluster in HA mode (at least 3 server nodes), as long as the KEK is the same for each kubernetes node in the HA cluster. Otherwise it will fail to work with the Raft consensus algorithm for the synchronization of the content of the etcd cluster.
 
-![](./images/k8s-kms-plugin-TPM_3_master_nodes.svg)
-![](./images/k8s-kms-plugin-USB_HSM_3_master_nodes.svg)
-![](./images/k8s-kms-plugin-Net_HSM_3_master_nodes.svg)
+![](../images/k8s-kms-plugin-TPM_3_master_nodes.svg)
+![](../images/k8s-kms-plugin-USB_HSM_3_master_nodes.svg)
+![](../images/k8s-kms-plugin-Net_HSM_3_master_nodes.svg)
 
 
 

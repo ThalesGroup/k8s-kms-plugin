@@ -90,6 +90,10 @@ disableKinds = ['taxonomy', 'term']
     target = 'content/docs/hsm-guides/_index.md'
 
   [[module.mounts]]
+    source = '../docs/kubernetes-guides/README.md'
+    target = 'content/docs/kubernetes-guides/_index.md'
+
+  [[module.mounts]]
     source = '../docs/cli-user-interface/README.md'
     target = 'content/docs/cli-user-interface/_index.md'
 

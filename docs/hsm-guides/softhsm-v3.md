@@ -252,4 +252,4 @@ curl -sfL https://get.k3s.io | K3S_DEBUG=true INSTALL_K3S_VERSION=v1.33.1+k3s1 s
   --kube-apiserver-arg=encryption-provider-config=$HOME/k8s-kms-plugin/deployments/k8s/encryption-conf-kmsv2-unix-socket.yaml
 ```
 
-See also [`k3s-kubernetes.md`](../k3s-kubernetes.md) for a more complete Kubernetes setup guide.
+See also [`k3s-kubernetes.md`](../kubernetes-guides/k3s-kubernetes.md) for a more complete Kubernetes setup guide.
