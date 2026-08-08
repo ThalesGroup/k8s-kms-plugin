@@ -1,25 +1,32 @@
 # `k8s-kms-plugin` 🔐
 
-<!-- FORK-LOCAL: the two documentation badges below, and the site links in the Documentation section,
-     point at THIS FORK because upstream has no Pages site and no docs.yml workflow yet. Everything
-     else in this repository uses absolute eclipse-keysealer URLs on purpose.
+<!-- Badges: every one is drawn by shields.io with style=flat-square, so they share a height, a
+     typeface and a corner radius. GitHub's own actions/workflows/*/badge.svg, pkg.go.dev's badge and
+     api.scorecard.dev's badge each render at their own metrics and take no style parameter, which is
+     why the shields.io equivalents are used instead. The two rows are deliberate: what the project
+     is, then whether it is healthy.
+
+     FORK-LOCAL: the documentation badge and the docs workflow badge below, and the site links in the
+     Documentation section, point at THIS FORK because upstream has no Pages site and no docs.yml
+     workflow yet. Everything else in this repository uses absolute eclipse-keysealer URLs on purpose.
 
      BEFORE OPENING A PULL REQUEST UPSTREAM, switch them back:
        nicolas-peiffer.github.io/k8s-kms-plugin -> eclipse-keysealer.github.io/k8s-kms-plugin
        github.com/Nicolas-Peiffer/...           -> github.com/eclipse-keysealer/...
      The other place carrying a fork URL is website/hugo.toml's baseURL, which is only a local-dev
      default — the Docs workflow computes the real one from the repository that runs the build. -->
-[![Documentation](https://img.shields.io/badge/documentation-online-blue)](https://nicolas-peiffer.github.io/k8s-kms-plugin/)
-[![Docs site](https://github.com/Nicolas-Peiffer/k8s-kms-plugin/actions/workflows/docs.yml/badge.svg)](https://github.com/Nicolas-Peiffer/k8s-kms-plugin/actions/workflows/docs.yml)
-[![Licence](https://img.shields.io/github/license/Ileriayo/markdown-badges?style=for-the-badge)](./LICENSE)
-[![Go Reference](https://pkg.go.dev/badge/github.com/eclipse-keysealer/k8s-kms-plugin.svg)](https://pkg.go.dev/github.com/eclipse-keysealer/k8s-kms-plugin)
-[![Build](https://github.com/eclipse-keysealer/k8s-kms-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/eclipse-keysealer/k8s-kms-plugin/actions/workflows/ci.yml)
-[![Lint](https://github.com/eclipse-keysealer/k8s-kms-plugin/actions/workflows/lint.yml/badge.svg)](https://github.com/eclipse-keysealer/k8s-kms-plugin/actions/workflows/lint.yml)
-[![Secret Scan](https://github.com/eclipse-keysealer/k8s-kms-plugin/actions/workflows/secret-scan.yml/badge.svg)](https://github.com/eclipse-keysealer/k8s-kms-plugin/actions/workflows/secret-scan.yml)
-[![Release](https://github.com/eclipse-keysealer/k8s-kms-plugin/actions/workflows/release.yml/badge.svg)](https://github.com/eclipse-keysealer/k8s-kms-plugin/actions/workflows/release.yml)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/eclipse-keysealer/k8s-kms-plugin/badge)](https://scorecard.dev/viewer/?uri=github.com/eclipse-keysealer/k8s-kms-plugin)
-[![GitHub release](https://img.shields.io/github/v/release/eclipse-keysealer/k8s-kms-plugin)](https://github.com/eclipse-keysealer/k8s-kms-plugin/releases/latest)
-[![Changelog](https://img.shields.io/badge/changelog-v1.0.0-blue)](./CHANGELOG.md)
+[![Documentation](https://img.shields.io/badge/documentation-online-1f6feb?style=flat-square&logo=hugo&logoColor=white)](https://nicolas-peiffer.github.io/k8s-kms-plugin/)
+[![Licence](https://img.shields.io/github/license/eclipse-keysealer/k8s-kms-plugin?style=flat-square&logo=opensourceinitiative&logoColor=white&color=1f6feb)](./LICENSE)
+[![Go Reference](https://img.shields.io/badge/pkg.go.dev-reference-007d9c?style=flat-square&logo=go&logoColor=white)](https://pkg.go.dev/github.com/eclipse-keysealer/k8s-kms-plugin)
+[![Release](https://img.shields.io/github/v/release/eclipse-keysealer/k8s-kms-plugin?style=flat-square&logo=github&logoColor=white&color=1f6feb)](https://github.com/eclipse-keysealer/k8s-kms-plugin/releases/latest)
+[![Changelog](https://img.shields.io/badge/changelog-read-1f6feb?style=flat-square&logo=markdown&logoColor=white)](./CHANGELOG.md)
+
+[![Build](https://img.shields.io/github/actions/workflow/status/eclipse-keysealer/k8s-kms-plugin/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=build)](https://github.com/eclipse-keysealer/k8s-kms-plugin/actions/workflows/ci.yml)
+[![Lint](https://img.shields.io/github/actions/workflow/status/eclipse-keysealer/k8s-kms-plugin/lint.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=lint)](https://github.com/eclipse-keysealer/k8s-kms-plugin/actions/workflows/lint.yml)
+[![Secret scan](https://img.shields.io/github/actions/workflow/status/eclipse-keysealer/k8s-kms-plugin/secret-scan.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=secret%20scan)](https://github.com/eclipse-keysealer/k8s-kms-plugin/actions/workflows/secret-scan.yml)
+[![Release build](https://img.shields.io/github/actions/workflow/status/eclipse-keysealer/k8s-kms-plugin/release.yml?style=flat-square&logo=githubactions&logoColor=white&label=release%20build)](https://github.com/eclipse-keysealer/k8s-kms-plugin/actions/workflows/release.yml)
+[![Docs site](https://img.shields.io/github/actions/workflow/status/Nicolas-Peiffer/k8s-kms-plugin/docs.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=docs)](https://github.com/Nicolas-Peiffer/k8s-kms-plugin/actions/workflows/docs.yml)
+[![OpenSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/eclipse-keysealer/k8s-kms-plugin?style=flat-square&logo=openssf&logoColor=white&label=openssf%20scorecard)](https://scorecard.dev/viewer/?uri=github.com/eclipse-keysealer/k8s-kms-plugin)
 
 `k8s-kms-plugin serve` implements the [Kubernetes KMS v2 API](https://pkg.go.dev/k8s.io/kms/apis/v2) protocol as a gRPC service that leverages a remote or local HSM via PKCS11.
 `k8s-kms-plugin serve rotation` supports key rotation operations.
