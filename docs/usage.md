@@ -69,7 +69,7 @@ The default settings are used if no other sources provide a value.
 
 Each CLI flag (e.g. `--log-level`) has a corresponding environment variable (e.g. `K8S_KMS_PLUGIN_LOG_LEVEL`) and a config file entry (e.g. `log-level` in YAML/TOML/JSON).
 
-A recap of all `k8s-kms-plugin` subcommands, flags, and environment variables is available here [`./docs/cli-user-interface/markdown/cli-env-var-table.md`](./cli-user-interface/markdown/cli-env-var-table.md) or here [`./docs/cli-user-interface/txt/cli-env-var-table.txt`](./cli-user-interface/txt/cli-env-var-table.txt) (txt).
+A recap of all `k8s-kms-plugin` subcommands, flags, and environment variables is available here [`./docs/cli-user-interface/markdown/cli-env-var-table.md`](./cli-user-interface/markdown/cli-env-var-table.md) or here [`./docs/cli-user-interface/txt/cli-env-var-table.txt`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/docs/cli-user-interface/txt/cli-env-var-table.txt) (txt).
 
 | User Input Source        | Priority Order                  | Example                             |
 |--------------------------|---------------------------------|-------------------------------------|

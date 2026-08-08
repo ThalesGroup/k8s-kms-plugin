@@ -110,6 +110,14 @@ jobs:
           echo "Building with baseURL $base"
           cd website && hugo --gc --minify --baseURL "$base"
 
+      # `hugo` exiting 0 says nothing about whether the pages work. This checks the output itself:
+      # that referenced stylesheets, scripts, images and page links exist, that no URL carries the
+      # baseURL path twice, and that in-page anchors resolve. Added because a site with no CSS and
+      # dead cross-page links built cleanly, deployed successfully, and was only caught by a human
+      # opening it.
+      - name: Verify the built site
+        run: python3 scripts/check-site-output.py website/public
+
       # actions/upload-pages-artifact v5.0.0
       #
       # Publish from the repository's DEFAULT branch rather than a hardcoded "master": that is what

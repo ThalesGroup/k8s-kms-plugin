@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Thales Group and the k8s-kms-plugin Contributors
 # SPDX-License-Identifier: MIT
 
-.PHONY: all lint lint-fix vet govulncheck check-doc-links site site-serve site-clean build build-linux-amd64 build-linux-amd64-debug build-linux-arm64 build-linux-arm64-debug build-linux-riscv64 build-linux-riscv64-debug coverage test test-integration test-e2e fuzz doc notices image image-from-source release release-local-test get-ldflags clean
+.PHONY: all lint lint-fix vet govulncheck check-doc-links check-site site site-serve site-clean build build-linux-amd64 build-linux-amd64-debug build-linux-arm64 build-linux-arm64-debug build-linux-riscv64 build-linux-riscv64-debug coverage test test-integration test-e2e fuzz doc notices image image-from-source release release-local-test get-ldflags clean
 
 all: build-linux-amd64 build-linux-arm64 build-linux-riscv64
 
@@ -200,7 +200,14 @@ SITE_DIR := website
 site:
 		$(call require,$(HUGO),$(HUGO_INSTALL_HINT))
 		cd $(SITE_DIR) && $(HUGO) --gc --minify
+		@$(MAKE) --no-print-directory check-site
 		@echo "Site built in $(SITE_DIR)/public"
+
+# Verify the BUILT site: that every stylesheet, script, image and page link it references actually
+# exists in the output, that no URL carries the baseURL path twice, and that in-page anchors resolve.
+# `hugo` exiting 0 does not cover any of that — a site with no CSS and dead navigation still builds.
+check-site:
+		@python3 scripts/check-site-output.py $(SITE_DIR)/public
 
 site-serve:
 		$(call require,$(HUGO),$(HUGO_INSTALL_HINT))

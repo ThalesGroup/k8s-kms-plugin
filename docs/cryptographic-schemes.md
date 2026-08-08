@@ -138,7 +138,7 @@ encryption: there is no wrapped key, the shared symmetric key is used directly.
 
 ![](./puml-diagrams/gcm-class.svg)
 
-Source: [`puml-diagrams/gcm-class.puml`](./puml-diagrams/gcm-class.puml).
+Source: [`puml-diagrams/gcm-class.puml`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/docs/puml-diagrams/gcm-class.puml).
 
 </details>
 
@@ -198,7 +198,7 @@ AES-CBC has no built-in authentication, so this family pairs it with an HMAC —
 
 ![](./puml-diagrams/cbc-class.svg)
 
-Source: [`puml-diagrams/cbc-class.puml`](./puml-diagrams/cbc-class.puml).
+Source: [`puml-diagrams/cbc-class.puml`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/docs/puml-diagrams/cbc-class.puml).
 
 </details>
 
@@ -283,7 +283,7 @@ by ≈1.333× on the way into the JWE Encrypted Key segment.
 
 ![](./puml-diagrams/rsa-class.svg)
 
-Source: [`puml-diagrams/rsa-class.puml`](./puml-diagrams/rsa-class.puml).
+Source: [`puml-diagrams/rsa-class.puml`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/docs/puml-diagrams/rsa-class.puml).
 
 </details>
 
@@ -417,7 +417,7 @@ budget**. ML-KEM-768 uses 1198 B and ML-KEM-512 uses 878 B.
 
 ![](./puml-diagrams/ml-kem-class.svg)
 
-Source: [`puml-diagrams/ml-kem-class.puml`](./puml-diagrams/ml-kem-class.puml).
+Source: [`puml-diagrams/ml-kem-class.puml`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/docs/puml-diagrams/ml-kem-class.puml).
 
 </details>
 
@@ -570,7 +570,7 @@ extractable.
 | [KEP-3299: KMS v2 improvements](https://github.com/kubernetes/enhancements/tree/master/keps/sig-auth/3299-kms-v2-improvements) | Why KMS v2 looks the way it does: the DEK-seed/KDF model, `key_id` and staleness detection, `annotations`, and the size limits quoted in [§2](#the-kms-v2-wire-contract) |
 
 The apiserver-side sequences — first startup, `DecryptRequest`, and key rotation — are drawn in
-[`docs/puml-diagrams/`](./puml-diagrams/) (`kmsv2-first-k8s-startup`, `kmsv2-decryptrequest`,
+[`docs/puml-diagrams/`](https://github.com/eclipse-keysealer/k8s-kms-plugin/tree/master/docs/puml-diagrams/) (`kmsv2-first-k8s-startup`, `kmsv2-decryptrequest`,
 `kmsv2-key-rotation`), rendered in [`README.md`](./overview.md#deployment-scenarios-examples). The
 `P11.Encrypt`/`Decrypt` class diagram for each family (`gcm-class`, `cbc-class`, `rsa-class`,
 `ml-kem-class`) lives in the same folder and is embedded inline in [§4](#aes-gcm)–[§7](#ml-kem)

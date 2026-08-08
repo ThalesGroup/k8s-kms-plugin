@@ -27,9 +27,18 @@ title = 'k8s-kms-plugin'
 locale = 'en-us'
 
 # GitHub Pages serves a project site from a subpath (/k8s-kms-plugin/), so every asset and link has
-# to carry it. Hugo derives that from baseURL; relativeURLs additionally keeps the output working
-# when the site is opened from somewhere else, such as a PR preview.
-relativeURLs = true
+# to carry it. Hugo derives that from baseURL and emits root-relative paths such as
+# /k8s-kms-plugin/css/main.css.
+#
+# Do NOT set relativeURLs = true here. It looks like it would make the output more portable, but it
+# double-applies the subpath: Hugo emits a relative prefix back to the site root AND keeps the path
+# component of baseURL, so the stylesheet on the home page becomes
+#
+#   ./k8s-kms-plugin/css/…      -> /k8s-kms-plugin/k8s-kms-plugin/css/…   (404)
+#
+# and on a nested page ../../k8s-kms-plugin/css/… resolves to the same doubled path. The result is a
+# site with no CSS and broken navigation, and the build reports no error. relativeURLs exists for
+# browsing output over file://, not for hosting under a subpath.
 
 # This is a documentation site: tag and category term pages would be empty and only add noise to
 # the sitemap. Must stay at the top level — nested under [module] it is silently ignored.
@@ -51,8 +60,9 @@ disableKinds = ['taxonomy', 'term']
   # mount and re-mounted under that name. Keeping README.md on disk is deliberate: it is what GitHub
   # renders when browsing to the directory.
   #
-  # PlantUML and drawio sources are excluded: the pages embed the committed .svg renderings, so
-  # shipping the sources would only add weight to the published site.
+  # PlantUML and drawio sources ARE published, even though the pages embed the committed .svg
+  # renderings instead: several pages link to the sources, and excluding them turned those links
+  # into 404s on the site. They are a few kilobytes of text.
   #
   # Two things about `files` that fail silently if you get them wrong:
   #
@@ -69,7 +79,7 @@ disableKinds = ['taxonomy', 'term']
   [[module.mounts]]
     source = '../docs'
     target = 'content/docs'
-    files = ['! README.md', '! **/README.md', '! **/*.puml', '! **/*.drawio', '! **/*.bkp', '**']
+    files = ['! README.md', '! **/README.md', '! **/*.bkp', '**']
 
   [[module.mounts]]
     source = '../docs/README.md'

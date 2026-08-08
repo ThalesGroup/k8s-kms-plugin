@@ -1,0 +1,58 @@
+{{- /*
+  Link render hook — overrides Hextra's so that RELATIVE links between Markdown pages resolve.
+
+  Why this file exists: the documentation is written to work when browsed on GitHub, so pages link
+  to each other with relative Markdown paths like ./installation.md or ../usage.md#some-heading.
+  Hextra's own render-link.html only rewrites destinations that begin with "/" — anything relative
+  falls through verbatim, so ./installation.md is published as-is and resolves to
+  /k8s-kms-plugin/docs/installation.md, which does not exist (the page is at .../installation/).
+  Every cross-page documentation link 404s, and the build reports nothing.
+
+  Hugo's own embedded hook does handle this, but a theme hook takes precedence over it, so the
+  behaviour has to be added back here. The relative branch below is modelled on that embedded hook;
+  the absolute branch and the external-link decoration are kept from Hextra so nothing regresses.
+
+  Bare "#fragment" destinations are deliberately left untouched: they already work as same-page
+  anchors, and rewriting them to an absolute permalink would only add churn.
+
+  Keep in sync when upgrading Hextra: compare against
+  layouts/_markup/render-link.html in the theme, and re-run `make check-site` afterwards.
+*/ -}}
+
+{{- $dest := .Destination -}}
+{{- $url := urls.Parse $dest -}}
+
+{{- if and $dest (hasPrefix $dest "/") -}}
+  {{- /* Hextra's original branch: site-absolute destinations. */ -}}
+  {{- with or (.PageInner.GetPage $url.Path) (.PageInner.Resources.Get $url.Path) (resources.Get $url.Path) -}}
+    {{- $query := cond $url.RawQuery (printf "?%s" $url.RawQuery) "" -}}
+    {{- $fragment := cond $url.Fragment (printf "#%s" $url.Fragment) "" -}}
+    {{- $dest = printf "%s%s%s" .RelPermalink $query $fragment -}}
+  {{- else -}}
+    {{- $hasBasePrefix := and (ne site.Home.RelPermalink "/") (hasPrefix $dest site.Home.RelPermalink) -}}
+    {{- if not $hasBasePrefix -}}
+      {{- $dest = (relURL (strings.TrimPrefix "/" $dest)) -}}
+    {{- end -}}
+  {{- end -}}
+{{- else if and $dest (not $url.IsAbs) (not (hasPrefix $dest "#")) -}}
+  {{- /* Added: relative destinations, e.g. ./installation.md or ../usage.md#heading. */ -}}
+  {{- $path := strings.TrimPrefix "./" $url.Path -}}
+  {{- with or (.PageInner.GetPage $path) (.PageInner.Resources.Get $path) (resources.Get $path) -}}
+    {{- $query := cond $url.RawQuery (printf "?%s" $url.RawQuery) "" -}}
+    {{- $fragment := cond $url.Fragment (printf "#%s" $url.Fragment) "" -}}
+    {{- $dest = printf "%s%s%s" .RelPermalink $query $fragment -}}
+  {{- end -}}
+{{- end -}}
+
+{{- with . -}}
+{{- $isExternal := strings.HasPrefix .Destination "http" -}}
+<a href="{{ $dest | safeURL }}"
+   {{- with .Title -}}title="{{ . }}"{{- end -}}
+   {{- if $isExternal -}}target="_blank" rel="noopener"{{- end -}}
+>
+  {{- .Text | safeHTML -}}
+  {{- if and .Page.Site.Params.externalLinkDecoration $isExternal -}}
+    {{- partial "utils/icon.html" (dict "name" "arrow-up-right" "attributes" `class="hx:inline hx:rtl:rotate-270 hx:align-baseline" height="1em" aria-hidden="true"`) -}}
+  {{- end -}}
+</a>
+{{- end -}}

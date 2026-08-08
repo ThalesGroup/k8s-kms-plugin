@@ -164,7 +164,7 @@ curl -sfL https://get.k3s.io | K3S_DEBUG=true INSTALL_K3S_VERSION=v1.33.1+k3s1 s
 
 > TODO: improve this section and harmonise the previous section to use viper's env vars
 
-Have a look at this [table](./cli-user-interface/txt/cli-env-var-table.txt) which explains how to use environment variables with the `k8s-kms-plugin`.
+Have a look at this [table](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/docs/cli-user-interface/txt/cli-env-var-table.txt) which explains how to use environment variables with the `k8s-kms-plugin`.
 
 ```bash
 export K8S_KMS_PLUGIN_SERVE_SOCKET="/run/user/$(id -u $USER)/k8s-kms-plugin.sock"

@@ -26,9 +26,23 @@ rendering when browsing the repository on GitHub. To change a page, edit it unde
 
 ```sh
 make site-serve   # http://localhost:1313/k8s-kms-plugin/ with live reload
-make site         # production build -> website/public/
+make site         # production build -> website/public/, then runs make check-site
+make check-site   # verify the built output on its own
 make site-clean   # remove public/ and the Hugo caches
 ```
+
+`make check-site` (`scripts/check-site-output.py`) exists because `hugo` exiting 0 says nothing
+about whether the pages work. It verifies that every referenced stylesheet, script, image and page
+link is present in the output, that no URL carries the `baseURL` path twice, and that in-page
+anchors resolve. Both failures it guards against shipped once: `relativeURLs = true` doubled the
+subpath in every asset URL, and unrewritten relative `.md` links 404'd on every cross-page link.
+
+## Local layout overrides
+
+`layouts/_markup/render-link.html` overrides Hextra's link render hook so that **relative** links
+between Markdown pages resolve. Hextra's own hook only rewrites destinations beginning with `/`, so
+`./installation.md` was published verbatim and 404'd. Re-check this file when upgrading Hextra —
+compare it against the theme's version and re-run `make site`.
 
 Hugo does **not** need to be the *extended* build: Hextra v0.12.x ships its Tailwind CSS
 precompiled, so there is no SCSS to transpile.
