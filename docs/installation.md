@@ -35,6 +35,25 @@ tab.
 > And signature remains to be added in the CICD build recipe.
 > Therefore, this doc only shows local installation of the package.
 
+### What a package installs
+
+Every format installs the same four things:
+
+| Path | What it is |
+|------|------------|
+| `/usr/bin/k8s-kms-plugin` | The binary |
+| `/etc/k8s-kms-plugin/k8s-kms-plugin.config.example.yaml` | Annotated example of every configuration key, mirroring [`configs/config.example.yaml`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/configs/config.example.yaml). Not read automatically — pass it with `--config`, or copy it to `$HOME/.config/k8s-kms-plugin/k8s-kms-plugin.conf.yaml` |
+| `/etc/k8s-kms-plugin/kubernetes/manifest/encryption-conf-kmsv2-unix-socket.example.yaml` | The `EncryptionConfiguration` for `kube-apiserver` — see the [Kubernetes guides](./kubernetes-guides/README.md) |
+| `/lib/systemd/system/k8s-kms-plugin.service` | A unit file for running `serve` as a system service |
+
+The unit will not start as installed: a token label, a key and a PKCS #11 library path have no
+sensible defaults, so it ships with placeholders. Replace them with `systemctl edit
+k8s-kms-plugin`, put the PIN in a root-only `EnvironmentFile` rather than on the command line where
+`ps` would show it, then `systemctl enable --now k8s-kms-plugin`. The header of
+[`configs/systemd/k8s-kms-plugin.service`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/configs/systemd/k8s-kms-plugin.service)
+walks through it, including which sandboxing directives must stay off for an HSM device node to
+remain visible.
+
 ### `apk` on Wolfi OS packages
 
 For now, `k8s-kms-plugin` does not support installation on Alpine Linux. Indeed, for now we are not building the `k8s-kms-plugin` package with the musl libc. We only support the glibc.

@@ -1,13 +1,102 @@
-# This file is under construction
+# k8s-kms-plugin — Kubernetes KMS v2 provider backed by a PKCS #11 TPM or HSM.
+#
+# The Linux packages install this at /lib/systemd/system/k8s-kms-plugin.service. It will
+# not start as shipped: a token label, a key and a PKCS #11 library path have no useful
+# defaults, so the placeholders below have to be replaced first.
+#
+#   1. systemctl edit k8s-kms-plugin
+#      Override ExecStart with your own --p11-lib / --p11-label / --p11-key-label /
+#      --algorithm-family. Start from the ExecStart= line below; an override needs an
+#      empty "ExecStart=" line first to reset it.
+#
+#   2. Put the PIN somewhere only root can read:
+#        install -d -m 0750 /etc/k8s-kms-plugin
+#        install -m 0600 /dev/null /etc/k8s-kms-plugin/pin.env
+#        printf 'K8S_KMS_PLUGIN_SERVE_P11_PIN=<pin>\n' > /etc/k8s-kms-plugin/pin.env
+#
+#   3. systemctl enable --now k8s-kms-plugin
+#
+# Pointing kube-apiserver at the socket is a separate step — see
+# /etc/k8s-kms-plugin/kubernetes/manifest/encryption-conf-kmsv2-unix-socket.example.yaml
+# and https://github.com/eclipse-keysealer/k8s-kms-plugin/tree/master/docs/kubernetes-guides/
+
 [Unit]
-Description=run k8s-kms-plugin server
-After=network.target
+Description=Kubernetes KMS v2 plugin backed by a PKCS #11 TPM or HSM
+Documentation=https://github.com/eclipse-keysealer/k8s-kms-plugin
+# A remote HSM (a network connector, a Luna or DPoD client) needs the network up. Harmless
+# for a local TPM or SoftHSM.
+Wants=network-online.target
+After=network-online.target
+# kube-apiserver blocks at startup until the KMS socket answers a StatusRequest, so the
+# plugin has to be up first. Uncomment the line matching your distribution. Note that this
+# orders the *start*, not readiness: the plugin does not notify systemd, so a cluster that
+# starts in the same second may still see one failed StatusRequest and retry.
+#Before=k3s.service
+#Before=kubelet.service
+# Bounds the restart loop below. These two live in [Unit], not [Service]: systemd ignores
+# them under [Service] without failing the unit.
+StartLimitIntervalSec=60s
+StartLimitBurst=5
 
 [Service]
-ExecStart=/usr/bin/k8s-kms-plugin serve
-Restart=always
-User=nobody
-Group=nogroup
+Type=exec
+
+# The PIN is deliberately not on the command line: anything in ExecStart is visible to
+# every user through `ps` and `systemctl cat`. Drop this line if you pass --p11-pin
+# through a --config file instead, or omit both to have the plugin prompt for it (which
+# needs a terminal, so not under systemd).
+EnvironmentFile=/etc/k8s-kms-plugin/pin.env
+
+# A SoftHSM token needs SOFTHSM2_CONF; vendor clients have their own equivalents
+# (ChrystokiConfigurationPath for Luna, YUBIHSM_PKCS11_CONF for YubiHSM 2).
+#Environment=SOFTHSM2_CONF=/var/lib/softhsm/softhsm2.conf
+
+# CHANGE ME: --p11-lib, --p11-label and --p11-key-label are placeholders.
+# --p11-key-id (hex CKA_ID) works in place of --p11-key-label; aes-cbc additionally needs
+# --p11-hmac-label or --p11-hmac-id. An equivalent invocation is
+#   ExecStart=/usr/bin/k8s-kms-plugin --config /etc/k8s-kms-plugin/k8s-kms-plugin.config.yaml serve
+ExecStart=/usr/bin/k8s-kms-plugin serve \
+    --socket /run/k8s-kms-plugin/k8s-kms-plugin.sock \
+    --p11-lib /usr/local/lib/softhsm/libsofthsm2.so \
+    --p11-label CHANGE-ME-token-label \
+    --p11-key-label CHANGE-ME-kek-label \
+    --algorithm-family aes-gcm \
+    --log-level info
+
+# Creates /run/k8s-kms-plugin before start and removes it on stop, so a dead instance
+# never leaves a stale socket behind. The socket itself is created mode 0775, so a client
+# running under a shared gid can connect; 0755 on the directory lets it be traversed.
+RuntimeDirectory=k8s-kms-plugin
+RuntimeDirectoryMode=0755
+
+Restart=on-failure
+RestartSec=5s
+# A wrong PIN is the one failure that must not be retried: enough attempts erase the
+# token. The plugin therefore sleeps indefinitely instead of exiting when the token
+# reports an authentication error, and systemd never gets a chance to restart it. The unit
+# stays "active (running)" in that state — the log line says what happened.
+
+# Runs as root because that is what reaches an HSM in practice: /dev/tpmrm0 is root-owned
+# on most distributions, and vendor client libraries expect to read their own
+# configuration and device nodes. The packages create no service account. To use one:
+#   useradd --system --no-create-home --shell /usr/sbin/nologin k8s-kms-plugin
+# then override User=, Group= and SupplementaryGroups= with the group that owns the
+# device (tss for a TPM, for example) via `systemctl edit`.
+#User=k8s-kms-plugin
+#Group=k8s-kms-plugin
+#SupplementaryGroups=tss
+
+NoNewPrivileges=yes
+ProtectSystem=full
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+# PrivateDevices is deliberately NOT set: it would hide /dev/tpmrm0 and any HSM device
+# node from the process. PrivateTmp is deliberately NOT set either — a SoftHSM store
+# staged under /tmp, as the development guides do, would become invisible.
 
 [Install]
 WantedBy=multi-user.target

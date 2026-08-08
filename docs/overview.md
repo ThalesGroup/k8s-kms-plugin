@@ -23,15 +23,28 @@ weight: 10
 
 ### Architecture
 
-The [`k8s-kms-plugin`](https://github.com/eclipse-keysealer/k8s-kms-plugin) uses `gose`  and `crypto11`:
+The [`k8s-kms-plugin`](https://github.com/eclipse-keysealer/k8s-kms-plugin) reaches the token through
+three [Eclipse Keypont](https://projects.eclipse.org/projects/technology.keypont) libraries, each one
+layered on the next:
 
-- [github.com/eclipse-keypont/gose](https://github.com/eclipse-keypont/gose): support in GoLang for JOSE JSON Objects Signing and Encryption;
-- [github.com/eclipse-keypont/crypto11](https://github.com/eclipse-keypont/crypto11): Implements crypto.Signer abd crypto.Decrypter for PKCS#11 devices;
-- [k8s.io/kms/apis/v2](https://pkg.go.dev/k8s.io/kms/apis/v2) (source code: https://github.com/kubernetes/kms): KMS v2 API & gRPC protobuf API files.
+- [`github.com/eclipse-keypont/gose`](https://github.com/eclipse-keypont/gose) — JOSE (JSON Object
+  Signing and Encryption) for Go. Builds the JWE that wraps the DEK seed for the `aes-gcm`,
+  `aes-cbc` and `rsa-oaep` families;
+- [`github.com/eclipse-keypont/crypto11/v2`](https://github.com/eclipse-keypont/crypto11) —
+  implements `crypto.Signer` and `crypto.Decrypter` on top of PKCS #11, so a key that never leaves
+  the HSM still satisfies the standard-library interfaces;
+- [`github.com/eclipse-keypont/pkcs11-go`](https://github.com/eclipse-keypont/pkcs11-go) — the cgo
+  wrapper around the PKCS #11 C API itself, tracking the
+  [OASIS specification](https://github.com/oasis-tcs/pkcs11). This is the layer that makes
+  `CGO_ENABLED=1` mandatory to build the plugin, and the one that carries PKCS #11 v3.2 — the
+  version ML-KEM needs;
+- [`k8s.io/kms/apis/v2`](https://pkg.go.dev/k8s.io/kms/apis/v2)
+  ([source](https://github.com/kubernetes/kms)) — the KMS v2 API and its gRPC protobuf definitions,
+  on the other side of the plugin.
 
 > 🚧 Note: We will work on providing a full nested SBOM later.
 
-Figure below sums up the main dependencies of `k8s-kms-plugin`:
+The figure below sums up those dependencies, with the licence and maintainer of each:
 
 ![](./images/libs-imports-gose-crypto11-k8s-kms-plugin.svg)
 
