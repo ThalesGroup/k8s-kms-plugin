@@ -15,6 +15,20 @@ record of the KMS v1 → v2 migration, the PKCS#11 binding swap, and every delib
 This repo is a **fork used as a playground** to try things out before the work lands upstream at
 `eclipse-keysealer/k8s-kms-plugin`. Expect to sync from upstream rather than the fork being the source of truth.
 
+### Fork-local values to switch before a pull request upstream
+
+Every link out of `docs/` uses an absolute `github.com/eclipse-keysealer/...` URL on purpose. Three values
+deliberately break that rule because upstream has no Pages site and no `docs.yml` yet — grep for
+`FORK-LOCAL`, and for `nicolas-peiffer`, to find them:
+
+| Where | Value | Switch to |
+|-------|-------|-----------|
+| `README.md` — documentation badge + Docs workflow badge | `nicolas-peiffer.github.io/…`, `github.com/Nicolas-Peiffer/…` | the `eclipse-keysealer` equivalents |
+| `README.md` — "Browse it online" and glossary links in the Documentation section | `nicolas-peiffer.github.io/…` | `eclipse-keysealer.github.io/…` |
+| `website/hugo.toml` — `baseURL` | `nicolas-peiffer.github.io/…` | leave it; it is only a local-dev default, and the Docs workflow computes the real URL from the repository running the build |
+
+The two README ones are the ones that matter: they would silently point upstream readers at a fork.
+
 ## Commands
 
 `CGO_ENABLED=1` is required everywhere — the PKCS#11 bindings are cgo. The Makefile sets it for you; set

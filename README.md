@@ -1,7 +1,16 @@
 # `k8s-kms-plugin` 🔐
 
-[![Documentation](https://img.shields.io/badge/documentation-online-blue)](https://eclipse-keysealer.github.io/k8s-kms-plugin/)
-[![Docs site](https://github.com/eclipse-keysealer/k8s-kms-plugin/actions/workflows/docs.yml/badge.svg)](https://github.com/eclipse-keysealer/k8s-kms-plugin/actions/workflows/docs.yml)
+<!-- FORK-LOCAL: the two documentation badges below, and the site links in the Documentation section,
+     point at THIS FORK because upstream has no Pages site and no docs.yml workflow yet. Everything
+     else in this repository uses absolute eclipse-keysealer URLs on purpose.
+
+     BEFORE OPENING A PULL REQUEST UPSTREAM, switch them back:
+       nicolas-peiffer.github.io/k8s-kms-plugin -> eclipse-keysealer.github.io/k8s-kms-plugin
+       github.com/Nicolas-Peiffer/...           -> github.com/eclipse-keysealer/...
+     The other place carrying a fork URL is website/hugo.toml's baseURL, which is only a local-dev
+     default — the Docs workflow computes the real one from the repository that runs the build. -->
+[![Documentation](https://img.shields.io/badge/documentation-online-blue)](https://nicolas-peiffer.github.io/k8s-kms-plugin/)
+[![Docs site](https://github.com/Nicolas-Peiffer/k8s-kms-plugin/actions/workflows/docs.yml/badge.svg)](https://github.com/Nicolas-Peiffer/k8s-kms-plugin/actions/workflows/docs.yml)
 [![Licence](https://img.shields.io/github/license/Ileriayo/markdown-badges?style=for-the-badge)](./LICENSE)
 [![Go Reference](https://pkg.go.dev/badge/github.com/eclipse-keysealer/k8s-kms-plugin.svg)](https://pkg.go.dev/github.com/eclipse-keysealer/k8s-kms-plugin)
 [![Build](https://github.com/eclipse-keysealer/k8s-kms-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/eclipse-keysealer/k8s-kms-plugin/actions/workflows/ci.yml)
@@ -55,8 +64,10 @@ Kubernetes distribution guide (`k3s`), are indexed in [`docs/README.md`](./docs/
 
 # Documentation 📚
 
-📖 **Browse it online: [eclipse-keysealer.github.io/k8s-kms-plugin](https://eclipse-keysealer.github.io/k8s-kms-plugin/)**
-— searchable, with a sidebar and a [glossary](https://eclipse-keysealer.github.io/k8s-kms-plugin/docs/glossary/).
+<!-- FORK-LOCAL: see the note beside the badges at the top — these two links point at this fork and
+     must be switched to eclipse-keysealer.github.io before a pull request upstream. -->
+📖 **Browse it online: [nicolas-peiffer.github.io/k8s-kms-plugin](https://nicolas-peiffer.github.io/k8s-kms-plugin/)**
+— searchable, with a sidebar and a [glossary](https://nicolas-peiffer.github.io/k8s-kms-plugin/docs/glossary/).
 
 The same pages live in [`docs/`](./docs/README.md) and render here on GitHub, so either surface works.
 A fork publishes its own copy at `https://<owner>.github.io/<repository>/` once its Docs workflow has
