@@ -1,0 +1,36 @@
+{{- /*
+  OVERRIDE of Hextra's layouts/_partials/navbar-title.html (v0.12.3), copied and extended with one
+  addition: a version chip after the site title, so the version being read is visible on every page
+  rather than only in the footer.
+
+  This is an override, not a hook — Hextra's `custom/navbar-title.html` file exists but nothing in
+  v0.12.3 calls it. Re-check this file against the theme's own on every `hugo mod get -u`; the block
+  below the marker is the only part that is ours.
+
+  The chip is omitted entirely when no version parameter was passed, which is what a local `hugo`
+  invocation looks like. See website/README.md for where the parameters come from.
+*/ -}}
+{{- $logoPath := .Site.Params.navbar.logo.path | default "images/logo.svg" -}}
+{{- $logoLink := .Site.Params.navbar.logo.link | default .Site.Home.RelPermalink -}}
+{{- $logoWidth := .Site.Params.navbar.logo.width | default "20" -}}
+{{- $logoHeight := .Site.Params.navbar.logo.height | default "20" -}}
+{{- $logoDarkPath := .Site.Params.navbar.logo.dark | default $logoPath -}}
+
+<a class="hx:flex hx:items-center hx:hover:opacity-75 hx:ltr:mr-auto hx:rtl:ml-auto" href="{{ $logoLink }}">
+  {{- $displayTitle := (.Site.Params.navbar.displayTitle | default true) }}
+  {{- if (.Site.Params.navbar.displayLogo | default true) }}
+    <img class="hx:mr-2 hx:block hx:dark:hidden" src="{{ $logoPath | relURL }}" alt="{{ cond $displayTitle `Logo` .Site.Title }}" height="{{ $logoHeight }}" width="{{ $logoWidth }}" />
+    <img class="hx:mr-2 hx:hidden hx:dark:block" src="{{ $logoDarkPath | relURL }}" alt="{{ cond $displayTitle `Dark Logo` .Site.Title }}" height="{{ $logoHeight }}" width="{{ $logoWidth }}" />
+  {{- end }}
+  {{- if $displayTitle }}
+    <span class="hx:mr-2 hx:font-extrabold hx:inline hx:select-none">{{- .Site.Title -}}</span>
+  {{- end }}
+
+  {{- /* ---------------- ours, from here to the end of the anchor ---------------- */ -}}
+  {{- with site.Params.docsVersion -}}
+    <span
+      class="hx:mr-2 hx:hidden hx:sm:inline hx:select-none hx:rounded-full hx:border hx:border-gray-300 hx:px-2 hx:py-0.5 hx:font-mono hx:text-[0.65rem] hx:font-medium hx:leading-none hx:text-gray-600 hx:dark:border-neutral-700 hx:dark:text-gray-400"
+      title="Documentation built from {{ . }} — full build details in the page footer"
+    >{{ . }}</span>
+  {{- end -}}
+</a>

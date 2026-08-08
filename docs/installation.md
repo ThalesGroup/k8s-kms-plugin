@@ -56,6 +56,33 @@ k8s-kms-plugin`, put the PIN in a root-only `EnvironmentFile` rather than on the
 walks through it, including which sandboxing directives must stay off for an HSM device node to
 remain visible.
 
+### How a release names its files
+
+Every command below uses the real asset names from
+[`v1.0.0-rc5`](https://github.com/eclipse-keysealer/k8s-kms-plugin/releases/tag/v1.0.0-rc5), the
+latest release. Substitute your own tag — but read the version column first, because **each packaging
+format spells a pre-release differently**, and the difference is not cosmetic: it is what the file is
+actually called.
+
+| Format | `1.0.0-rc5` becomes | Example asset (`x86_64` / `amd64`) |
+|--------|---------------------|------------------------------------|
+| binary and archives | `1.0.0-rc5` | `k8s-kms-plugin_linux_amd64_1.0.0-rc5` plus `.tar.gz` / `.zip` |
+| `apk` | `1.0.0_rc5` | `k8s-kms-plugin_1.0.0_rc5_x86_64.apk` |
+| `archlinux` | `1.0.0rc5` | `k8s-kms-plugin-1.0.0rc5-1-x86_64.pkg.tar.zst` |
+| `deb` | `1.0.0.rc5` | `k8s-kms-plugin_1.0.0.rc5_amd64.deb` |
+| `rpm` | `1.0.0.rc5` | `k8s-kms-plugin-1.0.0.rc5-1.x86_64.rpm` |
+
+> [!NOTE]
+> `deb` and `rpm` conventionally write a pre-release with a tilde (`1.0.0~rc5`), which sorts it below
+> the final release. GitHub does not allow `~` in an asset name and silently rewrites it, so
+> [`.goreleaser.yml`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/.goreleaser.yml)
+> replaces it with `.` deliberately — otherwise the published filename would no longer match the name
+> recorded in `k8s-kms-plugin_checksums.txt` and in the SLSA provenance. The version *inside* the
+> package is still `1.0.0~rc5`.
+
+`arm64`/`aarch64` and `riscv64` builds are published for every format except `archlinux`, which ships
+`x86_64` and `aarch64` only.
+
 ### `apk` on Wolfi OS packages
 
 For now, `k8s-kms-plugin` does not support installation on Alpine Linux. Indeed, for now we are not building the `k8s-kms-plugin` package with the musl libc. We only support the glibc.
@@ -67,7 +94,7 @@ Until the packages are available on official repos and signed, you can install t
 Example on Wolfi OS:
 
 ```bash
-apk add --allow-untrusted ./k8s-kms-plugin_SNAPSHOT-3239cd9_x86_64.apk
+apk add --allow-untrusted ./k8s-kms-plugin_1.0.0_rc5_x86_64.apk
 ```
 
 ### `archlinux` packages
@@ -77,22 +104,32 @@ See https://wiki.archlinux.org/title/Pacman#Additional_commands
 Command should look like this:
 
 ```bash
-pacman -U ./k8s-kms-plugin-SNAPSHOT-3239cd9-1-x86_64.pkg.tar.zst
-```
-
-However, pacman needs a version that follows semantic versionning. Make sure you use the right package that uses semver, otherwise you get this error:
-
-```
-error: invalid metadata for package k8s-kms-plugin-SNAPSHOT-3239cd9-1 (package version contains invalid characters)
-error: './k8s-kms-plugin-SNAPSHOT-3239cd9-1-x86_64.pkg.tar.zst': invalid or corrupted package
+pacman -U ./k8s-kms-plugin-1.0.0rc5-1-x86_64.pkg.tar.zst
 ```
 
 ### `deb` debian packages
 
-If you wish to install a snapshot version of `k8s-kms-plugin` (not following semantic versionning), you will need to use the following command `dpkg -i --force-all` to force the installation of the package. Otherwise, `dpkg` will fail with the following error:
+```bash
+sudo dpkg -i ./k8s-kms-plugin_1.0.0.rc5_amd64.deb
+```
+
+### `rpm` RPM packages
 
 ```bash
-$ sudo dpkg -i ./k8s-kms-plugin_SNAPSHOT-3239cd9_amd64.deb 
+dnf install ./k8s-kms-plugin-1.0.0.rc5-1.x86_64.rpm
+```
+
+### Snapshot builds are a different story
+
+A snapshot build — produced from an untagged commit, and **not** something the releases page publishes
+— is named after the commit (`k8s-kms-plugin_SNAPSHOT-3239cd9_amd64.deb`), and that is not a version
+either `dpkg` or `pacman` accepts.
+
+<details>
+<summary><code>dpkg</code> rejects it: <em>version number does not start with digit</em></summary>
+
+```bash
+$ sudo dpkg -i ./k8s-kms-plugin_SNAPSHOT-3239cd9_amd64.deb
 ```
 ```
 dpkg: error processing archive ./k8s-kms-plugin_SNAPSHOT-3239cd9_amd64.deb (--install):
@@ -102,12 +139,11 @@ Errors were encountered while processing:
  ./k8s-kms-plugin_SNAPSHOT-3239cd9_amd64.deb
 ```
 
-"Force" will only raise a warning:
+`--force-all` downgrades that error to a warning:
 
 ```bash
 dpkg --force-all -i ./k8s-kms-plugin_SNAPSHOT-3239cd9_amd64.deb
 ```
-
 ```
 dpkg: warning: parsing file '/var/lib/dpkg/tmp.ci/control' near line 2 package 'k8s-kms-plugin':
  'Version' field value 'SNAPSHOT-3239cd9': version number does not start with digit
@@ -117,12 +153,18 @@ Preparing to unpack .../k8s-kms-plugin_SNAPSHOT-3239cd9_amd64.deb ...
 Unpacking k8s-kms-plugin (SNAPSHOT-3239cd9) ...
 Setting up k8s-kms-plugin (SNAPSHOT-3239cd9) ...
 ```
+</details>
 
-### `rpm` RPM packages
+<details>
+<summary><code>pacman</code> rejects it: <em>package version contains invalid characters</em></summary>
 
-```bash
-dnf install ./k8s-kms-plugin-SNAPSHOT-3239cd9-1.x86_64.rpm
 ```
+error: invalid metadata for package k8s-kms-plugin-SNAPSHOT-3239cd9-1 (package version contains invalid characters)
+error: './k8s-kms-plugin-SNAPSHOT-3239cd9-1-x86_64.pkg.tar.zst': invalid or corrupted package
+```
+
+There is no `--force` for this one. Use a tagged release.
+</details>
 
 ### Binary
 
@@ -144,7 +186,7 @@ go install github.com/slsa-framework/slsa-verifier/v2/cli/slsa-verifier@v2.7.1
 Download the artefact together with its `-keyless.bundle.json`, then check the signature:
 
 ```bash
-TAG=v1.0.0
+TAG=v1.0.0-rc5
 VERSION=${TAG#v}                              # goreleaser strips the leading "v"
 FILE=k8s-kms-plugin_linux_amd64_${VERSION}
 
@@ -159,7 +201,7 @@ And the provenance:
 
 ```bash
 slsa-verifier verify-artifact "${FILE}" \
-  --provenance-path "$(ls *.intoto.jsonl | head -1)" \
+  --provenance-path multiple.intoto.jsonl \
   --source-uri github.com/eclipse-keysealer/k8s-kms-plugin \
   --source-tag "${TAG}"
 ```
@@ -430,7 +472,7 @@ Equivalent manual invocation, e.g. to package a specific `goreleaser` artifact:
 
 ```bash
 podman build -f Containerfile \
-  --build-arg BINARY=dist/k8s-kms-plugin_linux_amd64_v1.0.0 \
+  --build-arg BINARY=dist/k8s-kms-plugin_linux_amd64_1.0.0-rc5 \
   -t k8s-kms-plugin:v1.0.0 .
 ```
 

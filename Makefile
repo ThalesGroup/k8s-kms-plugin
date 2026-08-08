@@ -209,9 +209,22 @@ HUGO ?= hugo
 HUGO_INSTALL_HINT := go install github.com/gohugoio/hugo@latest
 SITE_DIR := website
 
+# The documentation's own version, shown in the navbar and the footer of every published page.
+# Passed as build-time parameters rather than committed anywhere, so nothing can go stale: a page
+# claiming the wrong version is worse than one that says it does not know. A build with none of these
+# set renders "unversioned local build" instead of a blank or a lie — see
+# website/layouts/_partials/custom/footer.html.
+#
+# HUGO_PARAMS_<NAME> is Hugo's env-var route into site params; the lookup is case-insensitive, so
+# HUGO_PARAMS_DOCSVERSION reaches site.Params.docsVersion.
+SITE_VERSION_ENV = \
+	HUGO_PARAMS_DOCSVERSION="$(VERSION)" \
+	HUGO_PARAMS_DOCSCOMMIT="$(COMMIT_LONG)" \
+	HUGO_PARAMS_DOCSBUILDDATE="$(BUILD_DATE)"
+
 site:
 		$(call require,$(HUGO),$(HUGO_INSTALL_HINT))
-		cd $(SITE_DIR) && $(HUGO) --gc --minify
+		cd $(SITE_DIR) && $(SITE_VERSION_ENV) $(HUGO) --gc --minify
 		@$(MAKE) --no-print-directory check-site
 		@echo "Site built in $(SITE_DIR)/public"
 
@@ -223,7 +236,7 @@ check-site:
 
 site-serve:
 		$(call require,$(HUGO),$(HUGO_INSTALL_HINT))
-		cd $(SITE_DIR) && $(HUGO) server --buildDrafts
+		cd $(SITE_DIR) && $(SITE_VERSION_ENV) $(HUGO) server --buildDrafts
 
 # Removes the build output and Hugo's module/resource caches.
 site-clean:

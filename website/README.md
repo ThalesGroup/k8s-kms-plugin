@@ -39,10 +39,42 @@ subpath in every asset URL, and unrewritten relative `.md` links 404'd on every 
 
 ## Local layout overrides
 
-`layouts/_markup/render-link.html` overrides Hextra's link render hook so that **relative** links
-between Markdown pages resolve. Hextra's own hook only rewrites destinations beginning with `/`, so
-`./installation.md` was published verbatim and 404'd. Re-check this file when upgrading Hextra —
-compare it against the theme's version and re-run `make site`.
+Three files copy or replace theme templates, so each one has to be compared against Hextra's own
+version on `hugo mod get -u` and the site rebuilt:
+
+| File | Why |
+|------|-----|
+| `layouts/_markup/render-link.html` | Hextra's link hook only rewrites destinations beginning with `/`, so a relative `./installation.md` was published verbatim and 404'd |
+| `layouts/_markup/render-image.html` | Hextra's image hook skips its `../` compensation when a path already starts with `../`, which broke a diagram once pages moved into a subdirectory |
+| `layouts/_partials/navbar-title.html` | Adds the version chip after the site title. Only the block below the marker comment is ours; the rest is the theme's file verbatim |
+
+`layouts/_partials/custom/footer.html` is **not** an override — it fills a hook Hextra calls on
+purpose, and needs no attention on upgrade.
+
+## Showing which version the reader is on
+
+Two places answer it: a chip beside the navbar title, and a "Documentation build" line in the footer
+carrying version, commit, build date and a link to the workflow run that produced the page.
+
+Both read the same parameters, and none of them is committed — a version baked into the repository is
+a version that goes stale:
+
+| Parameter | Local (`make site`) | Published (`docs.yml`) |
+|-----------|---------------------|------------------------|
+| `docsVersion` | `git describe --tags --always --dirty` | `git describe --tags --always` |
+| `docsCommit` | `git rev-parse HEAD` | `github.sha` |
+| `docsBuildDate` | `date -u --iso-8601=seconds` | same |
+| `docsRunURL` | unset | link to the Actions run |
+| `docsRepoURL` | defaults to the upstream repository | `github.server_url/github.repository` |
+
+They arrive as `HUGO_PARAMS_DOCSVERSION` and friends — Hugo's env-var route into site params, whose
+lookup is case-insensitive, so `HUGO_PARAMS_DOCSVERSION` reaches `site.Params.docsVersion`. A bare
+`hugo` with none of them set is a supported case: the footer says *unversioned local build* and the
+chip is omitted, rather than the page implying a version it does not have.
+
+Hextra has no built-in version switcher, and this is not one — there is a single published site, and
+what it shows is which commit built it. A reader who needs the docs for an older release reads them
+from that release's tag on GitHub.
 
 Hugo does **not** need to be the *extended* build: Hextra v0.12.x ships its Tailwind CSS
 precompiled, so there is no SCSS to transpile.

@@ -1,0 +1,66 @@
+{{- /*
+  Which version of the documentation am I reading?
+
+  This fills Hextra's documented `custom/footer.html` hook, so it is additive rather than an override
+  of theme markup — nothing here has to be re-synced when the theme is upgraded.
+
+  Every value is a build-time parameter, never committed: `make site` and the Docs workflow pass them
+  as HUGO_PARAMS_* (see website/README.md). When they are absent — someone running `hugo` by hand —
+  the line says so instead of showing a stale or blank version, because a documentation site quietly
+  claiming the wrong version is worse than one admitting it does not know.
+*/ -}}
+
+{{- $version := site.Params.docsVersion -}}
+{{- $commit := site.Params.docsCommit -}}
+{{- $shortCommit := "" -}}
+{{- with $commit }}{{ $shortCommit = substr . 0 8 }}{{ end -}}
+{{- $buildDate := site.Params.docsBuildDate -}}
+{{- $runURL := site.Params.docsRunURL -}}
+{{- $repoURL := site.Params.docsRepoURL | default "https://github.com/eclipse-keysealer/k8s-kms-plugin" -}}
+
+<div class="hx:flex hx:flex-wrap hx:items-center hx:gap-x-3 hx:gap-y-1 hx:pt-8 hx:text-xs">
+  <span class="hx:font-semibold hx:uppercase hx:tracking-wider hx:text-gray-500 hx:dark:text-gray-500">
+    Documentation build
+  </span>
+
+  {{- if $version -}}
+    <a
+      class="hx:font-mono hx:no-underline hx:hover:underline"
+      href="{{ $repoURL }}/releases/tag/{{ $version }}"
+      title="Release notes for {{ $version }}"
+    >{{ $version }}</a>
+  {{- else -}}
+    <span class="hx:font-mono" title="Built outside CI, with no version parameter passed">
+      unversioned local build
+    </span>
+  {{- end -}}
+
+  {{- with $shortCommit -}}
+    <span class="hx:text-gray-400 hx:dark:text-gray-600">·</span>
+    <a
+      class="hx:font-mono hx:no-underline hx:hover:underline"
+      href="{{ $repoURL }}/commit/{{ $commit }}"
+      title="Commit the documentation was built from"
+    >{{ . }}</a>
+  {{- end -}}
+
+  {{- with $buildDate -}}
+    <span class="hx:text-gray-400 hx:dark:text-gray-600">·</span>
+    {{- /* time.Format needs a real time value; a malformed parameter must not break the build. */ -}}
+    {{- $t := try (time.AsTime .) -}}
+    {{- with $t.Value -}}
+      {{- /* datetime= must be ISO 8601; Go's default String() is not, and browsers ignore it. */ -}}
+      <time
+        datetime="{{ time.Format "2006-01-02T15:04:05Z07:00" . }}"
+        title="{{ time.Format "2006-01-02 15:04:05 MST" . }}"
+      >built {{ time.Format "2 Jan 2006" . }}</time>
+    {{- else -}}
+      <span>built {{ $buildDate }}</span>
+    {{- end -}}
+  {{- end -}}
+
+  {{- with $runURL -}}
+    <span class="hx:text-gray-400 hx:dark:text-gray-600">·</span>
+    <a class="hx:no-underline hx:hover:underline" href="{{ . }}">workflow run</a>
+  {{- end -}}
+</div>

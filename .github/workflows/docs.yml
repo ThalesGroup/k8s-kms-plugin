@@ -105,6 +105,9 @@ jobs:
       # The Pages URL is derived from the owner and repository rather than read back from the Pages
       # API, so the build job needs no Pages permissions at all and the same config publishes from a
       # fork and from upstream. GitHub Pages hostnames are lowercase, hence the tr.
+      # The version stamp shown in every page's navbar and footer. `git describe` needs the tags,
+      # which the checkout above already fetches (fetch-depth: 0). On an untagged commit it degrades
+      # to a bare short SHA, which is still the truth about what was built.
       - name: Build site
         run: |
           owner=$(printf '%s' "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
@@ -116,6 +119,12 @@ jobs:
             base="https://$owner.github.io/$repo/"
           fi
           echo "Building with baseURL $base"
+          export HUGO_PARAMS_DOCSVERSION="$(git describe --tags --always)"
+          export HUGO_PARAMS_DOCSCOMMIT="${{ github.sha }}"
+          export HUGO_PARAMS_DOCSBUILDDATE="$(date -u --iso-8601=seconds)"
+          export HUGO_PARAMS_DOCSRUNURL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          export HUGO_PARAMS_DOCSREPOURL="${{ github.server_url }}/${{ github.repository }}"
+          echo "Documentation version $HUGO_PARAMS_DOCSVERSION"
           cd website && hugo --gc --minify --baseURL "$base"
 
       # `hugo` exiting 0 says nothing about whether the pages work. This checks the output itself:

@@ -79,7 +79,7 @@ Download `create-dev-token_testing-only_linux_<arch>_<version>` from the
 [releases page](https://github.com/eclipse-keysealer/k8s-kms-plugin/releases) and rename it:
 
 ```sh
-mv create-dev-token_testing-only_linux_amd64_v1.2.3 create-dev-token
+mv create-dev-token_testing-only_linux_amd64_1.0.0-rc5 create-dev-token
 chmod +x create-dev-token
 ./create-dev-token --version
 ```

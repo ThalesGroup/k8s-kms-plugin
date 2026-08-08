@@ -108,7 +108,7 @@ Download the artifact together with its `-keyless.bundle.json` file from the
 [releases page](https://github.com/eclipse-keysealer/k8s-kms-plugin/releases), then:
 
 ```bash
-TAG=v1.0.0
+TAG=v1.0.0-rc5
 VERSION=${TAG#v}                              # goreleaser strips the leading "v"
 FILE=k8s-kms-plugin_linux_amd64_${VERSION}
 
@@ -144,7 +144,7 @@ gh attestation verify "k8s-kms-plugin-${VERSION}-source.tar.gz.spdx.json" \
 Verify the image signature (replace the tag, or pin a digest with `@sha256:…`):
 
 ```bash
-TAG=v1.0.0
+TAG=v1.0.0-rc5
 IMAGE=ghcr.io/eclipse-keysealer/k8s-kms-plugin:${TAG}
 
 cosign verify "${IMAGE}" \
@@ -161,11 +161,11 @@ produced this artifact* — and is checked with
 go install github.com/slsa-framework/slsa-verifier/v2/cli/slsa-verifier@v2.7.1
 ```
 
-For a downloaded binary, using the `*.intoto.jsonl` published alongside it:
+For a downloaded binary, using the `multiple.intoto.jsonl` published alongside it:
 
 ```bash
 slsa-verifier verify-artifact "${FILE}" \
-  --provenance-path "$(ls *.intoto.jsonl | head -1)" \
+  --provenance-path multiple.intoto.jsonl \
   --source-uri github.com/eclipse-keysealer/k8s-kms-plugin \
   --source-tag "${TAG}"
 ```

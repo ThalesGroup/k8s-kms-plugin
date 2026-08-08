@@ -29,6 +29,31 @@ deliberately break that rule because upstream has no Pages site and no `docs.yml
 
 The two README ones are the ones that matter: they would silently point upstream readers at a fork.
 
+### Release artefact names in the documentation
+
+Any command in the docs that downloads, installs or verifies a release artefact must use the **real
+asset names from the latest release on the upstream repository** — currently
+[`v1.0.0-rc5`](https://github.com/eclipse-keysealer/k8s-kms-plugin/releases/tag/v1.0.0-rc5). Read them
+off the release rather than reconstructing them from `.goreleaser.yml`, and re-check when a newer tag
+lands. The asset list is at `https://github.com/eclipse-keysealer/k8s-kms-plugin/releases/expanded_assets/<tag>`
+(the release page itself lazy-loads its assets, so fetching that page returns none of them).
+
+Reconstructing names is what goes wrong, because **each packaging format spells a pre-release
+differently** and none of them matches the tag:
+
+| Format | `v1.0.0-rc5` becomes | Asset |
+|--------|----------------------|-------|
+| binary / archive | `1.0.0-rc5` | `k8s-kms-plugin_linux_amd64_1.0.0-rc5`, `.tar.gz`, `.zip` |
+| `apk` | `1.0.0_rc5` | `k8s-kms-plugin_1.0.0_rc5_x86_64.apk` |
+| `archlinux` | `1.0.0rc5` | `k8s-kms-plugin-1.0.0rc5-1-x86_64.pkg.tar.zst` |
+| `deb` / `rpm` | `1.0.0.rc5` | `k8s-kms-plugin_1.0.0.rc5_amd64.deb`, `k8s-kms-plugin-1.0.0.rc5-1.x86_64.rpm` |
+
+Note there is **no `v` prefix** on any artefact — goreleaser's `.Version` strips it — and that the
+`deb`/`rpm` `.` is a deliberate substitution for the conventional `~`, which GitHub rejects in an
+asset name. Checksums are `k8s-kms-plugin_checksums.txt`, Sigstore bundles are
+`<asset>-keyless.bundle.json`, and SLSA provenance is a single `multiple.intoto.jsonl`.
+`docs/installation.md` documents the whole mapping; keep it in step.
+
 ## Commands
 
 `CGO_ENABLED=1` is required everywhere — the PKCS#11 bindings are cgo. The Makefile sets it for you; set
@@ -162,6 +187,16 @@ needs its own `_index.md` mount in `website/hugo.toml`.
   in `hugo.toml` — Hextra's default is `mermaid@latest`. `website/README.md` documents the offline
   build.
 - Hugo does **not** need the extended build (Hextra ships precompiled CSS).
+- **Which version is this page?** A version chip sits beside the navbar title and a
+  "Documentation build" line in the footer gives version, commit, build date and a link to the
+  workflow run. Both read `site.Params.docs{Version,Commit,BuildDate,RunURL,RepoURL}`, which are
+  passed at build time as `HUGO_PARAMS_DOCS*` — by `SITE_VERSION_ENV` in the Makefile and by the
+  Build step in `docs.yml`. Nothing is committed, so nothing can go stale; with no parameters the
+  footer prints "unversioned local build" and the chip disappears rather than showing a wrong
+  version. The footer fills Hextra's `custom/footer.html` **hook**, but the chip needs
+  `_partials/navbar-title.html`, a genuine **override** — Hextra ships an unused
+  `custom/navbar-title.html` that nothing in v0.12.3 calls. That makes three overrides to re-check on
+  a theme upgrade (see below).
 - GitHub-style alerts (`> [!NOTE]`, `TIP`, `IMPORTANT`, `WARNING`, `CAUTION`) render in **both**
   places — natively on GitHub, through Hextra's blockquote hook on the site — so they are preferred
   over a blockquote opening with an emoji, and the emoji/`**Note**:` label comes off when converting.
