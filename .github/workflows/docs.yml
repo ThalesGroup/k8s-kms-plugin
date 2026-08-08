@@ -17,7 +17,6 @@ name: Docs
 
 on:
   push:
-    branches: [master]
     paths:
       - 'docs/**'
       - 'website/**'
@@ -29,7 +28,8 @@ on:
       - 'website/**'
       - 'scripts/check-doc-links.py'
       - '.github/workflows/docs.yml'
-  # Allow publishing on demand, e.g. after changing the Pages settings.
+  # Allows publishing on demand. Note that GitHub only offers this for workflows that exist on the
+  # repository's default branch — a copy on a feature branch cannot be dispatched.
   workflow_dispatch:
 
 permissions:
@@ -94,41 +94,36 @@ jobs:
       - name: Stamp build provenance into the generated reference
         run: make doc
 
-      # actions/configure-pages v6.0.0
-      #
-      # Runs before the build so its base_url output can be handed to Hugo. That is what keeps the
-      # site publishable from a fork and from the upstream repository with no config change: the URL
-      # comes from whichever repository is running, instead of the value committed in hugo.toml.
-      - name: Configure Pages
-        id: pages
-        if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
-        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d
-
-      # base_url is empty on pull requests, where Configure Pages is skipped — those builds are only
-      # a check and are never published, so hugo.toml's default is fine for them.
+      # The Pages URL is derived from the owner and repository rather than read back from the Pages
+      # API, so the build job needs no Pages permissions at all and the same config publishes from a
+      # fork and from upstream. GitHub Pages hostnames are lowercase, hence the tr.
       - name: Build site
-        env:
-          PAGES_BASE_URL: ${{ steps.pages.outputs.base_url }}
         run: |
-          cd website
-          if [ -n "$PAGES_BASE_URL" ]; then
-            echo "Building with baseURL from Configure Pages: $PAGES_BASE_URL"
-            hugo --gc --minify --baseURL "$PAGES_BASE_URL"
+          owner=$(printf '%s' "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          repo="${{ github.event.repository.name }}"
+          if [ "$repo" = "$owner.github.io" ]; then
+            # A user or organisation site is served from the domain root, not a subpath.
+            base="https://$owner.github.io/"
           else
-            echo "Building with the baseURL from hugo.toml (pull request check, not published)"
-            hugo --gc --minify
+            base="https://$owner.github.io/$repo/"
           fi
+          echo "Building with baseURL $base"
+          cd website && hugo --gc --minify --baseURL "$base"
 
       # actions/upload-pages-artifact v5.0.0
+      #
+      # Publish from the repository's DEFAULT branch rather than a hardcoded "master": that is what
+      # lets a fork publish from its own default branch and upstream from its own, with nothing to
+      # change. Pull requests build but never publish.
       - name: Upload artifact
-        if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && github.ref_name == github.event.repository.default_branch
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9
         with:
           path: website/public
 
   deploy:
     name: Deploy to Pages
-    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && github.ref_name == github.event.repository.default_branch
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -142,6 +137,17 @@ jobs:
       group: pages-deploy
       cancel-in-progress: false
     steps:
+      # actions/configure-pages v6.0.0
+      #
+      # Lives here, not in the build job, so `pages: write` stays out of a job that also runs for
+      # pull requests. enablement:true creates the Pages site on first run if it does not exist yet,
+      # which removes the manual "Settings -> Pages -> Source: GitHub Actions" step — without it the
+      # very first deploy fails on a repository that has never had Pages turned on.
+      - name: Configure Pages
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d
+        with:
+          enablement: true
+
       # actions/deploy-pages v5.0.0
       - name: Deploy
         id: deployment

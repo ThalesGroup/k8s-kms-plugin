@@ -17,9 +17,9 @@
 #   make site          # -> website/public/
 
 # baseURL is only the local-dev default — the fork this branch is developed on. Do NOT rely on it
-# being right for whoever publishes: the Docs workflow overrides it with the value
-# actions/configure-pages reports for the repository actually running the build, so the same config
-# publishes correctly from this fork and from eclipse-keysealer upstream with nothing to remember.
+# being right for whoever publishes: the Docs workflow computes the URL from the owner and
+# repository actually running the build and passes it with --baseURL, so the same config publishes
+# correctly from this fork and from eclipse-keysealer upstream with nothing to remember.
 #
 # Override it locally the same way:  hugo --baseURL https://example.github.io/k8s-kms-plugin/
 baseURL = 'https://nicolas-peiffer.github.io/k8s-kms-plugin/'

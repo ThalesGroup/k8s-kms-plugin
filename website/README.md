@@ -4,10 +4,11 @@ The `k8s-kms-plugin` documentation site: [Hugo](https://gohugo.io/) with the
 [Hextra](https://github.com/imfing/hextra) theme, published to GitHub Pages by
 [`.github/workflows/docs.yml`](../.github/workflows/docs.yml).
 
-`baseURL` in [`hugo.toml`](./hugo.toml) is only the **local-dev default**. The workflow overrides it
-with the URL `actions/configure-pages` reports for whichever repository is running the build, so the
-same config publishes correctly from a fork and from `eclipse-keysealer` upstream with nothing to
-remember. Override it locally the same way:
+`baseURL` in [`hugo.toml`](./hugo.toml) is only the **local-dev default**. The workflow computes it
+from the owner and repository actually running the build, so the same config publishes correctly
+from a fork and from `eclipse-keysealer` upstream with nothing to remember. Publishing is keyed off
+the repository's **default branch**, not a hardcoded `master`, for the same reason. Override the URL
+locally the same way:
 
 ```sh
 cd website && hugo --baseURL https://example.github.io/k8s-kms-plugin/
