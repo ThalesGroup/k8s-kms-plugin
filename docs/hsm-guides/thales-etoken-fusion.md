@@ -1,6 +1,6 @@
 ---
 title: "Thales eToken Fusion"
-weight: 54
+weight: 40
 ---
 
 This guide describes how to set up a Thales eToken Fusion with `k8s-kms-plugin` in a **non production environment**.
@@ -91,6 +91,6 @@ sudo k8s-kms-plugin \
 
 `--p11-key-id` is used here since the ID printed by `pkcs11-tool --list-objects` above (`1212abab`) is
 the key's `CKA_ID`; `--p11-key-label rsa00eToken` (its `CKA_LABEL`) would work identically. See
-[`CKA_ID` vs `CKA_LABEL`](./cli-user-interface/cka-id-vs-cka-label.md) for how the two are resolved.
+[`CKA_ID` vs `CKA_LABEL`](../cli-user-interface/cka-id-vs-cka-label.md) for how the two are resolved.
 
 You can validate Encryption and Decryption are working by using [`grpcurl-roundtrip-test.sh`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/scripts/grpcurl/grpcurl-roundtrip-test.sh).

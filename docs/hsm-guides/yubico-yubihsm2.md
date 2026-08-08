@@ -1,6 +1,6 @@
 ---
 title: "YubiHSM 2"
-weight: 55
+weight: 50
 ---
 
 This guide will help you to set up a YubiHSM 2 and make it work with `k8s-kms-plugin` in a **non production environment**.
@@ -89,7 +89,7 @@ The YubiHSM 2 is a USB device. The YubiHSM 2 supports two different connection m
 
 > Note: The YubiHSM 2 corresponds to `k8s-kms-plugin`'s _USB HSM_ and _Network HSM_ scenarios, depending on which connection method is used.
 > 
-> ![](./images/k8s-kms-plugin-deployment-scenario-examples.svg)
+> ![](../images/k8s-kms-plugin-deployment-scenario-examples.svg)
 
 ## Seting Up the YubiHSM 2
 
@@ -268,7 +268,7 @@ k8s-kms-plugin \
 ```
 
 `--p11-key-label` (PKCS #11 `CKA_LABEL`) works the same way as `--p11-key-id` (PKCS #11 `CKA_ID`)
-above. See [`CKA_ID` vs `CKA_LABEL`](./cli-user-interface/cka-id-vs-cka-label.md) for how the two are
+above. See [`CKA_ID` vs `CKA_LABEL`](../cli-user-interface/cka-id-vs-cka-label.md) for how the two are
 resolved.
 
 `grpcurl` needs the KMS v2 service definition, `api.proto`. Take it from the Go module cache, so it

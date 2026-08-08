@@ -1,6 +1,6 @@
 ---
 title: "Software TPM Emulator"
-weight: 53
+weight: 30
 ---
 
 > ⚠️ **Legacy reference**: This guide is kept for backward compatibility. [`SoftHSMv3` (`pqctoday-hsm`)](./softhsm-v3.md) is now the recommended software HSM for development and integration testing — it supports all algorithm families including **ML-KEM**. The Software TPM Emulator does **not** support ML-KEM.
@@ -87,7 +87,7 @@ k8s-kms-plugin \
 ```
 
 Alternatively, you can use `--p11-key-id` (PKCS #11 CKA_ID) instead of `--p11-key-label` (PKCS #11 CKA_LABEL).
-See [`CKA_ID` vs `CKA_LABEL`](./cli-user-interface/cka-id-vs-cka-label.md) for how the two are resolved.
+See [`CKA_ID` vs `CKA_LABEL`](../cli-user-interface/cka-id-vs-cka-label.md) for how the two are resolved.
 
 ```bash
 k8s-kms-plugin \

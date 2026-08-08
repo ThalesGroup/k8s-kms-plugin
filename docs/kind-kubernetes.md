@@ -70,8 +70,8 @@ the socket path **as seen from inside the apiserver container**, not the host pa
 - `kubectl`
 - `kind` — this guide was written with `kind v0.32.0`, which defaults to Kubernetes `v1.36.1`
 - **Podman ≥ 3.0** (this guide) or Docker ≥ 20.10
-- A `k8s-kms-plugin` binary and a PKCS #11 token — see [`SoftHSMv3`](./softhsm-v3.md) for the recommended
-  development setup, or [`Thales eToken Fusion`](./thales-etoken-fusion.md) / [`Yubico YubiHSM 2`](./yubico-yubihsm2.md)
+- A `k8s-kms-plugin` binary and a PKCS #11 token — see [`SoftHSMv3`](./hsm-guides/softhsm-v3.md) for the recommended
+  development setup, or [`Thales eToken Fusion`](./hsm-guides/thales-etoken-fusion.md) / [`Yubico YubiHSM 2`](./hsm-guides/yubico-yubihsm2.md)
   for real hardware
 
 ```sh
@@ -246,7 +246,7 @@ loop, but a missing plugin produces noisy startup errors and a temporarily unhea
 > family the plugin serves, and all four families work against a **stock** `kube-apiserver`. `rsa-oaep` is used
 > here simply as a bootstrap, so that an early failure can be attributed to the `KinD` wiring rather than to the
 > KEK. Once the cluster is up and encrypting, restart the plugin with `--algorithm-family aes-gcm`, `aes-cbc` or
-> `ml-kem` (see [`SoftHSMv3`](./softhsm-v3.md#start-k8s-kms-plugin-serve)) to exercise the other families.
+> `ml-kem` (see [`SoftHSMv3`](./hsm-guides/softhsm-v3.md#start-k8s-kms-plugin-serve)) to exercise the other families.
 
 ## Create the cluster
 

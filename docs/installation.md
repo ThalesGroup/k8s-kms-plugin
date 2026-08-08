@@ -3,45 +3,27 @@ title: "Installation"
 weight: 20
 ---
 
-## kubernetes Requirements
+This page covers getting the `k8s-kms-plugin` binary onto a machine and checking that what you got
+is what the project published. Running it, and wiring a cluster to it, are covered elsewhere:
 
-`k8s-kms-plugin` is designed for kubernetes clusters that are using version v1.29 or higher and implements the [KMS v2 API](https://pkg.go.dev/k8s.io/kms/apis/v2). See also:
-https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/
+| Next step | Where |
+|-----------|-------|
+| Set up a PKCS #11 provider and start `serve` against it | [HSM & TPM guides](./hsm-guides/README.md) |
+| Point a Kubernetes cluster at a running plugin | [`KinD`](./kind-kubernetes.md) or [`k3s`](./k3s-kubernetes.md) |
+| Flags, environment variables and config file keys | [Usage & User Guides](./usage.md) |
 
-⚠️ `k8s-kms-plugin` **does not support KMS v1** which is deprecated in Kubernetes v1.28 and disabled by default since Kubernetes v1.29.
+## Requirements
 
-To serve the `k8s-kms-plugin` for encryption operations from Kubernetes, you will need at least one AES, RSA or ML-KEM key in a supported PKCS #11 provider.
+`k8s-kms-plugin` targets Kubernetes **v1.29 or newer** and implements the
+[KMS v2 API](https://pkg.go.dev/k8s.io/kms/apis/v2). See the upstream
+[KMS provider documentation](https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/).
 
-### `k3s` kubernetes example
+⚠️ `k8s-kms-plugin` **does not support KMS v1**, which is deprecated as of Kubernetes v1.28 and
+disabled by default since v1.29.
 
-We use `k3s` as an example of a Kubernetes distribution that supports [KMS v2](https://pkg.go.dev/k8s.io/kms/apis/v2).
-
-Assuming you have configured a PKCS #11 TPM or HSM, you can start the `k8s-kms-plugin`:
-
-```bash
-k8s-kms-plugin \
-  serve \
-    --log-level=trace \
-    --socket /run/user/1000/k8s-kms-plugin.sock \
-    --p11-lib /usr/lib64/pkcs11/libtpm2_pkcs11.so \
-    --p11-label mylabel \
-    --p11-pin mypin \
-    --p11-key-id 33653932616130656634343238346163 \
-    --algorithm-family rsa-oaep
-```
-
-> This example uses [`Software TPM Emulator`](https://github.com/stefanberger/swtpm).
-
-Then review the content of file [`encryption-conf-kmsv2-unix-socket.yaml`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/deployments/k8s/encryption-conf-kmsv2-unix-socket.yaml).
-Make sure `resources.providers.kms.endpoint` points to the same unix socket file of the running `k8s-kms-plugin`.
-
-Then install `k3s` with the following command:
-
-```bash
-curl -sfL https://get.k3s.io | K3S_DEBUG=true INSTALL_K3S_VERSION=v1.33.1+k3s1 sh -s - \
-  --write-kubeconfig-mode 660 \
-  --kube-apiserver-arg=encryption-provider-config=$HOME/k8s-kms-plugin/deployments/k8s/encryption-conf-kmsv2-unix-socket.yaml
-```
+You also need a supported PKCS #11 provider holding at least one AES, RSA or ML-KEM key — see the
+[HSM & TPM guides](./hsm-guides/README.md), starting with
+[SoftHSMv3](./hsm-guides/softhsm-v3.md) if you have no hardware to hand.
 
 ## Install `k8s-kms-plugin` From Official Packages
 
@@ -124,6 +106,51 @@ dnf install ./k8s-kms-plugin-SNAPSHOT-3239cd9-1.x86_64.rpm
 ### Binary
 
 Move the `k8s-kms-plugin` binary to a relevant location under your `$PATH`, for example `/usr/local/bin/k8s-kms-plugin`.
+
+## Verify what you downloaded
+
+Every release artefact ships a Sigstore bundle, and both the binaries and the container image carry
+SLSA3 provenance. Verifying is two commands — one for the artefact, one for its provenance.
+
+Install [`cosign`](https://github.com/sigstore/cosign) **v3 or later** and
+[`slsa-verifier`](https://github.com/slsa-framework/slsa-verifier):
+
+```bash
+go install github.com/sigstore/cosign/v3/cmd/cosign@latest
+go install github.com/slsa-framework/slsa-verifier/v2/cli/slsa-verifier@v2.7.1
+```
+
+Download the artefact together with its `-keyless.bundle.json`, then check the signature:
+
+```bash
+TAG=v1.0.0
+VERSION=${TAG#v}                              # goreleaser strips the leading "v"
+FILE=k8s-kms-plugin_linux_amd64_${VERSION}
+
+cosign verify-blob \
+  --bundle "${FILE}-keyless.bundle.json" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  --certificate-identity "https://github.com/eclipse-keysealer/k8s-kms-plugin/.github/workflows/release.yml@refs/tags/${TAG}" \
+  "${FILE}"
+```
+
+And the provenance:
+
+```bash
+slsa-verifier verify-artifact "${FILE}" \
+  --provenance-path "$(ls *.intoto.jsonl | head -1)" \
+  --source-uri github.com/eclipse-keysealer/k8s-kms-plugin \
+  --source-tag "${TAG}"
+```
+
+> ⚠️ Always pin the signing identity with `--certificate-identity` (or `--certificate-identity-regexp`)
+> and the source with `--source-uri`. A signature verified without them only proves *somebody*
+> signed the file — which is not the question you are asking.
+
+**That is the short version.** For what a release actually produces, how keyless signing works, SBOM
+and VEX attestations, verifying the container image and its provenance by digest, and the full
+identity strings, see **[Supply Chain Security](./supply-chain-security.md)** — that page is the
+reference for signing and provenance.
 
 ## Install `k8s-kms-plugin` with `go install`
 

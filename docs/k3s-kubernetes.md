@@ -43,8 +43,8 @@ In general, we make sure to explicitely set `INSTALL_K3S_VERSION`.
 ### Run `k8s-kms-plugin serve` (no key rotation)
 
 > This section does not detail how to deploy & run the `k8s-kms-plugin`. See the other
-> documentation pages like [`SoftHSMv2`](./softhsm-v2.md) or
-> [`Yubico YubiHSM 2`](./yubico-yubihsm2.md) to run the `k8s-kms-plugin`. 
+> documentation pages like [`SoftHSMv2`](./hsm-guides/softhsm-v2.md) or
+> [`Yubico YubiHSM 2`](./hsm-guides/yubico-yubihsm2.md) to run the `k8s-kms-plugin`. 
 
 Assuming you have configured a PKCS #11 TPM or HSM, you can start the
 `k8s-kms-plugin serve` without the key rotation support for now:

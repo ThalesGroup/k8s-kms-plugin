@@ -35,7 +35,7 @@ Two of them regenerate tracked files, so re-run them when the relevant source ch
 | End-to-end ([`test/e2e/`](https://github.com/eclipse-keysealer/k8s-kms-plugin/tree/master/test/e2e/))        | `make test-e2e`        | `PKCS11_MODULE`, [`grpcurl`](https://github.com/fullstorydev/grpcurl) in `$PATH`, and the built binary (`make test-e2e` builds it for you) |
 
 **`PKCS11_MODULE`** points at a PKCS #11 shared library; both suites bootstrap their own ephemeral token from it.
-`PKCS11_PIN` is optional (default `1234`). ML-KEM tests need SoftHSMv3 — see [`docs/softhsm-v3.md`](./softhsm-v3.md);
+`PKCS11_PIN` is optional (default `1234`). ML-KEM tests need SoftHSMv3 — see [`docs/softhsm-v3.md`](./hsm-guides/softhsm-v3.md);
 the AES and RSA paths also work with SoftHSMv2.
 
 > ⚠️ Without `PKCS11_MODULE` both suites exit **immediately and successfully**, printing only a skip notice. A green

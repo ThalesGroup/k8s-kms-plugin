@@ -55,7 +55,7 @@ Everything is overridable via environment variables:
 
 The PKCS #11 defaults match the development token created by
 [`create-dev-token`](../../tools/create-dev-token/) — see
-[`docs/softhsm-v3.md`](../../docs/softhsm-v3.md).
+[`docs/softhsm-v3.md`](../../docs/hsm-guides/softhsm-v3.md).
 
 #### Typical session
 

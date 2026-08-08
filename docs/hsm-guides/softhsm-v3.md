@@ -1,6 +1,6 @@
 ---
 title: "SoftHSMv3 (pqctoday-hsm)"
-weight: 51
+weight: 10
 ---
 
 This guide describes how to set up [`SoftHSMv3`](https://github.com/pqctoday-org/pqctoday-hsm) (`pqctoday-hsm`) and make it
@@ -151,7 +151,7 @@ GNUTLS_SO_PIN="0000" GNUTLS_PIN="1234" p11tool \
 > Adjust `--p11-lib`, `--p11-label`, `--p11-pin` to match your environment.
 
 Every example below identifies its key with `--p11-key-label`; `--p11-key-id` (PKCS #11 `CKA_ID`)
-works the same way. See [`CKA_ID` vs `CKA_LABEL`](./cli-user-interface/cka-id-vs-cka-label.md) for
+works the same way. See [`CKA_ID` vs `CKA_LABEL`](../cli-user-interface/cka-id-vs-cka-label.md) for
 how the two are resolved.
 
 ### AES-GCM
@@ -252,4 +252,4 @@ curl -sfL https://get.k3s.io | K3S_DEBUG=true INSTALL_K3S_VERSION=v1.33.1+k3s1 s
   --kube-apiserver-arg=encryption-provider-config=$HOME/k8s-kms-plugin/deployments/k8s/encryption-conf-kmsv2-unix-socket.yaml
 ```
 
-See also [`k3s-kubernetes.md`](./k3s-kubernetes.md) for a more complete Kubernetes setup guide.
+See also [`k3s-kubernetes.md`](../k3s-kubernetes.md) for a more complete Kubernetes setup guide.

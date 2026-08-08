@@ -36,10 +36,18 @@ the main [`README.md`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/
 
 ## Getting started
 
+**Quick start** — two steps, no hardware needed. Do them in order:
+
+| Step | Guide | What you get |
+|------|-------|--------------|
+| 1 | [SoftHSMv3 (`pqctoday-hsm`)](./hsm-guides/softhsm-v3.md) | A software PKCS #11 provider with a key per algorithm family, and `k8s-kms-plugin serve` running against it — including ML-KEM |
+| 2 | [`KinD`](./kind-kubernetes.md) | A single-node Kubernetes cluster encrypting its Secrets through that plugin, deleted again in one command |
+
+Then, as you need them:
+
 | Page | What it covers |
 |------|----------------|
-| [Quick Start](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/README.md#-quick-start-) | The two-step fast path: a software HSM, then a throwaway Kubernetes cluster |
-| [Installation](./installation.md) | Kubernetes requirements, packages (`apk`, `deb`, `rpm`, `archlinux`), `go install`, building from source with `make` or `goreleaser`, container images |
+| [Installation](./installation.md) | Getting a release binary or package, verifying it, `go install`, building from source, container images |
 | [Usage & User Guides](./usage.md) | CLI help, shell completion, the generated CLI reference, configuration precedence, and the HSM/TPM support matrix |
 | [`CHANGELOG.md`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/CHANGELOG.md) | Release history |
 
@@ -57,15 +65,14 @@ the main [`README.md`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/
 
 ## HSM & TPM guides
 
-How to set up a PKCS #11 provider and point `k8s-kms-plugin serve` at it.
+One page per PKCS #11 provider, grouped in **[`hsm-guides/`](./hsm-guides/README.md)** — software
+providers first, then hardware. New devices are added there.
 
-| Guide | Notes |
-|-------|-------|
-| [SoftHSMv3 (`pqctoday-hsm`)](./softhsm-v3.md) | **Recommended** for dev & integration testing — supports all algorithm families, including ML-KEM |
-| [Thales eToken Fusion](./thales-etoken-fusion.md) | Hardware USB token |
-| [Yubico YubiHSM 2](./yubico-yubihsm2.md) | Hardware USB HSM |
-| [SoftHSMv2](./softhsm-v2.md) | Legacy reference — does not support ML-KEM |
-| [Software TPM Emulator](./software-tpm-emulator.md) | Legacy reference — does not support ML-KEM |
+| Software | Hardware |
+|----------|----------|
+| [SoftHSMv3 (`pqctoday-hsm`)](./hsm-guides/softhsm-v3.md) — **recommended**, all algorithm families including ML-KEM | [Thales eToken Fusion](./hsm-guides/thales-etoken-fusion.md) — USB token |
+| [SoftHSMv2](./hsm-guides/softhsm-v2.md) — legacy, no ML-KEM | [Yubico YubiHSM 2](./hsm-guides/yubico-yubihsm2.md) — USB HSM |
+| [Software TPM Emulator](./hsm-guides/software-tpm-emulator.md) — legacy, no ML-KEM | |
 
 The matrix of which algorithm families have been *tested* on each device lives in the usage guide:
 [HSM & TPM Supported Platforms](./usage.md#hsm--tpm-supported-platforms).
@@ -101,7 +108,7 @@ by hand — regenerate with `make doc`. See
 | Page | What it covers |
 |------|----------------|
 | [Development & Debugging](./development.md) | Repository layout, the three test suites and what each needs, building against `crypto11`/`gose` development branches, `delve` and `vscode` debugging |
-| [Supply Chain Security](./supply-chain-security.md) | Vulnerability scanning locally and in CI, release signing, and verifying artifacts, container images and SLSA provenance |
+| [Supply Chain Security](./supply-chain-security.md) | The reference for release signing and provenance: vulnerability scanning locally and in CI, how releases are signed and attested, and the full commands to verify artifacts, container images and SLSA provenance |
 
 ## Helper tools & scripts
 

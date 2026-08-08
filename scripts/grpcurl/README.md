@@ -303,7 +303,7 @@ For `aes-gcm` / `aes-cbc` / `rsa-oaep` this is a JWE Compact Serialization; for
 `ml-kem` it is a plain binary envelope (`nonce || AES-256-GCM-sealed seed`,
 ~60 B) with the raw ML-KEM encapsulation ciphertext carried separately in a
 `kem-ciphertext` annotation — the split that keeps ML-KEM under the 1 kB limit in the
-first place. See [ML-KEM](../../docs/softhsm-v3.md#ml-kem) for how
+first place. See [ML-KEM](../../docs/hsm-guides/softhsm-v3.md#ml-kem) for how
 to provision an ML-KEM key to exercise that case.
 
 Unlike the round-trip scripts above, this one starts and stops the plugin

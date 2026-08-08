@@ -86,6 +86,10 @@ disableKinds = ['taxonomy', 'term']
     target = 'content/docs/_index.md'
 
   [[module.mounts]]
+    source = '../docs/hsm-guides/README.md'
+    target = 'content/docs/hsm-guides/_index.md'
+
+  [[module.mounts]]
     source = '../docs/cli-user-interface/README.md'
     target = 'content/docs/cli-user-interface/_index.md'
 

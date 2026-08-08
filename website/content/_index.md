@@ -50,7 +50,7 @@ layout: hextra-home
   {{< hextra/feature-card
     title="Try it in minutes"
     subtitle="A software HSM and a throwaway KinD cluster, deleted in one command. No hardware needed to see the whole path end to end."
-    link="docs/softhsm-v3/"
+    link="docs/hsm-guides/softhsm-v3/"
   >}}
   {{< hextra/feature-card
     title="Runs where your cluster runs"

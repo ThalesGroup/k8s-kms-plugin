@@ -43,7 +43,7 @@ and [pkcs11-go](https://github.com/eclipse-keypont/pkcs11-go) from the related
 **TL;DR**: For a quick start experience, try the `k8s-kms-plugin` with a software (virtual) HSM, then plug it into a
 throwaway Kubernetes cluster:
 
-1. [SoftHSMv3 (`pqctoday-hsm`) & `k8s-kms-plugin`](./docs/softhsm-v3.md) — **recommended** HSM: supports all algorithm families including ML-KEM
+1. [SoftHSMv3 (`pqctoday-hsm`) & `k8s-kms-plugin`](./docs/hsm-guides/softhsm-v3.md) — **recommended** HSM: supports all algorithm families including ML-KEM
 2. [`KinD` & `k8s-kms-plugin`](./docs/kind-kubernetes.md) — **recommended** cluster: single-node Kubernetes on Podman or Docker, deleted in one command
 
 Other HSMs & TPMs (Thales eToken Fusion, YubiHSM 2, SoftHSMv2, TPM emulator) and the `k3s` integration are listed in
