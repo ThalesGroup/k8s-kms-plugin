@@ -21,18 +21,27 @@
 //
 //	go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest
 //
+// The KMS v2 api.proto grpcurl needs is resolved automatically, at the k8s.io/kms
+// version go.mod selects — from the module cache when it is populated, otherwise
+// downloaded. See resolveAPIProto.
+//
 // aes-gcm, aes-cbc and rsa-oaep work with SoftHSMv2 or SoftHSMv3.
 // ml-kem requires SoftHSMv3: https://github.com/pqctoday-org/pqctoday-hsm
 package e2e
 
 import (
+	"bytes"
+	"context"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/eclipse-keypont/crypto11/v2"
 	pkcs11 "github.com/eclipse-keypont/pkcs11-go/cryptoki"
@@ -44,7 +53,7 @@ var (
 	testCtx    *crypto11.Context
 	pluginBin  string // absolute path to the k8s-kms-plugin binary
 	repoRoot   string // absolute path to the repository root
-	protoFile  string // absolute path to scripts/grpcurl/api.proto
+	protoFile  string // KMS v2 api.proto matching the k8s.io/kms version in go.mod
 )
 
 const (
@@ -69,10 +78,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic("TestMain: filepath.Abs: " + err.Error())
 	}
-	protoFile = filepath.Join(repoRoot, "scripts", "grpcurl", "api.proto")
-	if _, err := os.Stat(protoFile); err != nil {
-		panic("TestMain: api.proto not found at " + protoFile)
-	}
+	protoFile = resolveAPIProto()
 
 	pluginBin = findPluginBin(repoRoot)
 	// Before the token setup below, which is far more expensive than this check
@@ -88,6 +94,129 @@ func TestMain(m *testing.M) {
 	shutdownCrypto11()
 	teardown()
 	os.Exit(code)
+}
+
+// kmsModule is the module owning the KMS v2 service definition these tests drive.
+const kmsModule = "k8s.io/kms"
+
+// apiProtoPathInModule is api.proto's location inside that module.
+var apiProtoPathInModule = filepath.Join("apis", "v2", "api.proto")
+
+// resolveAPIProto returns the path to the KMS v2 api.proto that matches the k8s.io/kms version
+// this repository builds against, or fails the suite explaining why it could not.
+//
+// The version is never hardcoded. grpcurl uses this file as the service definition, so a proto
+// from a different release than the plugin implements would have the tests exercising a contract
+// the binary does not serve — silently, for any field that happens to still line up. The helper
+// scripts under scripts/grpcurl/ show how that goes wrong: they pin v0.34.1 while go.mod is on
+// v0.36.3.
+//
+// Resolution order:
+//
+//  1. The module cache, located with `go list -m`. This is authoritative — it is the very copy
+//     the plugin compiles against — needs no network, and cannot drift.
+//  2. An HTTPS fetch from the kubernetes/kms tag matching the resolved version, used when the
+//     module cache is unavailable (a vendored or trimmed checkout, for instance).
+//
+// Neither path writes into the repository: the cached file is read in place, and a download goes
+// to a temp file. Nothing here touches the git-ignored scripts/grpcurl/api.proto, which the
+// shell helpers manage on their own.
+func resolveAPIProto() string {
+	version, dir, err := kmsModuleInfo()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "TestMain: cannot resolve the %s module: %v\n", kmsModule, err)
+		fmt.Fprintln(os.Stderr, "  run 'go mod download' and retry")
+		os.Exit(1)
+	}
+
+	if dir != "" {
+		cached := filepath.Join(dir, apiProtoPathInModule)
+		if _, statErr := os.Stat(cached); statErr == nil {
+			fmt.Printf("resolveAPIProto: using %s %s api.proto from the module cache\n", kmsModule, version)
+			return cached
+		}
+	}
+
+	fetched, err := fetchAPIProto(version)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "TestMain: could not obtain api.proto for %s %s: %v\n", kmsModule, version, err)
+		fmt.Fprintln(os.Stderr, "  the module cache has no copy and the download failed;")
+		fmt.Fprintln(os.Stderr, "  run 'go mod download "+kmsModule+"' or restore network access")
+		os.Exit(1)
+	}
+	fmt.Printf("resolveAPIProto: downloaded %s %s api.proto to %s\n", kmsModule, version, fetched)
+	return fetched
+}
+
+// kmsModuleInfo asks the go tool for the selected version of the KMS module and its directory in
+// the module cache. Dir is empty when the module is known but not extracted, which is not an
+// error here: the caller falls back to downloading the proto.
+func kmsModuleInfo() (version, dir string, err error) {
+	cmd := exec.Command("go", "list", "-m", "-f", "{{.Version}}\t{{.Dir}}", kmsModule)
+	cmd.Dir = repoRoot
+	out, err := cmd.Output()
+	if err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) && len(exitErr.Stderr) > 0 {
+			return "", "", fmt.Errorf("go list -m %s: %w: %s", kmsModule, err, strings.TrimSpace(string(exitErr.Stderr)))
+		}
+		return "", "", fmt.Errorf("go list -m %s: %w", kmsModule, err)
+	}
+
+	version, dir, _ = strings.Cut(strings.TrimSpace(string(out)), "\t")
+	if version == "" {
+		return "", "", fmt.Errorf("go list -m %s returned no version", kmsModule)
+	}
+	return version, dir, nil
+}
+
+// fetchAPIProto downloads api.proto for the given module version into a temp file.
+//
+// The URL is built from the resolved version so the download can never disagree with the module
+// the plugin was compiled against. A non-200 response is reported with its status, because the
+// usual cause is a version whose tag does not exist upstream.
+func fetchAPIProto(version string) (string, error) {
+	url := fmt.Sprintf("https://raw.githubusercontent.com/kubernetes/kms/refs/tags/%s/%s",
+		version, filepath.ToSlash(apiProtoPathInModule))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", fmt.Errorf("building request for %s: %w", url, err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("fetching %s: %w", url, err)
+	}
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			fmt.Fprintf(os.Stderr, "fetchAPIProto: closing response body: %v\n", closeErr)
+		}
+	}()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("fetching %s: unexpected status %s", url, resp.Status)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("reading %s: %w", url, err)
+	}
+	// A truncated or error page would surface as a confusing grpcurl parse failure much later.
+	if !bytes.Contains(body, []byte("service KeyManagementService")) {
+		return "", fmt.Errorf("%s does not look like the KMS v2 api.proto (%d bytes)", url, len(body))
+	}
+
+	dir, err := os.MkdirTemp("", "k8s-kms-plugin-e2e-proto-*")
+	if err != nil {
+		return "", fmt.Errorf("creating temp dir for api.proto: %w", err)
+	}
+	path := filepath.Join(dir, "api.proto")
+	if err := os.WriteFile(path, body, 0600); err != nil {
+		return "", fmt.Errorf("writing %s: %w", path, err)
+	}
+	return path, nil
 }
 
 // findPluginBin looks for the k8s-kms-plugin binary in dist/ (where `make
