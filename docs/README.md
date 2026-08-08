@@ -47,7 +47,7 @@ the main [`README.md`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/
 | Check a download is genuine                                 | [Verify what you downloaded](./installation.md#verify-what-you-downloaded) |
 | Look up a command, a flag or its environment variable       | [CLI reference](./cli-user-interface/README.md) |
 | Understand what actually happens to my Secrets              | [Concepts & Architecture](./overview.md), then [Cryptographic Schemes](./cryptographic-schemes.md) |
-| Rotate a KEK                                                | [Key Rotation Support](./overview.md#key-rotation-support), and [`k3s`](./kubernetes-guides/k3s-kubernetes.md) for a worked example |
+| Rotate a KEK                                                | [Key Rotation Support](./overview.md#key-rotation-support) for how it works; the [`k3s` guide](./kubernetes-guides/k3s-kubernetes.md) happens to be where a worked example is written up |
 | Test the gRPC API without a cluster, or stage a `KinD` env  | [Helper tools & scripts](#helper-tools--scripts) below |
 | Debug the plugin                                            | [Debug Environment](./development.md#debug-environment-) |
 | Verify a release's signature or SLSA provenance             | [Supply Chain Security](./supply-chain-security.md) |
@@ -170,11 +170,17 @@ has the short version if you only want to check a download.
 
 ## Helper tools & scripts
 
-| Tool | Purpose |
-|------|---------|
-| [`tools/create-dev-token/`](https://github.com/eclipse-keysealer/k8s-kms-plugin/tree/master/tools/create-dev-token/) | Bootstraps a SoftHSM token with one ready-to-use key per algorithm family |
-| [`scripts/k8s-kind/`](https://github.com/eclipse-keysealer/k8s-kms-plugin/tree/master/scripts/k8s-kind/) | Stages the `KinD` cluster config and `EncryptionConfiguration` |
-| [`scripts/grpcurl/`](https://github.com/eclipse-keysealer/k8s-kms-plugin/tree/master/scripts/grpcurl/) | Exercises the KMS v2 API (`Status`, `Encrypt`, `Decrypt`) without a cluster |
+Development and testing helpers that ship with the repository — none is part of the deployable.
+Documented in **[`tools-and-scripts/`](./tools-and-scripts/README.md)**.
+
+| Helper | What it does |
+|--------|--------------|
+| [`create-dev-token`](./tools-and-scripts/create-dev-token.md) | A persistent SoftHSM token with one key per algorithm family, ready for `serve` — no hardware needed |
+| [`grpcurl` round-trip scripts](./tools-and-scripts/grpcurl-scripts.md) | Drive `Status`, `Encrypt` and `Decrypt` against a running plugin with no cluster involved, including a key-rotation round trip |
+| [`KinD` staging script](./tools-and-scripts/k8s-kind-scripts.md) | Stages the directories, `EncryptionConfiguration` and `kind.config.yaml` a `KinD` cluster needs |
+
+They compose into a fast loop: get a token, prove the plugin encrypts and decrypts, then bring a
+cluster into it — each step independent of the next.
 
 ## Diagrams & images
 

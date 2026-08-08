@@ -152,13 +152,21 @@ If `grpcurl-roundtrip-test.sh` works, it should work with a kubernetes server no
 Then review the content of file [`encryption-conf-kmsv2-unix-socket.yaml`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/deployments/k8s/encryption-conf-kmsv2-unix-socket.yaml).
 Make sure `resources.providers.kms.endpoint` points to the same unix socket file of the running `k8s-kms-plugin`.
 
-Then install a kubernetes cluster like `k3s` with the following command:
+Then point a cluster at it, following either
+[Kubernetes integration guide](../kubernetes-guides/README.md):
+[`KinD`](../kubernetes-guides/kind-kubernetes.md) installs nothing on the host and is deleted in one
+command, while [`k3s`](../kubernetes-guides/k3s-kubernetes.md) runs on the host and is where key
+rotation and HA are documented.
+
+`k3s` takes the configuration directly on its install command:
 
 ```bash
 curl -sfL https://get.k3s.io | K3S_DEBUG=true INSTALL_K3S_VERSION=v1.33.1+k3s1 sh -s - \
   --write-kubeconfig-mode 660 \
   --kube-apiserver-arg=encryption-provider-config=$HOME/k8s-kms-plugin/deployments/k8s/encryption-conf-kmsv2-unix-socket.yaml
 ```
+
+`KinD` needs the socket mounted into the node container instead — see its guide.
 
 ## Using Env Vars Thanks to Viper
 

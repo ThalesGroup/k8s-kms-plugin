@@ -46,8 +46,8 @@ throwaway Kubernetes cluster:
 1. [SoftHSMv3 (`pqctoday-hsm`) & `k8s-kms-plugin`](./docs/hsm-guides/softhsm-v3.md) — **recommended** HSM: supports all algorithm families including ML-KEM
 2. [`KinD` & `k8s-kms-plugin`](./docs/kubernetes-guides/kind-kubernetes.md) — **recommended** cluster: single-node Kubernetes on Podman or Docker, deleted in one command
 
-Other HSMs & TPMs (Thales eToken Fusion, YubiHSM 2, SoftHSMv2, TPM emulator) and the `k3s` integration are listed in
-the documentation index: [`docs/README.md`](./docs/README.md).
+Other HSMs and TPMs (Thales eToken Fusion, YubiHSM 2, SoftHSMv2, TPM emulator), and the other
+Kubernetes distribution guide (`k3s`), are indexed in [`docs/README.md`](./docs/README.md).
 
 # Documentation 📚
 
@@ -61,6 +61,7 @@ The full documentation lives in [`docs/`](./docs/README.md). Start here:
 | [HSM & TPM guides](./docs/hsm-guides/README.md) | One page per PKCS #11 provider — software and hardware — plus the matrix of which algorithm families and key sizes were tested on each |
 | [Kubernetes integration guides](./docs/kubernetes-guides/README.md) | Making a cluster's `kube-apiserver` encrypt Secrets through the plugin: `KinD` and `k3s` |
 | [CLI reference](./docs/cli-user-interface/README.md) | Help output, shell completion, configuration precedence, and the generated [per-command reference](./docs/cli-user-interface/markdown/README.md) and [flag / environment variable / config key table](./docs/cli-user-interface/markdown/cli-env-var-table.md) |
+| [Helper tools & scripts](./docs/tools-and-scripts/README.md) | `create-dev-token` for a ready-made SoftHSM token, `grpcurl` scripts to drive the API without a cluster, and the `KinD` staging script |
 | [Development & Debugging](./docs/development.md) | Repository layout, running the three test suites, building against `crypto11`/`gose` branches, `delve` and `vscode` debugging |
 | [Supply Chain Security](./docs/supply-chain-security.md) | Vulnerability scanning, release signing, and verifying artifacts, container images and SLSA provenance |
 

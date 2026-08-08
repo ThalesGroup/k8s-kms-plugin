@@ -244,7 +244,18 @@ Expected output:
 Review [`encryption-conf-kmsv2-unix-socket.yaml`](https://github.com/eclipse-keysealer/k8s-kms-plugin/blob/master/deployments/k8s/encryption-conf-kmsv2-unix-socket.yaml) and make sure
 `resources.providers.kms.endpoint` matches the socket path used by the running `k8s-kms-plugin`.
 
-Then install a Kubernetes cluster like `k3s`:
+Then point a cluster at it. Either
+[Kubernetes integration guide](../kubernetes-guides/README.md) works from here — pick whichever suits
+what you are doing:
+
+| Guide | Why you might pick it |
+|-------|-----------------------|
+| [`KinD`](../kubernetes-guides/kind-kubernetes.md) | Nothing installed on the host; the cluster is created and deleted in one command each. Usually the quickest way to see the plugin working end to end |
+| [`k3s`](../kubernetes-guides/k3s-kubernetes.md) | A host-installed cluster. Also the guide that covers key rotation and high availability |
+
+Each guide has the full walkthrough — the socket path the apiserver needs, and how to confirm your
+Secrets really are encrypted in `etcd`. As a one-liner, `k3s` takes the config directly on the
+install command:
 
 ```sh
 curl -sfL https://get.k3s.io | K3S_DEBUG=true INSTALL_K3S_VERSION=v1.33.1+k3s1 sh -s - \
@@ -252,4 +263,5 @@ curl -sfL https://get.k3s.io | K3S_DEBUG=true INSTALL_K3S_VERSION=v1.33.1+k3s1 s
   --kube-apiserver-arg=encryption-provider-config=$HOME/k8s-kms-plugin/deployments/k8s/encryption-conf-kmsv2-unix-socket.yaml
 ```
 
-See also [`k3s-kubernetes.md`](../kubernetes-guides/k3s-kubernetes.md) for a more complete Kubernetes setup guide.
+`KinD` needs the socket mounted into the node container instead, which is what its guide walks
+through.
