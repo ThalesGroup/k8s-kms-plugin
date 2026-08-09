@@ -29,10 +29,6 @@ Use these to try the plugin, and in CI — no hardware required.
 
 ## HSM & TPM Supported Platforms
 
-> [!NOTE]
-> This section will improve with reference to specific `k8s-kms-plugin` version once
-> the release & CICD are set up.
-
 The following table sums up the HSMs or TPMs that has been _officially_ tested & confirmed to work
 with the `k8s-kms-plugin`. This list is not exhaustive: you can contribute to it, as other HSM
 devices or virtual HSM might work with the `k8s-kms-plugin`.
@@ -40,7 +36,10 @@ devices or virtual HSM might work with the `k8s-kms-plugin`.
 Each ✅ cell lists the **key sizes / parameter sets actually tested** on that device. Other sizes are not known to
 fail — the plugin derives the key size at runtime from the HSM key — they have simply not been exercised yet.
 
-| [`k8s-kms-plugin` version `XX`]()                                                                  | HSM or TPM   | Form factor  | AES GCM             | AES CBC HMAC        | RSA OAEP                     | ML-KEM                       | Comment                                                                    | Docs Details                            |
+It reflects the plugin version this documentation was built from — stated in the navbar and the
+footer of every page on the documentation site — so there is no per-row version to keep in step here.
+
+| Device                                                                                             | HSM or TPM   | Form factor  | AES GCM             | AES CBC HMAC        | RSA OAEP                     | ML-KEM                       | Comment                                                                    | Docs Details                            |
 |----------------------------------------------------------------------------------------------------|--------------|--------------|---------------------|---------------------|------------------------------|------------------------------|----------------------------------------------------------------------------|-----------------------------------------|
 | [`SoftHSMv3` (`pqctoday-hsm`)](https://github.com/pqctoday-org/pqctoday-hsm)                       | HSM PKCS #11 | Software     | ✅ 256-bit          | ✅ 256-bit          | ✅ 2048, 3072, 4096          | ✅ 512, 768, 1024            | Recommended for dev & integration testing; supports all algorithm families | [Link](./softhsm-v3.md)            |
 | [`SoftHSMv2`](https://github.com/softhsm/SoftHSMv2)                                                | HSM PKCS #11 | Software     | ❔Not Tested        | ❔Not Tested        | ❔Not Tested                 | 🚫not supported              | Legacy reference; ML-KEM requires SoftHSMv3                                | [Link](./softhsm-v2.md)            |
