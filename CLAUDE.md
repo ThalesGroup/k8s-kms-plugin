@@ -12,22 +12,20 @@ Read `CHANGELOG.md` first when touching anything cryptographic — the v1.0.0 en
 record of the KMS v1 → v2 migration, the PKCS#11 binding swap, and every deliberate behavioural choice
 (including bug fixes with data-at-rest compatibility implications).
 
-This repo is a **fork used as a playground** to try things out before the work lands upstream at
-`eclipse-keysealer/k8s-kms-plugin`. Expect to sync from upstream rather than the fork being the source of truth.
+### Repository URLs in the documentation
 
-### Fork-local values to switch before a pull request upstream
+Every link out of `docs/`, and every badge and site link in `README.md`, uses an absolute
+`eclipse-keysealer` URL on purpose: a fork that copies these files keeps pointing readers at this
+repository rather than silently advertising the fork's own half-built copy.
 
-Every link out of `docs/` uses an absolute `github.com/eclipse-keysealer/...` URL on purpose. Three values
-deliberately break that rule because upstream has no Pages site and no `docs.yml` yet — grep for
-`FORK-LOCAL`, and for `nicolas-peiffer`, to find them:
+The one value that is *not* absolute is `website/hugo.toml`'s `baseURL`. It is only a local-dev
+default — the Docs workflow computes the real URL from the owner and repository actually running the
+build and passes it with `--baseURL`, so the same config publishes correctly from here and from any
+fork with nothing to remember. Leave it alone; override it locally with
+`hugo --baseURL https://example.github.io/k8s-kms-plugin/` if you need to.
 
-| Where | Value | Switch to |
-|-------|-------|-----------|
-| `README.md` — documentation badge + Docs workflow badge | `nicolas-peiffer.github.io/…`, `github.com/Nicolas-Peiffer/…` | the `eclipse-keysealer` equivalents |
-| `README.md` — "Browse it online" and glossary links in the Documentation section | `nicolas-peiffer.github.io/…` | `eclipse-keysealer.github.io/…` |
-| `website/hugo.toml` — `baseURL` | `nicolas-peiffer.github.io/…` | leave it; it is only a local-dev default, and the Docs workflow computes the real URL from the repository running the build |
-
-The two README ones are the ones that matter: they would silently point upstream readers at a fork.
+If you develop the site on a fork and want its badges to track your own Pages deployment, change
+them in your branch but switch them back before opening a pull request here.
 
 ### Release artefact names in the documentation
 

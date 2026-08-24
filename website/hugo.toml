@@ -16,13 +16,13 @@
 #   make site-serve    # http://localhost:1313/k8s-kms-plugin/
 #   make site          # -> website/public/
 
-# baseURL is only the local-dev default — the fork this branch is developed on. Do NOT rely on it
-# being right for whoever publishes: the Docs workflow computes the URL from the owner and
-# repository actually running the build and passes it with --baseURL, so the same config publishes
-# correctly from this fork and from eclipse-keysealer upstream with nothing to remember.
+# baseURL is only the local-dev default. Do NOT rely on it being right for whoever publishes: the
+# Docs workflow computes the URL from the owner and repository actually running the build and passes
+# it with --baseURL, so the same config publishes correctly from this repository and from any fork
+# with nothing to remember.
 #
 # Override it locally the same way:  hugo --baseURL https://example.github.io/k8s-kms-plugin/
-baseURL = 'https://nicolas-peiffer.github.io/k8s-kms-plugin/'
+baseURL = 'https://eclipse-keysealer.github.io/k8s-kms-plugin/'
 title = 'k8s-kms-plugin'
 locale = 'en-us'
 
