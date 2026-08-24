@@ -26,6 +26,7 @@ Use these to try the plugin, and in CI — no hardware required.
 |-------|-------------|-------|
 | [Thales eToken Fusion](./thales-etoken-fusion.md) | USB token | RSA-OAEP tested at 2048 bits |
 | [Yubico YubiHSM 2](./yubico-yubihsm2.md) | USB HSM | RSA-OAEP tested at 4096 bits; usable over USB or the network connector |
+| [Thales Luna HSM](./thales-luna-hsm.md) | Network appliance, cloud | Integration documented by Thales; not yet exercised here |
 
 ## HSM & TPM Supported Platforms
 

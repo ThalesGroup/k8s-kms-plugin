@@ -114,6 +114,7 @@ Tested and documented so far:
 | Software TPM Emulator (`swtpm`) | TPM | Software | none yet — no ML-KEM support | [Guide](./hsm-guides/software-tpm-emulator.md) |
 | Thales eToken Fusion | HSM | Hardware USB | RSA-OAEP | [Guide](./hsm-guides/thales-etoken-fusion.md) |
 | Yubico YubiHSM 2 | HSM | Hardware USB | RSA-OAEP | [Guide](./hsm-guides/yubico-yubihsm2.md) |
+| Thales Luna HSM | HSM | Network, cloud | none yet — integration documented by Thales | [Guide](./hsm-guides/thales-luna-hsm.md) |
 
 **SoftHSMv3 is the one to start with** — it is the only provider here that covers every algorithm
 family, and it needs no hardware.
