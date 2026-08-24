@@ -511,19 +511,6 @@ func writeMarkdownReadme(dir string, provenance bool) error {
 	return os.WriteFile(filepath.Join(dir, "README.md"), []byte(readme.String()), 0600)
 }
 
-// generateCobraDocs generates CLI documentation for the k8s-kms-plugin in the specified format.
-// It supports generating documentation in "markdown", "man", "rst", "yaml", "table", or "all" formats.
-// The output directory is created if it does not exist. If the format is "all",
-// documentation is generated in multiple subdirectories within the given output directory.
-// Returns an error if the format is unsupported or if any I/O operation fails.
-//
-// Parameters:
-//   - format: The output format for the documentation (e.g., "markdown", "man", "rst", "yaml", "table", "all").
-//   - out: The directory where the generated documentation files will be saved.
-//   - provenance: Whether to stamp build and CI run provenance into the markdown front matter.
-//
-// Returns:
-//   - error: An error object if any step of the documentation generation fails.
 // initHelpFlags registers --help across the whole command tree before anything is generated.
 //
 // Cobra adds that flag lazily: Execute() adds it to the command actually being run, and
@@ -543,6 +530,19 @@ func initHelpFlags(cmd *cobra.Command) {
 	}
 }
 
+// generateCobraDocs generates CLI documentation for the k8s-kms-plugin in the specified format.
+// It supports generating documentation in "markdown", "man", "rst", "yaml", "table", or "all" formats.
+// The output directory is created if it does not exist. If the format is "all",
+// documentation is generated in multiple subdirectories within the given output directory.
+// Returns an error if the format is unsupported or if any I/O operation fails.
+//
+// Parameters:
+//   - format: The output format for the documentation (e.g., "markdown", "man", "rst", "yaml", "table", "all").
+//   - out: The directory where the generated documentation files will be saved.
+//   - provenance: Whether to stamp build and CI run provenance into the markdown front matter.
+//
+// Returns:
+//   - error: An error object if any step of the documentation generation fails.
 func generateCobraDocs(format, out string, provenance bool) error {
 	// Create the output directory if it doesn't already exist
 	if _, err := os.Stat(out); os.IsNotExist(err) {
