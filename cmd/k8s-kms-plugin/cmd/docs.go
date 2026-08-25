@@ -237,15 +237,22 @@ func ciProvenance() []string {
 func renderFrontMatter(meta docPageMeta, provenance bool) string {
 	var b strings.Builder
 	b.WriteString("---\n")
-	b.WriteString("title: " + yamlQuote(meta.Title) + "\n")
+	b.WriteString("title: ")
+	b.WriteString(yamlQuote(meta.Title))
+	b.WriteString("\n")
 	if meta.Description != "" {
-		b.WriteString("description: " + yamlQuote(meta.Description) + "\n")
+		b.WriteString("description: ")
+		b.WriteString(yamlQuote(meta.Description))
+		b.WriteString("\n")
 	}
 	fmt.Fprintf(&b, "weight: %d\n", meta.Weight)
-	b.WriteString("generator: " + yamlQuote("k8s-kms-plugin docs -f markdown") + "\n")
+	b.WriteString("generator: ")
+	b.WriteString(yamlQuote("k8s-kms-plugin docs -f markdown"))
+	b.WriteString("\n")
 	if provenance {
 		for _, line := range ciProvenance() {
-			b.WriteString(line + "\n")
+			b.WriteString(line)
+			b.WriteString("\n")
 		}
 	}
 	b.WriteString("---\n\n")
