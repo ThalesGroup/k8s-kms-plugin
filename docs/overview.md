@@ -32,7 +32,9 @@ layered on the next:
   on the other side of the plugin.
 
 > [!NOTE]
-> We will work on providing a full nested SBOM later.
+> This figure is not a complete SBOM: for  it shows only the main dependencies.
+> Full SBOMs and provenance attestations are published with each release — see
+> [Supply chain security](./supply-chain-security.md).
 
 The figure below sums up those dependencies, with the licence and maintainer of each:
 
