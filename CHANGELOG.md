@@ -199,6 +199,12 @@ others were verified to be false positives and left alone.
   `google.golang.org/genproto/googleapis/rpc` and `google.golang.org/protobuf` v1.36.12.
   The `golang.org/x/net` bump clears the four `govulncheck` findings that go1.27.2 alone did
   not address; `govulncheck` now reports no vulnerabilities.
+- **`gosec` pinned to a `master` commit** (`7157726`, `x/tools` v0.52.0) in
+  `.github/workflows/gosec.yml` and the `Makefile`, instead of the v2.29.0 release. The
+  v2.29.0 release links `golang.org/x/tools` v0.49.0, which cannot decode the go1.27.2
+  export data (version 5 is greater than the maximum supported version 4) and fails the
+  scan with an import error. Move back to a tagged release once one ships
+  `x/tools` >= v0.50.0.
 
 ## v1.0.0 — first stable release: KMS v2, PKCS#11 v3.2 and ML-KEM
 
