@@ -51,3 +51,58 @@ jobs:
         # e2e and integration suites skip cleanly when PKCS11_MODULE is unset.
         # Unit tests in pkg/ and cmd/ run unconditionally.
         run: go test -count=1 ./...
+
+  integration-softhsmv3:
+    name: Integration & e2e (SoftHSMv3 PQC)
+    runs-on: ubuntu-latest
+    needs: build-test
+    # SoftHSMv3's vendored pkcs11-provider needs OpenSSL 3.6, which no
+    # GitHub-hosted runner image ships (ubuntu-26.04 has 3.5.5). archlinux:latest
+    # ships OpenSSL 3.6.x with headers, so the module builds against a prebuilt
+    # OpenSSL with no source build. The job runs inside the container.
+    container:
+      image: archlinux:latest
+    steps:
+      # actions/checkout runs inside the container and needs git; the
+      # archlinux:latest base image does not ship it. Install git and the CA
+      # bundle before checkout. The setup-softhsmv3-pqc action installs the
+      # remaining build dependencies afterwards.
+      - name: Bootstrap container prerequisites
+        run: pacman -Syu --noconfirm --needed git ca-certificates
+
+      - name: Checkout
+        # actions/checkout v6.0.3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Set up Go
+        # actions/setup-go v6.4.0
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # Builds SoftHSMv3 (pqctoday-hsm) with ML-KEM/ML-DSA against the container's
+      # OpenSSL 3.6 and exports PKCS11_MODULE. Complementary to the HSM-free
+      # build-test job above: the integration and e2e suites self-skip without
+      # PKCS11_MODULE, so this job is what actually exercises them (including
+      # the ML-KEM path, which needs SoftHSMv3).
+      - name: Set up SoftHSMv3 (PQC)
+        uses: ./.github/actions/setup-softhsmv3-pqc
+
+      # The e2e suite drives the plugin over the KMS v2 gRPC API with grpcurl.
+      - name: Install grpcurl
+        run: go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest
+
+      - name: Run integration tests
+        # TestMain bootstraps an ephemeral token via the PKCS#11 API when
+        # PKCS11_MODULE is set — no softhsm2-util pre-init required.
+        env:
+          PKCS11_PIN: '1234'
+        run: make test-integration
+
+      - name: Run e2e tests
+        # make test-e2e depends on `build`, which places the plugin binary in
+        # dist/k8s-kms-plugin for the suite to drive.
+        env:
+          PKCS11_PIN: '1234'
+        run: make test-e2e
