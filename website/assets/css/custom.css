@@ -1,0 +1,50 @@
+/*
+ * Site-specific CSS. Hextra's head.html loads assets/css/custom.css after its own stylesheet; a file
+ * here replaces the theme's empty one.
+ *
+ * Hextra ships its Tailwind CSS precompiled, so only the utility classes the theme itself uses exist
+ * (hx:sm:flex does, hx:md:flex and hx:lg:flex do not). Layout the theme does not already need goes
+ * here rather than into class names that would silently match nothing.
+ */
+
+/*
+ * Home page hero: the text and the "where it fits" diagram (website/content/_index.md). Stacked on
+ * narrow screens; side by side once there is room for the headline beside the 219px-wide diagram.
+ */
+.kms-hero {
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 900px) {
+  .kms-hero {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 3rem;
+  }
+
+  .kms-hero-figure {
+    flex-shrink: 0;
+  }
+}
+
+/* Hextra's mermaid render hook adds a top margin meant for a diagram following prose. */
+.kms-hero-figure pre.mermaid {
+  margin-top: 0;
+}
+
+/*
+ * Mermaid's light theme draws edge labels on an 80%-opaque background, so the arrow shows through the
+ * label text; its dark theme is already opaque. Same colour, full opacity, light mode only (Hextra
+ * marks dark mode with html.dark). Not themeVariables in the diagram: those would apply in dark mode
+ * too, and the README copy has to keep following GitHub's theme.
+ *
+ * !important because Mermaid writes its colours into each diagram's own <style> under an ID selector
+ * (#mermaid-<n> .edgeLabel), which outranks any class selector here.
+ */
+html:not(.dark) .kms-hero-figure .edgeLabel,
+html:not(.dark) .kms-hero-figure .edgeLabel p,
+html:not(.dark) .kms-hero-figure .labelBkg {
+  background-color: rgb(232, 232, 232) !important;
+}

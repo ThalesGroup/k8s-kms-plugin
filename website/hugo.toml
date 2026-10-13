@@ -225,3 +225,13 @@ disableKinds = ['taxonomy', 'term']
     weight = 3
     [menu.main.params]
       icon = 'github'
+
+  # The documentation index is the docs section's own page (docs/README.md, mounted above as
+  # content/docs/_index.md), and Hextra's sidebar tree lists only the pages INSIDE a section, never
+  # the section itself — so without this entry the index is missing from the sidebar entirely.
+  # menu.sidebar renders below the page tree, which is where the index belongs: reachable from every
+  # page, but after Concepts & Architecture (where readers get started) and the Quick start.
+  [[menu.sidebar]]
+    name = 'Documentation index'
+    pageRef = '/docs'
+    weight = 1

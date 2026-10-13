@@ -25,6 +25,23 @@
 `k8s-kms-plugin serve` implements the [Kubernetes KMS v2 API](https://pkg.go.dev/k8s.io/kms/apis/v2) protocol as a gRPC service that leverages a remote or local HSM via PKCS11.
 `k8s-kms-plugin serve rotation` supports key rotation operations.
 
+<!-- The same diagram is on the documentation site's home page (website/content/_index.md); change
+     both together. It sets no Mermaid theme on purpose, so GitHub and the site can each draw it in
+     light or dark mode; the plugin's blue fill and white text were chosen to read on both. -->
+```mermaid
+%%{init: {"flowchart": {"nodeSpacing": 16, "rankSpacing": 32, "padding": 8}}}%%
+flowchart TB
+    K8S["kube-apiserver"]
+    PLG(["k8s-kms-plugin"])
+    DRV["vendor PKCS #11 driver"]
+    HSM{{"TPM / HSM · KEK"}}
+    K8S <-->|"KMS v2 API<br/>gRPC over a plaintext<br/>unix socket"| PLG
+    PLG <-->|"PKCS #11 C API<br/>up to v3.2"| DRV
+    DRV <-->|"USB · network · TPM"| HSM
+    classDef main fill:#1f6feb,stroke:#1f6feb,color:#fff,font-weight:bold,font-size:18px
+    class PLG main
+```
+
 Supported `--algorithm-family` values (key size / parameter set is derived at runtime from the HSM key):
 
 - `aes-gcm` — AES-GCM symmetric encryption (128 / 192 / 256-bit)
@@ -50,7 +67,7 @@ This plugin will also run in proxy mode which can connect to a remote plugin ser
 `k8s-kms-plugin` is part of [Eclipse KeySealer](https://projects.eclipse.org/projects/technology.keysealer),
 which brings HSM-backed key management to Kubernetes. It relies on [crypto11](https://github.com/eclipse-keypont/crypto11), [gose](https://github.com/eclipse-keypont/gose)
 and [pkcs11-go](https://github.com/eclipse-keypont/pkcs11-go) from the related
-[Eclipse Keypont](https://projects.eclipse.org/projects/technology.keypont) project for its PKCS#11 bindings. _"Pont"_ is french for "bridge"
+[Eclipse KeyPont](https://projects.eclipse.org/projects/technology.keypont) project for its PKCS#11 bindings. _"Pont"_ is french for "bridge"
 
 # 🚤 Quick Start 🚀
 
@@ -60,8 +77,11 @@ throwaway Kubernetes cluster:
 1. [SoftHSMv3 (`pqctoday-hsm`) & `k8s-kms-plugin`](./docs/hsm-guides/softhsm-v3.md) — **recommended** HSM: supports all algorithm families including ML-KEM
 2. [`KinD` & `k8s-kms-plugin`](./docs/kubernetes-guides/kind-kubernetes.md) — **recommended** cluster: single-node Kubernetes on Podman or Docker, deleted in one command
 
+The [Quick start](./docs/quick-start.md) page has the same two steps and where to go once they work. To
+*understand* the plugin before trying it, get started with [Concepts & Architecture](./docs/overview.md) instead.
+
 Other HSMs and TPMs (Thales eToken Fusion, YubiHSM 2, SoftHSMv2, TPM emulator), and the other
-Kubernetes distribution guide (`k3s`), are indexed in [`docs/README.md`](./docs/README.md).
+Kubernetes distribution guide (`k3s`), are listed in the [documentation index](./docs/README.md).
 
 # Documentation 📚
 

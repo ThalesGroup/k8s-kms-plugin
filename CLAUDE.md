@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `k8s-kms-plugin` is a gRPC service implementing the [Kubernetes KMS v2 API](https://pkg.go.dev/k8s.io/kms/apis/v2),
 backed by a PKCS #11 TPM or HSM. It is part of [Eclipse KeySealer](https://projects.eclipse.org/projects/technology.keysealer)
-and consumes `crypto11`, `gose` and `pkcs11-go` from [Eclipse Keypont](https://projects.eclipse.org/projects/technology.keypont).
+and consumes `crypto11`, `gose` and `pkcs11-go` from [Eclipse KeyPont](https://projects.eclipse.org/projects/technology.keypont).
 
 Read `CHANGELOG.md` first when touching anything cryptographic — the v1.0.0 entry is the authoritative
 record of the KMS v1 → v2 migration, the PKCS#11 binding swap, and every deliberate behavioural choice
@@ -169,7 +169,7 @@ documentation pages stay relative. `docs/README.md` states both rules.
 families, Quick Start, a documentation map, contributing, licence. Don't grow it back; add or extend a
 docs page and link it from the map.
 
-The manual lives in `docs/`, as five top-level pages — `overview.md`, `installation.md`,
+The manual lives in `docs/`, as six top-level pages — `overview.md`, `quick-start.md`, `installation.md`,
 `cryptographic-schemes.md`, `development.md`, `supply-chain-security.md` — plus `glossary.md` and four
 sections, each with a `README.md` index that is mounted as the section landing page:
 
@@ -179,6 +179,17 @@ sections, each with a `README.md` index that is mounted as the section landing p
 | `kubernetes-guides/` | 60 | `KinD` and `k3s`. Neither is presented as the default choice |
 | `tools-and-scripts/` | 65 | Documentation for `tools/create-dev-token/`, `scripts/grpcurl/` and `scripts/k8s-kind/`; those directories keep a short README pointing here |
 | `cli-user-interface/` | 90 | Hand-written CLI notes plus the generated `markdown/` and `txt/` trees |
+
+**Getting started and Quick start are two different entry points; keep them apart.** *Getting started*
+means understanding the plugin, and leads to `overview.md` (Concepts & Architecture, weight 10) — that is
+where the site's "Get started" button points. *Quick start* means trying it hands-on with no hardware,
+and is `quick-start.md` (weight 15): SoftHSMv3, then `KinD`, in that order. Don't label a quick-start
+link "Get started" or the reverse.
+
+`docs/README.md` is the **Documentation index** (`linkTitle: "Documentation"`, so breadcrumbs stay
+short). It is the docs section's own page, which Hextra's sidebar tree never lists, so it appears at the
+*bottom* of the sidebar through a `[[menu.sidebar]]` entry in `website/hugo.toml` — deliberately below
+the pages readers should meet first.
 
 There is no `usage.md`: it was dissolved into `cli-user-interface/` and the guides. A new subdirectory
 needs its own `_index.md` mount in `website/hugo.toml`.
@@ -205,7 +216,17 @@ needs its own `_index.md` mount in `website/hugo.toml`.
 - Mermaid and FlexSearch are fetched at build time and re-served with SRI hashes, at versions pinned
   in `hugo.toml` — Hextra's default is `mermaid@latest`. `website/README.md` documents the offline
   build.
-- Hugo does **not** need the extended build (Hextra ships precompiled CSS).
+- Hugo does **not** need the extended build (Hextra ships precompiled CSS). The flip side: only
+  utility classes the theme itself uses exist (`hx:sm:flex` does, `hx:md:flex` does not), and an
+  unknown class silently matches nothing. Layout the theme lacks goes in
+  `website/assets/css/custom.css`, which Hextra loads after its own stylesheet.
+- **The "where it fits" diagram exists twice**, in `README.md` and on the site's home page
+  (`website/content/_index.md`, beside the hero text on wide screens): kube-apiserver → **k8s-kms-plugin**
+  → vendor PKCS #11 driver → TPM/HSM, each link labelled with its API or protocol. Change both copies
+  together. It is Mermaid so that it follows light/dark mode on GitHub *and* through the site's theme
+  toggle — so its `%%{init}%%` must never set `theme`, and any colour it hardcodes must read on both
+  backgrounds (the plugin's `#1f6feb` fill with white text does). It is deliberately small and
+  vertical: a left-to-right version shrinks until it can't be read on a phone.
 - **Which version is this page?** A version chip sits beside the navbar title and a
   "Documentation build" line in the footer gives version, commit, build date and a link to the
   workflow run. Both read `site.Params.docs{Version,Commit,BuildDate,RunURL,RepoURL}`, which are
