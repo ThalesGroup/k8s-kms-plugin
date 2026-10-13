@@ -186,6 +186,25 @@ others were verified to be false positives and left alone.
 - Dependencies: `github.com/spf13/viper` and `github.com/mitchellh/go-homedir` (archived) are out —
   the home directory now comes from `os.UserHomeDir`. `github.com/knadh/koanf/v2` and its yaml,
   toml, json, env, posflag and confmap modules are in.
+- **Go bumped from 1.27.1 to 1.27.2** (`go` directive in `go.mod`, `.go-version`, the
+  `GOLANG_VERSION` build arg in the `Containerfile`, and the version references in
+  `docs/installation.md`). go1.27.2 is a patch release that fixes the `net/http` and
+  `net/http/internal/http2` standard-library vulnerabilities flagged by `govulncheck` on
+  1.27.1.
+- **Transitive dependencies refreshed** with `go get -u ./...` alongside the Go bump:
+  `golang.org/x/net` v0.59.0 → v0.61.0, `golang.org/x/sys` v0.48.0 → v0.49.0,
+  `golang.org/x/term` v0.46.0 → v0.47.0, `golang.org/x/text` v0.42.0 → v0.43.0,
+  `github.com/knadh/koanf/v2` v2.3.7 → v2.3.8, `github.com/lmittmann/tint` v1.2.0 → v1.2.1,
+  `github.com/mattn/go-runewidth` v0.0.30 → v0.0.31,
+  `google.golang.org/genproto/googleapis/rpc` and `google.golang.org/protobuf` v1.36.12.
+  The `golang.org/x/net` bump clears the four `govulncheck` findings that go1.27.2 alone did
+  not address; `govulncheck` now reports no vulnerabilities.
+- **`gosec` pinned to a `master` commit** (`7157726`, `x/tools` v0.52.0) in
+  `.github/workflows/gosec.yml` and the `Makefile`, instead of the v2.29.0 release. The
+  v2.29.0 release links `golang.org/x/tools` v0.49.0, which cannot decode the go1.27.2
+  export data (version 5 is greater than the maximum supported version 4) and fails the
+  scan with an import error. Move back to a tagged release once one ships
+  `x/tools` >= v0.50.0.
 
 ## v1.0.0 — first stable release: KMS v2, PKCS#11 v3.2 and ML-KEM
 
