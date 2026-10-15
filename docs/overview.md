@@ -13,7 +13,7 @@ Every acronym and term used across this documentation is defined in the
 ### Architecture
 
 The [`k8s-kms-plugin`](https://github.com/eclipse-keysealer/k8s-kms-plugin) reaches the token through
-three [Eclipse Keypont](https://projects.eclipse.org/projects/technology.keypont) libraries, each one
+three [Eclipse KeyPont](https://projects.eclipse.org/projects/technology.keypont) libraries, each one
 layered on the next:
 
 - [`github.com/eclipse-keypont/gose`](https://github.com/eclipse-keypont/gose) — JOSE (JSON Object

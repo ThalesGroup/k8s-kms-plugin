@@ -3,10 +3,22 @@ title: "k8s-kms-plugin"
 layout: hextra-home
 ---
 
+<div class="hx:flex hx:flex-wrap hx:gap-2">
 {{< hextra/hero-badge link="https://projects.eclipse.org/projects/technology.keysealer" >}}
   <span>Part of Eclipse KeySealer</span>
   {{< icon name="arrow-circle-right" attributes="height=14" >}}
 {{< /hextra/hero-badge >}}
+{{< hextra/hero-badge link="https://projects.eclipse.org/projects/technology.keypont" >}}
+  <span>Relying on Eclipse KeyPont</span>
+  {{< icon name="arrow-circle-right" attributes="height=14" >}}
+{{< /hextra/hero-badge >}}
+</div>
+
+<!-- The hero text and the "where it fits" diagram sit side by side on wide screens and stack on
+     narrow ones; the layout rules are in website/assets/css/custom.css. The same diagram is in the
+     main README.md, so change both together. -->
+<div class="kms-hero">
+<div class="kms-hero-text">
 
 <div class="hx:mt-6 hx:mb-6">
 {{< hextra/hero-headline >}}
@@ -21,7 +33,27 @@ layout: hextra-home
 </div>
 
 <div class="hx:mb-6">
-{{< hextra/hero-button text="Get started" link="docs/" >}}
+{{< hextra/hero-button text="Get started" link="docs/overview/" >}}
+</div>
+
+</div>
+<div class="kms-hero-figure">
+
+```mermaid
+%%{init: {"flowchart": {"nodeSpacing": 16, "rankSpacing": 32, "padding": 8}}}%%
+flowchart TB
+    K8S["kube-apiserver"]
+    PLG(["k8s-kms-plugin"])
+    DRV["vendor PKCS #11 driver"]
+    HSM{{"TPM / HSM · KEK"}}
+    K8S <-->|"KMS v2 API<br/>gRPC over a plaintext<br/>unix socket"| PLG
+    PLG <-->|"PKCS #11 C API<br/>up to v3.2"| DRV
+    DRV <-->|"USB · network · TPM"| HSM
+    classDef main fill:#1f6feb,stroke:#1f6feb,color:#fff,font-weight:bold,font-size:18px
+    class PLG main
+```
+
+</div>
 </div>
 
 <div class="hx:mt-6"></div>
@@ -48,9 +80,9 @@ layout: hextra-home
     link="docs/supply-chain-security/"
   >}}
   {{< hextra/feature-card
-    title="Try it in minutes"
-    subtitle="A software HSM and a throwaway KinD cluster, deleted in one command. No hardware needed to see the whole path end to end."
-    link="docs/hsm-guides/softhsm-v3/"
+    title="Quick start, in minutes"
+    subtitle="A SoftHSMv3 software HSM, then a throwaway KinD cluster deleted in one command. No hardware needed to see the whole path end to end."
+    link="docs/quick-start/"
   >}}
   {{< hextra/feature-card
     title="Runs where your cluster runs"

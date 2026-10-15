@@ -226,7 +226,7 @@ replaces its PKCS#11 binding, and adds post-quantum ML-KEM support. It is now pa
 [Eclipse KeySealer](https://projects.eclipse.org/projects/technology.keysealer), consuming
 [crypto11](https://github.com/eclipse-keypont/crypto11), [gose](https://github.com/eclipse-keypont/gose)
 and [pkcs11-go](https://github.com/eclipse-keypont/pkcs11-go) from the
-[Eclipse Keypont](https://projects.eclipse.org/projects/technology.keypont) project.
+[Eclipse KeyPont](https://projects.eclipse.org/projects/technology.keypont) project.
 
 ### Breaking changes
 
