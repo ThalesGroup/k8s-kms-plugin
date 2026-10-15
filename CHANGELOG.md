@@ -206,6 +206,18 @@ others were verified to be false positives and left alone.
   scan with an import error. Move back to a tagged release once one ships
   `x/tools` >= v0.50.0.
 
+### CI/CD & supply chain
+
+- **The `govulncheck` SARIF upload no longer fails when it has something to report.** The
+  job ran `govulncheck -format sarif` and uploaded the result with `upload-sarif`, but
+  govulncheck emits one `Stack` per finding without deduplication, so a vulnerable symbol
+  reachable through several call stacks produced byte-identical `Stack` objects. SARIF
+  2.1.0 declares `result.stacks` with `uniqueItems: true`, and GitHub rejected the file
+  with `instance.runs[0].results[N].stacks contains duplicate item` — the job failed
+  exactly when it had findings, and passed when it had none. A `jq` step now drops the
+  duplicate stacks (order-preserving) before the upload, so findings still reach the
+  Security tab. Upstream `golang/vuln` has not fixed `stacks()` as of the pinned revision.
+
 ## v1.0.0 — first stable release: KMS v2, PKCS#11 v3.2 and ML-KEM
 
 `k8s-kms-plugin` has been on `0.x` since its start, with no stability contract. v1.0.0 is its first

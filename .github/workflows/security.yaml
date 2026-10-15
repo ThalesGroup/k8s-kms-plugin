@@ -56,6 +56,27 @@ jobs:
         # step is itself the pass/fail signal, so no findings still exits 0.
         run: govulncheck -format sarif ./... > govulncheck.sarif
 
+      - name: Deduplicate govulncheck SARIF stacks
+        # govulncheck emits one Stack per finding without deduplication, so a
+        # vulnerable symbol reachable through several call stacks yields
+        # byte-identical Stack objects. SARIF 2.1.0 declares result.stacks with
+        # uniqueItems: true, and GitHub's upload-sarif rejects the file with
+        # "instance.runs[0].results[N].stacks contains duplicate item". Drop the
+        # duplicates (order-preserving) so the findings still reach the Security
+        # tab. Upstream golang/vuln has not fixed this in stacks() as of the
+        # pinned revision.
+        run: |
+          jq '
+            .runs = ((.runs // []) | map(
+              .results = ((.results // []) | map(
+                if .stacks
+                then .stacks |= (reduce .[] as $s ([]; if index($s) then . else . + [$s] end))
+                else . end
+              ))
+            ))
+          ' govulncheck.sarif > govulncheck.dedup.sarif
+          mv govulncheck.dedup.sarif govulncheck.sarif
+
       - name: Upload govulncheck SARIF
         if: always()
         uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d
