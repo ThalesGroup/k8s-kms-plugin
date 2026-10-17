@@ -714,7 +714,12 @@ func (p *P11) decryptWithContext(req *k8skmsv2.DecryptRequest, isRotation bool) 
 				return rsaKeyPair, nil
 			}, func(rsaKeyPair crypto11.SignerDecrypter) (err error) {
 				var privKey *hsm.AsymmetricDecryptionKey
-				if privKey, err = hsm.NewAsymmetricDecryptionKey(p.ctx, rsaKeyPair, reqKekKeyIDByteA, nil); err != nil {
+				// Build the key on actualCtx (the context the key pair was just found on),
+				// not p.ctx. During rotation actualCtx is the old KEK's context, which may be a
+				// different HSM; p.ctx is the active one. hsm.AsymmetricDecryptionKey.Decrypt
+				// draws its OAEP random reader from the context passed here, so using p.ctx made
+				// an old-KEK decrypt depend on the active token's availability.
+				if privKey, err = hsm.NewAsymmetricDecryptionKey(actualCtx, rsaKeyPair, reqKekKeyIDByteA, nil); err != nil {
 					slog.Error("error creating AsymmetricDecryptionKey", "keyId", fmt.Sprintf("%X", reqKekKeyIDByteA), "error", err)
 					return fmt.Errorf("error creating AsymmetricDecryptionKey with id %X: %w", reqKekKeyIDByteA, err)
 				}
