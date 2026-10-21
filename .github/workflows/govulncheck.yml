@@ -1,0 +1,83 @@
+# .github/workflows/govulncheck.yml
+#
+# Go-specific vulnerability check against the Go vulnerability database.
+# govulncheck is reachability-aware: it only reports CVEs whose affected symbols
+# are actually called. Runs on every PR, every push to master, and on a weekly
+# schedule so newly disclosed CVEs surface even without a code change.
+#
+# Findings are uploaded as SARIF to the GitHub Security tab, so they are
+# consolidated in one place without blocking the build.
+
+name: Vulnerability Scan
+
+on:
+  push:
+    branches: ["master", "main"]
+  pull_request:
+    branches: ["master", "main"]
+  schedule:
+    # Every Monday at 08:00 UTC — catches newly disclosed CVEs between PRs
+    - cron: "0 8 * * 1"
+  workflow_dispatch:
+  # Allows the Release pipeline to gate a tag on a passing vulnerability scan.
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  govulncheck:
+    name: govulncheck
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: "go.mod"
+          cache: true
+
+      - name: Install govulncheck
+        # golang.org/x/vuln v1.8.0. Run the tool directly instead of through
+        # golang/govulncheck-action: that action performs its own
+        # actions/checkout@v4, whose Authorization header collides with the outer
+        # checkout's (git fails with "Duplicate header: Authorization" → HTTP 400).
+        run: go install golang.org/x/vuln/cmd/govulncheck@709015412431dd2b5b28a53c06c70bc02d49074c
+
+      - name: Run govulncheck
+        # SARIF output is consumed by the upload-sarif step below. Reaching this
+        # step is itself the pass/fail signal, so no findings still exits 0.
+        run: govulncheck -format sarif ./... > govulncheck.sarif
+
+      - name: Deduplicate govulncheck SARIF stacks
+        # govulncheck emits one Stack per finding without deduplication, so a
+        # vulnerable symbol reachable through several call stacks yields
+        # byte-identical Stack objects. SARIF 2.1.0 declares result.stacks with
+        # uniqueItems: true, and GitHub's upload-sarif rejects the file with
+        # "instance.runs[0].results[N].stacks contains duplicate item". Drop the
+        # duplicates (order-preserving) so the findings still reach the Security
+        # tab. Upstream golang/vuln has not fixed this in stacks() as of the
+        # pinned revision.
+        run: |
+          jq '
+            .runs = ((.runs // []) | map(
+              .results = ((.results // []) | map(
+                if .stacks
+                then .stacks |= (reduce .[] as $s ([]; if index($s) then . else . + [$s] end))
+                else . end
+              ))
+            ))
+          ' govulncheck.sarif > govulncheck.dedup.sarif
+          mv govulncheck.dedup.sarif govulncheck.sarif
+
+      - name: Upload govulncheck SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee
+        with:
+          sarif_file: "govulncheck.sarif"
+          category: govulncheck

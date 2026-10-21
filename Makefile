@@ -121,7 +121,7 @@ vet:
 
 ## Vulnerability scan
 # Runs govulncheck (reachability-aware, cross-checked against the Go vuln DB) —
-# the same check as the CI govulncheck job (.github/workflows/security.yaml).
+# the same check as the CI govulncheck job (.github/workflows/govulncheck.yml).
 #
 # Install govulncheck:
 #   go install golang.org/x/vuln/cmd/govulncheck@latest

@@ -208,6 +208,12 @@ others were verified to be false positives and left alone.
 
 ### CI/CD & supply chain
 
+- **Security scanning is split into dedicated workflows.** The single `security.yaml` is
+  replaced by `govulncheck.yml` (Go vuln DB), `codeql.yml` (SAST) and `trivy.yml`
+  (filesystem & container image CVEs), matching the layout used by pkcs11-go and crypto11.
+  Each workflow now has its own status badge in the README, so a failure in one scanner no
+  longer masks the others. The `gosec.yml` scan is unchanged.
+
 - **The `govulncheck` SARIF upload no longer fails when it has something to report.** The
   job ran `govulncheck -format sarif` and uploaded the result with `upload-sarif`, but
   govulncheck emits one `Stack` per finding without deduplication, so a vulnerable symbol
