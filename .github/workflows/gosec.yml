@@ -1,10 +1,9 @@
 # .github/workflows/gosec.yml
 #
 # Runs gosec (https://github.com/securego/gosec) — a static-analysis security
-# scanner for Go code. Complements the govulncheck job in security.yaml
-# (dependency CVEs) by flagging insecure code patterns in this module itself.
-# Runs on PRs, pushes to master, and weekly so newly added rules surface even
-# without a code change.
+# scanner for Go code. Complements govulncheck.yml (dependency CVEs) by
+# flagging insecure code patterns in this module itself. Runs on PRs, pushes to
+# master, and weekly so newly added rules surface even without a code change.
 
 name: Security Scan (gosec)
 
@@ -14,7 +13,7 @@ on:
   pull_request:
     branches: ["master", "main"]
   schedule:
-    # Every Monday at 08:00 UTC — same cadence as security.yaml
+    # Every Monday at 08:00 UTC — same cadence as the other security workflows
     - cron: "0 8 * * 1"
   workflow_dispatch:
   # Allows the Release pipeline to gate a tag on a passing security scan.

@@ -2,8 +2,8 @@
 #
 # Continuous integration for pull requests and pushes: vet + build. This is the
 # fast, HSM-free gate that keeps master compiling — the release pipeline
-# (release.yml) only runs on tags and the security suite (security.yaml) only
-# scans, so without this nothing type-checks a PR.
+# (release.yml) only runs on tags and the security workflows (govulncheck.yml,
+# codeql.yml, trivy.yml) only scan, so without this nothing type-checks a PR.
 #
 # Unit tests (pkg/, cmd/) run here without an HSM and are used as the compile
 # gate. e2e and integration tests self-skip cleanly when PKCS11_MODULE is not

@@ -1,0 +1,58 @@
+# .github/workflows/codeql.yml
+#
+# Static application security testing (SAST) for Go. Complements govulncheck
+# (known-vulnerable dependencies) by finding issues in *this* code: unsafe/cgo
+# misuse, injection, data-flow and error-handling gaps. Results appear under
+# Security > Code scanning.
+#
+# Runs on every PR, every push to master, and on a weekly schedule.
+
+name: CodeQL
+
+on:
+  push:
+    branches: ["master", "main"]
+  pull_request:
+    branches: ["master", "main"]
+  schedule:
+    # Every Monday at 08:00 UTC — same cadence as the other security workflows
+    - cron: "0 8 * * 1"
+  workflow_dispatch:
+  # Allows the Release pipeline to gate a tag on a passing SAST scan.
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  codeql:
+    name: CodeQL (Go)
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Initialize CodeQL
+        # github/codeql-action/init v4.36.2
+        uses: github/codeql-action/init@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee
+        with:
+          languages: go
+          queries: security-extended
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: "go.mod"
+          cache: true
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee
+        with:
+          category: codeql-go

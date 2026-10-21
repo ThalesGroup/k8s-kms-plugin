@@ -9,15 +9,22 @@
      The documentation badge and the Docs workflow badge below point at this repository's own Pages
      site, which the Docs workflow publishes from the default branch. Both stay dark until that
      workflow has run here at least once and Pages is enabled. Every URL in this file is an absolute
-     eclipse-keysealer one on purpose, so a fork's README keeps pointing at upstream. -->
+     eclipse-keysealer one on purpose, so a fork's README keeps pointing at upstream.
+
+     Security scanning is split across dedicated workflows, matching pkcs11-go and crypto11:
+     govulncheck.yml (Vulnerability scan), gosec.yml (Security scan), codeql.yml (CodeQL) and
+     trivy.yml (container & filesystem CVEs, no badge). -->
 [![Documentation](https://img.shields.io/badge/documentation-online-1f6feb?style=flat-square&logo=hugo&logoColor=white)](https://eclipse-keysealer.github.io/k8s-kms-plugin/)
 [![Licence](https://img.shields.io/github/license/eclipse-keysealer/k8s-kms-plugin?style=flat-square&logo=opensourceinitiative&logoColor=white&color=1f6feb)](./LICENSE)
 [![Go Reference](https://img.shields.io/badge/pkg.go.dev-reference-007d9c?style=flat-square&logo=go&logoColor=white)](https://pkg.go.dev/github.com/eclipse-keysealer/k8s-kms-plugin)
 [![Release](https://img.shields.io/github/v/release/eclipse-keysealer/k8s-kms-plugin?style=flat-square&logo=github&logoColor=white&color=1f6feb)](https://github.com/eclipse-keysealer/k8s-kms-plugin/releases/latest)
-[![Changelog](https://img.shields.io/badge/changelog-read-1f6feb?style=flat-square&logo=markdown&logoColor=white)](./CHANGELOG.md)
+[![Changelog](https://img.shields.io/badge/changelog-v1.0.0-1f6feb?style=flat-square&logo=keepachangelog&logoColor=white)](./CHANGELOG.md)
 
 [![Build](https://img.shields.io/github/actions/workflow/status/eclipse-keysealer/k8s-kms-plugin/ci.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=build)](https://github.com/eclipse-keysealer/k8s-kms-plugin/actions/workflows/ci.yml)
 [![Lint](https://img.shields.io/github/actions/workflow/status/eclipse-keysealer/k8s-kms-plugin/lint.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=lint)](https://github.com/eclipse-keysealer/k8s-kms-plugin/actions/workflows/lint.yml)
+[![Vulnerability scan](https://img.shields.io/github/actions/workflow/status/eclipse-keysealer/k8s-kms-plugin/govulncheck.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=vulnerability%20scan)](https://github.com/eclipse-keysealer/k8s-kms-plugin/actions/workflows/govulncheck.yml)
+[![Security scan](https://img.shields.io/github/actions/workflow/status/eclipse-keysealer/k8s-kms-plugin/gosec.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=security%20scan)](https://github.com/eclipse-keysealer/k8s-kms-plugin/actions/workflows/gosec.yml)
+[![CodeQL](https://img.shields.io/github/actions/workflow/status/eclipse-keysealer/k8s-kms-plugin/codeql.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=codeql)](https://github.com/eclipse-keysealer/k8s-kms-plugin/actions/workflows/codeql.yml)
 [![Release build](https://img.shields.io/github/actions/workflow/status/eclipse-keysealer/k8s-kms-plugin/release.yml?style=flat-square&logo=githubactions&logoColor=white&label=release%20build)](https://github.com/eclipse-keysealer/k8s-kms-plugin/actions/workflows/release.yml)
 [![Docs site](https://img.shields.io/github/actions/workflow/status/eclipse-keysealer/k8s-kms-plugin/docs.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=docs)](https://github.com/eclipse-keysealer/k8s-kms-plugin/actions/workflows/docs.yml)
 [![OpenSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/eclipse-keysealer/k8s-kms-plugin?style=flat-square&logo=openssf&logoColor=white&label=openssf%20scorecard)](https://scorecard.dev/viewer/?uri=github.com/eclipse-keysealer/k8s-kms-plugin)
