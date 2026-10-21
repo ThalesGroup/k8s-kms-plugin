@@ -69,6 +69,29 @@ which brings HSM-backed key management to Kubernetes. It relies on [crypto11](ht
 and [pkcs11-go](https://github.com/eclipse-keypont/pkcs11-go) from the related
 [Eclipse KeyPont](https://projects.eclipse.org/projects/technology.keypont) project for its PKCS#11 bindings. _"Pont"_ is french for "bridge"
 
+## How k8s-kms-plugin fits in
+
+```mermaid
+%%{init: {"flowchart": {"nodeSpacing": 16, "rankSpacing": 32, "padding": 8}}}%%
+flowchart TB
+    PLG(["k8s-kms-plugin<br/>KMS v2 gRPC service"])
+    GOSE(["gose<br/>JOSE · JWT · JWK · JWS · JWKS"])
+    C11(["crypto11<br/>crypto.Signer / crypto.Decrypter"])
+    P11(["pkcs11-go<br/>cryptoki + p11"])
+    DRV["vendor PKCS #11 driver"]
+    HSM{{"TPM / HSM · KEK"}}
+
+    PLG --> GOSE
+    PLG --> C11
+    GOSE --> C11
+    C11 --> P11
+    P11 <-->|"PKCS #11 C API<br/>up to v3.2"| DRV
+    DRV <-->|"USB · network · TPM"| HSM
+
+    classDef main fill:#1f6feb,stroke:#1f6feb,color:#fff,font-weight:bold,font-size:16px
+    class PLG main
+```
+
 # 🚤 Quick Start 🚀
 
 **TL;DR**: For a quick start experience, try the `k8s-kms-plugin` with a software (virtual) HSM, then plug it into a
