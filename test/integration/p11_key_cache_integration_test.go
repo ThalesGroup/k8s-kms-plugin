@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/eclipse-keypont/crypto11/v2"
+	pkcs11 "github.com/eclipse-keypont/pkcs11-go/cryptoki"
 	"github.com/stretchr/testify/require"
 
 	"github.com/eclipse-keysealer/k8s-kms-plugin/pkg/providers"
@@ -79,8 +80,8 @@ func TestKeyCache_AESCBC_KEKReplaced(t *testing.T) {
 	require.NoError(t, err)
 	hmacAttrs, err := crypto11.NewAttributeSetWithIDAndLabel(hmacID, []byte(hmacLabel))
 	require.NoError(t, err)
-	require.NoError(t, hmacAttrs.Set(crypto11.CkaSign, true))
-	require.NoError(t, hmacAttrs.Set(crypto11.CkaVerify, true))
+	require.NoError(t, hmacAttrs.Set(pkcs11.CKA_SIGN, true))
+	require.NoError(t, hmacAttrs.Set(pkcs11.CKA_VERIFY, true))
 	hmacKey, err := testCtx.GenerateSecretKeyWithAttributes(hmacAttrs, 256, crypto11.CipherGeneric)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = hmacKey.Delete() })
