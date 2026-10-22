@@ -110,6 +110,11 @@ others were verified to be false positives and left alone.
 
 ### Changed
 
+- **Go bumped from 1.27.2 to 1.27.3** (`go` directive in `go.mod`, `.go-version`, the
+  `GOLANG_VERSION` build arg in the `Containerfile`, and the version references in
+  `docs/installation.md`). go1.27.3 is a patch release that fixes the `crypto/x509`
+  standard-library vulnerability `GO-2026-6809` ("distrust compromised intermediate
+  certificates") flagged by `govulncheck` on go1.27.2.
 - **CLI help reviewed end to end.** Every `Short`, `Long`, example and flag description was
   rewritten to say what the command actually does. The notable corrections:
   - the root command described itself as "Thales KMS Server for K8S" and never mentioned that
